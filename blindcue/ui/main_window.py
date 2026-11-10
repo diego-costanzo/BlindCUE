@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, QThreadPool, QTimer, Signal, Slot
+from PySide6.QtCore import QEvent, QLocale, QPoint, QPointF, QRect, QRectF, Qt, QThreadPool, QTimer, Signal, Slot
 from PySide6.QtGui import (
     QAction,
     QBrush,
@@ -40,6 +40,7 @@ from PySide6.QtGui import (
     QPolygon,
     QRegion,
     QShortcut,
+    QValidator,
 )
 from PySide6.QtMultimedia import QVideoFrame, QVideoSink
 from PySide6.QtMultimediaWidgets import QVideoWidget
@@ -82,14 +83,15 @@ logger = logging.getLogger(__name__)
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _LOGO_PATH = _PROJECT_ROOT / "immagini di progetto" / "BlindCue-logo.jpeg"
 
-# ── Colour palette ────────────────────────────────────────────────────
-_CLR_BG = "#1e1e1e"
-_CLR_PANEL = "#282828"
-_CLR_TEXT = "#e0e0e0"
-_CLR_LIVE = "#00e676"       # bright green
-_CLR_PREVIZ = "#ffab00"     # amber
-_CLR_GO = "#00e676"
-_CLR_ACCENT = "#00bcd4"
+# ── Colour palette (Pro Broadcast / Obsidian Slate) ───────────────────
+_CLR_BG = "#0c1017"         # Deep obsidian backdrop
+_CLR_PANEL = "#151b26"      # Sleek slate panel surface
+_CLR_TEXT = "#e2e8f0"       # Clean readable text
+_CLR_TEXT_MUTED = "#94a3b8" # Soft secondary text
+_CLR_LIVE = "#10b981"       # Vivid broadcast emerald green
+_CLR_PREVIZ = "#f59e0b"     # Studio amber
+_CLR_GO = "#10b981"         # Emerald GO
+_CLR_ACCENT = "#38bdf8"     # Sky cyan accent
 
 # Supported file extensions
 _VIDEO_EXT = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv", ".m4v"}
@@ -102,11 +104,11 @@ _DARK_STYLESHEET = f"""
         color: {_CLR_TEXT};
     }}
     QGroupBox {{
-        background-color: #242424;
-        border: 1px solid #363636;
+        background-color: {_CLR_PANEL};
+        border: 1px solid #232f40;
         border-radius: 6px;
-        margin-top: 10px;
-        padding: 10px 8px 8px 8px;
+        margin-top: 14px;
+        padding: 12px 8px 8px 8px;
         font-weight: bold;
         font-size: 11px;
     }}
@@ -114,42 +116,77 @@ _DARK_STYLESHEET = f"""
         subcontrol-origin: margin;
         subcontrol-position: top left;
         left: 10px;
-        padding: 0 6px;
-        color: #00bcd4;
+        padding: 1px 8px;
+        background-color: {_CLR_PANEL};
+        border-radius: 3px;
+        color: {_CLR_ACCENT};
+        font-weight: bold;
     }}
     QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-        background-color: #1a1a1a;
-        border: 1px solid #383838;
+        background-color: #0f1520;
+        border: 1px solid #283548;
         border-radius: 4px;
-        padding: 3px 6px;
-        color: #e0e0e0;
+        padding: 4px 6px;
+        color: #f1f5f9;
         font-size: 11px;
+        selection-background-color: #0284c7;
     }}
     QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
-        border-color: #00bcd4;
-        background-color: #202020;
+        border: 1px solid {_CLR_ACCENT};
+        background-color: #141c2b;
+    }}
+    QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {{
+        background-color: #0a0d14;
+        border-color: #1a2230;
+        color: #475569;
+    }}
+    QSpinBox::up-button, QDoubleSpinBox::up-button {{
+        subcontrol-origin: border;
+        subcontrol-position: top right;
+        width: 16px;
+        background-color: #1a2332;
+        border-left: 1px solid #283548;
+        border-bottom: 1px solid #283548;
+        border-top-right-radius: 4px;
+    }}
+    QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {{
+        background-color: #26354a;
+    }}
+    QSpinBox::down-button, QDoubleSpinBox::down-button {{
+        subcontrol-origin: border;
+        subcontrol-position: bottom right;
+        width: 16px;
+        background-color: #1a2332;
+        border-left: 1px solid #283548;
+        border-bottom-right-radius: 4px;
+    }}
+    QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
+        background-color: #26354a;
     }}
     QListWidget {{
-        background-color: #242424;
-        border: 1px solid #3e3e3e;
-        border-radius: 4px;
+        background-color: #111722;
+        border: 1px solid #232f40;
+        border-radius: 5px;
         font-size: 12px;
         font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Roboto Mono', 'Ubuntu Mono', 'monospace', monospace;
     }}
     QListWidget::item {{
         padding: 6px 10px;
-        border-bottom: 1px solid #333333;
+        border-bottom: 1px solid #1a2332;
+        border-radius: 4px;
+        margin: 1px 2px;
     }}
     QListWidget::item:selected {{
-        background-color: #383838;
-        border-left: 3px solid #00bcd4;
+        background-color: #1e2d42;
+        border-left: 3px solid {_CLR_ACCENT};
+        color: #ffffff;
     }}
-    QListWidget::item:hover {{
-        background-color: #2e2e2e;
+    QListWidget::item:hover:!selected {{
+        background-color: #16202e;
     }}
     QPushButton {{
-        background-color: #383838;
-        border: 1px solid #4e4e4e;
+        background-color: #1c2534;
+        border: 1px solid #2c3a4e;
         border-radius: 4px;
         padding: 5px 12px;
         color: {_CLR_TEXT};
@@ -157,91 +194,110 @@ _DARK_STYLESHEET = f"""
         font-weight: bold;
     }}
     QPushButton:hover {{
-        background-color: #484848;
-        border-color: #666666;
+        background-color: #263448;
+        border-color: {_CLR_ACCENT};
+        color: #ffffff;
     }}
     QPushButton:pressed {{
-        background-color: #2a2a2a;
+        background-color: #141b26;
+        border-color: #0284c7;
     }}
     QPushButton:checked {{
-        background-color: #00695c;
-        border-color: #00bcd4;
+        background-color: #065f46;
+        border-color: {_CLR_LIVE};
         color: #ffffff;
     }}
     QPushButton:disabled {{
-        background-color: #222222;
-        border-color: #333333;
-        color: #555555;
+        background-color: #0f141d;
+        border-color: #1c2334;
+        color: #475569;
     }}
     QLabel {{
         color: {_CLR_TEXT};
     }}
     QSlider::groove:horizontal {{
         height: 6px;
-        background: #3e3e3e;
+        background: #1c2636;
+        border-radius: 3px;
+        border: 1px solid #283548;
+    }}
+    QSlider::sub-page:horizontal {{
+        background: #0284c7;
         border-radius: 3px;
     }}
     QSlider::handle:horizontal {{
         width: 14px;
-        margin: -4px 0;
+        margin: -5px 0;
         background: {_CLR_ACCENT};
         border-radius: 7px;
+        border: 1px solid #ffffff;
     }}
     QSlider::handle:horizontal:hover {{
-        background: #26c6da;
+        background: #7dd3fc;
     }}
     QSlider::handle:horizontal:disabled {{
-        background: #555555;
-    }}
-    QSpinBox, QDoubleSpinBox, QTimeEdit, QComboBox, QLineEdit {{
-        background-color: #333333;
-        border: 1px solid #4e4e4e;
-        border-radius: 3px;
-        padding: 3px 6px;
-        color: #ffffff;
-        font-size: 11px;
-    }}
-    QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {{
-        border-color: {_CLR_ACCENT};
-    }}
-    QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QLineEdit:disabled {{
-        background-color: #222222;
-        border-color: #333333;
-        color: #555555;
+        background: #475569;
     }}
     QCheckBox {{
         spacing: 6px;
         color: {_CLR_TEXT};
     }}
     QCheckBox:disabled {{
-        color: #555555;
+        color: #475569;
     }}
     QSplitter::handle {{
-        background-color: #1a1a1a;
+        background-color: #101620;
     }}
     QSplitter::handle:hover {{
-        background-color: #00bcd4;
+        background-color: {_CLR_ACCENT};
     }}
     QStatusBar {{
-        background-color: #161616;
-        color: #b0bec5;
+        background-color: #090d13;
+        color: {_CLR_TEXT_MUTED};
         font-size: 11px;
+        border-top: 1px solid #1a2332;
     }}
     QMenuBar {{
-        background-color: #1a1a1a;
+        background-color: #090d13;
         color: {_CLR_TEXT};
         font-size: 12px;
+        border-bottom: 1px solid #1a2332;
     }}
     QMenuBar::item:selected {{
-        background-color: #333333;
+        background-color: #1c2534;
+        color: {_CLR_ACCENT};
     }}
     QMenu {{
-        background-color: #282828;
-        border: 1px solid #444444;
+        background-color: {_CLR_PANEL};
+        border: 1px solid #283548;
+        border-radius: 4px;
         color: {_CLR_TEXT};
+        padding: 4px;
+    }}
+    QMenu::item {{
+        padding: 4px 18px;
+        border-radius: 3px;
     }}
     QMenu::item:selected {{
-        background-color: #383838;
+        background-color: #1e2d42;
+        color: {_CLR_ACCENT};
+    }}
+    QScrollBar:vertical {{
+        background: #0f1520;
+        width: 10px;
+        border-radius: 5px;
+        margin: 0px;
+    }}
+    QScrollBar::handle:vertical {{
+        background: #283548;
+        border-radius: 5px;
+        min-height: 20px;
+    }}
+    QScrollBar::handle:vertical:hover {{
+        background: {_CLR_ACCENT};
+    }}
+    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+        height: 0px;
     }}
 """
 
@@ -472,10 +528,63 @@ class WaveformWidget(QWidget):
 
 
 # ═══════════════════════════════════════════════════════════════════════
-# High Precision SpinBoxes (Centesimi)
+# High Precision Resilient SpinBoxes (Centesimi / Decimals & Locale Safe)
 # ═══════════════════════════════════════════════════════════════════════
 
-class InPointSpinBox(QDoubleSpinBox):
+class SmartDoubleSpinBox(QDoubleSpinBox):
+    """Robust QDoubleSpinBox accepting both '.' and ',' decimal separators,
+    resilient to suffixes (% and s), with keyboard tracking deferred to Enter/blur.
+    """
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self.setLocale(QLocale.c())  # Standard C locale (decimal point = '.')
+        self.setKeyboardTracking(False)
+
+    def validate(self, input_text: str, pos: int):
+        clean_text = input_text.replace(",", ".")
+        special = self.specialValueText()
+        if special and (input_text == special or clean_text == special):
+            return (QValidator.State.Acceptable, input_text, pos)
+
+        suffix = self.suffix()
+        prefix = self.prefix()
+        val_str = clean_text
+        if prefix and val_str.startswith(prefix):
+            val_str = val_str[len(prefix):]
+        if suffix and val_str.endswith(suffix):
+            val_str = val_str[:-len(suffix)]
+        val_str = val_str.strip()
+
+        if not val_str or val_str in ("-", "+", "."):
+            return (QValidator.State.Intermediate, input_text, pos)
+        try:
+            val = float(val_str)
+            if self.minimum() <= val <= self.maximum():
+                return (QValidator.State.Acceptable, input_text, pos)
+            return (QValidator.State.Intermediate, input_text, pos)
+        except ValueError:
+            return (QValidator.State.Invalid, input_text, pos)
+
+    def valueFromText(self, text: str) -> float:
+        special = self.specialValueText()
+        if special and text == special:
+            return self.minimum()
+        clean = text.replace(",", ".")
+        suffix = self.suffix()
+        prefix = self.prefix()
+        if prefix and clean.startswith(prefix):
+            clean = clean[len(prefix):]
+        if suffix and clean.endswith(suffix):
+            clean = clean[:-len(suffix)]
+        clean = clean.strip()
+        try:
+            return float(clean)
+        except ValueError:
+            return self.minimum()
+
+
+class InPointSpinBox(SmartDoubleSpinBox):
     """High-precision (centesimi) spinbox for Cue IN point."""
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -486,7 +595,7 @@ class InPointSpinBox(QDoubleSpinBox):
         self.setSuffix(" s")
 
 
-class OutPointSpinBox(QDoubleSpinBox):
+class OutPointSpinBox(SmartDoubleSpinBox):
     """Smart Out Point SpinBox with centesimi precision and end-of-file down-stepping."""
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
@@ -1521,8 +1630,9 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(_make_section_header("POSIZIONAMENTO • ZOOM • TRASPARENZA"))
 
         pos_spin_row = QHBoxLayout()
+        pos_spin_row.setSpacing(6)
         pos_spin_row.addWidget(QLabel("Pos X:"))
-        self._spin_pos_x = QDoubleSpinBox()
+        self._spin_pos_x = SmartDoubleSpinBox()
         self._spin_pos_x.setRange(-2.0, 2.0)
         self._spin_pos_x.setSingleStep(0.01)
         self._spin_pos_x.setDecimals(2)
@@ -1531,7 +1641,7 @@ class MainWindow(QMainWindow):
         pos_spin_row.addWidget(self._spin_pos_x)
 
         pos_spin_row.addWidget(QLabel("Pos Y:"))
-        self._spin_pos_y = QDoubleSpinBox()
+        self._spin_pos_y = SmartDoubleSpinBox()
         self._spin_pos_y.setRange(-2.0, 2.0)
         self._spin_pos_y.setSingleStep(0.01)
         self._spin_pos_y.setDecimals(2)
@@ -1548,8 +1658,8 @@ class MainWindow(QMainWindow):
         nudge_row = QHBoxLayout()
         nudge_btn_style = """
             QPushButton {
-                background-color: #2b2b2b;
-                border: 1px solid #444;
+                background-color: #1e2838;
+                border: 1px solid #2d3b50;
                 border-radius: 4px;
                 font-size: 11px;
                 padding: 3px 8px;
@@ -1558,12 +1668,12 @@ class MainWindow(QMainWindow):
                 height: 22px;
             }
             QPushButton:hover {
-                background-color: #383838;
-                border-color: #00bcd4;
-                color: #00bcd4;
+                background-color: #2a374c;
+                border-color: #38bdf8;
+                color: #38bdf8;
             }
             QPushButton:pressed {
-                background-color: #1e1e1e;
+                background-color: #141b26;
             }
         """
         self._btn_nudge_left = QPushButton("◀")
@@ -1633,38 +1743,48 @@ class MainWindow(QMainWindow):
         op_row.addWidget(self._btn_opacity_reset)
         right_layout.addLayout(op_row)
 
-        # ── 4. Ritaglio (Crop) ──
-        right_layout.addWidget(_make_section_header("RITAGLIO (CROP)"))
+        # ── 4. Ritaglio (Crop in %) ──
+        right_layout.addWidget(_make_section_header("RITAGLIO (CROP %)"))
 
         crop_row1 = QHBoxLayout()
-        crop_row1.addWidget(QLabel("Sinistra (L):"))
-        self._spin_crop_l = QDoubleSpinBox()
-        self._spin_crop_l.setRange(0.0, 0.99)
-        self._spin_crop_l.setSingleStep(0.01)
-        self._spin_crop_l.setDecimals(2)
+        crop_row1.setSpacing(6)
+        crop_row1.addWidget(QLabel("Sinistra:"))
+        self._spin_crop_l = SmartDoubleSpinBox()
+        self._spin_crop_l.setRange(0.0, 99.0)
+        self._spin_crop_l.setSingleStep(1.0)
+        self._spin_crop_l.setDecimals(1)
+        self._spin_crop_l.setSuffix(" %")
+        self._spin_crop_l.setToolTip("Ritaglio bordo sinistro (0.0% a 99.0%)")
         crop_row1.addWidget(self._spin_crop_l)
 
-        crop_row1.addWidget(QLabel("Destra (R):"))
-        self._spin_crop_r = QDoubleSpinBox()
-        self._spin_crop_r.setRange(0.0, 0.99)
-        self._spin_crop_r.setSingleStep(0.01)
-        self._spin_crop_r.setDecimals(2)
+        crop_row1.addWidget(QLabel("Destra:"))
+        self._spin_crop_r = SmartDoubleSpinBox()
+        self._spin_crop_r.setRange(0.0, 99.0)
+        self._spin_crop_r.setSingleStep(1.0)
+        self._spin_crop_r.setDecimals(1)
+        self._spin_crop_r.setSuffix(" %")
+        self._spin_crop_r.setToolTip("Ritaglio bordo destro (0.0% a 99.0%)")
         crop_row1.addWidget(self._spin_crop_r)
         right_layout.addLayout(crop_row1)
 
         crop_row2 = QHBoxLayout()
-        crop_row2.addWidget(QLabel("Alto (T):"))
-        self._spin_crop_t = QDoubleSpinBox()
-        self._spin_crop_t.setRange(0.0, 0.99)
-        self._spin_crop_t.setSingleStep(0.01)
-        self._spin_crop_t.setDecimals(2)
+        crop_row2.setSpacing(6)
+        crop_row2.addWidget(QLabel("Alto:"))
+        self._spin_crop_t = SmartDoubleSpinBox()
+        self._spin_crop_t.setRange(0.0, 99.0)
+        self._spin_crop_t.setSingleStep(1.0)
+        self._spin_crop_t.setDecimals(1)
+        self._spin_crop_t.setSuffix(" %")
+        self._spin_crop_t.setToolTip("Ritaglio bordo superiore (0.0% a 99.0%)")
         crop_row2.addWidget(self._spin_crop_t)
 
-        crop_row2.addWidget(QLabel("Basso (B):"))
-        self._spin_crop_b = QDoubleSpinBox()
-        self._spin_crop_b.setRange(0.0, 0.99)
-        self._spin_crop_b.setSingleStep(0.01)
-        self._spin_crop_b.setDecimals(2)
+        crop_row2.addWidget(QLabel("Basso:"))
+        self._spin_crop_b = SmartDoubleSpinBox()
+        self._spin_crop_b.setRange(0.0, 99.0)
+        self._spin_crop_b.setSingleStep(1.0)
+        self._spin_crop_b.setDecimals(1)
+        self._spin_crop_b.setSuffix(" %")
+        self._spin_crop_b.setToolTip("Ritaglio bordo inferiore (0.0% a 99.0%)")
         crop_row2.addWidget(self._spin_crop_b)
         right_layout.addLayout(crop_row2)
 
@@ -1685,16 +1805,19 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(_make_section_header("TRANSIZIONI • ASPECT RATIO"))
 
         fade_row = QHBoxLayout()
+        fade_row.setSpacing(6)
         fade_row.addWidget(QLabel("Fade In:"))
-        self._spin_fade_in = QDoubleSpinBox()
-        self._spin_fade_in.setRange(0, 30)
+        self._spin_fade_in = SmartDoubleSpinBox()
+        self._spin_fade_in.setRange(0.0, 30.0)
         self._spin_fade_in.setDecimals(1)
+        self._spin_fade_in.setSingleStep(0.2)
         self._spin_fade_in.setSuffix(" s")
         fade_row.addWidget(self._spin_fade_in)
         fade_row.addWidget(QLabel("Fade Out:"))
-        self._spin_fade_out = QDoubleSpinBox()
-        self._spin_fade_out.setRange(0, 30)
+        self._spin_fade_out = SmartDoubleSpinBox()
+        self._spin_fade_out.setRange(0.0, 30.0)
         self._spin_fade_out.setDecimals(1)
+        self._spin_fade_out.setSingleStep(0.2)
         self._spin_fade_out.setSuffix(" s")
         fade_row.addWidget(self._spin_fade_out)
         right_layout.addLayout(fade_row)
@@ -1702,9 +1825,10 @@ class MainWindow(QMainWindow):
         # Hold time for static images (0 = infinite)
         hold_row = QHBoxLayout()
         hold_row.addWidget(QLabel("Permanenza Img:"))
-        self._spin_hold_time = QDoubleSpinBox()
-        self._spin_hold_time.setRange(0, 99999)
+        self._spin_hold_time = SmartDoubleSpinBox()
+        self._spin_hold_time.setRange(0.0, 99999.0)
         self._spin_hold_time.setDecimals(1)
+        self._spin_hold_time.setSingleStep(0.5)
         self._spin_hold_time.setSuffix(" s")
         self._spin_hold_time.setSpecialValueText("0 s (Infinita)")
         self._spin_hold_time.setToolTip("Tempo di permanenza in Live dell'immagine prima della rimozione automatica. 0 = infinita.")
@@ -1735,15 +1859,86 @@ class MainWindow(QMainWindow):
         vol_row.addWidget(self._lbl_volume)
         right_layout.addLayout(vol_row)
 
-        self._chk_loop = QCheckBox("Riproduci in Loop continuo")
-        right_layout.addWidget(self._chk_loop)
+        # ── Prominent Loop Control Card ──
+        self._loop_card = QFrame()
+        self._loop_card.setObjectName("loopCard")
+        self._loop_card.setStyleSheet("""
+            QFrame#loopCard {
+                background-color: #101722;
+                border: 1px solid #1e2c3d;
+                border-radius: 6px;
+                padding: 6px 8px;
+                margin-top: 4px;
+                margin-bottom: 4px;
+            }
+        """)
+        loop_card_layout = QVBoxLayout(self._loop_card)
+        loop_card_layout.setContentsMargins(8, 6, 8, 6)
+        loop_card_layout.setSpacing(6)
+
+        loop_top_row = QHBoxLayout()
+        self._chk_loop = QCheckBox("🔁  RIPETI IN LOOP")
+        self._chk_loop.setStyleSheet("""
+            QCheckBox {
+                font-weight: bold;
+                font-size: 11px;
+                color: #10b981;
+                spacing: 8px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 4px;
+                border: 1px solid #10b981;
+                background-color: #091310;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #10b981;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #34d399;
+            }
+        """)
+        loop_top_row.addWidget(self._chk_loop)
+        loop_top_row.addStretch()
+        loop_card_layout.addLayout(loop_top_row)
+
+        loop_options_row = QHBoxLayout()
+        lbl_mode = QLabel("Modalità:")
+        lbl_mode.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        loop_options_row.addWidget(lbl_mode)
+
+        self._combo_loop_mode = QComboBox()
+        self._combo_loop_mode.addItems([
+            "∞ Continuo (Infinito)",
+            "Ripeti 2 volte",
+            "Ripeti 3 volte",
+            "Ripeti 4 volte",
+            "Ripeti 5 volte",
+            "Ripeti 10 volte",
+            "Personalizzato...",
+        ])
+        loop_options_row.addWidget(self._combo_loop_mode, 1)
+
+        self._spin_loop_count = SmartDoubleSpinBox()
+        self._spin_loop_count.setRange(1, 999)
+        self._spin_loop_count.setDecimals(0)
+        self._spin_loop_count.setSingleStep(1)
+        self._spin_loop_count.setSuffix(" rip.")
+        self._spin_loop_count.setFixedWidth(80)
+        self._spin_loop_count.setVisible(False)
+        loop_options_row.addWidget(self._spin_loop_count)
+
+        loop_card_layout.addLayout(loop_options_row)
+        right_layout.addWidget(self._loop_card)
 
         # In / Out points (centesimi precision)
         io_row = QHBoxLayout()
-        io_row.addWidget(QLabel("Punto IN:"))
+        io_row.setSpacing(6)
+        io_row.addWidget(QLabel("IN:"))
         self._spin_in = InPointSpinBox()
         io_row.addWidget(self._spin_in)
-        io_row.addWidget(QLabel("Punto OUT:"))
+        io_row.addWidget(QLabel("OUT:"))
         self._spin_out = OutPointSpinBox()
         io_row.addWidget(self._spin_out)
         right_layout.addLayout(io_row)
@@ -1762,7 +1957,9 @@ class MainWindow(QMainWindow):
         self._slider_scale.valueChanged.connect(self._on_inspector_value_changed)
         self._slider_opacity.valueChanged.connect(self._on_inspector_value_changed)
         self._slider_volume.valueChanged.connect(self._on_inspector_value_changed)
-        self._chk_loop.toggled.connect(self._on_inspector_value_changed)
+        self._chk_loop.toggled.connect(self._on_loop_chk_toggled)
+        self._combo_loop_mode.currentIndexChanged.connect(self._on_loop_mode_changed)
+        self._spin_loop_count.valueChanged.connect(self._on_inspector_value_changed)
         self._combo_aspect.currentIndexChanged.connect(self._on_inspector_value_changed)
         self._edit_cue_name.textEdited.connect(self._on_inspector_value_changed)
         self._edit_cue_notes.textEdited.connect(self._on_inspector_value_changed)
@@ -1773,7 +1970,7 @@ class MainWindow(QMainWindow):
         top_splitter.setStretchFactor(0, 2)
         top_splitter.setStretchFactor(1, 6)
         top_splitter.setStretchFactor(2, 3)
-        top_splitter.setSizes([280, 750, 330])
+        top_splitter.setSizes([260, 680, 380])
         root_layout.addWidget(top_splitter, stretch=7)
 
         # ── BOTTOM ROW: Waveform | Status | Drop Zone ────────────────
@@ -2067,6 +2264,17 @@ class MainWindow(QMainWindow):
         self._spin_crop_t.setValue(0.0)
         self._spin_crop_b.setValue(0.0)
 
+    def _on_loop_chk_toggled(self, checked: bool) -> None:
+        """Handle Loop toggle state."""
+        self._combo_loop_mode.setEnabled(checked)
+        self._spin_loop_count.setEnabled(checked)
+        self._on_inspector_value_changed()
+
+    def _on_loop_mode_changed(self, index: int) -> None:
+        """Show custom spinbox when 'Personalizzato...' is selected."""
+        self._spin_loop_count.setVisible(index == 6)
+        self._on_inspector_value_changed()
+
     @Slot(float, float)
     def _on_preview_position_changed(self, pos_x: float, pos_y: float) -> None:
         """Handle interactive mouse dragging on the StudioPreviewMonitor."""
@@ -2092,10 +2300,10 @@ class MainWindow(QMainWindow):
         self._spin_crop_t.blockSignals(True)
         self._spin_crop_b.blockSignals(True)
 
-        self._spin_crop_l.setValue(crop_l)
-        self._spin_crop_r.setValue(crop_r)
-        self._spin_crop_t.setValue(crop_t)
-        self._spin_crop_b.setValue(crop_b)
+        self._spin_crop_l.setValue(round(crop_l * 100.0, 1))
+        self._spin_crop_r.setValue(round(crop_r * 100.0, 1))
+        self._spin_crop_t.setValue(round(crop_t * 100.0, 1))
+        self._spin_crop_b.setValue(round(crop_b * 100.0, 1))
 
         self._spin_crop_l.blockSignals(False)
         self._spin_crop_r.blockSignals(False)
@@ -2105,10 +2313,10 @@ class MainWindow(QMainWindow):
         cue = self._selected_cue()
         if cue:
             cue.crop = {
-                "x": crop_l,
-                "y": crop_t,
-                "w": max(0.01, round(1.0 - crop_l - crop_r, 3)),
-                "h": max(0.01, round(1.0 - crop_t - crop_b, 3)),
+                "x": round(crop_l, 4),
+                "y": round(crop_t, 4),
+                "w": max(0.01, round(1.0 - crop_l - crop_r, 4)),
+                "h": max(0.01, round(1.0 - crop_t - crop_b, 4)),
             }
             self._mark_modified(True)
             if getattr(self, "_live_mirror_active", False):
@@ -2129,7 +2337,8 @@ class MainWindow(QMainWindow):
             self._slider_opacity, self._btn_opacity_reset,
             self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
             self._spin_fade_in, self._spin_fade_out,
-            self._combo_aspect, self._slider_volume, self._chk_loop,
+            self._combo_aspect, self._slider_volume,
+            self._loop_card, self._chk_loop, self._combo_loop_mode, self._spin_loop_count,
             self._spin_in, self._spin_out, self._spin_hold_time,
         )
 
@@ -2152,8 +2361,10 @@ class MainWindow(QMainWindow):
                       self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
                       self._combo_aspect, self._spin_hold_time):
                 w.setEnabled(False)
-            for w in (self._slider_volume, self._chk_loop, self._spin_in, self._spin_out):
+            for w in (self._slider_volume, self._loop_card, self._chk_loop, self._spin_in, self._spin_out):
                 w.setEnabled(True)
+            self._combo_loop_mode.setEnabled(self._chk_loop.isChecked())
+            self._spin_loop_count.setEnabled(self._chk_loop.isChecked())
 
         elif media_type == MediaType.IMAGE:
             for w in (self._spin_pos_x, self._spin_pos_y,
@@ -2163,7 +2374,10 @@ class MainWindow(QMainWindow):
                       self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
                       self._combo_aspect, self._slider_volume, self._spin_hold_time):
                 w.setEnabled(True)
+            self._loop_card.setEnabled(False)
             self._chk_loop.setEnabled(False)
+            self._combo_loop_mode.setEnabled(False)
+            self._spin_loop_count.setEnabled(False)
             self._spin_in.setEnabled(False)
             self._spin_out.setEnabled(False)
 
@@ -2174,8 +2388,10 @@ class MainWindow(QMainWindow):
                       self._slider_opacity, self._btn_opacity_reset,
                       self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
                       self._combo_aspect, self._slider_volume,
-                      self._chk_loop, self._spin_in, self._spin_out):
+                      self._loop_card, self._chk_loop, self._spin_in, self._spin_out):
                 w.setEnabled(True)
+            self._combo_loop_mode.setEnabled(self._chk_loop.isChecked())
+            self._spin_loop_count.setEnabled(self._chk_loop.isChecked())
             self._spin_hold_time.setEnabled(False)
 
     def _update_inspector(self, cue: Optional[Cue]) -> None:
@@ -2205,21 +2421,49 @@ class MainWindow(QMainWindow):
             self._slider_opacity.setValue(int(cue.opacity * 100))
             self._lbl_opacity.setText(f"{int(cue.opacity * 100)}%")
 
-            # L, R, T, B from crop dict
+            # L, R, T, B from crop dict (percentages 0.0% to 99.0%)
             crop_x = cue.crop.get("x", 0.0)
             crop_y = cue.crop.get("y", 0.0)
             crop_w = cue.crop.get("w", 1.0)
             crop_h = cue.crop.get("h", 1.0)
-            self._spin_crop_l.setValue(round(crop_x, 2))
-            self._spin_crop_r.setValue(round(max(0.0, 1.0 - crop_x - crop_w), 2))
-            self._spin_crop_t.setValue(round(crop_y, 2))
-            self._spin_crop_b.setValue(round(max(0.0, 1.0 - crop_y - crop_h), 2))
+            self._spin_crop_l.setValue(round(crop_x * 100.0, 1))
+            self._spin_crop_r.setValue(round(max(0.0, 1.0 - crop_x - crop_w) * 100.0, 1))
+            self._spin_crop_t.setValue(round(crop_y * 100.0, 1))
+            self._spin_crop_b.setValue(round(max(0.0, 1.0 - crop_y - crop_h) * 100.0, 1))
 
             self._spin_fade_in.setValue(cue.fade_in)
             self._spin_fade_out.setValue(cue.fade_out)
             self._spin_hold_time.setValue(cue.hold_time)
             self._slider_volume.setValue(int(cue.volume * 100))
+
             self._chk_loop.setChecked(cue.loop)
+            self._combo_loop_mode.setEnabled(cue.loop)
+            self._spin_loop_count.setEnabled(cue.loop)
+
+            count = getattr(cue, "loop_count", 0)
+            if count == 0:
+                self._combo_loop_mode.setCurrentIndex(0)
+                self._spin_loop_count.setVisible(False)
+            elif count == 2:
+                self._combo_loop_mode.setCurrentIndex(1)
+                self._spin_loop_count.setVisible(False)
+            elif count == 3:
+                self._combo_loop_mode.setCurrentIndex(2)
+                self._spin_loop_count.setVisible(False)
+            elif count == 4:
+                self._combo_loop_mode.setCurrentIndex(3)
+                self._spin_loop_count.setVisible(False)
+            elif count == 5:
+                self._combo_loop_mode.setCurrentIndex(4)
+                self._spin_loop_count.setVisible(False)
+            elif count == 10:
+                self._combo_loop_mode.setCurrentIndex(5)
+                self._spin_loop_count.setVisible(False)
+            else:
+                self._combo_loop_mode.setCurrentIndex(6)
+                self._spin_loop_count.setValue(count)
+                self._spin_loop_count.setVisible(True)
+
             self._spin_in.setValue(cue.in_point)
             self._spin_out.setValue(cue.out_point if cue.out_point else 0.0)
 
@@ -2280,23 +2524,43 @@ class MainWindow(QMainWindow):
         cue.scale = round(self._slider_scale.value() / 100.0, 2)
         cue.opacity = round(self._slider_opacity.value() / 100.0, 2)
 
-        # Crop (L, R, T, B)
-        crop_l = self._spin_crop_l.value()
-        crop_r = self._spin_crop_r.value()
-        crop_t = self._spin_crop_t.value()
-        crop_b = self._spin_crop_b.value()
+        # Crop (L, R, T, B in percentage -> 0.0 to 1.0 normalized)
+        crop_l = self._spin_crop_l.value() / 100.0
+        crop_r = self._spin_crop_r.value() / 100.0
+        crop_t = self._spin_crop_t.value() / 100.0
+        crop_b = self._spin_crop_b.value() / 100.0
         cue.crop = {
-            "x": crop_l,
-            "y": crop_t,
-            "w": max(0.01, round(1.0 - crop_l - crop_r, 3)),
-            "h": max(0.01, round(1.0 - crop_t - crop_b, 3)),
+            "x": round(crop_l, 4),
+            "y": round(crop_t, 4),
+            "w": max(0.01, round(1.0 - crop_l - crop_r, 4)),
+            "h": max(0.01, round(1.0 - crop_t - crop_b, 4)),
         }
 
         cue.fade_in = self._spin_fade_in.value()
         cue.fade_out = self._spin_fade_out.value()
         cue.hold_time = self._spin_hold_time.value()
         cue.volume = self._slider_volume.value() / 100.0
+
         cue.loop = self._chk_loop.isChecked()
+        if cue.loop:
+            idx = self._combo_loop_mode.currentIndex()
+            if idx == 0:
+                cue.loop_count = 0
+            elif idx == 1:
+                cue.loop_count = 2
+            elif idx == 2:
+                cue.loop_count = 3
+            elif idx == 3:
+                cue.loop_count = 4
+            elif idx == 4:
+                cue.loop_count = 5
+            elif idx == 5:
+                cue.loop_count = 10
+            elif idx == 6:
+                cue.loop_count = max(1, int(self._spin_loop_count.value()))
+        else:
+            cue.loop_count = 0
+
         cue.in_point = self._spin_in.value()
 
         out_val = self._spin_out.value()

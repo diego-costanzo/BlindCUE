@@ -74,6 +74,7 @@ class Cue:
     layer: int = 1
     volume: float = 1.0
     loop: bool = False
+    loop_count: int = 0  # 0 = infinite loop; N >= 1 = repeat N times
     in_point: float = 0.0
     out_point: Optional[float] = None
     fade_in: float = 0.0
@@ -156,6 +157,7 @@ class Cue:
             "layer": self.layer,
             "volume": self.volume,
             "loop": self.loop,
+            "loop_count": self.loop_count,
             "in_point": self.in_point,
             "out_point": self.out_point,
             "fade_in": self.fade_in,
@@ -187,6 +189,7 @@ class Cue:
             layer=data.get("layer", 1),
             volume=data.get("volume", 1.0),
             loop=data.get("loop", False),
+            loop_count=data.get("loop_count", 0),
             in_point=data.get("in_point", 0.0),
             out_point=data.get("out_point"),
             fade_in=data.get("fade_in", 0.0),

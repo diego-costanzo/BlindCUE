@@ -152,7 +152,7 @@ def main() -> int:
                         crop=cue.crop,
                         pos_x=cue.position_x,
                         pos_y=cue.position_y,
-                        opacity=cue.opacity,
+                        opacity=0.0 if cue.fade_in > 0 else cue.opacity,
                     )
                     live_player.load(
                         cue.file_path,
@@ -162,10 +162,11 @@ def main() -> int:
                     live_player.set_aspect_ratio(cue.aspect_ratio)
                     live_player.set_scale(cue.scale)
                     live_player.set_crop(cue.crop)
-                    live_player.set_loop(cue.loop)
+                    live_player.set_loop(cue.loop, cue.loop_count)
 
                     if cue.fade_in > 0:
                         live_player.fade_in(target_vol, cue.fade_in)
+                        output_win.fade_in_video(cue.fade_in, cue.opacity)
                     else:
                         live_player.set_volume(target_vol)
 
@@ -181,7 +182,7 @@ def main() -> int:
                         start=cue.in_point,
                         end=cue.out_point,
                     )
-                    live_player.set_loop(cue.loop)
+                    live_player.set_loop(cue.loop, cue.loop_count)
 
                     if cue.fade_in > 0:
                         live_player.fade_in(target_vol, cue.fade_in)
@@ -199,12 +200,14 @@ def main() -> int:
                 output_win.show_image(
                     layer=cue.layer,
                     file_path=cue.file_path,
-                    opacity=cue.opacity,
+                    opacity=0.0 if cue.fade_in > 0 else cue.opacity,
                     crop=cue.crop,
                     scale=cue.scale,
                     pos_x=cue.position_x,
                     pos_y=cue.position_y,
                 )
+                if cue.fade_in > 0:
+                    output_win.fade_in_layer(cue.layer, cue.fade_in, cue.opacity)
                 logger.info("[MAIN] Image cue fired on Layer %d: %s", cue.layer, cue)
 
                 # Auto-removal if hold_time is set
@@ -275,21 +278,22 @@ def main() -> int:
 
     main_win.live_volume_changed.connect(_on_live_volume_changed)
 
-    # ── Connect Layer Clear and Blackout signals (with 0.2s Micro-Fade) ─
+    # ── Connect Layer Clear and Blackout signals (with Micro-Fade) ─────
     def _on_layer_clear_requested(layer: int) -> None:
-        """Clear media on a specific layer with a 0.2s micro-fade to avoid harsh cuts / audio pops."""
+        """Clear media on a specific layer with smooth fade to avoid harsh cuts / audio pops."""
         try:
             cue = active_live_cues.get(layer)
+            fade_time = max(0.2, cue.fade_out) if cue and cue.fade_out > 0 else 0.2
             if cue and cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
                 if live_player is not None:
-                    live_player.fade_out(0.2, stop_after=True)
-                output_win.fade_out_video(0.2, callback=lambda: active_live_cues.pop(layer, None))
+                    live_player.fade_out(fade_time, stop_after=True)
+                output_win.fade_out_video(fade_time, callback=lambda: active_live_cues.pop(layer, None))
             elif cue and cue.media_type == MediaType.IMAGE:
-                output_win.fade_out_layer(layer, 0.2, callback=lambda: active_live_cues.pop(layer, None))
+                output_win.fade_out_layer(layer, fade_time, callback=lambda: active_live_cues.pop(layer, None))
             else:
                 output_win.clear_layer(layer)
                 active_live_cues.pop(layer, None)
-            logger.info("[MAIN] Layer %d cleared (micro-fade 0.2s)", layer)
+            logger.info("[MAIN] Layer %d cleared (fade %.2fs)", layer, fade_time)
         except Exception as exc:
             logger.error("[MAIN] Error clearing layer %d: %s", layer, exc)
 
@@ -415,7 +419,7 @@ def main() -> int:
                 tp.set_aspect_ratio(cue.aspect_ratio)
                 tp.set_scale(cue.scale)
                 tp.set_crop(cue.crop)
-                tp.set_loop(cue.loop)
+                tp.set_loop(cue.loop, cue.loop_count)
                 tp.play()
                 logger.info("[MAIN] Preview playing: %s", cue.file_path)
             except Exception as exc:

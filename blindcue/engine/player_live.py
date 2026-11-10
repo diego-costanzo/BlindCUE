@@ -42,6 +42,8 @@ class LivePlayer(QObject):
         self._start_ms: int = 0
         self._end_ms: Optional[int] = None
         self._is_looping: bool = False
+        self._loop_count: int = 0  # 0 = infinite, N = repeat N times
+        self._current_loop_iteration: int = 0
         self._setup_player()
 
     def _setup_player(self) -> None:
@@ -81,7 +83,15 @@ class LivePlayer(QObject):
         # Handle out_point
         if self._end_ms is not None and pos_ms >= self._end_ms:
             if self._is_looping:
-                self._player.setPosition(self._start_ms)
+                if self._loop_count > 0:
+                    self._current_loop_iteration += 1
+                    if self._current_loop_iteration >= self._loop_count:
+                        self._player.pause()
+                        self.signals.eof_reached.emit()
+                    else:
+                        self._player.setPosition(self._start_ms)
+                else:
+                    self._player.setPosition(self._start_ms)
             else:
                 self._player.pause()
                 self.signals.eof_reached.emit()
@@ -110,6 +120,7 @@ class LivePlayer(QObject):
         try:
             self._start_ms = max(0, int(start * 1000))
             self._end_ms = int(end * 1000) if (end is not None and end > 0) else None
+            self._current_loop_iteration = 0
 
             url = QUrl.fromLocalFile(file_path)
             self._player.setSource(url)
@@ -165,11 +176,18 @@ class LivePlayer(QObject):
         except Exception as exc:
             logger.error("[LIVE] set_volume() failed: %s", exc)
 
-    def set_loop(self, loop: bool) -> None:
-        """Enable or disable seamless looping."""
+    def set_loop(self, loop: bool, loop_count: int = 0) -> None:
+        """Enable or disable seamless looping. loop_count: 0 = infinite, N = repeat N times."""
         try:
             self._is_looping = loop
-            self._player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+            self._loop_count = loop_count
+            self._current_loop_iteration = 0
+            if not loop:
+                self._player.setLoops(QMediaPlayer.Loops.Once)
+            elif loop_count <= 0:
+                self._player.setLoops(QMediaPlayer.Loops.Infinite)
+            else:
+                self._player.setLoops(loop_count)
         except Exception as exc:
             logger.error("[LIVE] set_loop() failed: %s", exc)
 

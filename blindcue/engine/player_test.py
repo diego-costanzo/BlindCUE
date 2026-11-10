@@ -41,6 +41,9 @@ class TestPlayer(QObject):
         self._start_ms: int = 0
         self._end_ms: Optional[int] = None
         self._is_looping: bool = False
+        self._loop_count: int = 0
+        self._current_loop_iteration: int = 0
+        self._fade_timer: Optional[QTimer] = None
         self._setup_player()
 
     def _setup_player(self) -> None:
@@ -103,7 +106,16 @@ class TestPlayer(QObject):
         # Handle out_point: pause and rewind to start so it is immediately re-playable!
         if self._end_ms is not None and pos_ms >= self._end_ms:
             if self._is_looping:
-                self._player.setPosition(self._start_ms)
+                if self._loop_count > 0:
+                    self._current_loop_iteration += 1
+                    if self._current_loop_iteration >= self._loop_count:
+                        self._player.pause()
+                        self._player.setPosition(self._start_ms)
+                        self.signals.eof_reached.emit()
+                    else:
+                        self._player.setPosition(self._start_ms)
+                else:
+                    self._player.setPosition(self._start_ms)
             else:
                 self._player.pause()
                 self._player.setPosition(self._start_ms)
@@ -134,6 +146,7 @@ class TestPlayer(QObject):
         try:
             self._start_ms = max(0, int(start * 1000))
             self._end_ms = int(end * 1000) if (end is not None and end > 0) else None
+            self._current_loop_iteration = 0
 
             url = QUrl.fromLocalFile(file_path)
             self._player.setSource(url)
@@ -186,11 +199,18 @@ class TestPlayer(QObject):
         except Exception as exc:
             logger.error("[TEST] seek() failed: %s", exc, exc_info=True)
 
-    def set_loop(self, loop: bool) -> None:
+    def set_loop(self, loop: bool, loop_count: int = 0) -> None:
         self._enforce_mute()
         try:
             self._is_looping = loop
-            self._player.setLoops(QMediaPlayer.Loops.Infinite if loop else QMediaPlayer.Loops.Once)
+            self._loop_count = loop_count
+            self._current_loop_iteration = 0
+            if not loop:
+                self._player.setLoops(QMediaPlayer.Loops.Once)
+            elif loop_count <= 0:
+                self._player.setLoops(QMediaPlayer.Loops.Infinite)
+            else:
+                self._player.setLoops(loop_count)
         except Exception as exc:
             logger.error("[TEST] set_loop() failed: %s", exc)
 

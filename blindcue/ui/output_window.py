@@ -398,13 +398,69 @@ class OutputWindow(QWidget):
         timer.timeout.connect(_step)
         timer.start(interval)
 
+    def fade_in_video(self, duration_sec: float = 0.5, target_opacity: float = 1.0) -> None:
+        """Smoothly fade in video from 0.0 to target_opacity over duration_sec."""
+        if duration_sec <= 0:
+            self._video_item.setOpacity(max(0.0, min(1.0, target_opacity)))
+            return
+
+        self._video_item.setOpacity(0.0)
+        target_op = max(0.0, min(1.0, target_opacity))
+        steps = max(1, int(duration_sec * 30))
+        interval = int(1000 / 30)
+        increment = target_op / steps
+        cur = 0
+
+        fade_timer = QTimer(self)
+
+        def _step():
+            nonlocal cur
+            cur += 1
+            op = min(target_op, cur * increment)
+            self._video_item.setOpacity(op)
+            if cur >= steps or op >= target_op - 0.01:
+                fade_timer.stop()
+                self._video_item.setOpacity(target_op)
+
+        fade_timer.timeout.connect(_step)
+        fade_timer.start(interval)
+
+    def fade_in_layer(self, layer: int, duration_sec: float = 0.5, target_opacity: float = 1.0) -> None:
+        """Smoothly fade in image layer from 0.0 to target_opacity over duration_sec."""
+        item = self._layer_pixmaps.get(layer)
+        if item is None or duration_sec <= 0:
+            if item is not None:
+                item.setOpacity(max(0.0, min(1.0, target_opacity)))
+            return
+
+        target_op = max(0.0, min(1.0, target_opacity))
+        item.setOpacity(0.0)
+        steps = max(1, int(duration_sec * 30))
+        interval = int(1000 / 30)
+        increment = target_op / steps
+        cur = 0
+
+        fade_timer = QTimer(self)
+
+        def _step():
+            nonlocal cur
+            cur += 1
+            op = min(target_op, cur * increment)
+            item.setOpacity(op)
+            if cur >= steps or op >= target_op - 0.01:
+                fade_timer.stop()
+                item.setOpacity(target_op)
+
+        fade_timer.timeout.connect(_step)
+        fade_timer.start(interval)
+
     def show_fallback(self, fade_duration_sec: float = 0.2,
                       callback: Optional[Callable[[], None]] = None) -> None:
         """Bring Layer 0 (Tappo) to front with optional micro-fade.
         All live media is removed and the logo is displayed."""
-        has_media = self._video_widget.isVisible() or bool(self._layer_pixmaps)
+        has_media = self._video_container.isVisible() or bool(self._layer_pixmaps)
         if not has_media or fade_duration_sec <= 0:
-            self._video_widget.hide()
+            self._video_container.hide()
             self.clear_all_layers()
             if self._logo_item is not None:
                 self._logo_item.setVisible(True)
@@ -415,7 +471,7 @@ class OutputWindow(QWidget):
 
         # Faded transition to fallback
         def _finish():
-            self._video_widget.hide()
+            self._video_container.hide()
             self.clear_all_layers()
             if self._logo_item is not None:
                 self._logo_item.setVisible(True)
@@ -423,11 +479,12 @@ class OutputWindow(QWidget):
             if callback:
                 callback()
 
-        if self._video_widget.isVisible():
+        if self._video_container.isVisible():
             self.fade_out_video(duration_sec=fade_duration_sec, callback=_finish)
         else:
             for l in list(self._layer_pixmaps.keys()):
                 self.fade_out_layer(l, duration_sec=fade_duration_sec)
+            _finish()
             QTimer.singleShot(int(fade_duration_sec * 1000) + 10, _finish)
 
     def configure_screen(self, screen: QScreen, is_external: bool = True) -> None:
