@@ -363,7 +363,10 @@ def main() -> int:
                 main_win.set_preview_audio_playing(False)
                 if cue.media_type == MediaType.VIDEO:
                     # Load video paused at in_point so first frame appears in preview
-                    main_win.show_preview_video(scale=cue.scale, crop=cue.crop)
+                    main_win.show_preview_video(
+                        scale=cue.scale, crop=cue.crop,
+                        pos_x=cue.position_x, pos_y=cue.position_y, opacity=cue.opacity
+                    )
                     test_player.load(cue.file_path, start=cue.in_point, end=cue.out_point, pause=True)
                     test_player.set_aspect_ratio(cue.aspect_ratio)
                     test_player.set_scale(cue.scale)
@@ -374,6 +377,10 @@ def main() -> int:
                     test_player.load(cue.file_path, start=cue.in_point, end=cue.out_point, pause=True)
                 elif cue.media_type == MediaType.IMAGE:
                     test_player.stop()
+                    main_win.show_preview_image(
+                        cue.file_path, scale=cue.scale, crop=cue.crop,
+                        pos_x=cue.position_x, pos_y=cue.position_y, opacity=cue.opacity
+                    )
                     main_win._waveform.set_playhead(None)
             except Exception as exc:
                 logger.error("[MAIN] Cue preview request failed: %s", exc)
@@ -385,11 +392,17 @@ def main() -> int:
             if cue is None:
                 return
             if cue.media_type == MediaType.IMAGE:
-                mw.show_preview_image(cue.file_path, scale=cue.scale, crop=cue.crop)
+                mw.show_preview_image(
+                    cue.file_path, scale=cue.scale, crop=cue.crop,
+                    pos_x=cue.position_x, pos_y=cue.position_y, opacity=cue.opacity
+                )
                 return
             try:
                 if cue.media_type == MediaType.VIDEO:
-                    mw.show_preview_video(scale=cue.scale, crop=cue.crop)
+                    mw.show_preview_video(
+                        scale=cue.scale, crop=cue.crop,
+                        pos_x=cue.position_x, pos_y=cue.position_y, opacity=cue.opacity
+                    )
                 elif cue.media_type == MediaType.AUDIO:
                     mw.show_preview_audio()
                     mw.set_preview_audio_playing(True)

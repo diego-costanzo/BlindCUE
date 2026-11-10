@@ -7,10 +7,10 @@ Enforces silent preview by default; audio monitoring can be enabled explicitly b
 from __future__ import annotations
 
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer, QVideoSink
 from PySide6.QtMultimediaWidgets import QVideoWidget
 
 logger = logging.getLogger(__name__)
@@ -30,11 +30,12 @@ class TestPlayer(QObject):
     100% Native Wayland without Xwayland or foreign window hacks.
     """
 
-    def __init__(self, video_widget: Optional[QVideoWidget] = None,
+    def __init__(self, video_widget: Optional[Any] = None,
+                 video_output: Optional[Any] = None,
                  parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.signals = _TestSignals()
-        self._video_widget = video_widget
+        self._video_output = video_output or video_widget
         self._is_muted: bool = True
         self._preview_volume: float = 0.8
         self._start_ms: int = 0
@@ -48,8 +49,8 @@ class TestPlayer(QObject):
             self._audio = QAudioOutput(self)
             self._player.setAudioOutput(self._audio)
 
-            if self._video_widget is not None:
-                self._player.setVideoOutput(self._video_widget)
+            if self._video_output is not None:
+                self._player.setVideoOutput(self._video_output)
 
             # Default: strict silence for preview safety
             self._enforce_mute()
@@ -64,10 +65,14 @@ class TestPlayer(QObject):
             logger.critical("[TEST] Failed to initialise QtMultimedia: %s", exc, exc_info=True)
             self.signals.error_occurred.emit(f"Test Player init failed: {exc}")
 
-    def set_video_widget(self, video_widget: QVideoWidget) -> None:
-        """Attach or redirect preview video output to the given video widget."""
-        self._video_widget = video_widget
-        self._player.setVideoOutput(video_widget)
+    def set_video_output(self, video_output: Any) -> None:
+        """Attach or redirect preview video output to the given sink or widget."""
+        self._video_output = video_output
+        self._player.setVideoOutput(video_output)
+
+    def set_video_widget(self, video_widget: Any) -> None:
+        """Backward compatibility alias for set_video_output."""
+        self.set_video_output(video_widget)
 
     def set_mute(self, is_muted: bool) -> None:
         """Toggle preview mute on or off on explicit operator request."""

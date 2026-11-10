@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, QRect, QRectF, QTimer
+from PySide6.QtCore import Qt, QRect, QRectF, QSizeF, QTimer
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -30,8 +30,9 @@ from PySide6.QtGui import (
     QRegion,
     QScreen,
 )
-from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtMultimediaWidgets import QGraphicsVideoItem, QVideoWidget
 from PySide6.QtWidgets import (
+    QGraphicsItem,
     QGraphicsOpacityEffect,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
@@ -93,12 +94,15 @@ class OutputWindow(QWidget):
         # ── Layers 1-3: Graphics overlays & media ─────────────────────
         self._layer_pixmaps: dict[int, QGraphicsPixmapItem] = {}
 
-        # Native Wayland video widget sits on top of the view
-        self._video_widget = QVideoWidget(self)
-        self._video_widget.setStyleSheet("background: transparent;")
-        self._video_widget.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
-        self._video_widget.hide()
-        self._video_opacity_effect: Optional[QGraphicsOpacityEffect] = None
+        # Native Wayland video item in scene with clipping container
+        self._video_container = QGraphicsRectItem()
+        self._video_container.setPen(Qt.PenStyle.NoPen)
+        self._video_container.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsChildrenToShape, True)
+        self._video_container.setZValue(15)  # sits above layer overlays
+        self._scene.addItem(self._video_container)
+
+        self._video_item = QGraphicsVideoItem(self._video_container)
+        self._video_container.hide()
 
         # Fade timers management (leak-proof & race-proof)
         self._video_fade_timer: Optional[QTimer] = None
@@ -188,7 +192,7 @@ class OutputWindow(QWidget):
     def _update_tappo_visibility(self) -> None:
         """Ensure Layer 0 (Tappo) is ONLY visible when NO cues are active.
         When any image or video is on air, background is pure solid black."""
-        has_active_media = bool(self._layer_pixmaps) or self._video_widget.isVisible()
+        has_active_media = bool(self._layer_pixmaps) or self._video_container.isVisible()
         if self._logo_item is not None:
             self._logo_item.setVisible(not has_active_media)
 
@@ -258,24 +262,27 @@ class OutputWindow(QWidget):
 
     # ── Video Widget & Public API ─────────────────────────────────────
 
-    def get_video_widget(self) -> QVideoWidget:
-        """Return the native video widget."""
-        return self._video_widget
+    def get_video_widget(self) -> QGraphicsVideoItem:
+        """Return the native video item for QMediaPlayer.setVideoOutput()."""
+        return self._video_item
+
+    def get_video_item(self) -> QGraphicsVideoItem:
+        """Return the native QGraphicsVideoItem."""
+        return self._video_item
 
     def show_video_widget(self, scale: float = 1.0, crop: Optional[dict] = None,
                           pos_x: float = 0.0, pos_y: float = 0.0,
                           opacity: float = 1.0) -> None:
-        """Show the video playback widget above Layer 0 with scale, crop, pos & opacity."""
+        """Show the video playback item above Layer 0 with scale, crop, pos & opacity."""
         self.update_video_layout(scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y, opacity=opacity)
-        self._video_widget.raise_()
-        self._video_widget.show()
+        self._video_container.show()
         self._update_tappo_visibility()
 
     def update_video_layout(self, scale: float = 1.0, crop: Optional[dict] = None,
                             pos_x: float = 0.0, pos_y: float = 0.0,
                             opacity: float = 1.0) -> None:
-        """Update geometry, scaling, position, opacity, and crop mask for the live video widget.
-        Strictly clips to output window boundaries so video never overflows."""
+        """Update geometry, scaling, position, opacity, and crop mask for the live video item.
+        Strictly clips to output window boundaries and crop rectangle using QGraphicsItem clipping."""
         try:
             self._last_scale = scale
             self._last_crop = crop
@@ -283,43 +290,36 @@ class OutputWindow(QWidget):
             win_h = max(1, self.height())
             target_scale = max(0.1, min(5.0, scale))
 
-            w = int(win_w * target_scale)
-            h = int(win_h * target_scale)
-            x = (win_w - w) // 2 + int(pos_x * win_w)
-            y = (win_h - h) // 2 + int(pos_y * win_h)
+            full_w = int(win_w * target_scale)
+            full_h = int(win_h * target_scale)
 
-            self._video_widget.setGeometry(x, y, w, h)
+            crop_dict = crop or {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
+            cx_pct = max(0.0, min(1.0, crop_dict.get("x", 0.0)))
+            cy_pct = max(0.0, min(1.0, crop_dict.get("y", 0.0)))
+            cw_pct = max(0.01, min(1.0 - cx_pct, crop_dict.get("w", 1.0)))
+            ch_pct = max(0.01, min(1.0 - cy_pct, crop_dict.get("h", 1.0)))
 
-            # Strict clipping to window boundaries
-            canvas_in_video = QRect(-x, -y, win_w, win_h)
-            if crop and (crop.get("w", 1.0) < 0.999 or crop.get("h", 1.0) < 0.999
-                         or crop.get("x", 0.0) > 0.001 or crop.get("y", 0.0) > 0.001):
-                cx = int(crop.get("x", 0.0) * w)
-                cy = int(crop.get("y", 0.0) * h)
-                cw = int(crop.get("w", 1.0) * w)
-                ch = int(crop.get("h", 1.0) * h)
-                mask = canvas_in_video.intersected(QRect(cx, cy, cw, ch))
-            else:
-                mask = canvas_in_video.intersected(QRect(0, 0, w, h))
+            cut_x = int(full_w * cx_pct)
+            cut_y = int(full_h * cy_pct)
+            box_w = int(full_w * cw_pct)
+            box_h = int(full_h * ch_pct)
 
-            self._video_widget.setMask(QRegion(mask))
+            # Center position on the output screen + normalized position offset
+            center_x = (win_w - box_w) / 2.0 + (pos_x * win_w)
+            center_y = (win_h - box_h) / 2.0 + (pos_y * win_h)
 
-            # Hardware accelerated opacity
-            if opacity < 0.999:
-                if self._video_opacity_effect is None:
-                    self._video_opacity_effect = QGraphicsOpacityEffect(self._video_widget)
-                    self._video_widget.setGraphicsEffect(self._video_opacity_effect)
-                self._video_opacity_effect.setOpacity(max(0.0, min(1.0, opacity)))
-            else:
-                if self._video_opacity_effect is not None:
-                    self._video_widget.setGraphicsEffect(None)
-                    self._video_opacity_effect = None
+            self._video_container.setRect(0, 0, box_w, box_h)
+            self._video_container.setPos(center_x, center_y)
+
+            self._video_item.setSize(QSizeF(full_w, full_h))
+            self._video_item.setPos(-cut_x, -cut_y)
+            self._video_item.setOpacity(max(0.0, min(1.0, opacity)))
         except Exception as exc:
             logger.error("[OUTPUT] update_video_layout failed: %s", exc)
 
     def hide_video_widget(self) -> None:
-        """Hide the video playback widget and check if Layer 0 should reappear."""
-        self._video_widget.hide()
+        """Hide the video playback item and check if Layer 0 should reappear."""
+        self._video_container.hide()
         self._update_tappo_visibility()
 
     def fade_out_video(self, duration_sec: float = 0.2,
@@ -329,17 +329,13 @@ class OutputWindow(QWidget):
             self._video_fade_timer.stop()
             self._video_fade_timer = None
 
-        if not self._video_widget.isVisible() or duration_sec <= 0:
+        if not self._video_container.isVisible() or duration_sec <= 0:
             self.hide_video_widget()
             if callback:
                 callback()
             return
 
-        if self._video_opacity_effect is None:
-            self._video_opacity_effect = QGraphicsOpacityEffect(self._video_widget)
-            self._video_widget.setGraphicsEffect(self._video_opacity_effect)
-
-        start_op = self._video_opacity_effect.opacity()
+        start_op = self._video_item.opacity()
         steps = max(1, int(duration_sec * 30))
         interval = int(1000 / 30)
         decrement = start_op / steps
@@ -351,15 +347,13 @@ class OutputWindow(QWidget):
             nonlocal cur
             cur += 1
             op = max(0.0, start_op - (cur * decrement))
-            if self._video_opacity_effect is not None:
-                self._video_opacity_effect.setOpacity(op)
-            if cur >= steps:
+            self._video_item.setOpacity(op)
+            if cur >= steps or op <= 0.01:
                 if self._video_fade_timer is not None:
                     self._video_fade_timer.stop()
                     self._video_fade_timer = None
                 self.hide_video_widget()
-                if self._video_opacity_effect is not None:
-                    self._video_opacity_effect.setOpacity(1.0)
+                self._video_item.setOpacity(1.0)
                 if callback:
                     callback()
 

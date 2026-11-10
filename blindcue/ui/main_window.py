@@ -21,15 +21,17 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from PySide6.QtCore import QEvent, QPoint, QRect, Qt, QThreadPool, QTimer, Signal, Slot
+from PySide6.QtCore import QEvent, QPoint, QPointF, QRect, QRectF, Qt, QThreadPool, QTimer, Signal, Slot
 from PySide6.QtGui import (
     QAction,
+    QBrush,
     QColor,
     QCursor,
     QDragEnterEvent,
     QDropEvent,
     QFont,
     QIcon,
+    QImage,
     QKeySequence,
     QMouseEvent,
     QPainter,
@@ -39,6 +41,7 @@ from PySide6.QtGui import (
     QRegion,
     QShortcut,
 )
+from PySide6.QtMultimedia import QVideoFrame, QVideoSink
 from PySide6.QtMultimediaWidgets import QVideoWidget
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -519,19 +522,22 @@ class StudioPreviewMonitor(QWidget):
     Renders Layer 0 (Tappo) underneath when idle, and places video or images on top
     with pixel-accurate scale, crop, position, and opacity.
     STRICTLY CLIPPED to the 16:9 canvas so media NEVER overflows into the director UI.
-    Supports interactive mouse dragging for positioning!
+    Provides interactive mouse dragging for position AND 8 crop handles for direct cropping!
     """
 
     position_changed = Signal(float, float)  # pos_x, pos_y
+    crop_changed = Signal(float, float, float, float)  # crop_l, crop_r, crop_t, crop_b
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setMinimumSize(320, 180)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setStyleSheet("background-color: #000000; border-radius: 4px;")
+        self.setMouseTracking(True)
 
         self._layer0_pixmap: Optional[QPixmap] = None
         self._image_pixmap: Optional[QPixmap] = None
+        self._video_frame_image: Optional[QImage] = None
         self._active_media_type: Optional[MediaType] = None
 
         self._scale: float = 1.0
@@ -540,42 +546,45 @@ class StudioPreviewMonitor(QWidget):
         self._opacity: float = 1.0
         self._crop: dict = {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
 
-        # Drag state
-        self._is_dragging: bool = False
-        self._drag_start_pos: QPoint = QPoint()
-        self._drag_start_x: float = 0.0
-        self._drag_start_y: float = 0.0
+        # Drag state (position & 8 crop handles)
+        self._drag_mode: Optional[str] = None
+        self._drag_start_pt: QPoint = QPoint()
+        self._drag_start_pos_x: float = 0.0
+        self._drag_start_pos_y: float = 0.0
+        self._drag_start_crop_l: float = 0.0
+        self._drag_start_crop_r: float = 0.0
+        self._drag_start_crop_t: float = 0.0
+        self._drag_start_crop_b: float = 0.0
 
-        # Native Wayland video widget for preview
-        self._video_widget = QVideoWidget(self)
-        self._video_widget.setStyleSheet("background: transparent;")
-        self._video_widget.setAspectRatioMode(Qt.AspectRatioMode.KeepAspectRatio)
-        self._video_widget.hide()
-        self._video_widget.installEventFilter(self)
-        self._video_opacity_effect: Optional[QGraphicsOpacityEffect] = None
+        # Cached rendered geometries for hit-testing
+        self._rendered_media_rect: Optional[QRectF] = None
+        self._full_media_rect: Optional[QRectF] = None
 
-        # Studio Audio Visualizer state
+        # Native Wayland video sink for zero-leak, zero-overflow preview
+        self._video_sink = QVideoSink(self)
+        self._video_sink.videoFrameChanged.connect(self._on_video_frame_changed)
+
+        # Studio Audio state (calm, zero blinking)
         self._audio_is_playing: bool = False
-        self._audio_anim_tick: int = 0
-        self._audio_anim_timer = QTimer(self)
-        self._audio_anim_timer.timeout.connect(self._on_audio_anim_tick)
 
-    def _on_audio_anim_tick(self) -> None:
-        self._audio_anim_tick += 1
-        self.update()
+    @Slot(QVideoFrame)
+    def _on_video_frame_changed(self, frame: QVideoFrame) -> None:
+        """Receive hardware frame from QtMultimedia and update canvas smoothly."""
+        if frame.isValid():
+            self._video_frame_image = frame.toImage()
+            self.update()
+
+    def get_video_sink(self) -> QVideoSink:
+        return self._video_sink
+
+    def get_video_widget(self) -> QVideoSink:
+        """Backward compatibility alias for QMediaPlayer.setVideoOutput()."""
+        return self._video_sink
 
     def set_audio_playing(self, is_playing: bool) -> None:
-        """Toggle animated studio audio spectrum meter."""
+        """Toggle calm studio audio indicator."""
         self._audio_is_playing = is_playing
-        if is_playing:
-            if not self._audio_anim_timer.isActive():
-                self._audio_anim_timer.start(40)  # 25 fps smooth animation
-        else:
-            self._audio_anim_timer.stop()
         self.update()
-
-    def get_video_widget(self) -> QVideoWidget:
-        return self._video_widget
 
     def set_layer0_image(self, file_path: Optional[str]) -> None:
         if file_path and os.path.isfile(file_path):
@@ -611,9 +620,6 @@ class StudioPreviewMonitor(QWidget):
         self._position_x = pos_x
         self._position_y = pos_y
         self._opacity = opacity
-        self._update_video_geometry()
-        self._video_widget.show()
-        self._video_widget.raise_()
         self.update()
 
     def update_video_layout(self, scale: float = 1.0, crop: Optional[dict] = None,
@@ -623,48 +629,10 @@ class StudioPreviewMonitor(QWidget):
         self._position_x = pos_x
         self._position_y = pos_y
         self._opacity = opacity
-        self._update_video_geometry()
         self.update()
-
-    def _update_video_geometry(self) -> None:
-        canvas = self.get_canvas_rect()
-        target_scale = max(0.1, min(5.0, self._scale))
-
-        vw = int(canvas.width() * target_scale)
-        vh = int(canvas.height() * target_scale)
-
-        vx = canvas.x() + (canvas.width() - vw) // 2 + int(self._position_x * canvas.width())
-        vy = canvas.y() + (canvas.height() - vh) // 2 + int(self._position_y * canvas.height())
-
-        self._video_widget.setGeometry(vx, vy, vw, vh)
-
-        # STRICT MASK: Intersect with canvas so video NEVER renders outside the 16:9 canvas frame!
-        canvas_in_video = QRect(canvas.x() - vx, canvas.y() - vy, canvas.width(), canvas.height())
-        if self._crop and (self._crop.get("w", 1.0) < 0.999 or self._crop.get("h", 1.0) < 0.999
-                           or self._crop.get("x", 0.0) > 0.001 or self._crop.get("y", 0.0) > 0.001):
-            cx = int(self._crop.get("x", 0.0) * vw)
-            cy = int(self._crop.get("y", 0.0) * vh)
-            cw = int(self._crop.get("w", 1.0) * vw)
-            ch = int(self._crop.get("h", 1.0) * vh)
-            mask = canvas_in_video.intersected(QRect(cx, cy, cw, ch))
-        else:
-            mask = canvas_in_video.intersected(QRect(0, 0, vw, vh))
-
-        self._video_widget.setMask(QRegion(mask))
-
-        if self._opacity < 0.999:
-            if self._video_opacity_effect is None:
-                self._video_opacity_effect = QGraphicsOpacityEffect(self._video_widget)
-                self._video_widget.setGraphicsEffect(self._video_opacity_effect)
-            self._video_opacity_effect.setOpacity(max(0.0, min(1.0, self._opacity)))
-        else:
-            if self._video_opacity_effect is not None:
-                self._video_widget.setGraphicsEffect(None)
-                self._video_opacity_effect = None
 
     def show_image(self, file_path: str, scale: float = 1.0, crop: Optional[dict] = None,
                    pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        self._video_widget.hide()
         self._active_media_type = MediaType.IMAGE
         self._scale = scale
         self._crop = crop or {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
@@ -678,106 +646,183 @@ class StudioPreviewMonitor(QWidget):
         self.update()
 
     def show_audio(self) -> None:
-        self._video_widget.hide()
         self._active_media_type = MediaType.AUDIO
         self.update()
 
     def clear_media(self) -> None:
         self._active_media_type = None
         self._image_pixmap = None
-        self._video_widget.hide()
-        self.set_audio_playing(False)
+        self._video_frame_image = None
+        self._rendered_media_rect = None
+        self._full_media_rect = None
+        self._audio_is_playing = False
         self.update()
 
-    def resizeEvent(self, event) -> None:  # noqa: N802
-        super().resizeEvent(event)
-        if self._active_media_type == MediaType.VIDEO:
-            self._update_video_geometry()
+    # ── Interactive Mouse Handlers & Hit-Testing ─────────────────────
 
-    # ── Interactive Mouse Dragging (Filter & Handlers) ────────────────
+    def _hit_test(self, pt: QPoint) -> Optional[str]:
+        """Determine if pt is over one of the 8 crop handles or inside the media."""
+        if not self._rendered_media_rect or self._rendered_media_rect.isEmpty():
+            return None
 
-    def eventFilter(self, obj, event) -> bool:
-        if obj == self._video_widget:
-            if event.type() == QEvent.Type.MouseButtonPress:
-                mapped = self._video_widget.mapTo(self, event.position().toPoint())
-                self._start_drag(mapped)
-                return True
-            elif event.type() == QEvent.Type.MouseMove:
-                mapped = self._video_widget.mapTo(self, event.position().toPoint())
-                self._move_drag(mapped)
-                return True
-            elif event.type() == QEvent.Type.MouseButtonRelease:
-                self._end_drag()
-                return True
-        return super().eventFilter(obj, event)
+        r = self._rendered_media_rect
+        margin = 9.0  # hit zone tolerance
+
+        handles = {
+            "top_left": r.topLeft(),
+            "top_right": r.topRight(),
+            "bottom_left": r.bottomLeft(),
+            "bottom_right": r.bottomRight(),
+            "top": QPointF(r.center().x(), r.top()),
+            "bottom": QPointF(r.center().x(), r.bottom()),
+            "left": QPointF(r.left(), r.center().y()),
+            "right": QPointF(r.right(), r.center().y()),
+        }
+
+        # Check corners first
+        for name in ("top_left", "top_right", "bottom_left", "bottom_right"):
+            hp = handles[name]
+            if abs(pt.x() - hp.x()) <= margin and abs(pt.y() - hp.y()) <= margin:
+                return name
+
+        # Then check mid edges
+        for name in ("top", "bottom", "left", "right"):
+            hp = handles[name]
+            if abs(pt.x() - hp.x()) <= margin and abs(pt.y() - hp.y()) <= margin:
+                return name
+
+        # Check body
+        if r.contains(QPointF(pt)):
+            return "position"
+
+        return None
+
+    @staticmethod
+    def _cursor_for_mode(mode: Optional[str]) -> Qt.CursorShape:
+        if mode in ("top_left", "bottom_right"):
+            return Qt.CursorShape.SizeFDiagCursor
+        elif mode in ("top_right", "bottom_left"):
+            return Qt.CursorShape.SizeBDiagCursor
+        elif mode in ("top", "bottom"):
+            return Qt.CursorShape.SizeVerCursor
+        elif mode in ("left", "right"):
+            return Qt.CursorShape.SizeHorCursor
+        elif mode == "position":
+            return Qt.CursorShape.OpenHandCursor
+        return Qt.CursorShape.ArrowCursor
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._start_drag(event.position().toPoint())
+        if event.button() == Qt.MouseButton.LeftButton and self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
+            pt = event.position().toPoint()
+            mode = self._hit_test(pt)
+            if mode is not None:
+                self._drag_mode = mode
+                self._drag_start_pt = pt
+                self._drag_start_pos_x = self._position_x
+                self._drag_start_pos_y = self._position_y
+
+                crop_l = self._crop.get("x", 0.0)
+                crop_t = self._crop.get("y", 0.0)
+                crop_w = self._crop.get("w", 1.0)
+                crop_h = self._crop.get("h", 1.0)
+                self._drag_start_crop_l = crop_l
+                self._drag_start_crop_t = crop_t
+                self._drag_start_crop_r = max(0.0, 1.0 - crop_l - crop_w)
+                self._drag_start_crop_b = max(0.0, 1.0 - crop_t - crop_h)
+
+                if mode == "position":
+                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                else:
+                    self.setCursor(self._cursor_for_mode(mode))
+                return
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        if self._is_dragging:
-            self._move_drag(event.position().toPoint())
+        pt = event.position().toPoint()
+
+        if self._drag_mode is not None:
+            if self._drag_mode == "position":
+                canvas = self.get_canvas_rect()
+                delta = pt - self._drag_start_pt
+                dx = delta.x() / max(1, canvas.width())
+                dy = delta.y() / max(1, canvas.height())
+                self._position_x = round(max(-2.0, min(2.0, self._drag_start_pos_x + dx)), 3)
+                self._position_y = round(max(-2.0, min(2.0, self._drag_start_pos_y + dy)), 3)
+                self.position_changed.emit(self._position_x, self._position_y)
+                self.update()
+
+            elif self._drag_mode in ("top_left", "top", "top_right", "right", "bottom_right", "bottom", "bottom_left", "left"):
+                if self._full_media_rect and not self._full_media_rect.isEmpty():
+                    full_w = max(10.0, self._full_media_rect.width())
+                    full_h = max(10.0, self._full_media_rect.height())
+                else:
+                    full_w = max(10.0, float(self.get_canvas_rect().width()))
+                    full_h = max(10.0, float(self.get_canvas_rect().height()))
+
+                delta = pt - self._drag_start_pt
+                dx = delta.x() / full_w
+                dy = delta.y() / full_h
+
+                cur_l = self._drag_start_crop_l
+                cur_r = self._drag_start_crop_r
+                cur_t = self._drag_start_crop_t
+                cur_b = self._drag_start_crop_b
+
+                if "left" in self._drag_mode:
+                    cur_l = max(0.0, min(0.95 - self._drag_start_crop_r, self._drag_start_crop_l + dx))
+                if "right" in self._drag_mode:
+                    cur_r = max(0.0, min(0.95 - self._drag_start_crop_l, self._drag_start_crop_r - dx))
+                if "top" in self._drag_mode:
+                    cur_t = max(0.0, min(0.95 - self._drag_start_crop_b, self._drag_start_crop_t + dy))
+                if "bottom" in self._drag_mode:
+                    cur_b = max(0.0, min(0.95 - self._drag_start_crop_t, self._drag_start_crop_b - dy))
+
+                self._crop = {
+                    "x": round(cur_l, 2),
+                    "y": round(cur_t, 2),
+                    "w": round(max(0.01, 1.0 - cur_l - cur_r), 3),
+                    "h": round(max(0.01, 1.0 - cur_t - cur_b), 3),
+                }
+                self.crop_changed.emit(round(cur_l, 2), round(cur_r, 2), round(cur_t, 2), round(cur_b, 2))
+                self.update()
         else:
-            canvas = self.get_canvas_rect()
-            if canvas.contains(event.position().toPoint()) and self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
-                self.setCursor(Qt.CursorShape.OpenHandCursor)
-            else:
-                self.unsetCursor()
+            # Update hover cursor
+            mode = self._hit_test(pt)
+            self.setCursor(self._cursor_for_mode(mode))
+
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton:
-            self._end_drag()
+        if self._drag_mode is not None:
+            self._drag_mode = None
+            pt = event.position().toPoint()
+            mode = self._hit_test(pt)
+            self.setCursor(self._cursor_for_mode(mode))
         super().mouseReleaseEvent(event)
 
-    def _start_drag(self, pos: QPoint) -> None:
-        if self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
-            canvas = self.get_canvas_rect()
-            if canvas.contains(pos):
-                self._is_dragging = True
-                self._drag_start_pos = pos
-                self._drag_start_x = self._position_x
-                self._drag_start_y = self._position_y
-                self.setCursor(Qt.CursorShape.ClosedHandCursor)
-
-    def _move_drag(self, pos: QPoint) -> None:
-        if self._is_dragging:
-            canvas = self.get_canvas_rect()
-            delta = pos - self._drag_start_pos
-            dx = delta.x() / max(1, canvas.width())
-            dy = delta.y() / max(1, canvas.height())
-            self._position_x = round(max(-2.0, min(2.0, self._drag_start_x + dx)), 3)
-            self._position_y = round(max(-2.0, min(2.0, self._drag_start_y + dy)), 3)
-            self.update()
-            if self._active_media_type == MediaType.VIDEO:
-                self._update_video_geometry()
-            self.position_changed.emit(self._position_x, self._position_y)
-
-    def _end_drag(self) -> None:
-        if self._is_dragging:
-            self._is_dragging = False
-            self.setCursor(Qt.CursorShape.OpenHandCursor)
+    # ── Paint Event (Strict Canvas Clipping, Opacity & Crop Handles) ──
 
     def paintEvent(self, _event) -> None:  # noqa: N802
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
-        # Draw outer letterbox/pillarbox
+        # 1. Outer letterbox/pillarbox background
         painter.fillRect(self.rect(), QColor("#121212"))
 
         canvas = self.get_canvas_rect()
 
-        # Draw 16:9 canvas background (black)
+        # 2. Draw 16:9 canvas background (black)
         painter.fillRect(canvas, QColor("#000000"))
 
-        # STRICT CANVAS CLIPPING: nothing inside canvas can spill into GUI
+        # STRICT CANVAS CLIPPING: Nothing ever escapes the 16:9 monitor canvas!
         painter.setClipRect(canvas)
 
-        # Draw Layer 0 (Tappo) ONLY if no media is loaded/active ("Il tappo deve fare il tappo e non lo show")
+        # 3. Layer 0 (Tappo) when idle
         if not self._active_media_type:
+            self._rendered_media_rect = None
+            self._full_media_rect = None
             if self._layer0_pixmap and not self._layer0_pixmap.isNull():
                 scaled_l0 = self._layer0_pixmap.scaled(
                     canvas.size(),
@@ -788,118 +833,156 @@ class StudioPreviewMonitor(QWidget):
                 ly = canvas.y() + (canvas.height() - scaled_l0.height()) // 2
                 painter.drawPixmap(lx, ly, scaled_l0)
 
-        # If Image cue is active, paint it over black background with transforms
-        elif self._active_media_type == MediaType.IMAGE and self._image_pixmap and not self._image_pixmap.isNull():
-            pix = self._image_pixmap
-            if self._crop and (self._crop.get("w", 1.0) < 0.999 or self._crop.get("h", 1.0) < 0.999
-                               or self._crop.get("x", 0.0) > 0.001 or self._crop.get("y", 0.0) > 0.001):
-                cw = max(1, int(pix.width() * self._crop.get("w", 1.0)))
-                ch = max(1, int(pix.height() * self._crop.get("h", 1.0)))
-                cx = max(0, min(pix.width() - 1, int(pix.width() * self._crop.get("x", 0.0))))
-                cy = max(0, min(pix.height() - 1, int(pix.height() * self._crop.get("y", 0.0))))
-                pix = pix.copy(cx, cy, cw, ch)
+        # 4. Image or Video Cue Rendering
+        elif self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
+            source_img: Optional[QImage] = None
 
-            target_scale = max(0.1, min(5.0, self._scale))
-            iw = int(canvas.width() * target_scale)
-            ih = int(canvas.height() * target_scale)
-            scaled_img = pix.scaled(iw, ih, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+            if self._active_media_type == MediaType.IMAGE and self._image_pixmap and not self._image_pixmap.isNull():
+                source_img = self._image_pixmap.toImage()
+            elif self._active_media_type == MediaType.VIDEO and self._video_frame_image and not self._video_frame_image.isNull():
+                source_img = self._video_frame_image
 
-            ix = canvas.x() + (canvas.width() - scaled_img.width()) // 2 + int(self._position_x * canvas.width())
-            iy = canvas.y() + (canvas.height() - scaled_img.height()) // 2 + int(self._position_y * canvas.height())
+            if source_img and not source_img.isNull():
+                orig_w = source_img.width()
+                orig_h = source_img.height()
 
-            painter.setOpacity(max(0.0, min(1.0, self._opacity)))
-            painter.drawPixmap(ix, iy, scaled_img)
-            painter.setOpacity(1.0)
+                target_scale = max(0.1, min(5.0, self._scale))
+                full_canvas_w = int(canvas.width() * target_scale)
+                full_canvas_h = int(canvas.height() * target_scale)
 
+                crop_x = max(0.0, min(0.99, self._crop.get("x", 0.0)))
+                crop_y = max(0.0, min(0.99, self._crop.get("y", 0.0)))
+                crop_w = max(0.01, min(1.0 - crop_x, self._crop.get("w", 1.0)))
+                crop_h = max(0.01, min(1.0 - crop_y, self._crop.get("h", 1.0)))
+
+                # Crop slice from source image
+                cx = int(orig_w * crop_x)
+                cy = int(orig_h * crop_y)
+                cw = max(1, int(orig_w * crop_w))
+                ch = max(1, int(orig_h * crop_h))
+                cropped_slice = source_img.copy(cx, cy, cw, ch)
+
+                # Rendered dimensions on canvas
+                rendered_w = int(full_canvas_w * crop_w)
+                rendered_h = int(full_canvas_h * crop_h)
+                scaled_slice = cropped_slice.scaled(
+                    rendered_w, rendered_h,
+                    Qt.AspectRatioMode.IgnoreAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+
+                # Center + operator position offset
+                ix = canvas.x() + (canvas.width() - rendered_w) // 2 + int(self._position_x * canvas.width())
+                iy = canvas.y() + (canvas.height() - rendered_h) // 2 + int(self._position_y * canvas.height())
+
+                # Full uncropped frame rect on canvas
+                full_ix = ix - int(full_canvas_w * crop_x)
+                full_iy = iy - int(full_canvas_h * crop_y)
+                self._full_media_rect = QRectF(full_ix, full_iy, full_canvas_w, full_canvas_h)
+                self._rendered_media_rect = QRectF(ix, iy, rendered_w, rendered_h)
+
+                # Draw media with true opacity
+                painter.setOpacity(max(0.0, min(1.0, self._opacity)))
+                painter.drawImage(ix, iy, scaled_slice)
+                painter.setOpacity(1.0)
+
+                # Draw Crop Box & 8 Interactive Handles
+                r = self._rendered_media_rect
+                outline_pen = QPen(QColor("#00e5ff"), 1.5, Qt.PenStyle.DashLine)
+                painter.setPen(outline_pen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawRect(r)
+
+                hs = 8.0  # handle square size
+                half = hs / 2.0
+                handle_points = [
+                    r.topLeft(),
+                    QPointF(r.center().x(), r.top()),
+                    r.topRight(),
+                    QPointF(r.right(), r.center().y()),
+                    r.bottomRight(),
+                    QPointF(r.center().x(), r.bottom()),
+                    r.bottomLeft(),
+                    QPointF(r.left(), r.center().y()),
+                ]
+                painter.setPen(QPen(QColor("#102027"), 1.5))
+                painter.setBrush(QBrush(QColor("#ffffff")))
+                for pt in handle_points:
+                    painter.drawRect(QRectF(pt.x() - half, pt.y() - half, hs, hs))
+
+            elif self._active_media_type == MediaType.VIDEO:
+                # Video paused or loading initial frame
+                self._rendered_media_rect = None
+                self._full_media_rect = None
+                painter.setPen(QColor("#80cbc4"))
+                painter.setFont(QFont("sans-serif", 10, QFont.Weight.Normal))
+                painter.drawText(canvas, Qt.AlignmentFlag.AlignCenter, "🎬 VIDEO CARICATO IN PRE-VIZ — PREMI PLAY")
+
+        # 5. Calm Studio Audio Pre-Viz Card (ZERO Blinking)
         elif self._active_media_type == MediaType.AUDIO:
-            # Studio Animated Audio Spectrum Meter
+            self._rendered_media_rect = None
+            self._full_media_rect = None
+
             canvas_w = canvas.width()
             canvas_h = canvas.height()
             cx = canvas.x()
             cy = canvas.y()
 
-            # Center frequency analyzer / VU bars
-            num_bars = 24
-            total_bars_w = min(canvas_w * 0.75, num_bars * 16)
-            bar_w = max(3.0, (total_bars_w / num_bars) - 4)
-            start_x = cx + (canvas_w - total_bars_w) / 2
-            mid_y = cy + (canvas_h / 2) + 12
-            max_bar_h = canvas_h * 0.35
+            card_w = min(canvas_w * 0.85, 480)
+            card_h = min(canvas_h * 0.58, 140)
+            card_x = cx + (canvas_w - card_w) / 2
+            card_y = cy + (canvas_h - card_h) / 2
+            card_rect = QRectF(card_x, card_y, card_w, card_h)
 
-            t = self._audio_anim_tick * 0.15
+            painter.setPen(QPen(QColor("#263238"), 1.5))
+            painter.setBrush(QBrush(QColor(16, 24, 32, 235)))
+            painter.drawRoundedRect(card_rect, 8, 8)
+
+            painter.setFont(QFont("sans-serif", 12, QFont.Weight.Bold))
+            painter.setPen(QColor("#00e5ff"))
+            title_text = "🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)" if self._audio_is_playing else "⏸ TRACCIA AUDIO IN STANDBY"
+            painter.drawText(
+                QRectF(card_x + 20, card_y + 16, card_w - 40, 26),
+                Qt.AlignmentFlag.AlignCenter,
+                title_text,
+            )
+
+            painter.setFont(QFont("sans-serif", 9, QFont.Weight.Normal))
+            painter.setPen(QColor("#90a4ae"))
+            subtitle = "Pre-ascolto attivo in cuffia • Monitor sala mutato" if self._audio_is_playing else "Premi ▶ Play sotto l'anteprima per pre-ascoltare in cuffia"
+            painter.drawText(
+                QRectF(card_x + 20, card_y + 44, card_w - 40, 20),
+                Qt.AlignmentFlag.AlignCenter,
+                subtitle,
+            )
+
+            # Smooth Stereo Level Bars (L & R) - Clean, steady, calm
+            bar_y = card_y + 78
+            meter_w = card_w - 90
+            meter_h = 7
+            meter_x = card_x + 45
 
             painter.setPen(Qt.PenStyle.NoPen)
-            for i in range(num_bars):
-                bx = start_x + (i * (bar_w + 4))
-                if self._audio_is_playing:
-                    # Dynamic bouncing waveform based on harmonic frequencies
-                    freq = (i + 1) * 0.45
-                    val = (
-                        math.sin(t * 1.8 + freq) * 0.35
-                        + math.sin(t * 3.1 + i * 0.9) * 0.25
-                        + math.cos(t * 0.9 + freq * 1.5) * 0.2
-                        + 0.45
-                    )
-                    norm_h = max(0.08, min(1.0, val))
-                else:
-                    norm_h = 0.08  # idle standby rest height
-
-                bh = norm_h * max_bar_h
-                bar_top = mid_y - bh
-
-                # Color: gradient cyan (#00e5ff) to mint (#00e676)
-                if norm_h > 0.7:
-                    bar_color = QColor("#00e5ff")
-                elif norm_h > 0.4:
-                    bar_color = QColor("#00e676")
-                else:
-                    bar_color = QColor("#00897b")
-
-                painter.setBrush(bar_color)
-                painter.drawRoundedRect(int(bx), int(bar_top), max(2, int(bar_w)), int(bh), 2, 2)
-
-                # Floating peak cap when playing
-                if self._audio_is_playing:
-                    cap_y = max(cy + 10, bar_top - 5)
-                    painter.setBrush(QColor("#ffffff"))
-                    painter.drawRect(int(bx), int(cap_y), max(2, int(bar_w)), 2)
-
-            # Baseline line
-            painter.setPen(QPen(QColor("#263238"), 2))
-            painter.drawLine(int(start_x - 10), int(mid_y + 1), int(start_x + total_bars_w + 10), int(mid_y + 1))
-
-            # Bottom status banner
-            banner_h = 36
-            banner_y = cy + canvas_h - banner_h
-            painter.fillRect(cx, banner_y, canvas_w, banner_h, QColor(0, 0, 0, 220))
+            painter.setBrush(QColor("#1e272c"))
+            painter.drawRoundedRect(QRectF(meter_x, bar_y, meter_w, meter_h), 3, 3)
+            painter.drawRoundedRect(QRectF(meter_x, bar_y + 13, meter_w, meter_h), 3, 3)
 
             if self._audio_is_playing:
-                # Blinking green dot
-                dot_on = (self._audio_anim_tick // 6) % 2 == 0
-                dot_color = QColor("#00e676") if dot_on else QColor("#004d40")
-                painter.setBrush(dot_color)
-                painter.setPen(Qt.PenStyle.NoPen)
-                painter.drawEllipse(int(cx + 20), int(banner_y + 12), 12, 12)
+                fill_l = meter_w * 0.68
+                fill_r = meter_w * 0.63
+                painter.setBrush(QColor("#00e676"))
+                painter.drawRoundedRect(QRectF(meter_x, bar_y, fill_l, meter_h), 3, 3)
+                painter.drawRoundedRect(QRectF(meter_x, bar_y + 13, fill_r, meter_h), 3, 3)
 
-                painter.setPen(QColor("#00e5ff"))
-                painter.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
-                painter.drawText(
-                    QRect(cx + 42, banner_y, canvas_w - 60, banner_h),
-                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
-                    "RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ ON AIR)"
-                )
-            else:
-                painter.setPen(QColor("#80cbc4"))
-                painter.setFont(QFont("sans-serif", 9, QFont.Weight.Normal))
-                painter.drawText(
-                    QRect(cx, banner_y, canvas_w, banner_h),
-                    Qt.AlignmentFlag.AlignCenter,
-                    "⏸ TRACCIA AUDIO CARICATA — PREMI PLAY PER PRE-VIZ"
-                )
+                painter.setPen(QColor("#78909c"))
+                painter.setFont(QFont("sans-serif", 8, QFont.Weight.Bold))
+                painter.drawText(QRectF(meter_x - 22, bar_y - 2, 18, meter_h + 4), Qt.AlignmentFlag.AlignRight, "L")
+                painter.drawText(QRectF(meter_x - 22, bar_y + 11, 18, meter_h + 4), Qt.AlignmentFlag.AlignRight, "R")
 
         painter.setClipping(False)
 
         # Thin studio border around 16:9 canvas
+        painter.setBrush(Qt.BrushStyle.NoBrush)
         painter.setPen(QPen(QColor("#3e3e3e"), 1))
         painter.drawRect(canvas)
         painter.end()
@@ -1253,6 +1336,7 @@ class MainWindow(QMainWindow):
         self._preview_monitor = StudioPreviewMonitor()
         self._preview_monitor.set_layer0_image(self._output.get_layer0_path())
         self._preview_monitor.position_changed.connect(self._on_preview_position_changed)
+        self._preview_monitor.crop_changed.connect(self._on_preview_crop_changed)
         preview_layout.addWidget(self._preview_monitor, stretch=1)
 
         # Transport controls (compact bar)
@@ -1996,6 +2080,36 @@ class MainWindow(QMainWindow):
         if cue:
             cue.position_x = pos_x
             cue.position_y = pos_y
+            self._mark_modified(True)
+            if getattr(self, "_live_mirror_active", False):
+                self._mirror_active_cue_to_live()
+
+    @Slot(float, float, float, float)
+    def _on_preview_crop_changed(self, crop_l: float, crop_r: float, crop_t: float, crop_b: float) -> None:
+        """Handle interactive mouse crop handles on the StudioPreviewMonitor."""
+        self._spin_crop_l.blockSignals(True)
+        self._spin_crop_r.blockSignals(True)
+        self._spin_crop_t.blockSignals(True)
+        self._spin_crop_b.blockSignals(True)
+
+        self._spin_crop_l.setValue(crop_l)
+        self._spin_crop_r.setValue(crop_r)
+        self._spin_crop_t.setValue(crop_t)
+        self._spin_crop_b.setValue(crop_b)
+
+        self._spin_crop_l.blockSignals(False)
+        self._spin_crop_r.blockSignals(False)
+        self._spin_crop_t.blockSignals(False)
+        self._spin_crop_b.blockSignals(False)
+
+        cue = self._selected_cue()
+        if cue:
+            cue.crop = {
+                "x": crop_l,
+                "y": crop_t,
+                "w": max(0.01, round(1.0 - crop_l - crop_r, 3)),
+                "h": max(0.01, round(1.0 - crop_t - crop_b, 3)),
+            }
             self._mark_modified(True)
             if getattr(self, "_live_mirror_active", False):
                 self._mirror_active_cue_to_live()
@@ -3029,11 +3143,15 @@ class MainWindow(QMainWindow):
 
     # ── Overrides ─────────────────────────────────────────────────────
 
-    def get_preview_video_widget(self) -> QVideoWidget:
-        """Return the native video widget for embedding preview video."""
-        return self._preview_monitor.get_video_widget()
+    def get_preview_video_sink(self) -> QVideoSink:
+        """Return the native video sink for preview video rendering."""
+        return self._preview_monitor.get_video_sink()
+
+    def get_preview_video_widget(self) -> Any:
+        """Return the video sink for QMediaPlayer.setVideoOutput()."""
+        return self._preview_monitor.get_video_sink()
 
     def get_preview_wid(self) -> int:
-        """Return the native window ID for backward compatibility."""
-        return int(self._preview_monitor.get_video_widget().winId())
+        """Return 0 for native Wayland / QVideoSink rendering."""
+        return 0
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import math
 import os
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal, Slot
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
@@ -32,11 +32,12 @@ class LivePlayer(QObject):
     100% Native Wayland without Xwayland or foreign window hacks.
     """
 
-    def __init__(self, video_widget: Optional[QVideoWidget] = None,
+    def __init__(self, video_widget: Optional[Any] = None,
+                 video_output: Optional[Any] = None,
                  parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self.signals = _PlayerSignals()
-        self._video_widget = video_widget
+        self._video_output = video_output or video_widget
         self._fade_timer: Optional[QTimer] = None
         self._start_ms: int = 0
         self._end_ms: Optional[int] = None
@@ -49,8 +50,8 @@ class LivePlayer(QObject):
             self._audio = QAudioOutput(self)
             self._player.setAudioOutput(self._audio)
 
-            if self._video_widget is not None:
-                self._player.setVideoOutput(self._video_widget)
+            if self._video_output is not None:
+                self._player.setVideoOutput(self._video_output)
 
             self._player.positionChanged.connect(self._on_position_changed)
             self._player.durationChanged.connect(self._on_duration_changed)
@@ -62,10 +63,14 @@ class LivePlayer(QObject):
             logger.critical("[LIVE] Failed to initialise QtMultimedia: %s", exc, exc_info=True)
             self.signals.error_occurred.emit(f"Live Player init failed: {exc}")
 
-    def set_video_widget(self, video_widget: QVideoWidget) -> None:
-        """Attach or redirect video output to the given video widget."""
-        self._video_widget = video_widget
-        self._player.setVideoOutput(video_widget)
+    def set_video_output(self, video_output: Any) -> None:
+        """Attach or redirect video output to the given item, sink, or widget."""
+        self._video_output = video_output
+        self._player.setVideoOutput(video_output)
+
+    def set_video_widget(self, video_widget: Any) -> None:
+        """Backward compatibility alias for set_video_output."""
+        self.set_video_output(video_widget)
 
     # ── Signal Handlers ───────────────────────────────────────────────
 
