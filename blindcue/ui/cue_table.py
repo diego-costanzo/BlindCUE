@@ -27,6 +27,8 @@ ROLE_LAYER = Qt.ItemDataRole.UserRole + 2
 ROLE_HAS_NOTES = Qt.ItemDataRole.UserRole + 3
 ROLE_STATUS_TXT = Qt.ItemDataRole.UserRole + 4
 ROLE_STATUS_CLR = Qt.ItemDataRole.UserRole + 5
+ROLE_FOLLOW_MODE = Qt.ItemDataRole.UserRole + 6
+ROLE_TIMING_BADGE = Qt.ItemDataRole.UserRole + 7
 
 
 def format_cid(cue_id: object) -> str:
@@ -112,6 +114,8 @@ class CueTableDelegate(QStyledItemDelegate):
             has_notes = bool(index.data(ROLE_HAS_NOTES))
             status_txt = str(index.data(ROLE_STATUS_TXT) or "")
             status_clr = str(index.data(ROLE_STATUS_CLR) or CLR_TEXT)
+            follow_mode = str(index.data(ROLE_FOLLOW_MODE) or "MANUAL")
+            timing_badge = str(index.data(ROLE_TIMING_BADGE) or "")
 
             opt.text = ""
             style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
@@ -171,7 +175,37 @@ class CueTableDelegate(QStyledItemDelegate):
             painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
             right_x -= lw + 4
 
-            if has_notes:
+            if follow_mode == "AUTO_FOLLOW":
+                fw = 18
+                fy = rect.top() + (rect.height() - lh) // 2
+                f_rect = QRect(right_x - fw, fy, fw, lh)
+                painter.setPen(QPen(QColor("#38bdf8"), 1))
+                painter.setBrush(QColor("#0c2638"))
+                painter.drawRoundedRect(f_rect, 3, 3)
+                painter.setPen(QColor("#7dd3fc"))
+                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⤵")
+                right_x -= fw + 4
+            elif follow_mode == "SIMULTANEOUS":
+                fw = 18
+                fy = rect.top() + (rect.height() - lh) // 2
+                f_rect = QRect(right_x - fw, fy, fw, lh)
+                painter.setPen(QPen(QColor("#f59e0b"), 1))
+                painter.setBrush(QColor("#332006"))
+                painter.drawRoundedRect(f_rect, 3, 3)
+                painter.setPen(QColor("#fcd34d"))
+                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⇉")
+                right_x -= fw + 4
+
+            min_name_end = left_x + 52
+            if timing_badge and right_x - 18 >= min_name_end:
+                tw = 16
+                ty = rect.top() + (rect.height() - lh) // 2
+                t_rect = QRect(right_x - tw, ty, tw, lh)
+                painter.setPen(QColor("#a78bfa"))
+                painter.drawText(t_rect, Qt.AlignmentFlag.AlignCenter, timing_badge)
+                right_x -= tw + 2
+
+            if has_notes and right_x - 18 >= min_name_end:
                 nw = 16
                 ny = rect.top() + (rect.height() - lh) // 2
                 n_rect = QRect(right_x - nw, ny, nw, lh)
@@ -179,7 +213,7 @@ class CueTableDelegate(QStyledItemDelegate):
                 painter.drawText(n_rect, Qt.AlignmentFlag.AlignCenter, "📝")
                 right_x -= nw + 4
 
-            avail_w = max(20, right_x - left_x - 4)
+            avail_w = max(24, right_x - left_x - 4)
             name_rect = QRect(left_x, rect.top(), avail_w, rect.height())
             name_font = QFont(opt.font)
             if status_txt in ("LIVE", "STANDBY"):
@@ -245,8 +279,8 @@ class CueSequenceTable(QTableWidget):
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
         hdr.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.setColumnWidth(0, 42)
-        self.setColumnWidth(1, 72)
+        self.setColumnWidth(0, 36)
+        self.setColumnWidth(1, 56)
 
         self.horizontalHeaderItem(0).setToolTip("Numero progressivo di posizione in scaletta (doppio click = GO)")
         self.horizontalHeaderItem(1).setToolTip("Richiamo copione Q (doppio click per modificare)")

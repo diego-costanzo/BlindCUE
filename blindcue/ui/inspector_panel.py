@@ -120,6 +120,7 @@ class CueInspectorPanel(QGroupBox):
     value_changed = Signal()
     batch_field_edited = Signal(str)
     layer_selected = Signal(int)
+    in_out_reset_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
@@ -402,7 +403,7 @@ class CueInspectorPanel(QGroupBox):
         layout.addLayout(fade_row)
 
         hold_row = QHBoxLayout()
-        hold_row.addWidget(QLabel("Permanenza Img:"))
+        hold_row.addWidget(QLabel("Durata Img:"))
         self.spin_hold_time = SmartDoubleSpinBox()
         self.spin_hold_time.setRange(0.0, 99999.0)
         self.spin_hold_time.setDecimals(1)
@@ -414,6 +415,31 @@ class CueInspectorPanel(QGroupBox):
         )
         hold_row.addWidget(self.spin_hold_time)
         layout.addLayout(hold_row)
+
+        delay_row = QHBoxLayout()
+        delay_row.setSpacing(6)
+        delay_row.addWidget(QLabel("Pre-Delay:"))
+        self.spin_pre_delay = SmartDoubleSpinBox()
+        self.spin_pre_delay.setRange(0.0, 3600.0)
+        self.spin_pre_delay.setDecimals(1)
+        self.spin_pre_delay.setSingleStep(0.5)
+        self.spin_pre_delay.setSuffix(" s")
+        self.spin_pre_delay.setToolTip(
+            "Ritardo di avvio dopo il GO prima che il file parta (utile per incastrarlo con altri layer)"
+        )
+        delay_row.addWidget(self.spin_pre_delay)
+
+        delay_row.addWidget(QLabel("Post-Delay:"))
+        self.spin_post_delay = SmartDoubleSpinBox()
+        self.spin_post_delay.setRange(0.0, 3600.0)
+        self.spin_post_delay.setDecimals(1)
+        self.spin_post_delay.setSingleStep(0.5)
+        self.spin_post_delay.setSuffix(" s")
+        self.spin_post_delay.setToolTip(
+            "Attesa dopo la fine del file prima di uscire e avviare l'eventuale Auto-GO successivo"
+        )
+        delay_row.addWidget(self.spin_post_delay)
+        layout.addLayout(delay_row)
 
         ar_row = QHBoxLayout()
         ar_row.addWidget(QLabel("Formato:"))
@@ -525,6 +551,8 @@ class CueInspectorPanel(QGroupBox):
         io_row.addWidget(QLabel("OUT:"))
         self.spin_out = OutPointSpinBox()
         io_row.addWidget(self.spin_out)
+        self.btn_io_reset = self._make_reset_icon_btn("Ripristina IN a 0.00s e OUT a Fine")
+        io_row.addWidget(self.btn_io_reset)
         layout.addLayout(io_row)
 
         layout.addStretch()
@@ -578,6 +606,7 @@ class CueInspectorPanel(QGroupBox):
         self.btn_crop_reset.clicked.connect(self.reset_crop)
         self.slider_volume.valueChanged.connect(lambda v: self.lbl_volume.setText(f"{v}%"))
         self.btn_volume_reset.clicked.connect(lambda: self.slider_volume.setValue(100))
+        self.btn_io_reset.clicked.connect(self.reset_in_out)
 
         field_widgets = (
             (self.spin_pos_x.valueChanged, "pos_x"),
@@ -591,6 +620,8 @@ class CueInspectorPanel(QGroupBox):
             (self.spin_in.valueChanged, "in_point"),
             (self.spin_out.valueChanged, "out_point"),
             (self.spin_hold_time.valueChanged, "hold_time"),
+            (self.spin_pre_delay.valueChanged, "pre_delay"),
+            (self.spin_post_delay.valueChanged, "post_delay"),
             (self.slider_scale.valueChanged, "scale"),
             (self.slider_opacity.valueChanged, "opacity"),
             (self.slider_volume.valueChanged, "volume"),
@@ -719,6 +750,10 @@ class CueInspectorPanel(QGroupBox):
         self.set_crop_silent(0.0, 0.0, 0.0, 0.0)
         self._emit_change("crop_reset")
 
+    def reset_in_out(self) -> None:
+        """Emit shared reset signal to restore IN=0.00s and OUT=Fine cleanly."""
+        self.in_out_reset_requested.emit()
+
     def set_layer_checked(self, layer: Optional[int]) -> None:
         """Highlight the button matching *layer*, or uncheck all when *layer* is None."""
         for idx, btn in self._layer_buttons.items():
@@ -757,6 +792,16 @@ class CueInspectorPanel(QGroupBox):
         self.spin_out.setValue(new_out)
         self.spin_out.blockSignals(False)
 
+    def set_fades_silent(self, fade_in: Optional[float] = None, fade_out: Optional[float] = None) -> None:
+        if fade_in is not None:
+            self.spin_fade_in.blockSignals(True)
+            self.spin_fade_in.setValue(max(0.0, float(fade_in)))
+            self.spin_fade_in.blockSignals(False)
+        if fade_out is not None:
+            self.spin_fade_out.blockSignals(True)
+            self.spin_fade_out.setValue(max(0.0, float(fade_out)))
+            self.spin_fade_out.blockSignals(False)
+
     def sync_header_and_text(self, row: int, cue: Cue) -> None:
         ref = format_cue_ref(row, cue)
         self._updating = True
@@ -790,7 +835,8 @@ class CueInspectorPanel(QGroupBox):
             self.btn_crop_reset, self.spin_fade_in, self.spin_fade_out,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset,
             self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
-            self.spin_in, self.spin_out, self.spin_hold_time,
+            self.spin_in, self.spin_out, self.btn_io_reset, self.spin_hold_time,
+            self.spin_pre_delay, self.spin_post_delay,
         )
 
         if not enabled or media_type is None:
@@ -804,6 +850,8 @@ class CueInspectorPanel(QGroupBox):
 
         self.spin_fade_in.setEnabled(True)
         self.spin_fade_out.setEnabled(True)
+        self.spin_pre_delay.setEnabled(True)
+        self.spin_post_delay.setEnabled(True)
 
         visual_controls = (
             self.spin_pos_x, self.spin_pos_y,
@@ -817,7 +865,7 @@ class CueInspectorPanel(QGroupBox):
         )
         time_controls = (
             self.slider_volume, self.btn_volume_reset,
-            self.loop_card, self.chk_loop, self.spin_in, self.spin_out,
+            self.loop_card, self.chk_loop, self.spin_in, self.spin_out, self.btn_io_reset,
         )
 
         is_visual = media_type in (MediaType.VIDEO, MediaType.IMAGE)
@@ -855,6 +903,8 @@ class CueInspectorPanel(QGroupBox):
         self.spin_fade_in.setValue(cue.fade_in)
         self.spin_fade_out.setValue(cue.fade_out)
         self.spin_hold_time.setValue(cue.hold_time)
+        self.spin_pre_delay.setValue(getattr(cue, "pre_delay", 0.0))
+        self.spin_post_delay.setValue(getattr(cue, "post_delay", 0.0))
         self.slider_volume.setValue(int(cue.volume * 100))
 
         self.chk_loop.setChecked(cue.loop)
@@ -996,6 +1046,8 @@ class CueInspectorPanel(QGroupBox):
         cue.fade_in = self.spin_fade_in.value()
         cue.fade_out = self.spin_fade_out.value()
         cue.hold_time = self.spin_hold_time.value()
+        cue.pre_delay = self.spin_pre_delay.value()
+        cue.post_delay = self.spin_post_delay.value()
         cue.volume = self.slider_volume.value() / 100.0
 
         self._apply_loop_to_cue(cue)
@@ -1077,6 +1129,10 @@ class CueInspectorPanel(QGroupBox):
                 cue.fade_out = self.spin_fade_out.value()
             elif field_key == "hold_time":
                 cue.hold_time = self.spin_hold_time.value()
+            elif field_key == "pre_delay":
+                cue.pre_delay = self.spin_pre_delay.value()
+            elif field_key == "post_delay":
+                cue.post_delay = self.spin_post_delay.value()
             elif field_key == "volume":
                 cue.volume = self.slider_volume.value() / 100.0
             elif field_key == "loop":

@@ -25,6 +25,7 @@ from PySide6.QtGui import (
     QBrush,
     QColor,
     QCursor,
+    QImage,
     QKeyEvent,
     QPixmap,
     QScreen,
@@ -41,6 +42,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.layout_math import compute_media_frame_geometry, parse_aspect_ratio
+from ui.tappo_pattern import is_default_tappo_path, render_default_tappo_pixmap
 
 logger = logging.getLogger(__name__)
 
@@ -88,13 +90,18 @@ class OutputWindow(QWidget):
         self._black_rect: Optional[QGraphicsRectItem] = None
         self._logo_item: Optional[QGraphicsPixmapItem] = None
         self._original_logo_pixmap: Optional[QPixmap] = None
+        self._layer0_pattern_cache: Optional[tuple[int, int, float, str, QPixmap]] = None
         self._layer0_path = fallback_image or str(_DEFAULT_LOGO)
+        self._panic_black: bool = False
         self._build_layer0()
 
         # ── Layers 1-3: Independent Video & Image Compositing ─────────
         self._layer_pixmaps: dict[int, QGraphicsPixmapItem] = {}
         self._video_containers: dict[int, QGraphicsRectItem] = {}
         self._video_items: dict[int, QGraphicsVideoItem] = {}
+        self._secondary_video_items: dict[int, QGraphicsVideoItem] = {}
+        self._active_video_deck: dict[int, int] = {1: 0, 2: 0, 3: 0}
+        self._deck_swap_timers: dict[int, QTimer] = {}
         self._video_layouts: dict[int, dict] = {}
 
         for layer in (1, 2, 3):
@@ -105,6 +112,7 @@ class OutputWindow(QWidget):
             self._scene.addItem(container)
 
             v_item = QGraphicsVideoItem(container)
+            v_item.setZValue(2)
             v_item.nativeSizeChanged.connect(
                 lambda _sz, l_idx=layer: self._reapply_video_layout(l_idx)
             )
@@ -125,14 +133,21 @@ class OutputWindow(QWidget):
     # ── Layer 0 ───────────────────────────────────────────────────────
 
     def _build_layer0(self) -> None:
-        """Load the failsafe image into the scene (or create solid black)."""
+        """Load the failsafe image into the scene (or projector alignment default pattern)."""
         self._black_rect = self._scene.addRect(
             QRectF(0, 0, 1920, 1080),
             brush=QBrush(QColor(0, 0, 0)),
         )
         self._black_rect.setZValue(-100)
 
-        if os.path.isfile(self._layer0_path):
+        if is_default_tappo_path(self._layer0_path):
+            w, h = max(64, self.width()), max(48, self.height())
+            pat = render_default_tappo_pixmap(w, h, self._layer0_path)
+            self._original_logo_pixmap = None
+            self._logo_item = self._scene.addPixmap(pat)
+            self._logo_item.setZValue(-50)
+            logger.info("[OUTPUT] Layer 0 calibration pattern loaded (%dx%d)", w, h)
+        elif os.path.isfile(self._layer0_path):
             try:
                 pixmap = QPixmap(self._layer0_path)
                 if not pixmap.isNull():
@@ -153,7 +168,17 @@ class OutputWindow(QWidget):
         if self._black_rect is not None:
             self._black_rect.setRect(QRectF(0, 0, w, h))
 
-        if self._logo_item is not None and self._original_logo_pixmap is not None:
+        if self._logo_item is not None and is_default_tappo_path(self._layer0_path):
+            dpr = max(1.0, float(self.devicePixelRatioF()))
+            cache = self._layer0_pattern_cache
+            if cache and cache[:4] == (w, h, dpr, self._layer0_path):
+                pat = cache[4]
+            else:
+                pat = render_default_tappo_pixmap(w, h, self._layer0_path, dpr=dpr)
+                self._layer0_pattern_cache = (w, h, dpr, self._layer0_path, pat)
+            self._logo_item.setPixmap(pat)
+            self._logo_item.setPos(0, 0)
+        elif self._logo_item is not None and self._original_logo_pixmap is not None:
             scaled = self._original_logo_pixmap.scaled(
                 w, h,
                 Qt.AspectRatioMode.KeepAspectRatio,
@@ -170,7 +195,23 @@ class OutputWindow(QWidget):
 
     def set_layer0_image(self, image_path: Optional[str]) -> bool:
         """Set or change the Layer 0 failsafe image dynamically."""
+        self._panic_black = False
         target_path = image_path or str(_DEFAULT_LOGO)
+        self._layer0_pattern_cache = None
+
+        if is_default_tappo_path(target_path):
+            self._layer0_path = str(_DEFAULT_LOGO)
+            self._original_logo_pixmap = None
+            pat = render_default_tappo_pixmap(max(64, self.width()), max(48, self.height()), self._layer0_path)
+            if self._logo_item is None:
+                self._logo_item = self._scene.addPixmap(pat)
+                self._logo_item.setZValue(-50)
+            else:
+                self._logo_item.setPixmap(pat)
+            self._fit_layer0()
+            logger.info("[OUTPUT] Updated Layer 0 (Tappo) to default projector calibration pattern")
+            return True
+
         if not os.path.isfile(target_path):
             logger.warning("[OUTPUT] Target Layer 0 image not found: %s", target_path)
             return False
@@ -202,13 +243,14 @@ class OutputWindow(QWidget):
         self.set_layer0_image(str(_DEFAULT_LOGO))
 
     def _update_tappo_visibility(self) -> None:
-        """Ensure Layer 0 (Tappo) is ONLY visible when NO cues are active.
-        When any image or video is on air, background is pure solid black."""
+        """Ensure Layer 0 (Tappo) is visible ONLY when no media is active and not in Panic Black."""
         has_active_media = bool(self._layer_pixmaps) or any(
             c.isVisible() for c in self._video_containers.values()
         )
+        if has_active_media:
+            self._panic_black = False
         if self._logo_item is not None:
-            self._logo_item.setVisible(not has_active_media)
+            self._logo_item.setVisible((not has_active_media) and (not self._panic_black))
 
     @staticmethod
     def _stop_timer_entry(timer_map: dict[int, QTimer], layer: int) -> None:
@@ -229,6 +271,68 @@ class OutputWindow(QWidget):
                 pass
         self._update_tappo_visibility()
 
+    def _apply_pixmap_to_layer(
+        self,
+        layer: int,
+        pix: QPixmap,
+        opacity: float = 1.0,
+        crop: Optional[dict] = None,
+        scale: float = 1.0,
+        pos_x: float = 0.0,
+        pos_y: float = 0.0,
+        aspect_ratio: Optional[str] = None,
+        *,
+        reuse_item: bool = False,
+    ) -> None:
+        """Crop, scale, and composite *pix* onto *layer* without duplicating layout math."""
+        w, h = max(1, self.width()), max(1, self.height())
+        geom = compute_media_frame_geometry(
+            0.0, 0.0, w, h,
+            pix.width(), pix.height(),
+            scale=scale,
+            pos_x=pos_x,
+            pos_y=pos_y,
+            crop=crop,
+            aspect_ratio=aspect_ratio,
+        )
+
+        if crop and (crop.get("w", 1.0) < 0.9999 or crop.get("h", 1.0) < 0.9999
+                     or crop.get("x", 0.0) > 0.0001 or crop.get("y", 0.0) > 0.0001):
+            cw = max(1, int(round(pix.width() * crop.get("w", 1.0))))
+            ch = max(1, int(round(pix.height() * crop.get("h", 1.0))))
+            cx = max(0, min(pix.width() - 1, int(round(pix.width() * crop.get("x", 0.0)))))
+            cy = max(0, min(pix.height() - 1, int(round(pix.height() * crop.get("y", 0.0)))))
+            pix = pix.copy(cx, cy, cw, ch)
+
+        scaled = pix.scaled(
+            max(1, int(round(geom.vis_w))),
+            max(1, int(round(geom.vis_h))),
+            Qt.AspectRatioMode.IgnoreAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+        self._stop_timer_entry(self._layer_fade_timers, layer)
+        if layer in self._video_containers and self._video_containers[layer].isVisible():
+            self._video_containers[layer].hide()
+
+        clamped_op = max(0.0, min(1.0, opacity))
+        existing = self._layer_pixmaps.get(layer) if reuse_item else None
+        if existing is not None:
+            existing.setPixmap(scaled)
+            existing.setOpacity(clamped_op)
+            existing.setZValue(layer * 10)
+            existing.setPos(geom.vis_x, geom.vis_y)
+            existing.show()
+        else:
+            self.clear_pixmap_layer(layer)
+            item = self._scene.addPixmap(scaled)
+            item.setOpacity(clamped_op)
+            item.setZValue(layer * 10)
+            item.setPos(geom.vis_x, geom.vis_y)
+            self._layer_pixmaps[layer] = item
+
+        self._update_tappo_visibility()
+
     def show_image(self, layer: int, file_path: str, opacity: float = 1.0,
                    crop: Optional[dict] = None, scale: float = 1.0,
                    pos_x: float = 0.0, pos_y: float = 0.0,
@@ -243,46 +347,49 @@ class OutputWindow(QWidget):
             if pix.isNull():
                 return
 
-            w, h = max(1, self.width()), max(1, self.height())
-            geom = compute_media_frame_geometry(
-                0.0, 0.0, w, h,
-                pix.width(), pix.height(),
-                scale=scale,
-                pos_x=pos_x,
-                pos_y=pos_y,
-                crop=crop,
-                aspect_ratio=aspect_ratio,
+            self._apply_pixmap_to_layer(
+                layer, pix,
+                opacity=opacity, crop=crop, scale=scale,
+                pos_x=pos_x, pos_y=pos_y, aspect_ratio=aspect_ratio,
+                reuse_item=False,
             )
-
-            if crop and (crop.get("w", 1.0) < 0.9999 or crop.get("h", 1.0) < 0.9999
-                         or crop.get("x", 0.0) > 0.0001 or crop.get("y", 0.0) > 0.0001):
-                cw = max(1, int(round(pix.width() * crop.get("w", 1.0))))
-                ch = max(1, int(round(pix.height() * crop.get("h", 1.0))))
-                cx = max(0, min(pix.width() - 1, int(round(pix.width() * crop.get("x", 0.0)))))
-                cy = max(0, min(pix.height() - 1, int(round(pix.height() * crop.get("y", 0.0)))))
-                pix = pix.copy(cx, cy, cw, ch)
-
-            scaled = pix.scaled(
-                max(1, int(round(geom.vis_w))),
-                max(1, int(round(geom.vis_h))),
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation,
-            )
-
-            # Only clear content on THIS layer (other layers keep running!)
-            self.clear_layer(layer)
-
-            item = self._scene.addPixmap(scaled)
-            item.setOpacity(max(0.0, min(1.0, opacity)))
-            item.setZValue(layer * 10)
-            item.setPos(geom.vis_x, geom.vis_y)
-
-            self._layer_pixmaps[layer] = item
-            self._update_tappo_visibility()
             logger.info("[OUTPUT] Displayed image on Layer %d: %s (pos=%.2f,%.2f, scale=%.2f, op=%.2f, ar=%s)",
                         layer, file_path, pos_x, pos_y, scale, opacity, aspect_ratio or "Native")
         except Exception as exc:
             logger.error("[OUTPUT] show_image() failed on layer %d: %s", layer, exc)
+
+    def show_mirrored_frame(self, layer: int, frame_image: QImage, opacity: float = 1.0,
+                            crop: Optional[dict] = None, scale: float = 1.0,
+                            pos_x: float = 0.0, pos_y: float = 0.0,
+                            aspect_ratio: Optional[str] = None) -> None:
+        """Mirror a decoded Pre-Viz QImage video frame onto *layer* without blank video black-screen."""
+        try:
+            if frame_image is None or frame_image.isNull():
+                return
+            pix = QPixmap.fromImage(frame_image)
+            if pix.isNull():
+                return
+            self._apply_pixmap_to_layer(
+                layer, pix,
+                opacity=opacity, crop=crop, scale=scale,
+                pos_x=pos_x, pos_y=pos_y, aspect_ratio=aspect_ratio,
+                reuse_item=True,
+            )
+        except Exception as exc:
+            logger.error("[OUTPUT] show_mirrored_frame() failed on layer %d: %s", layer, exc)
+
+    def ensure_live_video_visible(self, layer: int, scale: float = 1.0, crop: Optional[dict] = None,
+                                  pos_x: float = 0.0, pos_y: float = 0.0,
+                                  opacity: float = 1.0, aspect_ratio: Optional[str] = None) -> None:
+        """Restore live video visibility on *layer* without disturbing an active loop deck."""
+        target_layer = layer if layer in self._video_containers else 1
+        self.clear_pixmap_layer(target_layer)
+        self.update_video_layout(
+            scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
+            opacity=opacity, layer=target_layer, aspect_ratio=aspect_ratio,
+        )
+        self._video_containers[target_layer].show()
+        self._update_tappo_visibility()
 
     def clear_layer(self, layer: int) -> None:
         """Remove any visual content (image or video) from *layer*."""
@@ -304,8 +411,77 @@ class OutputWindow(QWidget):
         return self._video_items.get(layer, self._video_items[1])
 
     def get_video_item(self, layer: int = 1) -> QGraphicsVideoItem:
-        """Return the native QGraphicsVideoItem for *layer*."""
+        """Return the native primary QGraphicsVideoItem for *layer*."""
         return self._video_items.get(layer, self._video_items[1])
+
+    def _active_video_item(self, layer: int = 1) -> QGraphicsVideoItem:
+        target_layer = layer if layer in self._video_containers else 1
+        if self._active_video_deck.get(target_layer, 0) == 1 and target_layer in self._secondary_video_items:
+            return self._secondary_video_items[target_layer]
+        return self._video_items[target_layer]
+
+    def get_secondary_video_item(self, layer: int = 1) -> QGraphicsVideoItem:
+        """Lazily allocate and return secondary pre-cue video deck item inside *layer*."""
+        target_layer = layer if layer in self._video_containers else 1
+        if target_layer not in self._secondary_video_items:
+            container = self._video_containers[target_layer]
+            v_sec = QGraphicsVideoItem(container)
+            v_sec.setZValue(1)
+            v_sec.hide()
+            v_sec.nativeSizeChanged.connect(
+                lambda _sz, l_idx=target_layer: self._reapply_video_layout(l_idx)
+            )
+            self._secondary_video_items[target_layer] = v_sec
+            if target_layer in self._video_layouts:
+                self._reapply_video_layout(target_layer)
+        return self._secondary_video_items[target_layer]
+
+    def activate_video_deck(self, layer: int, deck_idx: int) -> None:
+        """Bring deck 0 or 1 cleanly to front without black flash during section jumps."""
+        target_layer = layer if layer in self._video_containers else 1
+        deck = 1 if (deck_idx == 1 and target_layer in self._secondary_video_items) else 0
+        self._stop_timer_entry(self._deck_swap_timers, target_layer)
+
+        primary = self._video_items[target_layer]
+        secondary = self._secondary_video_items.get(target_layer)
+        if secondary is None:
+            primary.setZValue(2)
+            primary.show()
+            self._active_video_deck[target_layer] = 0
+            return
+
+        new_item = secondary if deck == 1 else primary
+        old_item = primary if deck == 1 else secondary
+        op = self._video_layouts.get(target_layer, {}).get("opacity", old_item.opacity())
+        new_item.setOpacity(max(0.0, min(1.0, op)))
+        new_item.setZValue(2)
+        old_item.setZValue(1)
+        new_item.show()
+        self._active_video_deck[target_layer] = deck
+
+        if old_item.isVisible():
+            t = QTimer(self)
+            t.setSingleShot(True)
+            self._deck_swap_timers[target_layer] = t
+
+            def _hide_old(item_ref=old_item, act_deck=deck, l_idx=target_layer) -> None:
+                if self._active_video_deck.get(l_idx) == act_deck:
+                    item_ref.hide()
+
+            t.timeout.connect(_hide_old)
+            t.start(45)
+
+    def set_layer_opacity(self, layer: int, opacity: float) -> None:
+        """Set live visual opacity (0.0-1.0) on active image or video item on *layer*."""
+        op = max(0.0, min(1.0, float(opacity)))
+        img_item = self._layer_pixmaps.get(layer)
+        if img_item is not None:
+            img_item.setOpacity(op)
+        if layer in self._video_containers:
+            if layer in self._video_layouts:
+                self._video_layouts[layer]["opacity"] = op
+            if self._video_containers[layer].isVisible():
+                self._active_video_item(layer).setOpacity(op)
 
     def show_video_widget(self, scale: float = 1.0, crop: Optional[dict] = None,
                           pos_x: float = 0.0, pos_y: float = 0.0,
@@ -314,6 +490,13 @@ class OutputWindow(QWidget):
         """Show the video item for *layer* with scale, crop, pos, opacity, and aspect ratio."""
         target_layer = layer if layer in self._video_containers else 1
         self._stop_timer_entry(self._video_fade_timers, target_layer)
+        self._stop_timer_entry(self._deck_swap_timers, target_layer)
+        self._active_video_deck[target_layer] = 0
+        self._video_items[target_layer].setZValue(2)
+        self._video_items[target_layer].show()
+        if target_layer in self._secondary_video_items:
+            self._secondary_video_items[target_layer].hide()
+            self._secondary_video_items[target_layer].setZValue(1)
         self.clear_pixmap_layer(target_layer)
         self.update_video_layout(
             scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
@@ -344,7 +527,10 @@ class OutputWindow(QWidget):
 
             container = self._video_containers[target_layer]
             v_item = self._video_items[target_layer]
+            v_sec = self._secondary_video_items.get(target_layer)
             nat = v_item.nativeSize()
+            if (not nat.isValid() or nat.width() <= 0) and v_sec is not None:
+                nat = v_sec.nativeSize()
             nat_w = nat.width() if (nat.isValid() and nat.width() > 0) else float(win_w)
             nat_h = nat.height() if (nat.isValid() and nat.height() > 0) else float(win_h)
 
@@ -366,10 +552,13 @@ class OutputWindow(QWidget):
                 if parse_aspect_ratio(aspect_ratio) is None
                 else Qt.AspectRatioMode.IgnoreAspectRatio
             )
-            v_item.setAspectRatioMode(ar_mode)
-            v_item.setSize(QSizeF(geom.full_w, geom.full_h))
-            v_item.setPos(-geom.cut_x, -geom.cut_y)
-            v_item.setOpacity(max(0.0, min(1.0, opacity)))
+            op = max(0.0, min(1.0, opacity))
+            items_to_update = [v_item] if v_sec is None else [v_item, v_sec]
+            for item in items_to_update:
+                item.setAspectRatioMode(ar_mode)
+                item.setSize(QSizeF(geom.full_w, geom.full_h))
+                item.setPos(-geom.cut_x, -geom.cut_y)
+                item.setOpacity(op)
         except Exception as exc:
             logger.error("[OUTPUT] update_video_layout (layer %d) failed: %s", layer, exc)
 
@@ -391,8 +580,13 @@ class OutputWindow(QWidget):
         """Hide the video item on *layer* and check if Layer 0 should reappear."""
         target_layer = layer if layer in self._video_containers else 1
         self._stop_timer_entry(self._video_fade_timers, target_layer)
+        self._stop_timer_entry(self._deck_swap_timers, target_layer)
         self._video_containers[target_layer].hide()
+        self._active_video_deck[target_layer] = 0
         self._video_items[target_layer].setOpacity(1.0)
+        if target_layer in self._secondary_video_items:
+            self._secondary_video_items[target_layer].hide()
+            self._secondary_video_items[target_layer].setOpacity(1.0)
         self._update_tappo_visibility()
 
     def fade_out_video(self, duration_sec: float = 0.2,
@@ -403,7 +597,7 @@ class OutputWindow(QWidget):
         self._stop_timer_entry(self._video_fade_timers, target_layer)
 
         container = self._video_containers[target_layer]
-        v_item = self._video_items[target_layer]
+        v_item = self._active_video_item(target_layer)
         if not container.isVisible() or duration_sec <= 0:
             self.hide_video_widget(layer=target_layer)
             if callback:
@@ -423,7 +617,7 @@ class OutputWindow(QWidget):
             nonlocal cur
             cur += 1
             op = max(0.0, start_op - (cur * decrement))
-            v_item.setOpacity(op)
+            self._active_video_item(target_layer).setOpacity(op)
             if cur >= steps or op <= 0.01:
                 self._stop_timer_entry(self._video_fade_timers, target_layer)
                 self.hide_video_widget(layer=target_layer)
@@ -474,7 +668,7 @@ class OutputWindow(QWidget):
         target_layer = layer if layer in self._video_containers else 1
         self._stop_timer_entry(self._video_fade_timers, target_layer)
 
-        v_item = self._video_items[target_layer]
+        v_item = self._active_video_item(target_layer)
         target_op = max(0.0, min(1.0, target_opacity))
         if duration_sec <= 0:
             v_item.setOpacity(target_op)
@@ -493,10 +687,10 @@ class OutputWindow(QWidget):
             nonlocal cur
             cur += 1
             op = min(target_op, cur * increment)
-            v_item.setOpacity(op)
+            self._active_video_item(target_layer).setOpacity(op)
             if cur >= steps or op >= target_op - 0.01:
                 self._stop_timer_entry(self._video_fade_timers, target_layer)
-                v_item.setOpacity(target_op)
+                self._active_video_item(target_layer).setOpacity(target_op)
 
         fade_timer.timeout.connect(_step)
         fade_timer.start(interval)
@@ -536,6 +730,7 @@ class OutputWindow(QWidget):
                       callback: Optional[Callable[[], None]] = None) -> None:
         """Bring Layer 0 (Tappo) to front with optional micro-fade.
         All live media across Layers 1-3 is removed and the logo is displayed."""
+        self._panic_black = False
         visible_videos = [l for l, c in self._video_containers.items() if c.isVisible()]
         has_media = bool(visible_videos) or bool(self._layer_pixmaps)
         if not has_media or fade_duration_sec <= 0:
@@ -561,6 +756,20 @@ class OutputWindow(QWidget):
         for l in list(self._layer_pixmaps.keys()):
             self.fade_out_layer(l, duration_sec=fade_duration_sec)
         QTimer.singleShot(int(fade_duration_sec * 1000) + 15, _finish)
+
+    def panic_blackout(self) -> None:
+        """0ms hard stop across all visual layers: pure Black if L0 is default grid, else Custom Tappo."""
+        for layer in (1, 2, 3):
+            self._stop_timer_entry(self._video_fade_timers, layer)
+            self._stop_timer_entry(self._layer_fade_timers, layer)
+            self._stop_timer_entry(self._deck_swap_timers, layer)
+        self.clear_all_layers()
+        self._panic_black = is_default_tappo_path(self._layer0_path)
+        self._update_tappo_visibility()
+        logger.warning(
+            "[OUTPUT] PANIC hard blackout executed -> %s",
+            "PURE BLACK" if self._panic_black else "Custom Tappo",
+        )
 
     def _bind_to_screen(self, screen: Optional[QScreen]) -> None:
         """Bind both the QWidget and its native QWindow handle to *screen* (Wayland & X11)."""

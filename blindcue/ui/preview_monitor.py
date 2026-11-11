@@ -12,6 +12,8 @@ from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from models.cue import MediaType
 from ui.layout_math import compute_media_frame_geometry
+from ui.tappo_pattern import is_default_tappo_path, render_default_tappo_pixmap
+from ui.theme import DEFAULT_LOGO_PATH
 
 
 class StudioPreviewMonitor(QWidget):
@@ -26,6 +28,7 @@ class StudioPreviewMonitor(QWidget):
     position_changed = Signal(float, float)  # pos_x, pos_y
     crop_changed = Signal(float, float, float, float)  # crop_l, crop_r, crop_t, crop_b
     video_resolution_detected = Signal(int, int)  # natural width, height
+    video_frame_changed = Signal(QImage)  # emits freshly decoded Pre-Viz video frame
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -35,6 +38,9 @@ class StudioPreviewMonitor(QWidget):
         self.setMouseTracking(True)
 
         self._layer0_pixmap: Optional[QPixmap] = None
+        self._layer0_path: str = str(DEFAULT_LOGO_PATH)
+        self._layer0_is_default: bool = True
+        self._layer0_pattern_cache: Optional[tuple[int, int, float, QPixmap]] = None
         self._image_pixmap: Optional[QPixmap] = None
         self._video_frame_image: Optional[QImage] = None
         self._active_media_type: Optional[MediaType] = None
@@ -78,7 +84,14 @@ class StudioPreviewMonitor(QWidget):
             if res[0] > 0 and res[1] > 0 and res != self._last_video_res:
                 self._last_video_res = res
                 self.video_resolution_detected.emit(res[0], res[1])
+            self.video_frame_changed.emit(img)
             self.update()
+
+    def current_video_frame(self) -> Optional[QImage]:
+        return self._video_frame_image
+
+    def clear_video_frame(self) -> None:
+        self._video_frame_image = None
 
     def get_video_sink(self) -> QVideoSink:
         return self._video_sink
@@ -93,7 +106,13 @@ class StudioPreviewMonitor(QWidget):
         self.update()
 
     def set_layer0_image(self, file_path: Optional[str]) -> None:
-        if file_path and os.path.isfile(file_path):
+        self._layer0_pattern_cache = None
+        self._layer0_is_default = is_default_tappo_path(file_path)
+        if self._layer0_is_default:
+            self._layer0_path = str(file_path or DEFAULT_LOGO_PATH)
+            self._layer0_pixmap = None
+        elif file_path and os.path.isfile(file_path):
+            self._layer0_path = file_path
             self._layer0_pixmap = QPixmap(file_path)
         else:
             self._layer0_pixmap = None
@@ -138,6 +157,13 @@ class StudioPreviewMonitor(QWidget):
         self._opacity = opacity
         self._aspect_ratio = aspect_ratio
         self.update()
+
+    def set_opacity(self, opacity: float) -> None:
+        """Update rendered preview opacity without resetting media/position."""
+        clamped = max(0.0, min(1.0, float(opacity)))
+        if abs(self._opacity - clamped) >= 0.002:
+            self._opacity = clamped
+            self.update()
 
     def show_image(self, file_path: str, scale: float = 1.0, crop: Optional[dict] = None,
                    pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0,
@@ -314,7 +340,17 @@ class StudioPreviewMonitor(QWidget):
         if not self._active_media_type:
             self._rendered_media_rect = None
             self._full_media_rect = None
-            if self._layer0_pixmap and not self._layer0_pixmap.isNull():
+            if self._layer0_is_default:
+                dpr = max(1.0, float(self.devicePixelRatioF()))
+                cw, ch = max(1, canvas.width()), max(1, canvas.height())
+                cache = self._layer0_pattern_cache
+                if cache and cache[:3] == (cw, ch, dpr):
+                    pat = cache[3]
+                else:
+                    pat = render_default_tappo_pixmap(cw, ch, self._layer0_path, dpr=dpr)
+                    self._layer0_pattern_cache = (cw, ch, dpr, pat)
+                painter.drawPixmap(canvas.x(), canvas.y(), pat)
+            elif self._layer0_pixmap and not self._layer0_pixmap.isNull():
                 scaled_l0 = self._layer0_pixmap.scaled(
                     canvas.size(),
                     Qt.AspectRatioMode.KeepAspectRatio,

@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSplitter,
+    QStackedWidget,
     QStatusBar,
     QTableWidgetItem,
     QVBoxLayout,
@@ -37,15 +38,23 @@ from PySide6.QtWidgets import (
 )
 
 from engine.audio_analyzer import WaveformAnalyzer
-from models.cue import Cue, CueStatus, MediaType
+from engine.envelope import (
+    evaluate_cue_level,
+    merge_section_at,
+    normalize_sections,
+    split_sections_at,
+)
+from models.cue import Cue, CueStatus, FollowMode, MediaType
 from models.project_manager import ProjectManager
 from ui.cue_list_panel import CueListPanel
 from ui.cue_table import (
+    ROLE_FOLLOW_MODE,
     ROLE_HAS_NOTES,
     ROLE_LAYER,
     ROLE_MEDIA_TYPE,
     ROLE_STATUS_CLR,
     ROLE_STATUS_TXT,
+    ROLE_TIMING_BADGE,
     CueSequenceTable,
     CueTableDelegate,
     format_cue_ref,
@@ -53,6 +62,7 @@ from ui.cue_table import (
 from ui.drop_zone import DropZone
 from ui.hardware_info import detect_hardware_brief, show_about_dialog, show_hardware_info_dialog
 from ui.inspector_panel import CueInspectorPanel
+from ui.live_show_view import LiveShowPanel
 from ui.live_status_panel import LiveStatusPanel
 from ui.output_window import OutputWindow
 from ui.preview_monitor import StudioPreviewMonitor
@@ -71,7 +81,7 @@ from ui.theme import (
     VIDEO_EXT,
 )
 from ui.undo_manager import UndoManager
-from ui.waveform_widget import WaveformWidget
+from ui.waveform_widget import WaveformPanel, WaveformWidget
 
 logger = logging.getLogger(__name__)
 
@@ -84,6 +94,7 @@ __all__ = [
     "OutPointSpinBox",
     "SmartDoubleSpinBox",
     "StudioPreviewMonitor",
+    "WaveformPanel",
     "WaveformWidget",
 ]
 
@@ -102,10 +113,17 @@ class MainWindow(QMainWindow):
     cue_fired = Signal(object)                     # emits Cue
     cue_preview_requested = Signal(object)         # emits Cue to load in preview
     layer_clear_requested = Signal(int)            # emits layer (1, 2, or 3)
-    blackout_requested = Signal()                  # emits when blackout triggered
-    preview_mute_toggled = Signal(bool)            # emits is_muted (True or False)
-    preview_in_out_changed = Signal(float, object) # emits in_sec, out_sec
-    live_volume_changed = Signal(int)              # emits volume 0-100
+    blackout_requested = Signal()                        # emits when blackout triggered
+    preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
+    preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start
+    preview_seek_requested = Signal(float)               # emits scrubbed playhead position in seconds
+    live_volume_changed = Signal(int)                    # emits volume 0-100
+    live_automation_updated = Signal(object)             # emits edited Cue to refresh active players
+    section_jump_requested = Signal(object, int, bool)   # emits (Cue, section_idx, is_live_jump)
+    section_break_loop_requested = Signal(object, bool)  # emits (Cue, is_live_jump)
+    layer_play_pause_requested = Signal(int)             # emits live layer (1..3) pause/resume toggle
+    panic_requested = Signal()                           # emits instant 0ms Panic stop all
+    pause_all_toggled = Signal()                         # emits global Show Pause/Resume toggle
 
     def __init__(self, output_window: OutputWindow,
                  parent: Optional[QWidget] = None) -> None:
@@ -117,6 +135,11 @@ class MainWindow(QMainWindow):
         self._test_player = None
         self._active_analyzers: set = set()
         self._active_test_duration: float = 0.0
+        self._active_section_idx: int = -1
+        self._img_previz_elapsed: float = 0.0
+        self._img_previz_timer = QTimer(self)
+        self._img_previz_timer.setInterval(33)
+        self._img_previz_timer.timeout.connect(self._on_img_previz_tick)
 
         self._project_manager = ProjectManager()
         self._current_project_path: Optional[str] = None
@@ -128,6 +151,9 @@ class MainWindow(QMainWindow):
         self._last_mirrored_layer: Optional[int] = None
         self._last_selection_sig: Optional[tuple] = None
         self._media_res_cache: dict[str, tuple[int, int]] = {}
+        self._known_file_durations: dict[str, float] = {}
+        self._live_phase_tags: dict[int, str] = {}
+        self._live_mode: bool = False
         self._panels_locked: bool = True
         self._top_ratios: tuple[float, float, float] = _DEFAULT_TOP_RATIOS
         self._applying_splitter_layout: bool = False
@@ -196,11 +222,24 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Alt+Up"), self, self._on_move_up)
         QShortcut(QKeySequence("Alt+Down"), self, self._on_move_down)
         QShortcut(QKeySequence("Ctrl+B"), self, self._on_blackout)
+        QShortcut(QKeySequence(Qt.Key.Key_I), self, lambda: self._on_snap_shortcut(True))
+        QShortcut(QKeySequence(Qt.Key.Key_O), self, lambda: self._on_snap_shortcut(False))
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_escape_pressed)
+        QShortcut(QKeySequence(Qt.Key.Key_F5), self, self.toggle_live_mode)
+        QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
+
+    def _is_text_input_focused(self) -> bool:
+        focus_w = QApplication.focusWidget()
+        if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
+            return True
+        return hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState
 
     @Slot()
     def _on_escape_pressed(self) -> None:
         if hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState:
+            return
+        if self._live_mode:
+            self._on_panic()
             return
         if hasattr(self, "_btn_test_stop"):
             self._btn_test_stop.click()
@@ -291,6 +330,8 @@ class MainWindow(QMainWindow):
 
                 if same_cue:
                     self._render_cue_in_preview(cue, load_image=True)
+                    self._sync_timeline_for_cue(cue)
+                    self.live_automation_updated.emit(cue)
                     if self._live_mirror_active:
                         self._mirror_active_cue_to_live()
                 else:
@@ -312,6 +353,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_undo(self) -> None:
+        if self._live_mode:
+            return
         if self._undo.is_debounce_active():
             self._commit_undo_point()
         prev = self._undo.pop_undo(self._cues, self._current_row_or_index())
@@ -325,6 +368,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_redo(self) -> None:
+        if self._live_mode:
+            return
         nxt = self._undo.pop_redo(self._cues, self._current_row_or_index())
         if nxt is None:
             self._status_label.setText("Nessuna operazione da ripetere")
@@ -396,6 +441,11 @@ class MainWindow(QMainWindow):
         )
 
         view_menu = mb.addMenu("&View")
+        self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)
+        self._act_live_mode.setShortcut(QKeySequence(Qt.Key.Key_F5))
+        self._act_live_mode.toggled.connect(self.set_live_mode)
+        view_menu.addAction(self._act_live_mode)
+        view_menu.addSeparator()
         self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
         self._act_lock_layout.setChecked(True)
         self._act_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
@@ -414,9 +464,11 @@ class MainWindow(QMainWindow):
         )
 
     def _build_ui(self) -> None:
-        central = QWidget()
-        self.setCentralWidget(central)
-        root_layout = QVBoxLayout(central)
+        self._central_stack = QStackedWidget()
+        self.setCentralWidget(self._central_stack)
+
+        self._design_page = QWidget()
+        root_layout = QVBoxLayout(self._design_page)
         root_layout.setContentsMargins(6, 6, 6, 6)
         root_layout.setSpacing(6)
 
@@ -436,6 +488,8 @@ class MainWindow(QMainWindow):
         self._cue_list_panel.move_up_requested.connect(self._on_move_up)
         self._cue_list_panel.move_down_requested.connect(self._on_move_down)
         self._cue_list_panel.delete_requested.connect(self._on_delete_cue)
+        self._cue_list_panel.go_live_mode_requested.connect(lambda: self.set_live_mode(True))
+        self._cue_list_panel.follow_mode_selected.connect(self._set_follow_mode)
         top_splitter.addWidget(self._cue_list_panel)
 
         # Center column: Pre-Viz sandbox + GO trigger
@@ -459,6 +513,7 @@ class MainWindow(QMainWindow):
         self._preview_monitor.position_changed.connect(self._on_preview_position_changed)
         self._preview_monitor.crop_changed.connect(self._on_preview_crop_changed)
         self._preview_monitor.video_resolution_detected.connect(self._on_video_resolution_detected)
+        self._preview_monitor.video_frame_changed.connect(self._on_preview_video_frame_for_mirror)
         center_layout.addWidget(self._preview_panel, stretch=1)
 
         self._btn_go = QPushButton("GO (Next Cue) — [ SPAZIO ]")
@@ -485,6 +540,7 @@ class MainWindow(QMainWindow):
         self._inspector.value_changed.connect(self._on_inspector_value_changed)
         self._inspector.batch_field_edited.connect(self._on_batch_field_edited)
         self._inspector.layer_selected.connect(self._set_layer)
+        self._inspector.in_out_reset_requested.connect(self._on_reset_in_out)
         self._bind_inspector_aliases()
         top_splitter.addWidget(self._inspector)
 
@@ -501,16 +557,29 @@ class MainWindow(QMainWindow):
         bottom_splitter.setChildrenCollapsible(False)
         self._bottom_splitter = bottom_splitter
 
-        waveform_group = QGroupBox("Forma d'Onda Audio (Waveform Analysis)")
-        wf_layout = QVBoxLayout(waveform_group)
-        lbl_wf_info = QLabel("Analisi dei picchi sonori e marcatori di inizio/fine (IN - OUT)")
-        lbl_wf_info.setStyleSheet("color: #777; font-size: 10px;")
-        wf_layout.addWidget(lbl_wf_info)
-        self._waveform = WaveformWidget()
-        self._waveform.in_changed.connect(self._on_waveform_in_changed)
-        self._waveform.out_changed.connect(self._on_waveform_out_changed)
-        wf_layout.addWidget(self._waveform)
-        bottom_splitter.addWidget(waveform_group)
+        self._waveform_panel = WaveformPanel()
+        self._waveform = self._waveform_panel.waveform
+        self._waveform_panel.in_changed.connect(self._on_waveform_in_changed)
+        self._waveform_panel.out_changed.connect(self._on_waveform_out_changed)
+        self._waveform_panel.seek_requested.connect(self._on_waveform_seek_requested)
+        self._waveform_panel.snap_in_requested.connect(self._on_snap_in_to_playhead)
+        self._waveform_panel.snap_out_requested.connect(self._on_snap_out_to_playhead)
+        self._waveform_panel.reset_in_out_requested.connect(self._on_reset_in_out)
+        self._waveform_panel.fade_in_changed.connect(self._on_waveform_fade_in_changed)
+        self._waveform_panel.fade_out_changed.connect(self._on_waveform_fade_out_changed)
+        self._waveform_panel.fade_curve_changed.connect(self._on_waveform_fade_curve_changed)
+        self._waveform_panel.envelope_mode_changed.connect(self._on_envelope_mode_changed)
+        self._waveform_panel.envelope_points_changed.connect(self._on_envelope_points_changed)
+        self._waveform_panel.reset_envelope_points_requested.connect(self._on_reset_envelope_points)
+        self._waveform_panel.image_horizon_changed.connect(self._on_image_horizon_changed)
+        self._waveform_panel.split_section_requested.connect(self._on_split_section)
+        self._waveform_panel.break_loop_requested.connect(self._on_break_section_loop)
+        self._waveform_panel.reset_sections_requested.connect(self._on_reset_sections)
+        self._waveform_panel.section_jump_requested.connect(self._on_section_jump_clicked)
+        self._waveform_panel.section_mode_changed.connect(self._on_section_mode_changed)
+        self._waveform_panel.section_remove_requested.connect(self._on_remove_section)
+        self._waveform_panel.sections_changed.connect(self._on_sections_resized)
+        bottom_splitter.addWidget(self._waveform_panel)
 
         self._live_status = LiveStatusPanel()
         self._lbl_tappo_info = self._live_status.lbl_tappo_info
@@ -518,6 +587,7 @@ class MainWindow(QMainWindow):
         self._live_status.blackout_clicked.connect(self._on_blackout)
         self._live_status.choose_layer0_clicked.connect(self._on_choose_layer0)
         self._live_status.reset_layer0_clicked.connect(self._on_reset_layer0)
+        self._live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
         bottom_splitter.addWidget(self._live_status)
 
         drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
@@ -529,6 +599,27 @@ class MainWindow(QMainWindow):
 
         bottom_splitter.setSizes([460, 320, 220])
         root_layout.addWidget(bottom_splitter, stretch=2)
+
+        # Dedicated distraction-free LIVE Show Mode page
+        self._live_show_panel = LiveShowPanel()
+        self._live_show_panel.exit_live_mode_requested.connect(lambda: self.set_live_mode(False))
+        self._live_show_panel.go_requested.connect(self._on_go)
+        self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))
+        self._live_show_panel.cue_row_double_clicked.connect(self._on_live_row_double_clicked)
+        self._live_show_panel.pause_all_toggled.connect(self.pause_all_toggled.emit)
+        self._live_show_panel.panic_requested.connect(self._on_panic)
+        self._live_show_panel.break_loop_requested.connect(self._on_break_section_loop)
+        self._live_show_panel.live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
+        self._live_show_panel.live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
+
+        self._status_panels: list[LiveStatusPanel] = [
+            self._live_status,
+            self._live_show_panel.live_status,
+        ]
+
+        self._central_stack.addWidget(self._design_page)
+        self._central_stack.addWidget(self._live_show_panel)
+        self._central_stack.setCurrentIndex(0)
 
     def _bind_inspector_aliases(self) -> None:
         """Expose direct references to inspector inputs for convenient integration."""
@@ -701,6 +792,20 @@ class MainWindow(QMainWindow):
         if cue.q_label:
             parts.append(f"Q (Copione): {cue.q_label}")
         parts.append(f"Nome: {cue.name}")
+        link_lbl = {
+            FollowMode.MANUAL.value: "Blocco manuale",
+            FollowMode.AUTO_FOLLOW.value: "Auto-GO a fine cue",
+            FollowMode.SIMULTANEOUS.value: "Simultanea con successiva",
+        }.get(cue.follow_mode, cue.follow_mode)
+        timing_bits = []
+        if cue.pre_delay > 0:
+            timing_bits.append(f"Pre +{cue.pre_delay:.1f}s")
+        if cue.media_type == MediaType.IMAGE:
+            timing_bits.append(f"Durata {'∞' if cue.hold_time <= 0 else f'{cue.hold_time:.1f}s'}")
+        if cue.post_delay > 0:
+            timing_bits.append(f"Post +{cue.post_delay:.1f}s")
+        timing_bits.append(link_lbl)
+        parts.append("Tempi: " + " | ".join(timing_bits))
         if cue.notes:
             parts.append(f"Note di Regia: {cue.notes}")
         parts.append(f"File: {cue.file_path}")
@@ -714,8 +819,16 @@ class MainWindow(QMainWindow):
         self._lbl_cue_standby.setText(f"Standby: {ref} [{cue.media_type.value}]")
 
     def _reset_idle_preview_ui(self) -> None:
+        self._img_previz_timer.stop()
+        self._active_test_duration = 0.0
+        self._active_section_idx = -1
         self._waveform.set_peaks(np.array([]))
+        self._waveform.set_media_context(None)
         self._waveform.set_in_out_seconds(0.0, None, 0.0)
+        self._waveform.set_sections([], -1)
+        self._waveform_panel.section_bar.set_sections([], 0.0, -1)
+        self._waveform_panel.sync_controls_for_cue(media_type=None)
+        self.set_waveform_playhead_seconds(None, 0.0)
         self._lbl_preview_info.setText("— Nessun file selezionato —")
         self.set_preview_time(0.0, 0.0)
         self.clear_preview()
@@ -765,6 +878,8 @@ class MainWindow(QMainWindow):
         item_name.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
         item_name.setData(ROLE_LAYER, cue.layer)
         item_name.setData(ROLE_HAS_NOTES, bool(cue.notes))
+        item_name.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
+        item_name.setData(ROLE_TIMING_BADGE, "⏱" if (cue.pre_delay > 0 or cue.post_delay > 0) else "")
         item_name.setData(ROLE_STATUS_TXT, status_txt)
         item_name.setData(ROLE_STATUS_CLR, colour)
         item_name.setToolTip(tooltip)
@@ -774,11 +889,143 @@ class MainWindow(QMainWindow):
             self._inspector.sync_header_and_text(row, cue)
             self._update_cue_readouts(row, cue)
 
-    def _update_live_layer_label(self, cue: Cue) -> None:
-        self._live_status.set_layer_live(cue)
+    def _for_each_status_panel(self):
+        return getattr(self, "_status_panels", [self._live_status])
+
+    def is_live_mode(self) -> bool:
+        return self._live_mode
+
+    @Slot(bool)
+    def set_live_mode(self, enabled: bool) -> None:
+        enabled = bool(enabled)
+        if self._live_mode == enabled:
+            return
+        self._live_mode = enabled
+        if hasattr(self, "_act_live_mode"):
+            self._act_live_mode.blockSignals(True)
+            self._act_live_mode.setChecked(enabled)
+            self._act_live_mode.blockSignals(False)
+        self._central_stack.setCurrentIndex(1 if enabled else 0)
+        if enabled:
+            self._sync_live_view()
+            self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]")
+        else:
+            QTimer.singleShot(0, self._apply_top_splitter_ratios)
+            self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
+
+    @Slot()
+    def toggle_live_mode(self) -> None:
+        self.set_live_mode(not self._live_mode)
+
+    def set_known_duration(self, file_path: str, dur_sec: float) -> None:
+        if file_path and dur_sec > 0:
+            self._known_file_durations[file_path] = dur_sec
+            self._sync_live_view()
+
+    def set_cue_phase_badge(self, cue_id: int, badge_text: str) -> None:
+        prev = self._live_phase_tags.get(cue_id, "")
+        if badge_text:
+            self._live_phase_tags[cue_id] = badge_text
+        else:
+            self._live_phase_tags.pop(cue_id, None)
+        if prev != badge_text:
+            self._sync_live_view()
+
+    def set_global_paused(self, paused: bool) -> None:
+        if hasattr(self, "_live_show_panel"):
+            self._live_show_panel.set_global_paused(paused)
+
+    def _sync_live_view(self) -> None:
+        if not hasattr(self, "_live_show_panel"):
+            return
+        standby_row, _ = self._anchor_row_and_cue()
+        if standby_row < 0 and self._cues:
+            standby_row = 0
+        has_live_inf_sec = any(
+            c.status == CueStatus.LIVE and any(s.loops == 0 and not s.skip for s in c.sections)
+            for c in self._cues
+        )
+        self._live_show_panel.sync_cues(
+            self._cues,
+            standby_row,
+            self._known_file_durations,
+            self._live_phase_tags,
+            show_break_loop=has_live_inf_sec,
+        )
+
+    def _update_live_layer_label(self, cue: Cue, preserve_timing: bool = False) -> None:
+        dur = 0.0
+        if cue.media_type == MediaType.IMAGE and cue.hold_time > 0:
+            dur = cue.hold_time
+        elif self._selected_cue() is cue and self._active_test_duration > 0:
+            dur = self._active_test_duration
+        elif cue.file_path in self._known_file_durations:
+            dur = self._known_file_durations[cue.file_path]
+        for sp in self._for_each_status_panel():
+            sp.set_layer_live(cue, duration_sec=dur, preserve_timing=preserve_timing)
+
+    def update_live_layer_phase(self, layer: int, cue: Cue, phase: str, elapsed: float, total: float) -> None:
+        for sp in self._for_each_status_panel():
+            sp.set_layer_phase_progress(layer, cue, phase, elapsed, total)
+
+    def update_live_layer_progress(
+        self,
+        layer: int,
+        pos_sec: float,
+        end_sec: Optional[float] = None,
+        start_sec: Optional[float] = None,
+        is_looping_inf: Optional[bool] = None,
+    ) -> None:
+        for sp in self._for_each_status_panel():
+            sp.set_layer_progress(
+                layer,
+                pos_sec,
+                start_sec=start_sec,
+                end_sec=end_sec,
+                is_looping_inf=is_looping_inf,
+            )
+
+    def set_live_layer_paused(self, layer: int, paused: bool) -> None:
+        for sp in self._for_each_status_panel():
+            sp.set_layer_paused(layer, paused)
 
     def _reset_live_label(self, layer: int) -> None:
-        self._live_status.reset_layer(layer)
+        for sp in self._for_each_status_panel():
+            sp.reset_layer(layer)
+
+    def promote_cue_to_live(self, cue: Cue) -> None:
+        """Promote a cue to LIVE status once its Pre-Delay completes."""
+        self._live_phase_tags.pop(cue.cue_id, None)
+        for other in self._cues:
+            if other.layer == cue.layer and other.cue_id != cue.cue_id and other.status == CueStatus.LIVE:
+                other.status = CueStatus.LOADED
+        cue.status = CueStatus.LIVE
+        self._update_live_layer_label(cue)
+        self._refresh_cue_list(keep_selection=True)
+        self._sync_live_view()
+
+    def finish_live_cue_status(self, cue: Cue) -> None:
+        """Mark cue finished (LOADED) and clean up phase badges safely."""
+        self._live_phase_tags.pop(cue.cue_id, None)
+        if cue.status == CueStatus.LIVE:
+            cue.status = CueStatus.LOADED
+        self._refresh_cue_list(keep_selection=True)
+        self._sync_live_view()
+
+    def trigger_auto_follow_from(self, finished_cue: Cue) -> None:
+        """Start the next cue in sequence when an AUTO_FOLLOW cue completes."""
+        try:
+            idx = self._cues.index(finished_cue)
+        except ValueError:
+            return
+        next_idx = idx + 1
+        if 0 <= next_idx < len(self._cues):
+            self._fire_cue_chain(next_idx)
+
+    @Slot(int)
+    def _on_live_row_double_clicked(self, row: int) -> None:
+        if 0 <= row < len(self._cues):
+            self._fire_cue_chain(row)
 
     @Slot(int, int)
     def _on_cue_cell_double_clicked(self, row: int, col: int) -> None:
@@ -835,7 +1082,7 @@ class MainWindow(QMainWindow):
 
         self._sync_inspector_header_and_text(row, cue)
         if cue.status == CueStatus.LIVE:
-            self._update_live_layer_label(cue)
+            self._update_live_layer_label(cue, preserve_timing=True)
         self._commit_undo_point()
         self._mark_modified(True)
         self._auto_save()
@@ -852,12 +1099,13 @@ class MainWindow(QMainWindow):
         finally:
             self._cue_list.blockSignals(False)
             self._updating_cue_list = False
+        self._sync_live_view()
 
         ref = format_cue_ref(row, cue)
         self._inspector.setTitle(f"ISPETTORE CUE — {ref} [{cue.media_type.value}] '{cue.name}'")
         self._update_cue_readouts(row, cue)
         if cue.status == CueStatus.LIVE:
-            self._update_live_layer_label(cue)
+            self._update_live_layer_label(cue, preserve_timing=True)
 
     def _refresh_rows_in_place(self, rows: list[int]) -> None:
         """Update table cell visuals for *rows* in place without altering selection."""
@@ -873,6 +1121,7 @@ class MainWindow(QMainWindow):
         finally:
             self._cue_list.blockSignals(False)
             self._updating_cue_list = False
+        self._sync_live_view()
 
     def _refresh_cue_list(self, keep_selection: bool = True,
                           select_row: Optional[int] = None) -> None:
@@ -921,6 +1170,7 @@ class MainWindow(QMainWindow):
         finally:
             self._cue_list.blockSignals(False)
             self._updating_cue_list = False
+        self._sync_live_view()
 
     def _selected_rows(self) -> list[int]:
         if not hasattr(self, "_cue_list"):
@@ -944,19 +1194,116 @@ class MainWindow(QMainWindow):
 
     # ── Waveform & Preview Layout Helpers ─────────────────────────────
 
+    def set_waveform_playhead_seconds(
+        self,
+        sec: Optional[float],
+        duration_sec: float = 0.0,
+        source_tag: str = "PRE-VIZ",
+    ) -> None:
+        """Update waveform cursor position (testina) and header readout/buttons safely."""
+        prev_dur = self._active_test_duration
+        if duration_sec > 0:
+            self._active_test_duration = max(0.001, duration_sec)
+        dur = self._active_test_duration if duration_sec <= 0 else duration_sec
+        cue = self._selected_cue()
+        is_image = cue is not None and cue.media_type == MediaType.IMAGE
+        timed_cue = cue is not None and cue.media_type in (MediaType.VIDEO, MediaType.AUDIO)
+        sel_cues = self._selected_cues()
+        uniform_timed = timed_cue and bool(sel_cues) and len({c.media_type for c in sel_cues}) == 1
+        if sec is None or dur <= 0 or (not timed_cue and not is_image):
+            self._waveform.set_playhead(None)
+            self._waveform_panel.set_playhead_display(
+                None, 0.0, source_tag, snap_enabled=False, reset_enabled=uniform_timed
+            )
+            return
+        if prev_dur <= 0 and dur > 0 and cue is not None:
+            self._inspector.spin_out.set_media_duration(dur)
+            self._sync_timeline_for_cue(cue)
+        self._waveform.set_playhead_seconds(sec, dur)
+        self._waveform_panel.set_playhead_display(
+            sec,
+            dur,
+            source_tag,
+            snap_enabled=timed_cue,
+            reset_enabled=uniform_timed,
+        )
+
     def update_waveform_duration(self, duration_sec: float) -> None:
         self._active_test_duration = max(0.001, duration_sec)
         self._inspector.spin_out.set_media_duration(self._active_test_duration)
         cue = self._selected_cue()
         if cue:
-            self._waveform.set_in_out_seconds(cue.in_point, cue.out_point, self._active_test_duration)
+            self._sync_timeline_for_cue(cue)
+            if cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
+                cur_ph = self._waveform.playhead_seconds()
+                target_sec = min(self._active_test_duration, max(0.0, cue.in_point)) if cur_ph is None else cur_ph
+                self.set_waveform_playhead_seconds(target_sec, self._active_test_duration, "PRE-VIZ")
 
     def _update_waveform_markers(self, cue: Optional[Cue] = None) -> None:
         if cue is None:
             cue = self._selected_cue()
-        if cue is None or cue.media_type == MediaType.IMAGE:
+        if cue is None:
             return
-        self._waveform.set_in_out_seconds(cue.in_point, cue.out_point, self._active_test_duration)
+        self._sync_timeline_for_cue(cue)
+
+    def _effective_timeline_end(self, cue: Cue) -> float:
+        if cue.media_type == MediaType.IMAGE:
+            return cue.hold_time if cue.hold_time > 0 else cue.image_timeline_sec
+        dur = self._active_test_duration
+        if dur <= 0:
+            return 0.0
+        if cue.out_point is not None and cue.out_point > cue.in_point:
+            return min(dur, cue.out_point)
+        return dur
+
+    def _sync_timeline_for_cue(self, cue: Optional[Cue]) -> None:
+        """Keep waveform/opacity canvas, fade pallini, section bands, and controls synced."""
+        if cue is None:
+            return
+        is_image = (cue.media_type == MediaType.IMAGE)
+        dur = (cue.hold_time if cue.hold_time > 0 else cue.image_timeline_sec) if is_image else self._active_test_duration
+        if is_image:
+            self._active_test_duration = dur
+
+        mode = "opacity" if is_image else self._waveform._envelope_mode
+        show_fo = (not is_image) or (cue.hold_time > 0)
+        self._waveform.set_media_context(cue.media_type, mode, show_fade_out=show_fo)
+        if is_image:
+            self._waveform.set_in_out_seconds(0.0, None, dur)
+        else:
+            self._waveform.set_in_out_seconds(cue.in_point, cue.out_point, dur)
+
+        self._waveform.set_fades(cue.fade_in, cue.fade_out, cue.fade_curve)
+        self._waveform.set_envelopes(
+            base_volume=cue.volume,
+            base_opacity=cue.opacity,
+            volume_points=cue.volume_points,
+            opacity_points=cue.opacity_points,
+        )
+
+        eff_end = self._effective_timeline_end(cue)
+        if not is_image and dur > 0 and cue.sections:
+            cue.sections = normalize_sections(cue.sections, cue.in_point, eff_end)
+        else:
+            cue.sections = [] if is_image else cue.sections
+
+        active_idx = self._active_section_idx if len(cue.sections) >= 2 else -1
+        self._waveform.set_sections(cue.sections, active_idx=active_idx)
+        self._waveform_panel.section_bar.set_sections(cue.sections, dur, active_index=active_idx)
+
+        active_pts = cue.opacity_points if mode == "opacity" else cue.volume_points
+        can_split = (not is_image) and dur > 0 and (eff_end - cue.in_point) >= 0.35
+        has_repeating = any(s.loops == 0 or s.loops > 1 for s in cue.sections if not s.skip)
+        self._waveform_panel.sync_controls_for_cue(
+            media_type=cue.media_type,
+            fade_curve=cue.fade_curve,
+            has_points=bool(active_pts),
+            has_sections=len(cue.sections) >= 2,
+            can_split=can_split,
+            has_repeating_section=has_repeating,
+            image_horizon_sec=cue.image_timeline_sec,
+            hold_time=cue.hold_time,
+        )
 
     def _update_crop_reference_for_cue(self, cue: Cue) -> None:
         """Supply exact pixel dimensions (cached header/frame size) to Inspector Crop %/px."""
@@ -1037,9 +1384,13 @@ class MainWindow(QMainWindow):
 
         anchor_row, anchor = self._anchor_row_and_cue()
         if anchor is not None:
+            if field_key in ("in_point", "out_point", "volume", "opacity", "fade_in", "fade_out", "hold_time"):
+                self._sync_timeline_for_cue(anchor)
+                self.live_automation_updated.emit(anchor)
             if field_key in ("in_point", "out_point"):
-                self._update_waveform_markers(anchor)
-                self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point)
+                self.preview_in_out_changed.emit(
+                    anchor.in_point, anchor.out_point, field_key == "in_point"
+                )
             if field_key == "volume":
                 self.live_volume_changed.emit(self._inspector.slider_volume.value())
             if anchor.media_type in (MediaType.VIDEO, MediaType.IMAGE):
@@ -1067,10 +1418,16 @@ class MainWindow(QMainWindow):
         if len(sel_cues) != 1:
             return
         cue = sel_cues[0]
+        prev_in = cue.in_point
+        prev_out = cue.out_point
         self._inspector.apply_to_cue(cue)
-        self._update_waveform_markers(cue)
+        self._sync_timeline_for_cue(cue)
         self.live_volume_changed.emit(self._inspector.slider_volume.value())
-        self.preview_in_out_changed.emit(cue.in_point, cue.out_point)
+        self.live_automation_updated.emit(cue)
+        if cue.in_point != prev_in or cue.out_point != prev_out:
+            self.preview_in_out_changed.emit(
+                cue.in_point, cue.out_point, cue.in_point != prev_in
+            )
 
     @Slot(float, float)
     def _on_preview_position_changed(self, pos_x: float, pos_y: float) -> None:
@@ -1106,40 +1463,421 @@ class MainWindow(QMainWindow):
         if self._live_mirror_active:
             self._mirror_active_cue_to_live()
 
-    @Slot(float)
-    def _on_waveform_in_changed(self, new_in: float) -> None:
-        self._inspector.set_in_silent(new_in)
+    def _commit_waveform_in(
+        self, new_in: float, *, clear_conflicting_out: bool = False, seek_preview: bool = True
+    ) -> None:
         sel_cues = self._selected_cues()
         if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
             return
+        rounded_in = round(max(0.0, new_in), 2)
         for cue in sel_cues:
-            cue.in_point = new_in
-            if cue.out_point is not None and cue.out_point <= new_in:
-                cue.out_point = round(new_in + 0.05, 2)
-        self._schedule_undo_point()
-        self._mark_modified(True)
+            cue.in_point = rounded_in
+            if cue.out_point is not None and cue.out_point <= rounded_in + 0.04:
+                cue.out_point = None if clear_conflicting_out else round(rounded_in + 0.05, 2)
         anchor = self._selected_cue()
         if anchor:
-            self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point)
+            self._inspector.set_in_silent(anchor.in_point)
+            self._inspector.set_out_silent(anchor.out_point or 0.0)
+            self._update_waveform_markers(anchor)
+            self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point, seek_preview)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+
+    def _commit_waveform_out(self, new_out: Optional[float]) -> Optional[float]:
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return None
+        for cue in sel_cues:
+            if new_out is None or new_out <= 0.0:
+                cue.out_point = None
+            elif new_out <= cue.in_point + 0.04:
+                cue.out_point = round(cue.in_point + 0.05, 2)
+            else:
+                cue.out_point = round(new_out, 2)
+        anchor = self._selected_cue()
+        if anchor:
+            self._inspector.set_out_silent(anchor.out_point or 0.0)
+            self._update_waveform_markers(anchor)
+            self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point, False)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        return anchor.out_point if anchor else None
+
+    @Slot(float)
+    def _on_waveform_in_changed(self, new_in: float) -> None:
+        self._commit_waveform_in(new_in, clear_conflicting_out=False, seek_preview=True)
 
     @Slot(float)
     def _on_waveform_out_changed(self, new_out: float) -> None:
-        self._inspector.set_out_silent(new_out)
+        self._commit_waveform_out(None if new_out <= 0.0 else new_out)
+
+    @Slot(float)
+    def _on_waveform_seek_requested(self, sec: float) -> None:
+        cue = self._selected_cue()
+        if cue is None:
+            return
+        if cue.media_type == MediaType.IMAGE:
+            dur = self._effective_timeline_end(cue)
+            self._img_previz_elapsed = max(0.0, min(dur, sec))
+            self.set_waveform_playhead_seconds(self._img_previz_elapsed, dur, "PRE-VIZ")
+            self.set_preview_time(self._img_previz_elapsed, dur)
+            op = evaluate_cue_level(
+                self._img_previz_elapsed,
+                start_sec=0.0,
+                end_sec=cue.hold_time if cue.hold_time > 0 else None,
+                duration_sec=dur,
+                fade_in=cue.fade_in,
+                fade_out=cue.fade_out if cue.hold_time > 0 else 0.0,
+                fade_curve=cue.fade_curve,
+                points=cue.opacity_points,
+                base_level=cue.opacity,
+                apply_fade_out_at_end=(cue.hold_time > 0),
+            )
+            self._preview_monitor.set_opacity(op)
+            return
+        if cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
+            return
+        self._waveform_panel.set_playhead_display(sec, self._active_test_duration, "PRE-VIZ", snap_enabled=True)
+        self.set_preview_time(sec, self._active_test_duration)
+        self.preview_seek_requested.emit(sec)
+
+    def _on_snap_shortcut(self, is_in: bool) -> None:
+        if self._live_mode or self._is_text_input_focused():
+            return
+        if is_in:
+            self._on_snap_in_to_playhead()
+        else:
+            self._on_snap_out_to_playhead()
+
+    @Slot()
+    def _on_snap_in_to_playhead(self) -> None:
+        cue = self._selected_cue()
+        dur = self._waveform.duration_seconds()
+        playhead_sec = self._waveform.playhead_seconds()
+        if cue is None or cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO) or dur <= 0 or playhead_sec is None:
+            return
+        target_in = round(max(0.0, min(max(0.0, dur - 0.05), playhead_sec)), 2)
+        self._commit_waveform_in(target_in, clear_conflicting_out=True, seek_preview=False)
+        self._status_label.setText(f"Punto IN spostato sulla testina: {target_in:.2f}s")
+
+    @Slot()
+    def _on_snap_out_to_playhead(self) -> None:
+        cue = self._selected_cue()
+        dur = self._waveform.duration_seconds()
+        playhead_sec = self._waveform.playhead_seconds()
+        if cue is None or cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO) or dur <= 0 or playhead_sec is None:
+            return
+        if playhead_sec >= dur - 0.05:
+            applied = self._commit_waveform_out(None)
+            self._status_label.setText("Punto OUT impostato sulla fine del file (Fine)")
+        elif playhead_sec <= cue.in_point + 0.04:
+            target_out = round(min(dur, cue.in_point + 0.05), 2)
+            applied = self._commit_waveform_out(target_out)
+            self._status_label.setText(
+                f"Testina prima di IN: OUT impostato al minimo ({applied:.2f}s)" if applied else "OUT aggiornato"
+            )
+        else:
+            applied = self._commit_waveform_out(round(playhead_sec, 2))
+            self._status_label.setText(
+                f"Punto OUT spostato sulla testina: {applied:.2f}s" if applied else "OUT aggiornato"
+            )
+
+    @Slot()
+    def _on_reset_in_out(self) -> None:
+        """Reset IN to 0.00s and OUT to Fine (None) across selected same-type timed cues."""
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        if sel_cues[0].media_type not in (MediaType.VIDEO, MediaType.AUDIO):
+            return
+        for cue in sel_cues:
+            cue.in_point = 0.0
+            cue.out_point = None
+        anchor = self._selected_cue()
+        if anchor:
+            self._inspector.set_in_silent(0.0)
+            self._inspector.set_out_silent(0.0)
+            self._update_waveform_markers(anchor)
+            self.preview_in_out_changed.emit(0.0, None, False)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText("Punti IN e OUT ripristinati: IN = 0.00s, OUT = Fine")
+
+    # ── Fade Ramps, Keyframe Envelopes, Image Pre-Viz & Sections ──────
+
+    @Slot(float)
+    def _on_waveform_fade_in_changed(self, new_fi: float) -> None:
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        val = round(max(0.0, new_fi), 2)
+        for cue in sel_cues:
+            cue.fade_in = val
+        anchor = self._selected_cue()
+        if anchor:
+            self._inspector.set_fades_silent(fade_in=val)
+            self._sync_timeline_for_cue(anchor)
+            self.live_automation_updated.emit(anchor)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(f"Fade IN: {val:.2f}s")
+
+    @Slot(float)
+    def _on_waveform_fade_out_changed(self, new_fo: float) -> None:
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        val = round(max(0.0, new_fo), 2)
+        for cue in sel_cues:
+            cue.fade_out = val
+        anchor = self._selected_cue()
+        if anchor:
+            self._inspector.set_fades_silent(fade_out=val)
+            self._sync_timeline_for_cue(anchor)
+            self.live_automation_updated.emit(anchor)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(f"Fade OUT: {val:.2f}s")
+
+    @Slot(str)
+    def _on_waveform_fade_curve_changed(self, curve: str) -> None:
         sel_cues = self._selected_cues()
         if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
             return
         for cue in sel_cues:
-            if new_out <= 0.0:
-                cue.out_point = None
-            elif new_out <= cue.in_point:
-                cue.out_point = round(cue.in_point + 0.05, 2)
-            else:
-                cue.out_point = new_out
-        self._schedule_undo_point()
-        self._mark_modified(True)
+            cue.fade_curve = curve
         anchor = self._selected_cue()
         if anchor:
-            self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point)
+            self._sync_timeline_for_cue(anchor)
+            self.live_automation_updated.emit(anchor)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(f"Curva Fade impostata: {curve}")
+
+    @Slot(str)
+    def _on_envelope_mode_changed(self, mode: str) -> None:
+        cue = self._selected_cue()
+        if cue:
+            self._sync_timeline_for_cue(cue)
+
+    @Slot(str, list)
+    def _on_envelope_points_changed(self, mode: str, points: list) -> None:
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        copied = [list(p) for p in points]
+        for cue in sel_cues:
+            if mode == "opacity":
+                cue.opacity_points = [list(p) for p in copied]
+            else:
+                cue.volume_points = [list(p) for p in copied]
+        anchor = self._selected_cue()
+        if anchor:
+            self._sync_timeline_for_cue(anchor)
+            self.live_automation_updated.emit(anchor)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+
+    @Slot(str)
+    def _on_reset_envelope_points(self, mode: str) -> None:
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        for cue in sel_cues:
+            if mode == "opacity":
+                cue.opacity_points = []
+            else:
+                cue.volume_points = []
+        anchor = self._selected_cue()
+        if anchor:
+            self._sync_timeline_for_cue(anchor)
+            self.live_automation_updated.emit(anchor)
+            if anchor.media_type == MediaType.IMAGE:
+                self._preview_monitor.set_opacity(anchor.opacity)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText("Punti envelope azzerati")
+
+    @Slot(float)
+    def _on_image_horizon_changed(self, horizon_sec: float) -> None:
+        cue = self._selected_cue()
+        if cue is None or cue.media_type != MediaType.IMAGE:
+            return
+        cue.image_timeline_sec = max(1.0, float(horizon_sec))
+        self._sync_timeline_for_cue(cue)
+        self.set_waveform_playhead_seconds(min(self._img_previz_elapsed, cue.image_timeline_sec), cue.image_timeline_sec, "PRE-VIZ")
+        self._schedule_undo_point()
+        self._mark_modified(True)
+
+    @Slot()
+    def _on_split_section(self) -> None:
+        cue = self._selected_cue()
+        dur = self._active_test_duration
+        if cue is None or cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO) or dur <= 0:
+            return
+        eff_end = self._effective_timeline_end(cue)
+        ph = self._waveform.playhead_seconds()
+        if ph is not None and cue.in_point + 0.15 <= ph <= eff_end - 0.15:
+            split_t = ph
+        else:
+            # Smart midpoint split of active region when testina is sitting at an edge
+            target_sec = next(
+                (s for s in cue.sections if (s.end or eff_end) - s.start >= 0.30),
+                None,
+            )
+            if target_sec is not None:
+                s_end = target_sec.end if target_sec.end is not None else eff_end
+                split_t = round((target_sec.start + s_end) / 2.0, 2)
+            else:
+                split_t = round((cue.in_point + eff_end) / 2.0, 2)
+
+        updated = split_sections_at(cue.sections, split_t, cue.in_point, eff_end)
+        if len(updated) <= len(cue.sections) and len(cue.sections) >= 2:
+            self._status_label.setText("Spazio insufficiente per dividere ancora in questo punto")
+            return
+        cue.sections = updated
+        self._sync_timeline_for_cue(cue)
+        self.live_automation_updated.emit(cue)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(f"Creato taglio sezione a {split_t:.2f}s ({len(cue.sections)} sezioni)")
+
+    @Slot(list)
+    def _on_sections_resized(self, sections_list: list) -> None:
+        cue = self._selected_cue()
+        if cue is None or cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
+            return
+        cue.sections = list(sections_list)
+        self._waveform_panel.section_bar.set_sections(
+            cue.sections, self._active_test_duration, active_index=self._active_section_idx
+        )
+        self.live_automation_updated.emit(cue)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+
+    @Slot(int, int, bool)
+    def _on_section_mode_changed(self, idx: int, loops: int, skip: bool) -> None:
+        cue = self._selected_cue()
+        if cue is None or not (0 <= idx < len(cue.sections)):
+            return
+        cue.sections[idx].loops = loops
+        cue.sections[idx].skip = skip
+        self._sync_timeline_for_cue(cue)
+        self.live_automation_updated.emit(cue)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        mode_lbl = "Salta" if skip else ("∞ Infinito" if loops == 0 else f"x{loops}")
+        self._status_label.setText(f"Sezione {cue.sections[idx].label}: {mode_lbl}")
+
+    @Slot(int)
+    def _on_remove_section(self, idx: int) -> None:
+        cue = self._selected_cue()
+        if cue is None or not cue.sections:
+            return
+        eff_end = self._effective_timeline_end(cue)
+        cue.sections = merge_section_at(cue.sections, idx, cue.in_point, eff_end)
+        if not cue.sections:
+            self._active_section_idx = -1
+        self._sync_timeline_for_cue(cue)
+        self.live_automation_updated.emit(cue)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(
+            "Ritorno a file intero (modalità normale)" if not cue.sections else "Sezione unita"
+        )
+
+    @Slot()
+    def _on_reset_sections(self) -> None:
+        cue = self._selected_cue()
+        if cue is None or not cue.sections:
+            return
+        cue.sections = []
+        self._active_section_idx = -1
+        self._sync_timeline_for_cue(cue)
+        self.live_automation_updated.emit(cue)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText("Sezioni azzerate: ripristinato il file originale")
+
+    @Slot(int)
+    def _on_section_jump_clicked(self, idx: int) -> None:
+        cue = self._selected_cue()
+        if cue is None or not (0 <= idx < len(cue.sections)):
+            return
+        self._active_section_idx = idx
+        self._waveform.set_active_section_index(idx)
+        self._waveform_panel.section_bar.set_active_index(idx)
+        self.section_jump_requested.emit(cue, idx, cue.status == CueStatus.LIVE)
+
+    @Slot()
+    def _on_break_section_loop(self) -> None:
+        cue = self._selected_cue()
+        if cue is None or not cue.sections:
+            return
+        self.section_break_loop_requested.emit(cue, cue.status == CueStatus.LIVE)
+
+    def set_live_section_index(self, cue_id: int, sec_idx: int) -> None:
+        cue = self._selected_cue()
+        if cue is not None and cue.cue_id == cue_id:
+            self._active_section_idx = sec_idx
+            self._waveform.set_active_section_index(sec_idx)
+            self._waveform_panel.section_bar.set_active_index(sec_idx)
+
+    # ── Image Pre-Viz Opacity Timeline Player ─────────────────────────
+
+    def start_image_preview_playback(self, cue: Cue) -> None:
+        if cue.media_type != MediaType.IMAGE:
+            return
+        dur = self._effective_timeline_end(cue)
+        if self._img_previz_elapsed >= dur - 0.02:
+            self._img_previz_elapsed = 0.0
+        self.show_preview_image(
+            cue.file_path, scale=cue.scale, crop=cue.crop,
+            pos_x=cue.position_x, pos_y=cue.position_y,
+            opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+        )
+        self._on_img_previz_tick(advance=False)
+        self._img_previz_timer.start()
+
+    def pause_image_preview_playback(self) -> None:
+        self._img_previz_timer.stop()
+
+    def stop_image_preview_playback(self) -> None:
+        self._img_previz_timer.stop()
+        self._img_previz_elapsed = 0.0
+        cue = self._selected_cue()
+        if cue is not None and cue.media_type == MediaType.IMAGE:
+            dur = self._effective_timeline_end(cue)
+            self.set_waveform_playhead_seconds(0.0, dur, "PRE-VIZ")
+            self.set_preview_time(0.0, dur)
+            self._preview_monitor.set_opacity(cue.opacity)
+
+    def _on_img_previz_tick(self, advance: bool = True) -> None:
+        cue = self._selected_cue()
+        if cue is None or cue.media_type != MediaType.IMAGE:
+            self._img_previz_timer.stop()
+            return
+        dur = self._effective_timeline_end(cue)
+        if advance:
+            self._img_previz_elapsed += 0.033
+        if self._img_previz_elapsed >= dur:
+            self._img_previz_elapsed = dur
+            self._img_previz_timer.stop()
+        op = evaluate_cue_level(
+            self._img_previz_elapsed,
+            start_sec=0.0,
+            end_sec=cue.hold_time if cue.hold_time > 0 else None,
+            duration_sec=dur,
+            fade_in=cue.fade_in,
+            fade_out=cue.fade_out if cue.hold_time > 0 else 0.0,
+            fade_curve=cue.fade_curve,
+            points=cue.opacity_points,
+            base_level=cue.opacity,
+            apply_fade_out_at_end=(cue.hold_time > 0),
+        )
+        self._preview_monitor.set_opacity(op)
+        self.set_waveform_playhead_seconds(self._img_previz_elapsed, dur, "PRE-VIZ")
+        self.set_preview_time(self._img_previz_elapsed, dur)
 
     # ── Preview Mute & Live Layer Controls ────────────────────────────
 
@@ -1232,12 +1970,25 @@ class MainWindow(QMainWindow):
             self._inspector.load_selection(sel_cues, anchor_cue=cue, anchor_row=anchor_row)
 
             if cue.cue_id != prev_anchor_id:
+                self._img_previz_timer.stop()
+                self._img_previz_elapsed = 0.0
+                self._active_section_idx = -1
+                self._waveform_panel.reset_zoom()
                 self._request_waveform(cue)
-                self._waveform.set_playhead(None)
+                if cue.media_type == MediaType.IMAGE:
+                    dur_img = cue.hold_time if cue.hold_time > 0 else cue.image_timeline_sec
+                    self._active_test_duration = dur_img
+                    self._sync_timeline_for_cue(cue)
+                    self.set_waveform_playhead_seconds(0.0, dur_img, "PRE-VIZ")
+                else:
+                    self._active_test_duration = 0.0
+                    self.set_waveform_playhead_seconds(None, 0.0)
+                if cue.media_type == MediaType.VIDEO:
+                    self._preview_monitor.clear_video_frame()
                 self._render_cue_in_preview(cue, load_image=False)
                 self.cue_preview_requested.emit(cue)
 
-            self._update_waveform_markers(cue)
+            self._sync_timeline_for_cue(cue)
             self._update_cue_readouts(anchor_row, cue)
             if len(sel_cues) > 1:
                 mtypes = {c.media_type for c in sel_cues}
@@ -1251,15 +2002,30 @@ class MainWindow(QMainWindow):
             if self._live_mirror_active:
                 self._mirror_active_cue_to_live()
 
+            modes = {c.follow_mode for c in sel_cues}
+            self._cue_list_panel.set_follow_mode_checked(
+                next(iter(modes)) if len(modes) == 1 else None, enabled=True
+            )
+            self._sync_live_view()
+
             logger.debug("Cue selected (count=%d): %s", len(sel_cues), cue)
         else:
             self._inspector.load_cue(None)
-            self.clear_preview()
-            self._lbl_preview_info.setText("— Nessun file selezionato —")
+            self._cue_list_panel.set_follow_mode_checked(FollowMode.MANUAL.value, enabled=False)
+            self._reset_idle_preview_ui()
             self._lbl_cue_standby.setText("Standby: Nessuna")
+            self._sync_live_view()
+
+    @Slot(object)
+    def _on_preview_video_frame_for_mirror(self, _frame) -> None:
+        if not self._live_mirror_active:
+            return
+        cue = self._selected_cue()
+        if cue is not None and cue.media_type == MediaType.VIDEO and cue.status != CueStatus.LIVE:
+            self._push_cue_to_output(cue)
 
     def _push_cue_to_output(self, cue: Cue) -> None:
-        """Render an IMAGE or VIDEO cue onto its assigned output layer."""
+        """Render an IMAGE or VIDEO cue onto its assigned output layer (mirror-safe)."""
         if cue.media_type == MediaType.IMAGE:
             self._output.show_image(
                 cue.layer,
@@ -1272,15 +2038,50 @@ class MainWindow(QMainWindow):
                 aspect_ratio=cue.aspect_ratio,
             )
         elif cue.media_type == MediaType.VIDEO:
-            self._output.show_video_widget(
-                scale=cue.scale,
-                crop=cue.crop,
-                pos_x=cue.position_x,
-                pos_y=cue.position_y,
-                opacity=cue.opacity,
-                layer=cue.layer,
-                aspect_ratio=cue.aspect_ratio,
+            if cue.status == CueStatus.LIVE:
+                self._output.ensure_live_video_visible(
+                    layer=cue.layer,
+                    scale=cue.scale,
+                    crop=cue.crop,
+                    pos_x=cue.position_x,
+                    pos_y=cue.position_y,
+                    opacity=cue.opacity,
+                    aspect_ratio=cue.aspect_ratio,
+                )
+            else:
+                frame_img = self._preview_monitor.current_video_frame()
+                if frame_img is not None and not frame_img.isNull():
+                    # Keep standby/Pre-Viz preview opacity synced when playing fades
+                    op = (
+                        self._preview_monitor._opacity
+                        if self._preview_monitor._active_media_type == MediaType.VIDEO
+                        else cue.opacity
+                    )
+                    self._output.show_mirrored_frame(
+                        cue.layer,
+                        frame_img,
+                        opacity=op,
+                        crop=cue.crop,
+                        scale=cue.scale,
+                        pos_x=cue.position_x,
+                        pos_y=cue.position_y,
+                        aspect_ratio=cue.aspect_ratio,
+                    )
+                else:
+                    # Wait for decoded Pre-Viz frame rather than flashing black video surface
+                    has_live_on_layer = any(
+                        c.status == CueStatus.LIVE and c.layer == cue.layer and c.media_type in (MediaType.IMAGE, MediaType.VIDEO)
+                        for c in self._cues
+                    )
+                    if not has_live_on_layer:
+                        self._output.clear_layer(cue.layer)
+        elif cue.media_type == MediaType.AUDIO:
+            has_live_visual = any(
+                c.status == CueStatus.LIVE and c.layer == cue.layer and c.media_type in (MediaType.IMAGE, MediaType.VIDEO)
+                for c in self._cues
             )
+            if not has_live_visual:
+                self._output.clear_layer(cue.layer)
 
     @Slot(bool)
     def _on_live_mirror_toggled(self, active: bool) -> None:
@@ -1320,10 +2121,23 @@ class MainWindow(QMainWindow):
 
     def _restore_live_output(self) -> None:
         try:
+            prev_layer = self._last_mirrored_layer
             self._last_mirrored_layer = None
             live_cues = [c for c in self._cues if c.status == CueStatus.LIVE]
             if not live_cues:
                 self._output.show_fallback()
+            elif prev_layer is not None:
+                live_on_prev = next(
+                    (
+                        c for c in live_cues
+                        if c.layer == prev_layer and c.media_type in (MediaType.IMAGE, MediaType.VIDEO)
+                    ),
+                    None,
+                )
+                if live_on_prev is None:
+                    self._output.clear_layer(prev_layer)
+                else:
+                    self._push_cue_to_output(live_on_prev)
             else:
                 self._output.clear_all_layers()
                 for c in live_cues:
@@ -1354,8 +2168,28 @@ class MainWindow(QMainWindow):
             self._commit_undo_point()
             self._mark_modified(True)
             self._auto_save()
+            self._sync_live_view()
 
-    # ── Playback Transport (GO / Blackout) ────────────────────────────
+    @Slot(str)
+    def _set_follow_mode(self, mode: str) -> None:
+        sel_rows = self._selected_rows()
+        if not sel_rows:
+            return
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        sel_cues = [self._cues[r] for r in sel_rows]
+        changed = any(cue.follow_mode != mode for cue in sel_cues)
+        self._cue_list_panel.set_follow_mode_checked(mode, enabled=True)
+        if changed:
+            for cue in sel_cues:
+                cue.follow_mode = mode
+            self._refresh_rows_in_place(sel_rows)
+            self._sync_live_view()
+            self._commit_undo_point()
+            self._mark_modified(True)
+            self._auto_save()
+
+    # ── Playback Transport (GO / Blackout / Panic) ────────────────────
 
     @Slot()
     def _on_go(self) -> None:
@@ -1377,45 +2211,89 @@ class MainWindow(QMainWindow):
         else:
             target_idx = 0
 
-        cue = self._cues[target_idx]
-        for other in self._cues:
-            if other.layer == cue.layer and other.cue_id != cue.cue_id and other.status == CueStatus.LIVE:
-                other.status = CueStatus.LOADED
+        self._fire_cue_chain(target_idx)
 
-        cue.status = CueStatus.LIVE
-        self._current_index = target_idx
-        self.cue_fired.emit(cue)
+    def _fire_cue_chain(self, start_idx: int) -> None:
+        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain."""
+        if not (0 <= start_idx < len(self._cues)):
+            return
+
+        chain_indices: list[int] = []
+        visited: set[int] = set()
+        idx = start_idx
+        while 0 <= idx < len(self._cues) and idx not in visited:
+            visited.add(idx)
+            chain_indices.append(idx)
+            if self._cues[idx].follow_mode != FollowMode.SIMULTANEOUS.value:
+                break
+            idx += 1
+
+        last_fired_idx = chain_indices[-1]
+        self._live_show_panel.notify_first_go()
+        for c_idx in chain_indices:
+            cue = self._cues[c_idx]
+            if cue.pre_delay <= 0.02:
+                for other in self._cues:
+                    if other.layer == cue.layer and other.cue_id != cue.cue_id and other.status == CueStatus.LIVE:
+                        other.status = CueStatus.LOADED
+                cue.status = CueStatus.LIVE
+                self._update_live_layer_label(cue)
+            self._current_index = c_idx
+            self.cue_fired.emit(cue)
+            logger.info("[GO] Fired cue #%d: %s", cue.cue_id, cue)
+
         self._refresh_cue_list(keep_selection=False)
-        self._update_live_layer_label(cue)
 
-        ref = format_cue_ref(target_idx, cue)
-        next_idx = target_idx + 1
+        first_cue = self._cues[start_idx]
+        ref = format_cue_ref(start_idx, first_cue)
+        next_idx = last_fired_idx + 1
         if next_idx < len(self._cues):
             self._cue_list.setCurrentRow(next_idx)
             next_ref = format_cue_ref(next_idx, self._cues[next_idx])
             self._status_label.setText(
-                f"LIVE → {ref} '{cue.name}' (Layer {cue.layer}) | Standby: {next_ref} '{self._cues[next_idx].name}'"
+                f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) | Standby: {next_ref} '{self._cues[next_idx].name}'"
             )
         else:
-            self._cue_list.setCurrentRow(target_idx)
+            self._cue_list.setCurrentRow(last_fired_idx)
             self._status_label.setText(
-                f"LIVE → {ref} '{cue.name}' (Layer {cue.layer}) — Fine scaletta (premi GO per rilanciare)"
+                f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) — Fine scaletta (premi GO per rilanciare)"
             )
 
+        self._sync_live_view()
         self._auto_save()
-        logger.info("[GO] Fired cue #%d: %s", cue.cue_id, cue)
 
     @Slot()
     def _on_blackout(self) -> None:
+        self._live_phase_tags.clear()
         self._output.show_fallback()
         for cue in self._cues:
             if cue.status == CueStatus.LIVE:
                 cue.status = CueStatus.LOADED
         self._refresh_cue_list()
-        self._live_status.reset_all_layers()
+        for sp in self._for_each_status_panel():
+            sp.reset_all_layers()
+        self.set_global_paused(False)
         self.blackout_requested.emit()
+        self._sync_live_view()
         self._status_label.setText("BLACKOUT — Output ripristinato a Layer 0 (Tappo)")
         logger.info("[BLACKOUT] Activated")
+
+    @Slot()
+    def _on_panic(self) -> None:
+        """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
+        self._live_phase_tags.clear()
+        for cue in self._cues:
+            if cue.status == CueStatus.LIVE:
+                cue.status = CueStatus.LOADED
+        self._refresh_cue_list()
+        for sp in self._for_each_status_panel():
+            sp.reset_all_layers()
+        self.set_global_paused(False)
+        self.panic_requested.emit()
+        self._output.panic_blackout()
+        self._sync_live_view()
+        self._status_label.setText("🚨 PANIC (0ms) — STOP TOTALE ESEGUITO")
+        logger.warning("[PANIC] Executed hard stop all layers")
 
     # ── Cue List Manipulation ─────────────────────────────────────────
 
@@ -1480,14 +2358,20 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_move_up(self) -> None:
+        if self._live_mode:
+            return
         self._move_selected_cue(-1)
 
     @Slot()
     def _on_move_down(self) -> None:
+        if self._live_mode:
+            return
         self._move_selected_cue(1)
 
     @Slot()
     def _on_delete_cue(self) -> None:
+        if self._live_mode:
+            return
         focus_w = QApplication.focusWidget()
         if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
             return
@@ -1742,7 +2626,7 @@ class MainWindow(QMainWindow):
             self._waveform.set_peaks(np.array([]))
             return
         try:
-            analyzer = WaveformAnalyzer(cue.file_path, self._waveform.width())
+            analyzer = WaveformAnalyzer(cue.file_path, max(3200, self._waveform.width() * 6))
             self._active_analyzers.add(analyzer)
             analyzer.signals.finished.connect(
                 lambda path, peaks, a=analyzer: self._on_analyzer_ready(a, path, peaks)

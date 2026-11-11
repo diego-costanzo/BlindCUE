@@ -112,16 +112,28 @@ class WaveformAnalyzer(QRunnable):
                     pass
                 return
 
-            # Safe down-sampling to target_width bins via peak detection
+            # Safe vectorized peak down-sampling to target_width bins
             samples_abs = np.abs(samples)
-            if len(samples_abs) <= self.target_width:
-                # Short audio clip: pad with zeros to match width
+            n = len(samples_abs)
+            if n <= self.target_width:
                 peaks = np.zeros(self.target_width, dtype=np.float32)
-                peaks[:len(samples_abs)] = samples_abs
+                peaks[:n] = samples_abs
             else:
-                # Divide into target_width contiguous chunks without shape errors
-                splits = np.array_split(samples_abs, self.target_width)
-                peaks = np.array([chunk.max() if len(chunk) > 0 else 0.0 for chunk in splits], dtype=np.float32)
+                step = n // self.target_width
+                if step >= 1 and step * self.target_width == n:
+                    peaks = samples_abs.reshape(self.target_width, step).max(axis=1).astype(np.float32)
+                elif step >= 2:
+                    trim = step * self.target_width
+                    peaks = samples_abs[:trim].reshape(self.target_width, step).max(axis=1).astype(np.float32)
+                    rem_max = samples_abs[trim:].max()
+                    if rem_max > peaks[-1]:
+                        peaks[-1] = rem_max
+                else:
+                    splits = np.array_split(samples_abs, self.target_width)
+                    peaks = np.array(
+                        [chunk.max() if len(chunk) > 0 else 0.0 for chunk in splits],
+                        dtype=np.float32,
+                    )
 
             # Normalise to 0.0-1.0
             peak_max = peaks.max()

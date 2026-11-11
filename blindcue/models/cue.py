@@ -31,9 +31,51 @@ class CueStatus(Enum):
     PREVIZ = "PREVIZ"
 
 
+class FollowMode(Enum):
+    """Post-cue sequencing link mode for automated/simultaneous show progression."""
+    MANUAL = "MANUAL"              # Blocco (Default): esegue la cue e attende GO manuale
+    AUTO_FOLLOW = "AUTO_FOLLOW"    # Auto-GO a fine ciclo (dopo Pre-Delay + Durata + Post-Delay)
+    SIMULTANEOUS = "SIMULTANEOUS"  # Simultanea: avvia subito la successiva insieme a questa
+
+
 def _default_crop() -> Dict[str, float]:
     """Return default full-frame crop rectangle."""
     return {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
+
+
+_VALID_FADE_CURVES = ("log", "scurve", "linear")
+_VALID_FOLLOW_MODES = tuple(m.value for m in FollowMode)
+
+
+@dataclass
+class CueSection:
+    """Contiguous virtual section inside an audio or video Cue."""
+
+    label: str
+    start: float
+    end: Optional[float] = None
+    loops: int = 1   # 1 = once (default), >=2 = N repeats, 0 = infinite vamp
+    skip: bool = False
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "label": self.label,
+            "start": round(float(self.start), 4),
+            "end": round(float(self.end), 4) if self.end is not None else None,
+            "loops": int(self.loops),
+            "skip": bool(self.skip),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> CueSection:
+        end_raw = data.get("end")
+        return cls(
+            label=str(data.get("label", "A")),
+            start=max(0.0, float(data.get("start", 0.0))),
+            end=max(0.0, float(end_raw)) if end_raw is not None else None,
+            loops=max(0, int(data.get("loops", 1))),
+            skip=bool(data.get("skip", False)),
+        )
 
 
 @dataclass
@@ -91,6 +133,14 @@ class Cue:
     opacity: float = 1.0
     notes: str = ""
     hold_time: float = 0.0
+    pre_delay: float = 0.0
+    post_delay: float = 0.0
+    follow_mode: str = FollowMode.MANUAL.value
+    fade_curve: str = "log"  # "log" (perceptual), "scurve" (cosine), "linear"
+    volume_points: list[list[float]] = field(default_factory=list)   # [[time_sec, level 0..1], ...]
+    opacity_points: list[list[float]] = field(default_factory=list)  # [[time_sec, opacity 0..1], ...]
+    image_timeline_sec: float = 10.0  # Virtual timeline horizon (s) for infinite-hold images
+    sections: list[CueSection] = field(default_factory=list)         # Contiguous virtual playback sections
 
     # ── Validation ────────────────────────────────────────────────────
     def validate(self) -> list[str]:
@@ -121,6 +171,12 @@ class Cue:
 
         if self.hold_time < 0.0:
             errors.append(f"hold_time must be >= 0 – got {self.hold_time}")
+        if self.pre_delay < 0.0:
+            errors.append(f"pre_delay must be >= 0 – got {self.pre_delay}")
+        if self.post_delay < 0.0:
+            errors.append(f"post_delay must be >= 0 – got {self.post_delay}")
+        if self.follow_mode not in _VALID_FOLLOW_MODES:
+            errors.append(f"follow_mode must be one of {_VALID_FOLLOW_MODES} – got {self.follow_mode}")
 
         if self.in_point < 0.0:
             errors.append(f"in_point must be >= 0 – got {self.in_point}")
@@ -142,6 +198,12 @@ class Cue:
 
         if self.scale <= 0.0:
             errors.append(f"scale must be > 0 – got {self.scale}")
+
+        if self.fade_curve not in _VALID_FADE_CURVES:
+            errors.append(f"fade_curve must be one of {_VALID_FADE_CURVES} – got {self.fade_curve}")
+
+        if self.image_timeline_sec <= 0.0:
+            errors.append(f"image_timeline_sec must be > 0 – got {self.image_timeline_sec}")
 
         if errors:
             logger.warning("Cue %d ('%s') validation errors: %s", self.cue_id, self.name, errors)
@@ -175,6 +237,14 @@ class Cue:
             "opacity": self.opacity,
             "notes": self.notes,
             "hold_time": self.hold_time,
+            "pre_delay": round(float(self.pre_delay), 3),
+            "post_delay": round(float(self.post_delay), 3),
+            "follow_mode": self.follow_mode,
+            "fade_curve": self.fade_curve,
+            "volume_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.volume_points],
+            "opacity_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.opacity_points],
+            "image_timeline_sec": self.image_timeline_sec,
+            "sections": [sec.to_dict() for sec in self.sections],
         }
 
     @classmethod
@@ -207,7 +277,35 @@ class Cue:
             scale=data.get("scale", 1.0),
             opacity=data.get("opacity", 1.0),
             notes=data.get("notes", ""),
-            hold_time=data.get("hold_time", 0.0),
+            hold_time=max(0.0, float(data.get("hold_time", 0.0) or 0.0)),
+            pre_delay=max(0.0, float(data.get("pre_delay", 0.0) or 0.0)),
+            post_delay=max(0.0, float(data.get("post_delay", 0.0) or 0.0)),
+            follow_mode=(
+                data.get("follow_mode", FollowMode.MANUAL.value)
+                if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES
+                else FollowMode.MANUAL.value
+            ),
+            fade_curve=(
+                data.get("fade_curve", "log")
+                if data.get("fade_curve", "log") in _VALID_FADE_CURVES
+                else "log"
+            ),
+            volume_points=[
+                [max(0.0, float(p[0])), max(0.0, min(1.0, float(p[1])))]
+                for p in (data.get("volume_points") or [])
+                if isinstance(p, (list, tuple)) and len(p) >= 2
+            ],
+            opacity_points=[
+                [max(0.0, float(p[0])), max(0.0, min(1.0, float(p[1])))]
+                for p in (data.get("opacity_points") or [])
+                if isinstance(p, (list, tuple)) and len(p) >= 2
+            ],
+            image_timeline_sec=max(1.0, float(data.get("image_timeline_sec", 10.0) or 10.0)),
+            sections=[
+                CueSection.from_dict(raw)
+                for raw in (data.get("sections") or [])
+                if isinstance(raw, dict)
+            ],
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)
