@@ -1,1156 +1,111 @@
 """Director / Control Panel – main window of BlindCue.
 
-Resides on the primary monitor and provides:
-
-- Cue list with LIVE / PRE-VIZ badges
-- Preview / Pre-Viz sandbox with embedded native Wayland player
-- Inspector / Cue Properties panel
-- Waveform display
-- GO button
-- Live Upload drag-and-drop zone
+Composes modular UI panels (cue list, Pre-Viz sandbox, Cue Inspector,
+Waveform, Live Output Status, Drop Zone) and coordinates show playback,
+Undo/Redo, Live Mirror, and project persistence on the primary monitor.
 """
 
 from __future__ import annotations
 
 import logging
-import math
 import os
-import shutil
-import subprocess
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
-from PySide6.QtCore import QEvent, QLocale, QPoint, QPointF, QRect, QRectF, Qt, QThreadPool, QTimer, Signal, Slot
-from PySide6.QtGui import (
-    QAction,
-    QBrush,
-    QColor,
-    QCursor,
-    QDragEnterEvent,
-    QDropEvent,
-    QFont,
-    QIcon,
-    QImage,
-    QKeySequence,
-    QMouseEvent,
-    QPainter,
-    QPen,
-    QPixmap,
-    QPolygon,
-    QRegion,
-    QShortcut,
-    QValidator,
-)
-from PySide6.QtMultimedia import QVideoFrame, QVideoSink
-from PySide6.QtMultimediaWidgets import QVideoWidget
+from PySide6.QtCore import QEvent, Qt, QThreadPool, QTimer, Signal, Slot
+from PySide6.QtGui import QAction, QColor, QFont, QIcon, QImageReader, QKeySequence, QShortcut
+from PySide6.QtMultimedia import QVideoSink
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QAbstractSpinBox,
     QApplication,
-    QCheckBox,
     QComboBox,
-    QDoubleSpinBox,
     QFileDialog,
-    QFrame,
-    QGraphicsOpacityEffect,
     QGroupBox,
-    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QMainWindow,
     QMessageBox,
     QPushButton,
-    QScrollArea,
     QSizePolicy,
-    QSlider,
     QSplitter,
-    QStackedLayout,
     QStatusBar,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
+from engine.audio_analyzer import WaveformAnalyzer
 from models.cue import Cue, CueStatus, MediaType
 from models.project_manager import ProjectManager
-from engine.audio_analyzer import WaveformAnalyzer
+from ui.cue_list_panel import CueListPanel
+from ui.cue_table import (
+    ROLE_HAS_NOTES,
+    ROLE_LAYER,
+    ROLE_MEDIA_TYPE,
+    ROLE_STATUS_CLR,
+    ROLE_STATUS_TXT,
+    CueSequenceTable,
+    CueTableDelegate,
+    format_cue_ref,
+)
+from ui.drop_zone import DropZone
+from ui.hardware_info import detect_hardware_brief, show_about_dialog, show_hardware_info_dialog
+from ui.inspector_panel import CueInspectorPanel
+from ui.live_status_panel import LiveStatusPanel
 from ui.output_window import OutputWindow
+from ui.preview_monitor import StudioPreviewMonitor
+from ui.preview_panel import PreviewControlPanel
+from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
+from ui.theme import (
+    AUDIO_EXT,
+    CLR_GO,
+    CLR_LIVE,
+    CLR_PREVIZ,
+    CLR_TEXT,
+    CLR_TEXT_MUTED,
+    DARK_STYLESHEET,
+    DEFAULT_LOGO_PATH,
+    IMAGE_EXT,
+    VIDEO_EXT,
+)
+from ui.undo_manager import UndoManager
+from ui.waveform_widget import WaveformWidget
 
 logger = logging.getLogger(__name__)
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-_LOGO_PATH = _PROJECT_ROOT / "immagini di progetto" / "BlindCue-logo.jpeg"
+__all__ = [
+    "CueSequenceTable",
+    "CueTableDelegate",
+    "DropZone",
+    "InPointSpinBox",
+    "MainWindow",
+    "OutPointSpinBox",
+    "SmartDoubleSpinBox",
+    "StudioPreviewMonitor",
+    "WaveformWidget",
+]
+
+_MEDIA_ICONS = {
+    MediaType.VIDEO: "🎬",
+    MediaType.AUDIO: "🎵",
+    MediaType.IMAGE: "🖼",
+}
+
+_DEFAULT_TOP_RATIOS: tuple[float, float, float] = (0.24, 0.49, 0.27)
 
-# ── Colour palette (Pro Broadcast / Obsidian Slate) ───────────────────
-_CLR_BG = "#0c1017"         # Deep obsidian backdrop
-_CLR_PANEL = "#151b26"      # Sleek slate panel surface
-_CLR_TEXT = "#e2e8f0"       # Clean readable text
-_CLR_TEXT_MUTED = "#94a3b8" # Soft secondary text
-_CLR_LIVE = "#10b981"       # Vivid broadcast emerald green
-_CLR_PREVIZ = "#f59e0b"     # Studio amber
-_CLR_GO = "#10b981"         # Emerald GO
-_CLR_ACCENT = "#38bdf8"     # Sky cyan accent
-
-# Supported file extensions
-_VIDEO_EXT = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv", ".m4v"}
-_AUDIO_EXT = {".mp3", ".wav", ".flac", ".ogg", ".aac", ".m4a", ".wma", ".opus"}
-_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".bmp", ".gif", ".webp", ".tiff", ".svg"}
-
-_DARK_STYLESHEET = f"""
-    QMainWindow, QWidget {{
-        background-color: {_CLR_BG};
-        color: {_CLR_TEXT};
-    }}
-    QGroupBox {{
-        background-color: {_CLR_PANEL};
-        border: 1px solid #232f40;
-        border-radius: 6px;
-        margin-top: 14px;
-        padding: 12px 8px 8px 8px;
-        font-weight: bold;
-        font-size: 11px;
-    }}
-    QGroupBox::title {{
-        subcontrol-origin: margin;
-        subcontrol-position: top left;
-        left: 10px;
-        padding: 1px 8px;
-        background-color: {_CLR_PANEL};
-        border-radius: 3px;
-        color: {_CLR_ACCENT};
-        font-weight: bold;
-    }}
-    QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-        background-color: #0f1520;
-        border: 1px solid #283548;
-        border-radius: 4px;
-        padding: 4px 6px;
-        color: #f1f5f9;
-        font-size: 11px;
-        selection-background-color: #0284c7;
-    }}
-    QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
-        border: 1px solid {_CLR_ACCENT};
-        background-color: #141c2b;
-    }}
-    QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {{
-        background-color: #0a0d14;
-        border-color: #1a2230;
-        color: #475569;
-    }}
-    QSpinBox::up-button, QDoubleSpinBox::up-button {{
-        subcontrol-origin: border;
-        subcontrol-position: top right;
-        width: 16px;
-        background-color: #1a2332;
-        border-left: 1px solid #283548;
-        border-bottom: 1px solid #283548;
-        border-top-right-radius: 4px;
-    }}
-    QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover {{
-        background-color: #26354a;
-    }}
-    QSpinBox::down-button, QDoubleSpinBox::down-button {{
-        subcontrol-origin: border;
-        subcontrol-position: bottom right;
-        width: 16px;
-        background-color: #1a2332;
-        border-left: 1px solid #283548;
-        border-bottom-right-radius: 4px;
-    }}
-    QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
-        background-color: #26354a;
-    }}
-    QListWidget {{
-        background-color: #111722;
-        border: 1px solid #232f40;
-        border-radius: 5px;
-        font-size: 12px;
-        font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Roboto Mono', 'Ubuntu Mono', 'monospace', monospace;
-    }}
-    QListWidget::item {{
-        padding: 6px 10px;
-        border-bottom: 1px solid #1a2332;
-        border-radius: 4px;
-        margin: 1px 2px;
-    }}
-    QListWidget::item:selected {{
-        background-color: #1e2d42;
-        border-left: 3px solid {_CLR_ACCENT};
-        color: #ffffff;
-    }}
-    QListWidget::item:hover:!selected {{
-        background-color: #16202e;
-    }}
-    QPushButton {{
-        background-color: #1c2534;
-        border: 1px solid #2c3a4e;
-        border-radius: 4px;
-        padding: 5px 12px;
-        color: {_CLR_TEXT};
-        font-size: 11px;
-        font-weight: bold;
-    }}
-    QPushButton:hover {{
-        background-color: #263448;
-        border-color: {_CLR_ACCENT};
-        color: #ffffff;
-    }}
-    QPushButton:pressed {{
-        background-color: #141b26;
-        border-color: #0284c7;
-    }}
-    QPushButton:checked {{
-        background-color: #065f46;
-        border-color: {_CLR_LIVE};
-        color: #ffffff;
-    }}
-    QPushButton:disabled {{
-        background-color: #0f141d;
-        border-color: #1c2334;
-        color: #475569;
-    }}
-    QLabel {{
-        color: {_CLR_TEXT};
-    }}
-    QSlider::groove:horizontal {{
-        height: 6px;
-        background: #1c2636;
-        border-radius: 3px;
-        border: 1px solid #283548;
-    }}
-    QSlider::sub-page:horizontal {{
-        background: #0284c7;
-        border-radius: 3px;
-    }}
-    QSlider::handle:horizontal {{
-        width: 14px;
-        margin: -5px 0;
-        background: {_CLR_ACCENT};
-        border-radius: 7px;
-        border: 1px solid #ffffff;
-    }}
-    QSlider::handle:horizontal:hover {{
-        background: #7dd3fc;
-    }}
-    QSlider::handle:horizontal:disabled {{
-        background: #475569;
-    }}
-    QCheckBox {{
-        spacing: 6px;
-        color: {_CLR_TEXT};
-    }}
-    QCheckBox:disabled {{
-        color: #475569;
-    }}
-    QSplitter::handle {{
-        background-color: #101620;
-    }}
-    QSplitter::handle:hover {{
-        background-color: {_CLR_ACCENT};
-    }}
-    QStatusBar {{
-        background-color: #090d13;
-        color: {_CLR_TEXT_MUTED};
-        font-size: 11px;
-        border-top: 1px solid #1a2332;
-    }}
-    QMenuBar {{
-        background-color: #090d13;
-        color: {_CLR_TEXT};
-        font-size: 12px;
-        border-bottom: 1px solid #1a2332;
-    }}
-    QMenuBar::item:selected {{
-        background-color: #1c2534;
-        color: {_CLR_ACCENT};
-    }}
-    QMenu {{
-        background-color: {_CLR_PANEL};
-        border: 1px solid #283548;
-        border-radius: 4px;
-        color: {_CLR_TEXT};
-        padding: 4px;
-    }}
-    QMenu::item {{
-        padding: 4px 18px;
-        border-radius: 3px;
-    }}
-    QMenu::item:selected {{
-        background-color: #1e2d42;
-        color: {_CLR_ACCENT};
-    }}
-    QScrollBar:vertical {{
-        background: #0f1520;
-        width: 10px;
-        border-radius: 5px;
-        margin: 0px;
-    }}
-    QScrollBar::handle:vertical {{
-        background: #283548;
-        border-radius: 5px;
-        min-height: 20px;
-    }}
-    QScrollBar::handle:vertical:hover {{
-        background: {_CLR_ACCENT};
-    }}
-    QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
-        height: 0px;
-    }}
-"""
-
-
-def _format_cid(cue_id: object) -> str:
-    """Format cue ID gracefully whether it is int or str."""
-    if isinstance(cue_id, int):
-        return f"{cue_id:03d}"
-    if isinstance(cue_id, str) and cue_id.isdigit():
-        return f"{int(cue_id):03d}"
-    return str(cue_id)
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Waveform Display Widget
-# ═══════════════════════════════════════════════════════════════════════
-
-class WaveformWidget(QWidget):
-    """Paints a waveform peak array with interactive mouse dragging of IN / OUT markers."""
-
-    in_changed = Signal(float)   # In seconds
-    out_changed = Signal(float)  # Out seconds (or 0.0 for End of File)
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self._peaks: Optional[np.ndarray] = None
-        self._in_point: float = 0.0
-        self._out_point: float = 1.0  # normalised 0-1
-        self._in_sec: float = 0.0
-        self._out_sec: Optional[float] = None
-        self._duration_sec: float = 0.0
-        self._playhead: Optional[float] = None
-        self._dragging_handle: Optional[str] = None
-        self.setMinimumHeight(100)
-        self.setMouseTracking(True)
-        self.setStyleSheet(f"background-color: {_CLR_PANEL};")
-
-    def set_peaks(self, peaks: np.ndarray) -> None:
-        self._peaks = peaks
-        self.update()
-
-    def set_in_out(self, in_norm: float, out_norm: float) -> None:
-        self._in_point = in_norm
-        self._out_point = out_norm
-        self.update()
-
-    def set_in_out_seconds(self, in_sec: float, out_sec: Optional[float], duration_sec: float) -> None:
-        """Update IN and OUT points in seconds relative to total file duration."""
-        self._in_sec = max(0.0, in_sec)
-        self._out_sec = out_sec
-        self._duration_sec = max(0.001, duration_sec) if duration_sec > 0 else 0.0
-
-        if self._duration_sec > 0:
-            self._in_point = min(1.0, max(0.0, self._in_sec / self._duration_sec))
-            if self._out_sec is not None and self._out_sec > 0:
-                self._out_point = min(1.0, max(0.0, self._out_sec / self._duration_sec))
-            else:
-                self._out_point = 1.0
-        else:
-            self._in_point = 0.0
-            self._out_point = 1.0
-        self.update()
-
-    def set_playhead(self, norm_pos: Optional[float]) -> None:
-        """Update active playhead position (0.0 to 1.0) or None to hide."""
-        if self._playhead != norm_pos:
-            self._playhead = norm_pos
-            self.update()
-
-    # ── Mouse Interaction ─────────────────────────────────────────────
-
-    def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
-        if event.button() == Qt.MouseButton.LeftButton and self._duration_sec > 0:
-            x = event.position().x()
-            w = max(1, self.width())
-            in_x = int(self._in_point * w)
-            out_x = int(self._out_point * w)
-
-            if abs(x - in_x) <= 15:
-                self._dragging_handle = "IN"
-            elif abs(x - out_x) <= 15:
-                self._dragging_handle = "OUT"
-            else:
-                if abs(x - in_x) < abs(x - out_x):
-                    self._dragging_handle = "IN"
-                else:
-                    self._dragging_handle = "OUT"
-                self._handle_mouse_drag(x)
-            self.update()
-
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
-        x = event.position().x()
-        if self._dragging_handle:
-            self._handle_mouse_drag(x)
-        else:
-            w = max(1, self.width())
-            in_x = int(self._in_point * w)
-            out_x = int(self._out_point * w)
-            if abs(x - in_x) <= 12 or abs(x - out_x) <= 12:
-                self.setCursor(QCursor(Qt.CursorShape.SizeHorCursor))
-            else:
-                self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
-
-    def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
-        self._dragging_handle = None
-        self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
-
-    def leaveEvent(self, _event) -> None:  # noqa: N802
-        if not self._dragging_handle:
-            self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
-
-    def _handle_mouse_drag(self, x: float) -> None:
-        if self._duration_sec <= 0:
-            return
-        w = max(1, self.width())
-        norm = max(0.0, min(1.0, x / w))
-        sec = norm * self._duration_sec
-
-        if self._dragging_handle == "IN":
-            max_in = (self._out_sec - 0.05) if (self._out_sec is not None and self._out_sec > 0) else (self._duration_sec - 0.05)
-            new_in = max(0.0, min(max_in, sec))
-            self._in_sec = round(new_in, 2)
-            self._in_point = self._in_sec / self._duration_sec
-            self.in_changed.emit(self._in_sec)
-            self.update()
-
-        elif self._dragging_handle == "OUT":
-            min_out = self._in_sec + 0.05
-            new_out = max(min_out, min(self._duration_sec, sec))
-            if new_out >= self._duration_sec - 0.05:
-                self._out_sec = None
-                self._out_point = 1.0
-                self.out_changed.emit(0.0)
-            else:
-                self._out_sec = round(new_out, 2)
-                self._out_point = self._out_sec / self._duration_sec
-                self.out_changed.emit(self._out_sec)
-            self.update()
-
-    def paintEvent(self, _event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        w, h = self.width(), self.height()
-        if w <= 0 or h <= 0:
-            painter.end()
-            return
-
-        # Background
-        painter.fillRect(0, 0, w, h, QColor(_CLR_PANEL))
-
-        if self._peaks is None or len(self._peaks) == 0:
-            painter.setPen(QPen(QColor("#888"), 1))
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter,
-                             "Nessuna forma d'onda caricata")
-            painter.end()
-            return
-
-        n = len(self._peaks)
-        bar_w = max(1.0, w / n)
-        mid_y = h / 2
-
-        # Draw bars
-        painter.setPen(Qt.PenStyle.NoPen)
-        for i, peak in enumerate(self._peaks):
-            x = i * bar_w
-            bar_h = peak * mid_y * 0.9  # 90% of half-height
-
-            # Colour region inside IN-OUT green, outside grey
-            frac = i / n
-            if self._in_point <= frac <= self._out_point:
-                painter.setBrush(QColor(_CLR_LIVE))
-            else:
-                painter.setBrush(QColor("#444444"))
-
-            painter.drawRect(int(x), int(mid_y - bar_h),
-                             max(1, int(bar_w) - 1), int(bar_h * 2))
-
-        # IN marker line & handle tag
-        in_x = int(self._in_point * w)
-        painter.setPen(QPen(QColor(_CLR_LIVE), 2))
-        painter.drawLine(in_x, 0, in_x, h)
-
-        # IN Top & Bottom Handle grips
-        painter.setBrush(QColor(_CLR_LIVE))
-        painter.drawPolygon([QPoint(in_x, 0), QPoint(in_x - 6, 8), QPoint(in_x + 6, 8)])
-        painter.drawPolygon([QPoint(in_x, h), QPoint(in_x - 6, h - 8), QPoint(in_x + 6, h - 8)])
-
-        in_txt = f"IN: {self._in_sec:.2f}s" if self._in_sec > 0 else "IN: 0.00s"
-        painter.fillRect(in_x + 2, 2, len(in_txt) * 7 + 8, 16, QColor("#003314"))
-        painter.setPen(QColor(_CLR_LIVE))
-        font = QFont("sans-serif", 8, QFont.Weight.Bold)
-        painter.setFont(font)
-        painter.drawText(in_x + 6, 14, in_txt)
-
-        # OUT marker line & handle tag
-        out_x = min(w - 1, int(self._out_point * w))
-        painter.setPen(QPen(QColor("#ff5252"), 2))
-        painter.drawLine(out_x, 0, out_x, h)
-
-        # OUT Top & Bottom Handle grips
-        painter.setBrush(QColor("#ff5252"))
-        painter.drawPolygon([QPoint(out_x, 0), QPoint(out_x - 6, 8), QPoint(out_x + 6, 8)])
-        painter.drawPolygon([QPoint(out_x, h), QPoint(out_x - 6, h - 8), QPoint(out_x + 6, h - 8)])
-
-        out_txt = f"OUT: {self._out_sec:.2f}s" if (self._out_sec is not None and self._out_sec > 0) else "OUT: Fine"
-        out_pill_w = len(out_txt) * 7 + 8
-        out_pill_x = max(0, out_x - out_pill_w - 2) if out_x > w - 90 else out_x + 2
-        painter.fillRect(out_pill_x, 2, out_pill_w, 16, QColor("#3a0d0d"))
-        painter.setPen(QColor("#ff5252"))
-        painter.drawText(out_pill_x + 5, 14, out_txt)
-
-        # Playhead indicator
-        if self._playhead is not None and 0.0 <= self._playhead <= 1.0:
-            playhead_x = int(self._playhead * w)
-            painter.setPen(QPen(QColor(_CLR_ACCENT), 2))
-            painter.drawLine(playhead_x, 0, playhead_x, h)
-            # Triangular playhead indicator at top
-            painter.setBrush(QColor(_CLR_ACCENT))
-            painter.setPen(Qt.PenStyle.NoPen)
-            poly = [
-                QPoint(playhead_x - 5, 0),
-                QPoint(playhead_x + 5, 0),
-                QPoint(playhead_x, 8),
-            ]
-            painter.drawPolygon(QPolygon(poly))
-
-        painter.end()
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# High Precision Resilient SpinBoxes (Centesimi / Decimals & Locale Safe)
-# ═══════════════════════════════════════════════════════════════════════
-
-class SmartDoubleSpinBox(QDoubleSpinBox):
-    """Robust QDoubleSpinBox accepting both '.' and ',' decimal separators,
-    resilient to suffixes (% and s), with keyboard tracking deferred to Enter/blur.
-    """
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self.setLocale(QLocale.c())  # Standard C locale (decimal point = '.')
-        self.setKeyboardTracking(False)
-
-    def validate(self, input_text: str, pos: int):
-        clean_text = input_text.replace(",", ".")
-        special = self.specialValueText()
-        if special and (input_text == special or clean_text == special):
-            return (QValidator.State.Acceptable, input_text, pos)
-
-        suffix = self.suffix()
-        prefix = self.prefix()
-        val_str = clean_text
-        if prefix and val_str.startswith(prefix):
-            val_str = val_str[len(prefix):]
-        if suffix and val_str.endswith(suffix):
-            val_str = val_str[:-len(suffix)]
-        val_str = val_str.strip()
-
-        if not val_str or val_str in ("-", "+", "."):
-            return (QValidator.State.Intermediate, input_text, pos)
-        try:
-            val = float(val_str)
-            if self.minimum() <= val <= self.maximum():
-                return (QValidator.State.Acceptable, input_text, pos)
-            return (QValidator.State.Intermediate, input_text, pos)
-        except ValueError:
-            return (QValidator.State.Invalid, input_text, pos)
-
-    def valueFromText(self, text: str) -> float:
-        special = self.specialValueText()
-        if special and text == special:
-            return self.minimum()
-        clean = text.replace(",", ".")
-        suffix = self.suffix()
-        prefix = self.prefix()
-        if prefix and clean.startswith(prefix):
-            clean = clean[len(prefix):]
-        if suffix and clean.endswith(suffix):
-            clean = clean[:-len(suffix)]
-        clean = clean.strip()
-        try:
-            return float(clean)
-        except ValueError:
-            return self.minimum()
-
-
-class InPointSpinBox(SmartDoubleSpinBox):
-    """High-precision (centesimi) spinbox for Cue IN point."""
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self.setRange(0.0, 99999.0)
-        self.setDecimals(2)
-        self.setSingleStep(0.05)
-        self.setSuffix(" s")
-
-
-class OutPointSpinBox(SmartDoubleSpinBox):
-    """Smart Out Point SpinBox with centesimi precision and end-of-file down-stepping."""
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self.setRange(0.0, 99999.0)
-        self.setDecimals(2)
-        self.setSingleStep(0.05)
-        self.setSuffix(" s")
-        self.setSpecialValueText("Fine File")
-        self._media_duration: float = 0.0
-
-    def set_media_duration(self, duration_sec: float) -> None:
-        self._media_duration = max(0.0, duration_sec)
-
-    def stepBy(self, steps: int) -> None:  # noqa: N802
-        cur = self.value()
-        if cur == 0.0 and steps < 0 and self._media_duration > 0:
-            target = max(0.05, self._media_duration + (steps * self.singleStep()))
-            self.setValue(round(target, 2))
-            return
-        elif cur == 0.0 and steps > 0 and self._media_duration > 0:
-            return
-        super().stepBy(steps)
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# WYSIWYG 16:9 Studio Preview Monitor
-# ═══════════════════════════════════════════════════════════════════════
-
-class StudioPreviewMonitor(QWidget):
-    """16:9 WYSIWYG studio preview monitor that mirrors live output.
-
-    Renders Layer 0 (Tappo) underneath when idle, and places video or images on top
-    with pixel-accurate scale, crop, position, and opacity.
-    STRICTLY CLIPPED to the 16:9 canvas so media NEVER overflows into the director UI.
-    Provides interactive mouse dragging for position AND 8 crop handles for direct cropping!
-    """
-
-    position_changed = Signal(float, float)  # pos_x, pos_y
-    crop_changed = Signal(float, float, float, float)  # crop_l, crop_r, crop_t, crop_b
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self.setMinimumSize(320, 180)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.setStyleSheet("background-color: #000000; border-radius: 4px;")
-        self.setMouseTracking(True)
-
-        self._layer0_pixmap: Optional[QPixmap] = None
-        self._image_pixmap: Optional[QPixmap] = None
-        self._video_frame_image: Optional[QImage] = None
-        self._active_media_type: Optional[MediaType] = None
-
-        self._scale: float = 1.0
-        self._position_x: float = 0.0
-        self._position_y: float = 0.0
-        self._opacity: float = 1.0
-        self._crop: dict = {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
-
-        # Drag state (position & 8 crop handles)
-        self._drag_mode: Optional[str] = None
-        self._drag_start_pt: QPoint = QPoint()
-        self._drag_start_pos_x: float = 0.0
-        self._drag_start_pos_y: float = 0.0
-        self._drag_start_crop_l: float = 0.0
-        self._drag_start_crop_r: float = 0.0
-        self._drag_start_crop_t: float = 0.0
-        self._drag_start_crop_b: float = 0.0
-
-        # Cached rendered geometries for hit-testing
-        self._rendered_media_rect: Optional[QRectF] = None
-        self._full_media_rect: Optional[QRectF] = None
-
-        # Native Wayland video sink for zero-leak, zero-overflow preview
-        self._video_sink = QVideoSink(self)
-        self._video_sink.videoFrameChanged.connect(self._on_video_frame_changed)
-
-        # Studio Audio state (calm, zero blinking)
-        self._audio_is_playing: bool = False
-
-    @Slot(QVideoFrame)
-    def _on_video_frame_changed(self, frame: QVideoFrame) -> None:
-        """Receive hardware frame from QtMultimedia and update canvas smoothly."""
-        if frame.isValid():
-            self._video_frame_image = frame.toImage()
-            self.update()
-
-    def get_video_sink(self) -> QVideoSink:
-        return self._video_sink
-
-    def get_video_widget(self) -> QVideoSink:
-        """Backward compatibility alias for QMediaPlayer.setVideoOutput()."""
-        return self._video_sink
-
-    def set_audio_playing(self, is_playing: bool) -> None:
-        """Toggle calm studio audio indicator."""
-        self._audio_is_playing = is_playing
-        self.update()
-
-    def set_layer0_image(self, file_path: Optional[str]) -> None:
-        if file_path and os.path.isfile(file_path):
-            self._layer0_pixmap = QPixmap(file_path)
-        else:
-            self._layer0_pixmap = None
-        self.update()
-
-    def get_canvas_rect(self) -> QRect:
-        """Calculate the 16:9 inner canvas rectangle inside the monitor widget."""
-        w, h = max(1, self.width()), max(1, self.height())
-        target_ar = 16.0 / 9.0
-        curr_ar = w / h
-
-        if curr_ar > target_ar:
-            ch = h
-            cw = int(h * target_ar)
-            cx = (w - cw) // 2
-            cy = 0
-        else:
-            cw = w
-            ch = int(w / target_ar)
-            cx = 0
-            cy = (h - ch) // 2
-
-        return QRect(cx, cy, cw, ch)
-
-    def show_video(self, scale: float = 1.0, crop: Optional[dict] = None,
-                   pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        self._active_media_type = MediaType.VIDEO
-        self._scale = scale
-        self._crop = crop or {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
-        self._position_x = pos_x
-        self._position_y = pos_y
-        self._opacity = opacity
-        self.update()
-
-    def update_video_layout(self, scale: float = 1.0, crop: Optional[dict] = None,
-                            pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        self._scale = scale
-        self._crop = crop or {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
-        self._position_x = pos_x
-        self._position_y = pos_y
-        self._opacity = opacity
-        self.update()
-
-    def show_image(self, file_path: str, scale: float = 1.0, crop: Optional[dict] = None,
-                   pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        self._active_media_type = MediaType.IMAGE
-        self._scale = scale
-        self._crop = crop or {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
-        self._position_x = pos_x
-        self._position_y = pos_y
-        self._opacity = opacity
-        if os.path.isfile(file_path):
-            self._image_pixmap = QPixmap(file_path)
-        else:
-            self._image_pixmap = None
-        self.update()
-
-    def show_audio(self) -> None:
-        self._active_media_type = MediaType.AUDIO
-        self.update()
-
-    def clear_media(self) -> None:
-        self._active_media_type = None
-        self._image_pixmap = None
-        self._video_frame_image = None
-        self._rendered_media_rect = None
-        self._full_media_rect = None
-        self._audio_is_playing = False
-        self.update()
-
-    # ── Interactive Mouse Handlers & Hit-Testing ─────────────────────
-
-    def _hit_test(self, pt: QPoint) -> Optional[str]:
-        """Determine if pt is over one of the 8 crop handles or inside the media."""
-        if not self._rendered_media_rect or self._rendered_media_rect.isEmpty():
-            return None
-
-        r = self._rendered_media_rect
-        margin = 9.0  # hit zone tolerance
-
-        handles = {
-            "top_left": r.topLeft(),
-            "top_right": r.topRight(),
-            "bottom_left": r.bottomLeft(),
-            "bottom_right": r.bottomRight(),
-            "top": QPointF(r.center().x(), r.top()),
-            "bottom": QPointF(r.center().x(), r.bottom()),
-            "left": QPointF(r.left(), r.center().y()),
-            "right": QPointF(r.right(), r.center().y()),
-        }
-
-        # Check corners first
-        for name in ("top_left", "top_right", "bottom_left", "bottom_right"):
-            hp = handles[name]
-            if abs(pt.x() - hp.x()) <= margin and abs(pt.y() - hp.y()) <= margin:
-                return name
-
-        # Then check mid edges
-        for name in ("top", "bottom", "left", "right"):
-            hp = handles[name]
-            if abs(pt.x() - hp.x()) <= margin and abs(pt.y() - hp.y()) <= margin:
-                return name
-
-        # Check body
-        if r.contains(QPointF(pt)):
-            return "position"
-
-        return None
-
-    @staticmethod
-    def _cursor_for_mode(mode: Optional[str]) -> Qt.CursorShape:
-        if mode in ("top_left", "bottom_right"):
-            return Qt.CursorShape.SizeFDiagCursor
-        elif mode in ("top_right", "bottom_left"):
-            return Qt.CursorShape.SizeBDiagCursor
-        elif mode in ("top", "bottom"):
-            return Qt.CursorShape.SizeVerCursor
-        elif mode in ("left", "right"):
-            return Qt.CursorShape.SizeHorCursor
-        elif mode == "position":
-            return Qt.CursorShape.OpenHandCursor
-        return Qt.CursorShape.ArrowCursor
-
-    def mousePressEvent(self, event: QMouseEvent) -> None:
-        if event.button() == Qt.MouseButton.LeftButton and self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
-            pt = event.position().toPoint()
-            mode = self._hit_test(pt)
-            if mode is not None:
-                self._drag_mode = mode
-                self._drag_start_pt = pt
-                self._drag_start_pos_x = self._position_x
-                self._drag_start_pos_y = self._position_y
-
-                crop_l = self._crop.get("x", 0.0)
-                crop_t = self._crop.get("y", 0.0)
-                crop_w = self._crop.get("w", 1.0)
-                crop_h = self._crop.get("h", 1.0)
-                self._drag_start_crop_l = crop_l
-                self._drag_start_crop_t = crop_t
-                self._drag_start_crop_r = max(0.0, 1.0 - crop_l - crop_w)
-                self._drag_start_crop_b = max(0.0, 1.0 - crop_t - crop_h)
-
-                if mode == "position":
-                    self.setCursor(Qt.CursorShape.ClosedHandCursor)
-                else:
-                    self.setCursor(self._cursor_for_mode(mode))
-                return
-
-        super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event: QMouseEvent) -> None:
-        pt = event.position().toPoint()
-
-        if self._drag_mode is not None:
-            if self._drag_mode == "position":
-                canvas = self.get_canvas_rect()
-                delta = pt - self._drag_start_pt
-                dx = delta.x() / max(1, canvas.width())
-                dy = delta.y() / max(1, canvas.height())
-                self._position_x = round(max(-2.0, min(2.0, self._drag_start_pos_x + dx)), 3)
-                self._position_y = round(max(-2.0, min(2.0, self._drag_start_pos_y + dy)), 3)
-                self.position_changed.emit(self._position_x, self._position_y)
-                self.update()
-
-            elif self._drag_mode in ("top_left", "top", "top_right", "right", "bottom_right", "bottom", "bottom_left", "left"):
-                if self._full_media_rect and not self._full_media_rect.isEmpty():
-                    full_w = max(10.0, self._full_media_rect.width())
-                    full_h = max(10.0, self._full_media_rect.height())
-                else:
-                    full_w = max(10.0, float(self.get_canvas_rect().width()))
-                    full_h = max(10.0, float(self.get_canvas_rect().height()))
-
-                delta = pt - self._drag_start_pt
-                dx = delta.x() / full_w
-                dy = delta.y() / full_h
-
-                cur_l = self._drag_start_crop_l
-                cur_r = self._drag_start_crop_r
-                cur_t = self._drag_start_crop_t
-                cur_b = self._drag_start_crop_b
-
-                if "left" in self._drag_mode:
-                    cur_l = max(0.0, min(0.95 - self._drag_start_crop_r, self._drag_start_crop_l + dx))
-                if "right" in self._drag_mode:
-                    cur_r = max(0.0, min(0.95 - self._drag_start_crop_l, self._drag_start_crop_r - dx))
-                if "top" in self._drag_mode:
-                    cur_t = max(0.0, min(0.95 - self._drag_start_crop_b, self._drag_start_crop_t + dy))
-                if "bottom" in self._drag_mode:
-                    cur_b = max(0.0, min(0.95 - self._drag_start_crop_t, self._drag_start_crop_b - dy))
-
-                self._crop = {
-                    "x": round(cur_l, 2),
-                    "y": round(cur_t, 2),
-                    "w": round(max(0.01, 1.0 - cur_l - cur_r), 3),
-                    "h": round(max(0.01, 1.0 - cur_t - cur_b), 3),
-                }
-                self.crop_changed.emit(round(cur_l, 2), round(cur_r, 2), round(cur_t, 2), round(cur_b, 2))
-                self.update()
-        else:
-            # Update hover cursor
-            mode = self._hit_test(pt)
-            self.setCursor(self._cursor_for_mode(mode))
-
-        super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event: QMouseEvent) -> None:
-        if self._drag_mode is not None:
-            self._drag_mode = None
-            pt = event.position().toPoint()
-            mode = self._hit_test(pt)
-            self.setCursor(self._cursor_for_mode(mode))
-        super().mouseReleaseEvent(event)
-
-    # ── Paint Event (Strict Canvas Clipping, Opacity & Crop Handles) ──
-
-    def paintEvent(self, _event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
-
-        # 1. Outer letterbox/pillarbox background
-        painter.fillRect(self.rect(), QColor("#121212"))
-
-        canvas = self.get_canvas_rect()
-
-        # 2. Draw 16:9 canvas background (black)
-        painter.fillRect(canvas, QColor("#000000"))
-
-        # STRICT CANVAS CLIPPING: Nothing ever escapes the 16:9 monitor canvas!
-        painter.setClipRect(canvas)
-
-        # 3. Layer 0 (Tappo) when idle
-        if not self._active_media_type:
-            self._rendered_media_rect = None
-            self._full_media_rect = None
-            if self._layer0_pixmap and not self._layer0_pixmap.isNull():
-                scaled_l0 = self._layer0_pixmap.scaled(
-                    canvas.size(),
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-                lx = canvas.x() + (canvas.width() - scaled_l0.width()) // 2
-                ly = canvas.y() + (canvas.height() - scaled_l0.height()) // 2
-                painter.drawPixmap(lx, ly, scaled_l0)
-
-        # 4. Image or Video Cue Rendering
-        elif self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
-            source_img: Optional[QImage] = None
-
-            if self._active_media_type == MediaType.IMAGE and self._image_pixmap and not self._image_pixmap.isNull():
-                source_img = self._image_pixmap.toImage()
-            elif self._active_media_type == MediaType.VIDEO and self._video_frame_image and not self._video_frame_image.isNull():
-                source_img = self._video_frame_image
-
-            if source_img and not source_img.isNull():
-                orig_w = source_img.width()
-                orig_h = source_img.height()
-
-                target_scale = max(0.1, min(5.0, self._scale))
-                full_canvas_w = int(canvas.width() * target_scale)
-                full_canvas_h = int(canvas.height() * target_scale)
-
-                crop_x = max(0.0, min(0.99, self._crop.get("x", 0.0)))
-                crop_y = max(0.0, min(0.99, self._crop.get("y", 0.0)))
-                crop_w = max(0.01, min(1.0 - crop_x, self._crop.get("w", 1.0)))
-                crop_h = max(0.01, min(1.0 - crop_y, self._crop.get("h", 1.0)))
-
-                # Crop slice from source image
-                cx = int(orig_w * crop_x)
-                cy = int(orig_h * crop_y)
-                cw = max(1, int(orig_w * crop_w))
-                ch = max(1, int(orig_h * crop_h))
-                cropped_slice = source_img.copy(cx, cy, cw, ch)
-
-                # Rendered dimensions on canvas
-                rendered_w = int(full_canvas_w * crop_w)
-                rendered_h = int(full_canvas_h * crop_h)
-                scaled_slice = cropped_slice.scaled(
-                    rendered_w, rendered_h,
-                    Qt.AspectRatioMode.IgnoreAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-
-                # Center + operator position offset
-                ix = canvas.x() + (canvas.width() - rendered_w) // 2 + int(self._position_x * canvas.width())
-                iy = canvas.y() + (canvas.height() - rendered_h) // 2 + int(self._position_y * canvas.height())
-
-                # Full uncropped frame rect on canvas
-                full_ix = ix - int(full_canvas_w * crop_x)
-                full_iy = iy - int(full_canvas_h * crop_y)
-                self._full_media_rect = QRectF(full_ix, full_iy, full_canvas_w, full_canvas_h)
-                self._rendered_media_rect = QRectF(ix, iy, rendered_w, rendered_h)
-
-                # Draw media with true opacity
-                painter.setOpacity(max(0.0, min(1.0, self._opacity)))
-                painter.drawImage(ix, iy, scaled_slice)
-                painter.setOpacity(1.0)
-
-                # Draw Crop Box & 8 Interactive Handles
-                r = self._rendered_media_rect
-                outline_pen = QPen(QColor("#00e5ff"), 1.5, Qt.PenStyle.DashLine)
-                painter.setPen(outline_pen)
-                painter.setBrush(Qt.BrushStyle.NoBrush)
-                painter.drawRect(r)
-
-                hs = 8.0  # handle square size
-                half = hs / 2.0
-                handle_points = [
-                    r.topLeft(),
-                    QPointF(r.center().x(), r.top()),
-                    r.topRight(),
-                    QPointF(r.right(), r.center().y()),
-                    r.bottomRight(),
-                    QPointF(r.center().x(), r.bottom()),
-                    r.bottomLeft(),
-                    QPointF(r.left(), r.center().y()),
-                ]
-                painter.setPen(QPen(QColor("#102027"), 1.5))
-                painter.setBrush(QBrush(QColor("#ffffff")))
-                for pt in handle_points:
-                    painter.drawRect(QRectF(pt.x() - half, pt.y() - half, hs, hs))
-
-            elif self._active_media_type == MediaType.VIDEO:
-                # Video paused or loading initial frame
-                self._rendered_media_rect = None
-                self._full_media_rect = None
-                painter.setPen(QColor("#80cbc4"))
-                painter.setFont(QFont("sans-serif", 10, QFont.Weight.Normal))
-                painter.drawText(canvas, Qt.AlignmentFlag.AlignCenter, "🎬 VIDEO CARICATO IN PRE-VIZ — PREMI PLAY")
-
-        # 5. Calm Studio Audio Pre-Viz Card (ZERO Blinking)
-        elif self._active_media_type == MediaType.AUDIO:
-            self._rendered_media_rect = None
-            self._full_media_rect = None
-
-            canvas_w = canvas.width()
-            canvas_h = canvas.height()
-            cx = canvas.x()
-            cy = canvas.y()
-
-            card_w = min(canvas_w * 0.85, 480)
-            card_h = min(canvas_h * 0.58, 140)
-            card_x = cx + (canvas_w - card_w) / 2
-            card_y = cy + (canvas_h - card_h) / 2
-            card_rect = QRectF(card_x, card_y, card_w, card_h)
-
-            painter.setPen(QPen(QColor("#263238"), 1.5))
-            painter.setBrush(QBrush(QColor(16, 24, 32, 235)))
-            painter.drawRoundedRect(card_rect, 8, 8)
-
-            painter.setFont(QFont("sans-serif", 12, QFont.Weight.Bold))
-            painter.setPen(QColor("#00e5ff"))
-            title_text = "🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)" if self._audio_is_playing else "⏸ TRACCIA AUDIO IN STANDBY"
-            painter.drawText(
-                QRectF(card_x + 20, card_y + 16, card_w - 40, 26),
-                Qt.AlignmentFlag.AlignCenter,
-                title_text,
-            )
-
-            painter.setFont(QFont("sans-serif", 9, QFont.Weight.Normal))
-            painter.setPen(QColor("#90a4ae"))
-            subtitle = "Pre-ascolto attivo in cuffia • Monitor sala mutato" if self._audio_is_playing else "Premi ▶ Play sotto l'anteprima per pre-ascoltare in cuffia"
-            painter.drawText(
-                QRectF(card_x + 20, card_y + 44, card_w - 40, 20),
-                Qt.AlignmentFlag.AlignCenter,
-                subtitle,
-            )
-
-            # Smooth Stereo Level Bars (L & R) - Clean, steady, calm
-            bar_y = card_y + 78
-            meter_w = card_w - 90
-            meter_h = 7
-            meter_x = card_x + 45
-
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QColor("#1e272c"))
-            painter.drawRoundedRect(QRectF(meter_x, bar_y, meter_w, meter_h), 3, 3)
-            painter.drawRoundedRect(QRectF(meter_x, bar_y + 13, meter_w, meter_h), 3, 3)
-
-            if self._audio_is_playing:
-                fill_l = meter_w * 0.68
-                fill_r = meter_w * 0.63
-                painter.setBrush(QColor("#00e676"))
-                painter.drawRoundedRect(QRectF(meter_x, bar_y, fill_l, meter_h), 3, 3)
-                painter.drawRoundedRect(QRectF(meter_x, bar_y + 13, fill_r, meter_h), 3, 3)
-
-                painter.setPen(QColor("#78909c"))
-                painter.setFont(QFont("sans-serif", 8, QFont.Weight.Bold))
-                painter.drawText(QRectF(meter_x - 22, bar_y - 2, 18, meter_h + 4), Qt.AlignmentFlag.AlignRight, "L")
-                painter.drawText(QRectF(meter_x - 22, bar_y + 11, 18, meter_h + 4), Qt.AlignmentFlag.AlignRight, "R")
-
-        painter.setClipping(False)
-
-        # Thin studio border around 16:9 canvas
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.setPen(QPen(QColor("#3e3e3e"), 1))
-        painter.drawRect(canvas)
-        painter.end()
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Drop Zone Widget
-# ═══════════════════════════════════════════════════════════════════════
-
-class DropZone(QLabel):
-    """Drag-and-drop file import zone."""
-
-    file_dropped = Signal(str)  # absolute path of dropped file
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self.setText("Trascina qui file multimediali\n(Video, Audio, Immagini)\nper aggiungerli alla regia")
-        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.setMinimumSize(160, 80)
-        self.setStyleSheet(f"""
-            QLabel {{
-                border: 2px dashed {_CLR_PREVIZ};
-                border-radius: 6px;
-                background-color: {_CLR_PANEL};
-                color: {_CLR_PREVIZ};
-                font-size: 11px;
-                font-weight: bold;
-                padding: 6px;
-            }}
-        """)
-        self.setAcceptDrops(True)
-
-    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
-        if event.mimeData().hasUrls():
-            event.acceptProposedAction()
-
-    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            if path and os.path.isfile(path):
-                self.file_dropped.emit(path)
-                logger.info("[DROP] File dropped: %s", path)
-
-
-# ═══════════════════════════════════════════════════════════════════════
-# Main Window
-# ═══════════════════════════════════════════════════════════════════════
 
 class MainWindow(QMainWindow):
     """Director / Control Panel."""
 
-    # Signals
-    cue_fired = Signal(object)          # emits Cue
-    cue_preview_requested = Signal(object) # emits Cue to load in preview
-    layer_clear_requested = Signal(int) # emits layer (1, 2, or 3)
-    blackout_requested = Signal()       # emits when blackout triggered
-    preview_mute_toggled = Signal(bool) # emits is_muted (True or False)
+    cue_fired = Signal(object)                     # emits Cue
+    cue_preview_requested = Signal(object)         # emits Cue to load in preview
+    layer_clear_requested = Signal(int)            # emits layer (1, 2, or 3)
+    blackout_requested = Signal()                  # emits when blackout triggered
+    preview_mute_toggled = Signal(bool)            # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object) # emits in_sec, out_sec
-    live_volume_changed = Signal(int)   # emits volume 0-100
+    live_volume_changed = Signal(int)              # emits volume 0-100
 
     def __init__(self, output_window: OutputWindow,
                  parent: Optional[QWidget] = None) -> None:
@@ -1159,16 +114,27 @@ class MainWindow(QMainWindow):
         self._cues: list[Cue] = []
         self._current_index: int = -1
         self._thread_pool = QThreadPool.globalInstance()
-        self._test_player = None  # will be set after native player init
+        self._test_player = None
         self._active_analyzers: set = set()
+        self._active_test_duration: float = 0.0
 
-        # Project management & Autosave
         self._project_manager = ProjectManager()
         self._current_project_path: Optional[str] = None
         self._layer0_image: Optional[str] = None
         self._is_modified: bool = False
-        self._updating_inspector: bool = False
+        self._updating_cue_list: bool = False
         self._force_closing: bool = False
+        self._live_mirror_active: bool = False
+        self._last_mirrored_layer: Optional[int] = None
+        self._last_selection_sig: Optional[tuple] = None
+        self._media_res_cache: dict[str, tuple[int, int]] = {}
+        self._panels_locked: bool = True
+        self._top_ratios: tuple[float, float, float] = _DEFAULT_TOP_RATIOS
+        self._applying_splitter_layout: bool = False
+
+        self._undo = UndoManager(self)
+        self._undo.commit_requested.connect(self._commit_undo_point)
+        self._undo.history_changed.connect(self._on_undo_history_changed)
 
         self._setup_window()
         self._build_menu_bar()
@@ -1176,32 +142,55 @@ class MainWindow(QMainWindow):
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()
+        self._set_panels_locked(True, announce=False)
         self._setup_autosave()
+        self._undo.set_committed_state(self._cues, self._current_index)
 
-        # Check for crash recovery after event loop starts
+        app = QApplication.instance()
+        if app is not None:
+            app.installEventFilter(self)
+
         QTimer.singleShot(150, self._check_crash_recovery)
 
     # ── Window setup ──────────────────────────────────────────────────
 
     def _setup_window(self) -> None:
         self._update_window_title()
-        self.setMinimumSize(1200, 750)
+        self.setMinimumSize(1100, 680)
         self.resize(1400, 850)
-        self.setStyleSheet(_DARK_STYLESHEET)
+        self.setStyleSheet(DARK_STYLESHEET)
 
-        # Application icon
-        if _LOGO_PATH.is_file():
-            self.setWindowIcon(QIcon(str(_LOGO_PATH)))
+        if DEFAULT_LOGO_PATH.is_file():
+            self.setWindowIcon(QIcon(str(DEFAULT_LOGO_PATH)))
+
+        self.bind_to_primary_screen()
+
+    def bind_to_primary_screen(self, screen=None) -> None:
+        """Bind MainWindow and its native handle to the primary monitor and fit inside it."""
+        target = screen or QApplication.primaryScreen()
+        if target is None:
+            return
+        avail = target.availableGeometry()
+        if avail.width() > 0 and avail.height() > 0:
+            self.setMinimumSize(min(1100, avail.width()), min(680, avail.height()))
+            w = min(1400, avail.width())
+            h = min(850, avail.height())
+            x = avail.x() + max(0, (avail.width() - w) // 2)
+            y = avail.y() + max(0, (avail.height() - h) // 2)
+            self.setScreen(target)
+            self.create()
+            handle = self.windowHandle()
+            if handle is not None:
+                handle.setScreen(target)
+            self.setGeometry(x, y, w, h)
 
     def _setup_autosave(self) -> None:
-        """Periodic background autosave every 30 seconds."""
         self._autosave_timer = QTimer(self)
         self._autosave_timer.setInterval(30000)
         self._autosave_timer.timeout.connect(self._auto_save)
         self._autosave_timer.start()
 
     def _setup_shortcuts(self) -> None:
-        """Configure keyboard shortcuts for quick operator access."""
         QShortcut(QKeySequence(Qt.Key.Key_Delete), self, self._on_delete_cue)
         QShortcut(QKeySequence(Qt.Key.Key_Backspace), self, self._on_delete_cue)
         QShortcut(QKeySequence("Alt+Up"), self, self._on_move_up)
@@ -1211,9 +200,139 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_escape_pressed(self) -> None:
-        """Stop test preview if active, without interrupting live show."""
+        if hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState:
+            return
         if hasattr(self, "_btn_test_stop"):
             self._btn_test_stop.click()
+
+    # ── Undo / Redo Integration ───────────────────────────────────────
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        """Route Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y to Cue Undo/Redo unless mid-typing in QLineEdit."""
+        if event.type() == QEvent.Type.KeyPress and hasattr(obj, "window") and obj.window() is self:
+            if isinstance(obj, QLineEdit):
+                is_inline = (
+                    hasattr(self, "_cue_list")
+                    and self._cue_list.state() == QAbstractItemView.State.EditingState
+                )
+                mid_typing = is_inline or self._undo.is_debounce_active()
+                if event.matches(QKeySequence.StandardKey.Undo):
+                    if mid_typing and obj.isUndoAvailable():
+                        return False
+                    self._on_undo()
+                    return True
+                if (
+                    event.matches(QKeySequence.StandardKey.Redo)
+                    or (event.key() == Qt.Key.Key_Y and event.modifiers() == Qt.KeyboardModifier.ControlModifier)
+                ):
+                    if mid_typing and obj.isRedoAvailable():
+                        return False
+                    self._on_redo()
+                    return True
+        return super().eventFilter(obj, event)
+
+    def _current_row_or_index(self) -> int:
+        return self._cue_list.currentRow() if hasattr(self, "_cue_list") else self._current_index
+
+    def _on_undo_history_changed(self, can_undo: bool, can_redo: bool) -> None:
+        if hasattr(self, "_act_undo"):
+            self._act_undo.setEnabled(can_undo)
+        if hasattr(self, "_act_redo"):
+            self._act_redo.setEnabled(can_redo)
+
+    def _schedule_undo_point(self) -> None:
+        self._undo.schedule_commit()
+
+    @Slot()
+    def _commit_undo_point(self) -> None:
+        self._undo.commit(self._cues, self._current_row_or_index())
+
+    def _reset_undo_history(self) -> None:
+        self._undo.reset(self._cues, self._current_row_or_index())
+
+    def _restore_snapshot(self, snapshot: dict) -> None:
+        """Restore cues and settings from a snapshot without interrupting LIVE playback."""
+        self._undo.restoring = True
+        try:
+            self._undo.stop_debounce()
+
+            live_ids = {c.cue_id for c in self._cues if c.status == CueStatus.LIVE}
+            prev_row = self._cue_list.currentRow()
+            prev_cue_id = self._cues[prev_row].cue_id if 0 <= prev_row < len(self._cues) else None
+            prev_file = self._cues[prev_row].file_path if 0 <= prev_row < len(self._cues) else None
+
+            restored: list[Cue] = []
+            for raw in snapshot.get("cues", []):
+                cue = Cue.from_dict(raw)
+                if cue.cue_id in live_ids:
+                    cue.status = CueStatus.LIVE
+                elif raw.get("status") == CueStatus.OFFLINE.value:
+                    cue.status = CueStatus.OFFLINE
+                else:
+                    cue.status = CueStatus.LOADED
+                restored.append(cue)
+
+            self._cues = restored
+            target_row = int(snapshot.get("current_index", -1))
+            if restored and not (0 <= target_row < len(restored)):
+                target_row = min(max(0, prev_row), len(restored) - 1)
+            elif not restored:
+                target_row = -1
+
+            self._current_index = target_row
+            self._last_selection_sig = None
+            self._refresh_cue_list(keep_selection=False, select_row=target_row)
+
+            if 0 <= target_row < len(self._cues):
+                cue = self._cues[target_row]
+                same_cue = (cue.cue_id == prev_cue_id and cue.file_path == prev_file)
+                self._update_inspector(cue)
+                self._update_cue_readouts(target_row, cue)
+
+                if same_cue:
+                    self._render_cue_in_preview(cue, load_image=True)
+                    if self._live_mirror_active:
+                        self._mirror_active_cue_to_live()
+                else:
+                    self._on_cue_selected(target_row)
+            else:
+                self._reset_idle_preview_ui()
+                self._update_inspector(None)
+
+            for c in self._cues:
+                if c.status == CueStatus.LIVE:
+                    self._update_live_layer_label(c)
+
+            self._undo.set_committed_state(self._cues, self._current_row_or_index())
+            self._mark_modified(True)
+            self._auto_save()
+        finally:
+            self._undo.restoring = False
+            self._on_undo_history_changed(self._undo.can_undo, self._undo.can_redo)
+
+    @Slot()
+    def _on_undo(self) -> None:
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        prev = self._undo.pop_undo(self._cues, self._current_row_or_index())
+        if prev is None:
+            self._status_label.setText("Nessuna operazione da annullare")
+            return
+        self._restore_snapshot(prev)
+        self._status_label.setText(
+            f"↶ Annulla (Ctrl+Z) — Stato precedente ripristinato ({len(self._undo._undo_stack)} nel registro)"
+        )
+
+    @Slot()
+    def _on_redo(self) -> None:
+        nxt = self._undo.pop_redo(self._cues, self._current_row_or_index())
+        if nxt is None:
+            self._status_label.setText("Nessuna operazione da ripetere")
+            return
+        self._restore_snapshot(nxt)
+        self._status_label.setText(
+            f"↷ Ripeti — Modifica ripristinata ({len(self._undo._redo_stack)} ripetibili)"
+        )
 
     def _update_window_title(self) -> None:
         name = Path(self._current_project_path).name if self._current_project_path else "Nuovo Show"
@@ -1224,59 +343,75 @@ class MainWindow(QMainWindow):
         self._is_modified = modified
         self._update_window_title()
 
-    # ── Menu bar ──────────────────────────────────────────────────────
+    # ── Menu bar & UI Composition ─────────────────────────────────────
 
     def _build_menu_bar(self) -> None:
         mb = self.menuBar()
 
-        # File
         file_menu = mb.addMenu("&File")
         file_menu.addAction(
-            QAction("&New Show", self, shortcut=QKeySequence.StandardKey.New,
-                    triggered=self._on_new_show))
+            QAction("&New Show", self, shortcut=QKeySequence.StandardKey.New, triggered=self._on_new_show)
+        )
         file_menu.addAction(
-            QAction("&Open Show…", self, shortcut=QKeySequence.StandardKey.Open,
-                    triggered=self._on_open_show))
+            QAction("&Open Show…", self, shortcut=QKeySequence.StandardKey.Open, triggered=self._on_open_show)
+        )
         file_menu.addAction(
-            QAction("&Save Show", self, shortcut=QKeySequence.StandardKey.Save,
-                    triggered=self._on_save_show))
+            QAction("&Save Show", self, shortcut=QKeySequence.StandardKey.Save, triggered=self._on_save_show)
+        )
         file_menu.addAction(
-            QAction("Save Show &As…", self, shortcut=QKeySequence("Ctrl+Shift+S"),
-                    triggered=self._on_save_as_show))
+            QAction("Save Show &As…", self, shortcut=QKeySequence("Ctrl+Shift+S"), triggered=self._on_save_as_show)
+        )
         file_menu.addSeparator()
         file_menu.addAction(
-            QAction("&Quit", self, shortcut=QKeySequence.StandardKey.Quit,
-                    triggered=self._on_quit))
+            QAction("&Quit", self, shortcut=QKeySequence.StandardKey.Quit, triggered=self._on_quit)
+        )
 
-        # Show
+        edit_menu = mb.addMenu("&Modifica")
+        self._act_undo = QAction("↶ &Annulla", self, triggered=self._on_undo)
+        self._act_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        self._act_undo.setEnabled(False)
+        self._act_redo = QAction("↷ &Ripeti", self, triggered=self._on_redo)
+        self._act_redo.setShortcuts([
+            QKeySequence.StandardKey.Redo,
+            QKeySequence("Ctrl+Y"),
+            QKeySequence("Ctrl+Shift+Z"),
+        ])
+        self._act_redo.setEnabled(False)
+        edit_menu.addAction(self._act_undo)
+        edit_menu.addAction(self._act_redo)
+
         show_menu = mb.addMenu("&Show")
         show_menu.addAction(
-            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"),
-                    triggered=self._on_go))
+            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go)
+        )
         show_menu.addAction(
-            QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"),
-                    triggered=self._on_blackout))
+            QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"), triggered=self._on_blackout)
+        )
         show_menu.addSeparator()
         show_menu.addAction(
-            QAction("Imposta Immagine di &Tappo (Layer 0)…", self,
-                    triggered=self._on_choose_layer0))
+            QAction("Imposta Immagine di &Tappo (Layer 0)…", self, triggered=self._on_choose_layer0)
+        )
         show_menu.addAction(
-            QAction("&Ripristina Tappo Predefinito", self,
-                    triggered=self._on_reset_layer0))
+            QAction("&Ripristina Tappo Predefinito", self, triggered=self._on_reset_layer0)
+        )
 
-        # View
-        mb.addMenu("&View")
+        view_menu = mb.addMenu("&View")
+        self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
+        self._act_lock_layout.setChecked(True)
+        self._act_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
+        view_menu.addAction(self._act_lock_layout)
+        view_menu.addAction(
+            QAction("↺ &Ripristina Larghezze Standard", self, triggered=self._reset_standard_layout)
+        )
 
-        # Help
         help_menu = mb.addMenu("&Help")
         help_menu.addAction(
-            QAction("&Info Hardware & Accelerazione…", self,
-                    triggered=self._on_hardware_info))
+            QAction("&Info Hardware & Accelerazione…", self, triggered=lambda: show_hardware_info_dialog(self))
+        )
         help_menu.addSeparator()
         help_menu.addAction(
-            QAction("&About BlindCue", self, triggered=self._on_about))
-
-    # ── UI construction ───────────────────────────────────────────────
+            QAction("&About BlindCue", self, triggered=lambda: show_about_dialog(self))
+        )
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -1287,696 +422,85 @@ class MainWindow(QMainWindow):
 
         # Top splitter: Cue List | Preview + GO | Inspector
         top_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._top_splitter = top_splitter
 
-        # ── LEFT: Cue List ────────────────────────────────────────────
-        left_panel = QGroupBox("SCALETTA CUE (Sequence List)")
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.setSpacing(6)
-
-        # Cue list summary subtitle bar
-        cue_summary_bar = QHBoxLayout()
-        self._lbl_cue_count = QLabel("0 Cue caricate")
-        self._lbl_cue_count.setStyleSheet("color: #00bcd4; font-size: 11px; font-weight: bold;")
-        self._lbl_cue_standby = QLabel("Standby: Nessuna")
-        self._lbl_cue_standby.setStyleSheet("color: #888; font-size: 11px; font-weight: bold;")
-        cue_summary_bar.addWidget(self._lbl_cue_count)
-        cue_summary_bar.addStretch()
-        cue_summary_bar.addWidget(self._lbl_cue_standby)
-        left_layout.addLayout(cue_summary_bar)
-
-        self._cue_list = QListWidget()
-        self._cue_list.setSelectionMode(
-            QAbstractItemView.SelectionMode.SingleSelection)
+        self._cue_list_panel = CueListPanel()
+        self._cue_list = self._cue_list_panel.table
+        self._lbl_cue_count = self._cue_list_panel.lbl_count
+        self._lbl_cue_standby = self._cue_list_panel.lbl_standby
         self._cue_list.currentRowChanged.connect(self._on_cue_selected)
-        self._cue_list.itemDoubleClicked.connect(lambda _item: self._on_go())
-        left_layout.addWidget(self._cue_list)
+        self._cue_list.itemSelectionChanged.connect(self._on_cue_selection_changed)
+        self._cue_list.cellDoubleClicked.connect(self._on_cue_cell_double_clicked)
+        self._cue_list.itemChanged.connect(self._on_cue_item_changed)
+        self._cue_list_panel.add_media_requested.connect(self._on_add_media)
+        self._cue_list_panel.move_up_requested.connect(self._on_move_up)
+        self._cue_list_panel.move_down_requested.connect(self._on_move_down)
+        self._cue_list_panel.delete_requested.connect(self._on_delete_cue)
+        top_splitter.addWidget(self._cue_list_panel)
 
-        # Add/remove buttons
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(4)
-        self._btn_add_video = QPushButton("+ Video")
-        self._btn_add_video.setToolTip("Aggiungi file video alla scaletta")
-        self._btn_add_video.setStyleSheet("QPushButton { height: 28px; font-weight: bold; } QPushButton:hover { border-color: #42a5f5; color: #42a5f5; }")
-
-        self._btn_add_audio = QPushButton("+ Audio")
-        self._btn_add_audio.setToolTip("Aggiungi file audio alla scaletta")
-        self._btn_add_audio.setStyleSheet("QPushButton { height: 28px; font-weight: bold; } QPushButton:hover { border-color: #26a69a; color: #26a69a; }")
-
-        self._btn_add_image = QPushButton("+ Immagine")
-        self._btn_add_image.setToolTip("Aggiungi immagine statica (Layer 1-3)")
-        self._btn_add_image.setStyleSheet("QPushButton { height: 28px; font-weight: bold; } QPushButton:hover { border-color: #ffa726; color: #ffa726; }")
-
-        self._btn_move_up = QPushButton("▲")
-        self._btn_move_up.setToolTip("Sposta la cue in alto (Alt+↑)")
-        self._btn_move_up.setFixedWidth(32)
-        self._btn_move_up.setFixedHeight(28)
-
-        self._btn_move_down = QPushButton("▼")
-        self._btn_move_down.setToolTip("Sposta la cue in basso (Alt+↓)")
-        self._btn_move_down.setFixedWidth(32)
-        self._btn_move_down.setFixedHeight(28)
-
-        self._btn_delete = QPushButton("🗑 Elimina")
-        self._btn_delete.setToolTip("Rimuovi la cue dalla scaletta (Canc)")
-        self._btn_delete.setFixedHeight(28)
-        self._btn_delete.setStyleSheet(
-            "QPushButton { color: #ff8080; border: 1px solid #ff4444; background-color: #401818; font-weight: bold; } QPushButton:hover { background-color: #5c2222; }")
-
-        self._btn_add_video.clicked.connect(
-            lambda: self._on_add_media(MediaType.VIDEO))
-        self._btn_add_audio.clicked.connect(
-            lambda: self._on_add_media(MediaType.AUDIO))
-        self._btn_add_image.clicked.connect(
-            lambda: self._on_add_media(MediaType.IMAGE))
-        self._btn_move_up.clicked.connect(self._on_move_up)
-        self._btn_move_down.clicked.connect(self._on_move_down)
-        self._btn_delete.clicked.connect(self._on_delete_cue)
-
-        for btn in (self._btn_add_video, self._btn_add_audio,
-                    self._btn_add_image, self._btn_move_up,
-                    self._btn_move_down, self._btn_delete):
-            btn_row.addWidget(btn)
-        left_layout.addLayout(btn_row)
-
-        top_splitter.addWidget(left_panel)
-
-        # ── CENTER: Preview + GO ──────────────────────────────────────
+        # Center column: Pre-Viz sandbox + GO trigger
         center_panel = QWidget()
+        center_panel.setMinimumWidth(380)
         center_layout = QVBoxLayout(center_panel)
         center_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Preview / Pre-viz sandbox
-        preview_group = QGroupBox("ANTEPRIMA PRE-VIZ (Sandbox)")
-        preview_layout = QVBoxLayout(preview_group)
-        preview_layout.setContentsMargins(6, 4, 6, 6)
-        preview_layout.setSpacing(4)
+        self._preview_panel = PreviewControlPanel(self._output.get_layer0_path())
+        self._preview_monitor = self._preview_panel.monitor
+        self._btn_live_mirror = self._preview_panel.btn_live_mirror
+        self._lbl_preview_info = self._preview_panel.lbl_info
+        self._lbl_preview_time = self._preview_panel.lbl_time
+        self._btn_test_play = self._preview_panel.btn_play
+        self._btn_test_pause = self._preview_panel.btn_pause
+        self._btn_test_stop = self._preview_panel.btn_stop
+        self._btn_preview_mute = self._preview_panel.btn_mute
 
-        # Test/Pre-viz top toolbar (fixed height, single thin row)
-        preview_header_frame = QFrame()
-        preview_header_frame.setFixedHeight(28)
-        preview_header_frame.setStyleSheet("background: transparent; border: none;")
-        preview_header = QHBoxLayout(preview_header_frame)
-        preview_header.setContentsMargins(2, 0, 2, 0)
-        preview_header.setSpacing(8)
-
-        lbl_test = QLabel("PRE-VIZ")
-        lbl_test.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_test.setStyleSheet(f"""
-            QLabel {{
-                background-color: {_CLR_PREVIZ};
-                color: #000;
-                font-weight: bold;
-                padding: 1px 7px;
-                border-radius: 3px;
-                font-size: 10px;
-                max-height: 22px;
-            }}
-        """)
-        lbl_test.setFixedHeight(22)
-        preview_header.addWidget(lbl_test)
-
-        # Live Mirror rehearsal toggle
-        self._btn_live_mirror = QPushButton("🔗 MIRROR LIVE: OFF")
-        self._btn_live_mirror.setCheckable(True)
-        self._btn_live_mirror.setChecked(False)
-        self._btn_live_mirror.setFixedHeight(22)
-        self._btn_live_mirror.setToolTip(
-            "Modalità Progettazione: se ATTIVO, le modifiche a Crop, Scala e Posizione vengono "
-            "proiettate in tempo reale sullo schermo LIVE per calibrare il videoproiettore/schermo.\n"
-            "In Spettacolo dal vivo: lasciare DISATTIVATO per isolare completamente l'anteprima."
-        )
-        self._btn_live_mirror.setStyleSheet("""
-            QPushButton {
-                background-color: #2b2b2b;
-                color: #888888;
-                border: 1px solid #555555;
-                border-radius: 3px;
-                font-weight: bold;
-                font-size: 10px;
-                padding: 1px 8px;
-            }
-            QPushButton:hover {
-                background-color: #383838;
-                color: #ccc;
-            }
-        """)
-        self._btn_live_mirror.toggled.connect(self._on_live_mirror_toggled)
-        preview_header.addWidget(self._btn_live_mirror)
-
-        self._lbl_preview_info = QLabel("— Nessun file selezionato —")
-        self._lbl_preview_info.setFixedHeight(22)
-        self._lbl_preview_info.setStyleSheet("color: #00bcd4; font-size: 11px; font-weight: bold; background: transparent; padding-left: 4px;")
-        preview_header.addWidget(self._lbl_preview_info, stretch=1)
-
-        # Digital time counter display
-        self._lbl_preview_time = QLabel("⏱ 00:00.00 / 00:00.00")
-        self._lbl_preview_time.setFixedHeight(22)
-        self._lbl_preview_time.setStyleSheet("color: #00e5ff; font-family: monospace; font-size: 11px; font-weight: bold; padding: 1px 6px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px;")
-        preview_header.addWidget(self._lbl_preview_time)
-
-        lbl_sim = QLabel("16:9 Live")
-        lbl_sim.setFixedHeight(22)
-        lbl_sim.setStyleSheet("color: #666; font-size: 10px; font-weight: bold; background: transparent;")
-        preview_header.addWidget(lbl_sim)
-
-        preview_layout.addWidget(preview_header_frame, stretch=0)
-
-        # 16:9 WYSIWYG studio preview monitor (specchio esatto dello schermo live)
-        self._preview_monitor = StudioPreviewMonitor()
-        self._preview_monitor.set_layer0_image(self._output.get_layer0_path())
+        self._preview_panel.live_mirror_toggled.connect(self._on_live_mirror_toggled)
+        self._preview_panel.preview_mute_toggled.connect(self._on_preview_mute_toggled)
         self._preview_monitor.position_changed.connect(self._on_preview_position_changed)
         self._preview_monitor.crop_changed.connect(self._on_preview_crop_changed)
-        preview_layout.addWidget(self._preview_monitor, stretch=1)
+        self._preview_monitor.video_resolution_detected.connect(self._on_video_resolution_detected)
+        center_layout.addWidget(self._preview_panel, stretch=1)
 
-        # Transport controls (compact bar)
-        transport_frame = QFrame()
-        transport_frame.setFixedHeight(34)
-        transport_frame.setStyleSheet("background: transparent; border: none;")
-        transport = QHBoxLayout(transport_frame)
-        transport.setContentsMargins(0, 2, 0, 0)
-        transport.setSpacing(6)
-
-        btn_style_base = """
-            QPushButton {
-                background-color: #383838;
-                color: #e0e0e0;
-                border: 1px solid #555555;
-                border-radius: 3px;
-                padding: 2px 12px;
-                font-size: 11px;
-                font-weight: bold;
-                height: 24px;
-                min-width: 65px;
-            }
-        """
-
-        self._btn_test_play = QPushButton("▶  Play")
-        self._btn_test_play.setToolTip("Riproduci anteprima / Pre-viz")
-        self._btn_test_play.setStyleSheet(btn_style_base + """
-            QPushButton:hover {
-                background-color: #1e3d24;
-                border-color: #00e676;
-                color: #00e676;
-            }
-            QPushButton:pressed {
-                background-color: #142918;
-            }
-        """)
-
-        self._btn_test_pause = QPushButton("⏸  Pausa")
-        self._btn_test_pause.setToolTip("Metti in pausa l'anteprima")
-        self._btn_test_pause.setStyleSheet(btn_style_base + """
-            QPushButton:hover {
-                background-color: #2b3345;
-                border-color: #64b5f6;
-                color: #64b5f6;
-            }
-            QPushButton:pressed {
-                background-color: #1c222e;
-            }
-        """)
-
-        self._btn_test_stop = QPushButton("⏹  Stop")
-        self._btn_test_stop.setToolTip("Arresta anteprima e riavvolgi")
-        self._btn_test_stop.setStyleSheet(btn_style_base + """
-            QPushButton:hover {
-                background-color: #3d1e1e;
-                border-color: #ff5252;
-                color: #ff5252;
-            }
-            QPushButton:pressed {
-                background-color: #291414;
-            }
-        """)
-
-        for btn in (self._btn_test_play, self._btn_test_pause, self._btn_test_stop):
-            btn.setFixedHeight(26)
-            transport.addWidget(btn)
-
-        transport.addStretch(1)
-
-        # Mute Preview interactive toggle selector
-        self._btn_preview_mute = QPushButton()
-        self._btn_preview_mute.setFixedHeight(26)
-        self._btn_preview_mute.setCheckable(True)
-        self._btn_preview_mute.setChecked(True)
-        self._btn_preview_mute.setToolTip("Se attivo (default), l'anteprima è muta. Clicca per ascoltare l'audio su richiesta.")
-        self._update_mute_preview_style()
-        self._btn_preview_mute.toggled.connect(self._on_preview_mute_toggled)
-        transport.addWidget(self._btn_preview_mute)
-        preview_layout.addWidget(transport_frame, stretch=0)
-
-        center_layout.addWidget(preview_group, stretch=1)
-
-        # GO button
         self._btn_go = QPushButton("GO (Next Cue) — [ SPAZIO ]")
         self._btn_go.setMinimumHeight(48)
         self._btn_go.setMaximumHeight(54)
         self._btn_go.setFont(QFont("sans-serif", 18, QFont.Weight.Bold))
         self._btn_go.setStyleSheet(f"""
             QPushButton {{
-                background-color: {_CLR_GO};
+                background-color: {CLR_GO};
                 color: #000;
                 border: none;
                 border-radius: 6px;
                 font-size: 18px;
             }}
-            QPushButton:hover {{
-                background-color: #69f0ae;
-            }}
-            QPushButton:pressed {{
-                background-color: #00c853;
-            }}
+            QPushButton:hover {{ background-color: #69f0ae; }}
+            QPushButton:pressed {{ background-color: #00c853; }}
         """)
         self._btn_go.clicked.connect(self._on_go)
         center_layout.addWidget(self._btn_go, stretch=0)
-
         top_splitter.addWidget(center_panel)
 
-        # ── RIGHT: Inspector (Modern Flat Studio Design) ───────────────
-        self._grp_inspector = QGroupBox("ISPETTORE CUE (Nessuna cue selezionata)")
-        outer_right_layout = QVBoxLayout(self._grp_inspector)
-        outer_right_layout.setContentsMargins(4, 8, 4, 4)
+        # Right: Cue Inspector
+        self._inspector = CueInspectorPanel()
+        self._inspector.value_changed.connect(self._on_inspector_value_changed)
+        self._inspector.batch_field_edited.connect(self._on_batch_field_edited)
+        self._inspector.layer_selected.connect(self._set_layer)
+        self._bind_inspector_aliases()
+        top_splitter.addWidget(self._inspector)
 
-        def _make_section_header(title: str) -> QWidget:
-            w = QWidget()
-            lay = QHBoxLayout(w)
-            lay.setContentsMargins(0, 8, 0, 4)
-            lay.setSpacing(6)
-            lbl = QLabel(title)
-            lbl.setStyleSheet("color: #00bcd4; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;")
-            line = QFrame()
-            line.setFrameShape(QFrame.Shape.HLine)
-            line.setStyleSheet("background-color: #383838; max-height: 1px; border: none;")
-            lay.addWidget(lbl)
-            lay.addWidget(line)
-            return w
-
-        insp_scroll = QScrollArea()
-        insp_scroll.setWidgetResizable(True)
-        insp_scroll.setFrameShape(QFrame.Shape.NoFrame)
-        insp_scroll.setStyleSheet("background: transparent; border: none;")
-
-        insp_content = QWidget()
-        right_layout = QVBoxLayout(insp_content)
-        right_layout.setContentsMargins(4, 4, 4, 4)
-        right_layout.setSpacing(6)
-
-        lbl_insp_hint = QLabel("Proprietà del media selezionato prima o durante il Live")
-        lbl_insp_hint.setStyleSheet("color: #777; font-size: 10px; margin-bottom: 2px;")
-        right_layout.addWidget(lbl_insp_hint)
-
-        # ── 1. Dati Cue & Note di Regia ──
-        right_layout.addWidget(_make_section_header("DATI CUE • NOTE DI REGIA"))
-
-        row_name = QHBoxLayout()
-        row_name.addWidget(QLabel("Nome:"))
-        self._edit_cue_name = QLineEdit()
-        self._edit_cue_name.setPlaceholderText("Nome della Cue...")
-        row_name.addWidget(self._edit_cue_name)
-        right_layout.addLayout(row_name)
-
-        row_notes = QHBoxLayout()
-        row_notes.addWidget(QLabel("Note:"))
-        self._edit_cue_notes = QLineEdit()
-        self._edit_cue_notes.setPlaceholderText("Appunti di regia (es. attacco battuta, sfumata...)")
-        row_notes.addWidget(self._edit_cue_notes)
-        right_layout.addLayout(row_notes)
-
-        # ── 2. Layer di Uscita ──
-        right_layout.addWidget(_make_section_header("LAYER DI USCITA (COMPOSITING)"))
-
-        layer_layout = QHBoxLayout()
-        layer_layout.setContentsMargins(0, 2, 0, 2)
-        self._btn_layer1 = QPushButton("L1: Sfondo / Base")
-        self._btn_layer1.setToolTip("Layer 1: Livello di sfondo o video principale")
-        self._btn_layer2 = QPushButton("L2: Principale")
-        self._btn_layer2.setToolTip("Layer 2: Livello multimediale intermedio")
-        self._btn_layer3 = QPushButton("L3: Overlay / Logo")
-        self._btn_layer3.setToolTip("Layer 3: Livello superiore sovrapposto (grafica, loghi, sovraimpressioni)")
-
-        for btn in (self._btn_layer1, self._btn_layer2, self._btn_layer3):
-            btn.setCheckable(True)
-            btn.setFixedHeight(28)
-            layer_layout.addWidget(btn)
-
-        self._btn_layer1.setChecked(True)
-        self._btn_layer1.clicked.connect(lambda: self._set_layer(1))
-        self._btn_layer2.clicked.connect(lambda: self._set_layer(2))
-        self._btn_layer3.clicked.connect(lambda: self._set_layer(3))
-        right_layout.addLayout(layer_layout)
-
-        # ── 3. Posizionamento, Zoom & Trasparenza ──
-        right_layout.addWidget(_make_section_header("POSIZIONAMENTO • ZOOM • TRASPARENZA"))
-
-        pos_spin_row = QHBoxLayout()
-        pos_spin_row.setSpacing(6)
-        pos_spin_row.addWidget(QLabel("Pos X:"))
-        self._spin_pos_x = SmartDoubleSpinBox()
-        self._spin_pos_x.setRange(-2.0, 2.0)
-        self._spin_pos_x.setSingleStep(0.01)
-        self._spin_pos_x.setDecimals(2)
-        self._spin_pos_x.setValue(0.0)
-        self._spin_pos_x.setToolTip("Offset orizzontale (-1.00 = sx, 0.00 = centro, +1.00 = dx). Puoi anche trascinare col mouse sull'anteprima!")
-        pos_spin_row.addWidget(self._spin_pos_x)
-
-        pos_spin_row.addWidget(QLabel("Pos Y:"))
-        self._spin_pos_y = SmartDoubleSpinBox()
-        self._spin_pos_y.setRange(-2.0, 2.0)
-        self._spin_pos_y.setSingleStep(0.01)
-        self._spin_pos_y.setDecimals(2)
-        self._spin_pos_y.setValue(0.0)
-        self._spin_pos_y.setToolTip("Offset verticale (-1.00 = alto, 0.00 = centro, +1.00 = basso). Puoi anche trascinare col mouse sull'anteprima!")
-        pos_spin_row.addWidget(self._spin_pos_y)
-        right_layout.addLayout(pos_spin_row)
-
-        # Backward compatibility aliases
-        self._spin_x = self._spin_pos_x
-        self._spin_y = self._spin_pos_y
-
-        # Nudge & Reset Buttons Row
-        nudge_row = QHBoxLayout()
-        nudge_btn_style = """
-            QPushButton {
-                background-color: #1e2838;
-                border: 1px solid #2d3b50;
-                border-radius: 4px;
-                font-size: 11px;
-                padding: 3px 8px;
-                font-weight: bold;
-                min-width: 30px;
-                height: 22px;
-            }
-            QPushButton:hover {
-                background-color: #2a374c;
-                border-color: #38bdf8;
-                color: #38bdf8;
-            }
-            QPushButton:pressed {
-                background-color: #141b26;
-            }
-        """
-        self._btn_nudge_left = QPushButton("◀")
-        self._btn_nudge_left.setToolTip("Sposta a sinistra (-0.01)")
-        self._btn_nudge_left.setStyleSheet(nudge_btn_style)
-        self._btn_nudge_left.clicked.connect(lambda: self._on_nudge_position(-0.01, 0.0))
-
-        self._btn_nudge_up = QPushButton("▲")
-        self._btn_nudge_up.setToolTip("Sposta in alto (-0.01)")
-        self._btn_nudge_up.setStyleSheet(nudge_btn_style)
-        self._btn_nudge_up.clicked.connect(lambda: self._on_nudge_position(0.0, -0.01))
-
-        self._btn_nudge_down = QPushButton("▼")
-        self._btn_nudge_down.setToolTip("Sposta in basso (+0.01)")
-        self._btn_nudge_down.setStyleSheet(nudge_btn_style)
-        self._btn_nudge_down.clicked.connect(lambda: self._on_nudge_position(0.0, 0.01))
-
-        self._btn_nudge_right = QPushButton("▶")
-        self._btn_nudge_right.setToolTip("Sposta a destra (+0.01)")
-        self._btn_nudge_right.setStyleSheet(nudge_btn_style)
-        self._btn_nudge_right.clicked.connect(lambda: self._on_nudge_position(0.01, 0.0))
-
-        self._btn_pos_center = QPushButton("⌖ Centro")
-        self._btn_pos_center.setToolTip("Ripristina posizione al centro (0.00, 0.00)")
-        self._btn_pos_center.setStyleSheet(nudge_btn_style)
-        self._btn_pos_center.clicked.connect(self._on_reset_position)
-
-        for btn in (self._btn_nudge_left, self._btn_nudge_up, self._btn_nudge_down, self._btn_nudge_right, self._btn_pos_center):
-            nudge_row.addWidget(btn)
-        right_layout.addLayout(nudge_row)
-
-        # Scale slider + Reset
-        scale_row = QHBoxLayout()
-        scale_row.addWidget(QLabel("Scala / Zoom:"))
-        self._slider_scale = QSlider(Qt.Orientation.Horizontal)
-        self._slider_scale.setRange(10, 500)  # 0.1x to 5.0x
-        self._slider_scale.setValue(100)
-        self._lbl_scale = QLabel("1.0x")
-        self._lbl_scale.setFixedWidth(36)
-        self._slider_scale.valueChanged.connect(
-            lambda v: self._lbl_scale.setText(f"{v / 100:.1f}x"))
-        self._btn_scale_reset = QPushButton("1.0x")
-        self._btn_scale_reset.setToolTip("Ripristina scala a 1.0x")
-        self._btn_scale_reset.setStyleSheet(nudge_btn_style)
-        self._btn_scale_reset.clicked.connect(self._on_reset_scale)
-        scale_row.addWidget(self._slider_scale)
-        scale_row.addWidget(self._lbl_scale)
-        scale_row.addWidget(self._btn_scale_reset)
-        right_layout.addLayout(scale_row)
-
-        # Opacity / Transparency slider
-        op_row = QHBoxLayout()
-        op_row.addWidget(QLabel("Opacità:"))
-        self._slider_opacity = QSlider(Qt.Orientation.Horizontal)
-        self._slider_opacity.setRange(0, 100)
-        self._slider_opacity.setValue(100)
-        self._lbl_opacity = QLabel("100%")
-        self._lbl_opacity.setFixedWidth(36)
-        self._slider_opacity.valueChanged.connect(
-            lambda v: self._lbl_opacity.setText(f"{v}%"))
-        self._btn_opacity_reset = QPushButton("100%")
-        self._btn_opacity_reset.setToolTip("Ripristina opacità al 100% (piena visibilità)")
-        self._btn_opacity_reset.setStyleSheet(nudge_btn_style)
-        self._btn_opacity_reset.clicked.connect(lambda: self._slider_opacity.setValue(100))
-        op_row.addWidget(self._slider_opacity)
-        op_row.addWidget(self._lbl_opacity)
-        op_row.addWidget(self._btn_opacity_reset)
-        right_layout.addLayout(op_row)
-
-        # ── 4. Ritaglio (Crop in %) ──
-        right_layout.addWidget(_make_section_header("RITAGLIO (CROP %)"))
-
-        crop_row1 = QHBoxLayout()
-        crop_row1.setSpacing(6)
-        crop_row1.addWidget(QLabel("Sinistra:"))
-        self._spin_crop_l = SmartDoubleSpinBox()
-        self._spin_crop_l.setRange(0.0, 99.0)
-        self._spin_crop_l.setSingleStep(1.0)
-        self._spin_crop_l.setDecimals(1)
-        self._spin_crop_l.setSuffix(" %")
-        self._spin_crop_l.setToolTip("Ritaglio bordo sinistro (0.0% a 99.0%)")
-        crop_row1.addWidget(self._spin_crop_l)
-
-        crop_row1.addWidget(QLabel("Destra:"))
-        self._spin_crop_r = SmartDoubleSpinBox()
-        self._spin_crop_r.setRange(0.0, 99.0)
-        self._spin_crop_r.setSingleStep(1.0)
-        self._spin_crop_r.setDecimals(1)
-        self._spin_crop_r.setSuffix(" %")
-        self._spin_crop_r.setToolTip("Ritaglio bordo destro (0.0% a 99.0%)")
-        crop_row1.addWidget(self._spin_crop_r)
-        right_layout.addLayout(crop_row1)
-
-        crop_row2 = QHBoxLayout()
-        crop_row2.setSpacing(6)
-        crop_row2.addWidget(QLabel("Alto:"))
-        self._spin_crop_t = SmartDoubleSpinBox()
-        self._spin_crop_t.setRange(0.0, 99.0)
-        self._spin_crop_t.setSingleStep(1.0)
-        self._spin_crop_t.setDecimals(1)
-        self._spin_crop_t.setSuffix(" %")
-        self._spin_crop_t.setToolTip("Ritaglio bordo superiore (0.0% a 99.0%)")
-        crop_row2.addWidget(self._spin_crop_t)
-
-        crop_row2.addWidget(QLabel("Basso:"))
-        self._spin_crop_b = SmartDoubleSpinBox()
-        self._spin_crop_b.setRange(0.0, 99.0)
-        self._spin_crop_b.setSingleStep(1.0)
-        self._spin_crop_b.setDecimals(1)
-        self._spin_crop_b.setSuffix(" %")
-        self._spin_crop_b.setToolTip("Ritaglio bordo inferiore (0.0% a 99.0%)")
-        crop_row2.addWidget(self._spin_crop_b)
-        right_layout.addLayout(crop_row2)
-
-        # Backward compatibility aliases
-        self._spin_w = self._spin_crop_r
-        self._spin_h = self._spin_crop_b
-
-        crop_btn_row = QHBoxLayout()
-        self._btn_crop_reset = QPushButton("⟲ Reset Ritaglio")
-        self._btn_crop_reset.setToolTip("Rimuove il ritaglio e mostra il fotogramma intero")
-        self._btn_crop_reset.setStyleSheet(nudge_btn_style)
-        self._btn_crop_reset.clicked.connect(self._on_reset_crop)
-        crop_btn_row.addStretch()
-        crop_btn_row.addWidget(self._btn_crop_reset)
-        right_layout.addLayout(crop_btn_row)
-
-        # ── 5. Transizioni & Aspect Ratio ──
-        right_layout.addWidget(_make_section_header("TRANSIZIONI • ASPECT RATIO"))
-
-        fade_row = QHBoxLayout()
-        fade_row.setSpacing(6)
-        fade_row.addWidget(QLabel("Fade In:"))
-        self._spin_fade_in = SmartDoubleSpinBox()
-        self._spin_fade_in.setRange(0.0, 30.0)
-        self._spin_fade_in.setDecimals(1)
-        self._spin_fade_in.setSingleStep(0.2)
-        self._spin_fade_in.setSuffix(" s")
-        fade_row.addWidget(self._spin_fade_in)
-        fade_row.addWidget(QLabel("Fade Out:"))
-        self._spin_fade_out = SmartDoubleSpinBox()
-        self._spin_fade_out.setRange(0.0, 30.0)
-        self._spin_fade_out.setDecimals(1)
-        self._spin_fade_out.setSingleStep(0.2)
-        self._spin_fade_out.setSuffix(" s")
-        fade_row.addWidget(self._spin_fade_out)
-        right_layout.addLayout(fade_row)
-
-        # Hold time for static images (0 = infinite)
-        hold_row = QHBoxLayout()
-        hold_row.addWidget(QLabel("Permanenza Img:"))
-        self._spin_hold_time = SmartDoubleSpinBox()
-        self._spin_hold_time.setRange(0.0, 99999.0)
-        self._spin_hold_time.setDecimals(1)
-        self._spin_hold_time.setSingleStep(0.5)
-        self._spin_hold_time.setSuffix(" s")
-        self._spin_hold_time.setSpecialValueText("0 s (Infinita)")
-        self._spin_hold_time.setToolTip("Tempo di permanenza in Live dell'immagine prima della rimozione automatica. 0 = infinita.")
-        hold_row.addWidget(self._spin_hold_time)
-        right_layout.addLayout(hold_row)
-
-        # Aspect ratio
-        ar_row = QHBoxLayout()
-        ar_row.addWidget(QLabel("Formato:"))
-        self._combo_aspect = QComboBox()
-        self._combo_aspect.addItems(["Native (Automatico)", "16:9 (Widescreen)", "4:3 (Standard)", "21:9 (Ultrawide)", "1:1 (Quadrato)"])
-        ar_row.addWidget(self._combo_aspect)
-        right_layout.addLayout(ar_row)
-
-        # ── 6. Audio & Riproduzione ──
-        right_layout.addWidget(_make_section_header("AUDIO • RIPRODUZIONE"))
-
-        vol_row = QHBoxLayout()
-        vol_row.addWidget(QLabel("Volume:"))
-        self._slider_volume = QSlider(Qt.Orientation.Horizontal)
-        self._slider_volume.setRange(0, 100)
-        self._slider_volume.setValue(100)
-        self._lbl_volume = QLabel("100%")
-        self._lbl_volume.setFixedWidth(36)
-        self._slider_volume.valueChanged.connect(
-            lambda v: self._lbl_volume.setText(f"{v}%"))
-        vol_row.addWidget(self._slider_volume)
-        vol_row.addWidget(self._lbl_volume)
-        right_layout.addLayout(vol_row)
-
-        # ── Prominent Loop Control Card ──
-        self._loop_card = QFrame()
-        self._loop_card.setObjectName("loopCard")
-        self._loop_card.setStyleSheet("""
-            QFrame#loopCard {
-                background-color: #101722;
-                border: 1px solid #1e2c3d;
-                border-radius: 6px;
-                padding: 6px 8px;
-                margin-top: 4px;
-                margin-bottom: 4px;
-            }
-        """)
-        loop_card_layout = QVBoxLayout(self._loop_card)
-        loop_card_layout.setContentsMargins(8, 6, 8, 6)
-        loop_card_layout.setSpacing(6)
-
-        loop_top_row = QHBoxLayout()
-        self._chk_loop = QCheckBox("🔁  RIPETI IN LOOP")
-        self._chk_loop.setStyleSheet("""
-            QCheckBox {
-                font-weight: bold;
-                font-size: 11px;
-                color: #10b981;
-                spacing: 8px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border-radius: 4px;
-                border: 1px solid #10b981;
-                background-color: #091310;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #10b981;
-            }
-            QCheckBox::indicator:hover {
-                border-color: #34d399;
-            }
-        """)
-        loop_top_row.addWidget(self._chk_loop)
-        loop_top_row.addStretch()
-        loop_card_layout.addLayout(loop_top_row)
-
-        loop_options_row = QHBoxLayout()
-        lbl_mode = QLabel("Modalità:")
-        lbl_mode.setStyleSheet("color: #94a3b8; font-size: 11px;")
-        loop_options_row.addWidget(lbl_mode)
-
-        self._combo_loop_mode = QComboBox()
-        self._combo_loop_mode.addItems([
-            "∞ Continuo (Infinito)",
-            "Ripeti 2 volte",
-            "Ripeti 3 volte",
-            "Ripeti 4 volte",
-            "Ripeti 5 volte",
-            "Ripeti 10 volte",
-            "Personalizzato...",
-        ])
-        loop_options_row.addWidget(self._combo_loop_mode, 1)
-
-        self._spin_loop_count = SmartDoubleSpinBox()
-        self._spin_loop_count.setRange(1, 999)
-        self._spin_loop_count.setDecimals(0)
-        self._spin_loop_count.setSingleStep(1)
-        self._spin_loop_count.setSuffix(" rip.")
-        self._spin_loop_count.setFixedWidth(80)
-        self._spin_loop_count.setVisible(False)
-        loop_options_row.addWidget(self._spin_loop_count)
-
-        loop_card_layout.addLayout(loop_options_row)
-        right_layout.addWidget(self._loop_card)
-
-        # In / Out points (centesimi precision)
-        io_row = QHBoxLayout()
-        io_row.setSpacing(6)
-        io_row.addWidget(QLabel("IN:"))
-        self._spin_in = InPointSpinBox()
-        io_row.addWidget(self._spin_in)
-        io_row.addWidget(QLabel("OUT:"))
-        self._spin_out = OutPointSpinBox()
-        io_row.addWidget(self._spin_out)
-        right_layout.addLayout(io_row)
-
-        right_layout.addStretch()
-
-        insp_scroll.setWidget(insp_content)
-        outer_right_layout.addWidget(insp_scroll)
-
-        # Connect inspector controls to update the active cue
-        for spin in (self._spin_pos_x, self._spin_pos_y,
-                     self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b,
-                     self._spin_fade_in, self._spin_fade_out, self._spin_in, self._spin_out,
-                     self._spin_hold_time):
-            spin.valueChanged.connect(self._on_inspector_value_changed)
-        self._slider_scale.valueChanged.connect(self._on_inspector_value_changed)
-        self._slider_opacity.valueChanged.connect(self._on_inspector_value_changed)
-        self._slider_volume.valueChanged.connect(self._on_inspector_value_changed)
-        self._chk_loop.toggled.connect(self._on_loop_chk_toggled)
-        self._combo_loop_mode.currentIndexChanged.connect(self._on_loop_mode_changed)
-        self._spin_loop_count.valueChanged.connect(self._on_inspector_value_changed)
-        self._combo_aspect.currentIndexChanged.connect(self._on_inspector_value_changed)
-        self._edit_cue_name.textEdited.connect(self._on_inspector_value_changed)
-        self._edit_cue_notes.textEdited.connect(self._on_inspector_value_changed)
-
-        top_splitter.addWidget(self._grp_inspector)
-
-        # Splitter proportions: Center Pre-Viz monitor has primary prominence
-        top_splitter.setStretchFactor(0, 2)
-        top_splitter.setStretchFactor(1, 6)
-        top_splitter.setStretchFactor(2, 3)
-        top_splitter.setSizes([260, 680, 380])
+        top_splitter.setChildrenCollapsible(False)
+        top_splitter.setStretchFactor(0, 24)
+        top_splitter.setStretchFactor(1, 49)
+        top_splitter.setStretchFactor(2, 27)
+        top_splitter.setSizes([336, 686, 378])
+        top_splitter.splitterMoved.connect(self._on_top_splitter_moved)
         root_layout.addWidget(top_splitter, stretch=7)
 
-        # ── BOTTOM ROW: Waveform | Status | Drop Zone ────────────────
+        # Bottom splitter: Waveform | Live Output Status | Drop Zone
         bottom_splitter = QSplitter(Qt.Orientation.Horizontal)
+        bottom_splitter.setChildrenCollapsible(False)
+        self._bottom_splitter = bottom_splitter
 
-        # Waveform
         waveform_group = QGroupBox("Forma d'Onda Audio (Waveform Analysis)")
         wf_layout = QVBoxLayout(waveform_group)
         lbl_wf_info = QLabel("Analisi dei picchi sonori e marcatori di inizio/fine (IN - OUT)")
@@ -1988,89 +512,14 @@ class MainWindow(QMainWindow):
         wf_layout.addWidget(self._waveform)
         bottom_splitter.addWidget(waveform_group)
 
-        # Live status (currently playing with individual layer clear buttons)
-        live_group = QGroupBox("Live Output Status (Monitor Uscita Schermo Esterno)")
-        live_layout = QVBoxLayout(live_group)
-        live_layout.setSpacing(6)
-        lbl_live_sub = QLabel("Controllo emissione in tempo reale sui 3 livelli live:")
-        lbl_live_sub.setStyleSheet("color: #777; font-size: 10px;")
-        live_layout.addWidget(lbl_live_sub)
+        self._live_status = LiveStatusPanel()
+        self._lbl_tappo_info = self._live_status.lbl_tappo_info
+        self._live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
+        self._live_status.blackout_clicked.connect(self._on_blackout)
+        self._live_status.choose_layer0_clicked.connect(self._on_choose_layer0)
+        self._live_status.reset_layer0_clicked.connect(self._on_reset_layer0)
+        bottom_splitter.addWidget(self._live_status)
 
-        # Layer 1 row
-        row_l1 = QHBoxLayout()
-        self._lbl_live_l1 = self._make_live_label("Layer 1: —")
-        self._btn_clear_l1 = QPushButton("✕ Cut L1")
-        self._btn_clear_l1.setToolTip("Rimuovi / arresta immediatamente il contenuto su Layer 1")
-        self._btn_clear_l1.setStyleSheet(
-            "QPushButton { background-color: #5c1d1d; color: #ff8080; border: 1px solid #ff4444; border-radius: 3px; font-weight: bold; padding: 4px 10px; } QPushButton:hover { background-color: #7a2727; }"
-        )
-        self._btn_clear_l1.clicked.connect(lambda: self._on_clear_live_layer(1))
-        row_l1.addWidget(self._lbl_live_l1, stretch=1)
-        row_l1.addWidget(self._btn_clear_l1)
-        live_layout.addLayout(row_l1)
-
-        # Layer 2 row
-        row_l2 = QHBoxLayout()
-        self._lbl_live_l2 = self._make_live_label("Layer 2: —")
-        self._btn_clear_l2 = QPushButton("✕ Cut L2")
-        self._btn_clear_l2.setToolTip("Rimuovi / arresta immediatamente il contenuto su Layer 2")
-        self._btn_clear_l2.setStyleSheet(
-            "QPushButton { background-color: #5c1d1d; color: #ff8080; border: 1px solid #ff4444; border-radius: 3px; font-weight: bold; padding: 4px 10px; } QPushButton:hover { background-color: #7a2727; }"
-        )
-        self._btn_clear_l2.clicked.connect(lambda: self._on_clear_live_layer(2))
-        row_l2.addWidget(self._lbl_live_l2, stretch=1)
-        row_l2.addWidget(self._btn_clear_l2)
-        live_layout.addLayout(row_l2)
-
-        # Layer 3 row
-        row_l3 = QHBoxLayout()
-        self._lbl_live_l3 = self._make_live_label("Layer 3: —")
-        self._btn_clear_l3 = QPushButton("✕ Cut L3")
-        self._btn_clear_l3.setToolTip("Rimuovi / arresta immediatamente il contenuto su Layer 3")
-        self._btn_clear_l3.setStyleSheet(
-            "QPushButton { background-color: #5c1d1d; color: #ff8080; border: 1px solid #ff4444; border-radius: 3px; font-weight: bold; padding: 4px 10px; } QPushButton:hover { background-color: #7a2727; }"
-        )
-        self._btn_clear_l3.clicked.connect(lambda: self._on_clear_live_layer(3))
-        row_l3.addWidget(self._lbl_live_l3, stretch=1)
-        row_l3.addWidget(self._btn_clear_l3)
-        live_layout.addLayout(row_l3)
-
-        # Master Blackout row
-        self._btn_clear_all = QPushButton("⏹ Master Blackout (Tappo) — [ Ctrl+B ]")
-        self._btn_clear_all.setToolTip("Arresta tutto l'output e mostra Layer 0 (Tappo) — Scorciatoia di sicurezza: Ctrl+B")
-        self._btn_clear_all.setStyleSheet(
-            "QPushButton { background-color: #3a1111; color: #ff9999; border: 1px solid #882222; border-radius: 4px; font-weight: bold; padding: 6px; } QPushButton:hover { background-color: #5c1d1d; }"
-        )
-        self._btn_clear_all.clicked.connect(self._on_blackout)
-        live_layout.addWidget(self._btn_clear_all)
-
-        # Layer 0 (Tappo di Emergenza / Fondo) selector row
-        row_tappo = QHBoxLayout()
-        self._lbl_tappo_info = QLabel("Tappo (L0): Logo BlindCue (Predefinito)")
-        self._lbl_tappo_info.setStyleSheet("color: #aaa; font-size: 11px; padding: 2px;")
-        self._btn_choose_tappo = QPushButton("📁 Cambia Tappo…")
-        self._btn_choose_tappo.setToolTip("Seleziona un'immagine personalizzata per il Layer 0 (locandina festival, logo evento, nero)")
-        self._btn_choose_tappo.setStyleSheet(
-            f"QPushButton {{ background-color: #333; color: {_CLR_PREVIZ}; border: 1px solid {_CLR_PREVIZ}; border-radius: 3px; font-weight: bold; padding: 3px 8px; font-size: 11px; }} QPushButton:hover {{ background-color: #4d3800; }}"
-        )
-        self._btn_choose_tappo.clicked.connect(self._on_choose_layer0)
-
-        self._btn_reset_tappo = QPushButton("🔄 Reset")
-        self._btn_reset_tappo.setToolTip("Ripristina il logo predefinito di BlindCue come Layer 0")
-        self._btn_reset_tappo.setStyleSheet(
-            "QPushButton { background-color: #2b2b2b; color: #888; border: 1px solid #555; border-radius: 3px; padding: 3px 6px; font-size: 11px; } QPushButton:hover { background-color: #3a3a3a; }"
-        )
-        self._btn_reset_tappo.clicked.connect(self._on_reset_layer0)
-
-        row_tappo.addWidget(self._lbl_tappo_info, stretch=1)
-        row_tappo.addWidget(self._btn_choose_tappo)
-        row_tappo.addWidget(self._btn_reset_tappo)
-        live_layout.addLayout(row_tappo)
-
-        live_layout.addStretch()
-        bottom_splitter.addWidget(live_group)
-
-        # Drop zone
         drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
         drop_layout = QVBoxLayout(drop_group)
         self._drop_zone = DropZone()
@@ -2081,98 +530,363 @@ class MainWindow(QMainWindow):
         bottom_splitter.setSizes([460, 320, 220])
         root_layout.addWidget(bottom_splitter, stretch=2)
 
+    def _bind_inspector_aliases(self) -> None:
+        """Expose direct references to inspector inputs for convenient integration."""
+        insp = self._inspector
+        self._grp_inspector = insp
+        self._edit_cue_q = insp.edit_cue_q
+        self._edit_cue_name = insp.edit_cue_name
+        self._edit_cue_notes = insp.edit_cue_notes
+        self._btn_layer1 = insp.btn_layer1
+        self._btn_layer2 = insp.btn_layer2
+        self._btn_layer3 = insp.btn_layer3
+        self._spin_pos_x = insp.spin_pos_x
+        self._spin_pos_y = insp.spin_pos_y
+        self._spin_x = insp.spin_pos_x
+        self._spin_y = insp.spin_pos_y
+        self._slider_scale = insp.slider_scale
+        self._slider_opacity = insp.slider_opacity
+        self._slider_volume = insp.slider_volume
+        self._spin_crop_l = insp.spin_crop_l
+        self._spin_crop_r = insp.spin_crop_r
+        self._spin_crop_t = insp.spin_crop_t
+        self._spin_crop_b = insp.spin_crop_b
+        self._spin_w = insp.spin_crop_r
+        self._spin_h = insp.spin_crop_b
+        self._spin_fade_in = insp.spin_fade_in
+        self._spin_fade_out = insp.spin_fade_out
+        self._spin_hold_time = insp.spin_hold_time
+        self._chk_loop = insp.chk_loop
+        self._combo_loop_mode = insp.combo_loop_mode
+        self._spin_loop_count = insp.spin_loop_count
+        self._combo_aspect = insp.combo_aspect
+        self._spin_in = insp.spin_in
+        self._spin_out = insp.spin_out
+
     def _build_status_bar(self) -> None:
         sb = QStatusBar()
-        self._lbl_hw_info = QLabel(self._detect_hardware_brief())
+        self._lbl_hw_info = QLabel(detect_hardware_brief())
         self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
         sb.addWidget(self._lbl_hw_info)
+
+        self._btn_lock_layout = QPushButton("🔒 Layout: Bloccato")
+        self._btn_lock_layout.setCheckable(True)
+        self._btn_lock_layout.setChecked(True)
+        self._btn_lock_layout.setFixedHeight(20)
+        self._btn_lock_layout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_lock_layout.setToolTip(
+            "Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\n"
+            "Di default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere."
+        )
+        self._btn_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
+        sb.addWidget(self._btn_lock_layout)
+
         self._status_label = QLabel("Ready — No show loaded")
-        sb.addPermanentWidget(self._status_label)
+        self._status_label.setMinimumWidth(0)
+        self._status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        sb.addPermanentWidget(self._status_label, stretch=1)
         self.setStatusBar(sb)
 
-    # ── Helpers ───────────────────────────────────────────────────────
+    # ── Panel Width Lock & Standard Layout Management ─────────────────
 
-    @staticmethod
-    def _make_double_spin(label: str, min_v: float, max_v: float,
-                          step: float, default: float = 0.0) -> QDoubleSpinBox:
-        spin = QDoubleSpinBox()
-        spin.setRange(min_v, max_v)
-        spin.setSingleStep(step)
-        spin.setDecimals(2)
-        spin.setValue(default)
-        return spin
+    def _apply_top_splitter_ratios(self) -> None:
+        if not hasattr(self, "_top_splitter"):
+            return
+        total = self._top_splitter.width()
+        if total <= 0:
+            return
+        r0, r1, r2 = self._top_ratios
+        w0 = max(260, int(round(total * r0)))
+        w2 = max(340, int(round(total * r2)))
+        w1 = max(380, total - w0 - w2)
+        self._applying_splitter_layout = True
+        try:
+            self._top_splitter.setSizes([w0, w1, w2])
+        finally:
+            self._applying_splitter_layout = False
 
-    @staticmethod
-    def _make_live_label(text: str) -> QLabel:
-        lbl = QLabel(text)
-        lbl.setStyleSheet(f"""
-            QLabel {{
-                background-color: #333;
-                border: 1px solid {_CLR_LIVE};
-                border-radius: 3px;
-                padding: 4px 8px;
-                font-size: 12px;
-            }}
-        """)
-        return lbl
+    def _on_top_splitter_moved(self, _pos: int, _index: int) -> None:
+        if self._applying_splitter_layout or self._panels_locked:
+            return
+        sizes = self._top_splitter.sizes()
+        total = sum(sizes)
+        if total > 0 and len(sizes) == 3:
+            self._top_ratios = (sizes[0] / total, sizes[1] / total, sizes[2] / total)
+
+    def _set_panels_locked(self, locked: bool, announce: bool = True) -> None:
+        self._panels_locked = locked
+        if hasattr(self, "_act_lock_layout"):
+            self._act_lock_layout.blockSignals(True)
+            self._act_lock_layout.setChecked(locked)
+            self._act_lock_layout.blockSignals(False)
+
+        if hasattr(self, "_btn_lock_layout"):
+            self._btn_lock_layout.blockSignals(True)
+            self._btn_lock_layout.setChecked(locked)
+            if locked:
+                self._btn_lock_layout.setText("🔒 Pannelli Bloccati")
+                self._btn_lock_layout.setStyleSheet(
+                    "QPushButton { background-color: #16202e; color: #94a3b8; border: 1px solid #2b3b52; "
+                    "border-radius: 3px; font-size: 10px; padding: 1px 8px; } "
+                    "QPushButton:hover { border-color: #38bdf8; color: #ffffff; }"
+                )
+            else:
+                self._btn_lock_layout.setText("🔓 Pannelli Sbloccati (Trascina bordi)")
+                self._btn_lock_layout.setStyleSheet(
+                    "QPushButton { background-color: #452408; color: #fbbf24; border: 1px solid #f59e0b; "
+                    "border-radius: 3px; font-size: 10px; font-weight: bold; padding: 1px 8px; } "
+                    "QPushButton:hover { background-color: #5c310b; }"
+                )
+            self._btn_lock_layout.blockSignals(False)
+
+        for splitter in (getattr(self, "_top_splitter", None), getattr(self, "_bottom_splitter", None)):
+            if splitter is None:
+                continue
+            splitter.setHandleWidth(5)
+            splitter.setStyleSheet(
+                "QSplitter::handle { background-color: #182230; }"
+                if locked
+                else (
+                    "QSplitter::handle { background-color: #26415c; } "
+                    "QSplitter::handle:hover { background-color: #38bdf8; }"
+                )
+            )
+            for idx in range(1, splitter.count()):
+                handle = splitter.handle(idx)
+                handle.setEnabled(not locked)
+                handle.setCursor(Qt.CursorShape.ArrowCursor if locked else Qt.CursorShape.SplitHCursor)
+
+        if announce and hasattr(self, "_status_label"):
+            if locked:
+                self._status_label.setText("Layout bloccato: le larghezze dei 3 pannelli principali sono fisse")
+            else:
+                self._status_label.setText("Layout sbloccato: trascina i divisori verticali per adattare i pannelli a piacere")
+
+    @Slot()
+    def _reset_standard_layout(self) -> None:
+        self._top_ratios = _DEFAULT_TOP_RATIOS
+        self._apply_top_splitter_ratios()
+        if hasattr(self, "_bottom_splitter"):
+            self._bottom_splitter.setSizes([460, 320, 220])
+        if hasattr(self, "_status_label"):
+            self._status_label.setText("Larghezze standard dei pannelli ripristinate")
+
+    def showEvent(self, event) -> None:  # noqa: N802
+        super().showEvent(event)
+        QTimer.singleShot(0, self._apply_top_splitter_ratios)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._apply_top_splitter_ratios()
+
+    # ── Helpers & Table Population ────────────────────────────────────
 
     @staticmethod
     def _detect_media_type(file_path: str) -> Optional[MediaType]:
         ext = os.path.splitext(file_path)[1].lower()
-        if ext in _VIDEO_EXT:
+        if ext in VIDEO_EXT:
             return MediaType.VIDEO
-        if ext in _AUDIO_EXT:
+        if ext in AUDIO_EXT:
             return MediaType.AUDIO
-        if ext in _IMAGE_EXT:
+        if ext in IMAGE_EXT:
             return MediaType.IMAGE
         return None
 
     def set_preview_time(self, current_sec: float, total_sec: float) -> None:
-        """Update preview digital time counter in centesimi format ⏱ MM:SS.ss / MM:SS.ss."""
-        def _fmt(sec: float) -> str:
-            if sec < 0:
-                sec = 0.0
-            m = int(sec // 60)
-            s = sec % 60
-            return f"{m:02d}:{s:05.2f}"
+        if hasattr(self, "_preview_panel"):
+            self._preview_panel.set_time(current_sec, total_sec)
 
-        cur_str = _fmt(current_sec)
-        tot_str = _fmt(total_sec) if total_sec > 0 else "--:--.--"
-        if hasattr(self, "_lbl_preview_time"):
-            self._lbl_preview_time.setText(f"⏱ {cur_str} / {tot_str}")
+    def _cue_tooltip(self, row: int, cue: Cue) -> str:
+        parts = [f"Posizione: #{row + 1}"]
+        if cue.q_label:
+            parts.append(f"Q (Copione): {cue.q_label}")
+        parts.append(f"Nome: {cue.name}")
+        if cue.notes:
+            parts.append(f"Note di Regia: {cue.notes}")
+        parts.append(f"File: {cue.file_path}")
+        return "\n".join(parts)
+
+    def _update_cue_readouts(self, row: int, cue: Cue) -> None:
+        ref = format_cue_ref(row, cue)
+        icon = _MEDIA_ICONS.get(cue.media_type, "🖼")
+        self._lbl_preview_info.setText(f"{icon} {ref}  {cue.name}")
+        self._lbl_preview_info.setToolTip(f"File: {cue.file_path}")
+        self._lbl_cue_standby.setText(f"Standby: {ref} [{cue.media_type.value}]")
+
+    def _reset_idle_preview_ui(self) -> None:
+        self._waveform.set_peaks(np.array([]))
+        self._waveform.set_in_out_seconds(0.0, None, 0.0)
+        self._lbl_preview_info.setText("— Nessun file selezionato —")
+        self.set_preview_time(0.0, 0.0)
+        self.clear_preview()
+
+    def _populate_cue_row(self, row: int, cue: Cue, is_standby: bool) -> None:
+        """Populate or update the 3 table cells (#, Q, Nome / Media) for a row."""
+        status_txt = ""
+        colour = CLR_TEXT
+        if cue.status == CueStatus.LIVE:
+            status_txt, colour = "LIVE", CLR_LIVE
+        elif is_standby:
+            status_txt, colour = "STANDBY", CLR_PREVIZ
+        elif cue.status == CueStatus.PREVIZ:
+            status_txt, colour = "PRE-VIZ", CLR_PREVIZ
+
+        tooltip = self._cue_tooltip(row, cue)
+
+        item_num = self._cue_list.item(row, 0)
+        if item_num is None:
+            item_num = QTableWidgetItem()
+            item_num.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item_num.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            self._cue_list.setItem(row, 0, item_num)
+        item_num.setText(f"#{row + 1}")
+        item_num.setForeground(QColor(colour if status_txt in ("LIVE", "STANDBY") else CLR_TEXT_MUTED))
+        item_num.setToolTip(tooltip)
+
+        item_q = self._cue_list.item(row, 1)
+        if item_q is None:
+            item_q = QTableWidgetItem()
+            item_q.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item_q.setFlags(
+                Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable
+            )
+            self._cue_list.setItem(row, 1, item_q)
+        item_q.setText(cue.q_label)
+        item_q.setToolTip(tooltip)
+
+        item_name = self._cue_list.item(row, 2)
+        if item_name is None:
+            item_name = QTableWidgetItem()
+            item_name.setFlags(
+                Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable
+            )
+            self._cue_list.setItem(row, 2, item_name)
+        item_name.setText(cue.name)
+        item_name.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
+        item_name.setData(ROLE_LAYER, cue.layer)
+        item_name.setData(ROLE_HAS_NOTES, bool(cue.notes))
+        item_name.setData(ROLE_STATUS_TXT, status_txt)
+        item_name.setData(ROLE_STATUS_CLR, colour)
+        item_name.setToolTip(tooltip)
+
+    def _sync_inspector_header_and_text(self, row: int, cue: Cue) -> None:
+        if 0 <= row < len(self._cues) and row == self._cue_list.currentRow():
+            self._inspector.sync_header_and_text(row, cue)
+            self._update_cue_readouts(row, cue)
+
+    def _update_live_layer_label(self, cue: Cue) -> None:
+        self._live_status.set_layer_live(cue)
+
+    def _reset_live_label(self, layer: int) -> None:
+        self._live_status.reset_layer(layer)
+
+    @Slot(int, int)
+    def _on_cue_cell_double_clicked(self, row: int, col: int) -> None:
+        if not (0 <= row < len(self._cues)):
+            return
+        if col == 0:
+            self._on_go()
+        elif col in (1, 2):
+            item = self._cue_list.item(row, col)
+            if item is not None:
+                self._cue_list.editItem(item)
+
+    @Slot(QTableWidgetItem)
+    def _on_cue_item_changed(self, item: QTableWidgetItem) -> None:
+        """Handle inline editing of Q (col 1) or Nome (col 2) in the cue table."""
+        if self._updating_cue_list:
+            return
+        row, col = item.row(), item.column()
+        if not (0 <= row < len(self._cues)) or col not in (1, 2):
+            return
+
+        cue = self._cues[row]
+        new_val = item.text().strip()
+        old_val = cue.q_label if col == 1 else cue.name
+
+        if col == 2 and not new_val:
+            self._updating_cue_list = True
+            self._cue_list.blockSignals(True)
+            item.setText(old_val)
+            self._cue_list.blockSignals(False)
+            self._updating_cue_list = False
+            return
+
+        if new_val == old_val:
+            return
+
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        if col == 1:
+            cue.q_label = new_val
+        else:
+            cue.name = new_val
+
+        self._updating_cue_list = True
+        self._cue_list.blockSignals(True)
+        item.setText(new_val)
+        tooltip = self._cue_tooltip(row, cue)
+        for c_idx in range(3):
+            cell = self._cue_list.item(row, c_idx)
+            if cell is not None:
+                cell.setToolTip(tooltip)
+        self._cue_list.blockSignals(False)
+        self._updating_cue_list = False
+
+        self._sync_inspector_header_and_text(row, cue)
+        if cue.status == CueStatus.LIVE:
+            self._update_live_layer_label(cue)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._auto_save()
 
     def _update_selected_list_item(self, cue: Cue) -> None:
-        """Lightweight in-place text update for the active list item to prevent focus stealing."""
-        item = self._cue_list.currentItem()
-        if not item:
+        """Lightweight in-place update for the active table row without focus stealing."""
+        row = self._cue_list.currentRow()
+        if not (0 <= row < len(self._cues)):
             return
-        badge = ""
-        colour = _CLR_TEXT
+        self._updating_cue_list = True
+        self._cue_list.blockSignals(True)
+        try:
+            self._populate_cue_row(row, cue, is_standby=(cue.status != CueStatus.LIVE))
+        finally:
+            self._cue_list.blockSignals(False)
+            self._updating_cue_list = False
+
+        ref = format_cue_ref(row, cue)
+        self._inspector.setTitle(f"ISPETTORE CUE — {ref} [{cue.media_type.value}] '{cue.name}'")
+        self._update_cue_readouts(row, cue)
         if cue.status == CueStatus.LIVE:
-            badge = "  [LIVE]"
-            colour = _CLR_LIVE
-        elif cue.status == CueStatus.PREVIZ:
-            badge = "  [PRE-VIZ]"
-            colour = _CLR_PREVIZ
-        else:
-            badge = "  [STANDBY]"
-            colour = _CLR_PREVIZ
+            self._update_live_layer_label(cue)
 
-        notes_icon = " 📝" if cue.notes else ""
-        text = (f"#{_format_cid(cue.cue_id)}  [{cue.media_type.value:<5}]  "
-                f"{cue.name:<24}  —  L{cue.layer}{notes_icon}{badge}")
-        item.setText(text)
-        item.setForeground(QColor(colour))
-        if cue.notes:
-            item.setToolTip(f"Note di Regia: {cue.notes}\nFile: {cue.file_path}")
-        else:
-            item.setToolTip(f"File: {cue.file_path}")
+    def _refresh_rows_in_place(self, rows: list[int]) -> None:
+        """Update table cell visuals for *rows* in place without altering selection."""
+        anchor_row, _ = self._anchor_row_and_cue()
+        self._updating_cue_list = True
+        self._cue_list.blockSignals(True)
+        try:
+            for row in rows:
+                if 0 <= row < len(self._cues):
+                    cue = self._cues[row]
+                    is_standby = (row == anchor_row and cue.status != CueStatus.LIVE)
+                    self._populate_cue_row(row, cue, is_standby=is_standby)
+        finally:
+            self._cue_list.blockSignals(False)
+            self._updating_cue_list = False
 
-    def _refresh_cue_list(self, keep_selection: bool = True) -> None:
-        """Rebuild the list widget from the internal cue list, preserving selection."""
-        prev_row = self._cue_list.currentRow()
-        if prev_row < 0 and 0 <= self._current_index < len(self._cues):
-            prev_row = self._current_index
+    def _refresh_cue_list(self, keep_selection: bool = True,
+                          select_row: Optional[int] = None) -> None:
+        """Rebuild the 3-column table from the cue list with progressive row numbers."""
+        prev_selected = self._selected_rows() if (keep_selection and select_row is None) else []
+
+        if select_row is not None:
+            target_row = select_row
+        elif keep_selection:
+            target_row = self._cue_list.currentRow()
+            if target_row < 0 and 0 <= self._current_index < len(self._cues):
+                target_row = self._current_index
+        else:
+            target_row = -1
 
         total_cues = len(self._cues)
         if total_cues == 0:
@@ -2181,479 +895,263 @@ class MainWindow(QMainWindow):
             self._update_inspector(None)
         else:
             self._lbl_cue_count.setText(f"{total_cues} Cue in scaletta")
-            standby_row = prev_row if (0 <= prev_row < total_cues) else 0
+            standby_row = target_row if (0 <= target_row < total_cues) else 0
             standby_cue = self._cues[standby_row]
-            self._lbl_cue_standby.setText(f"Standby: #{_format_cid(standby_cue.cue_id)} [{standby_cue.media_type.value}]")
+            self._lbl_cue_standby.setText(
+                f"Standby: {format_cue_ref(standby_row, standby_cue)} [{standby_cue.media_type.value}]"
+            )
 
+        self._updating_cue_list = True
         self._cue_list.blockSignals(True)
-        self._cue_list.clear()
-        for i, cue in enumerate(self._cues):
-            badge = ""
-            colour = _CLR_TEXT
-            if cue.status == CueStatus.LIVE:
-                badge = "  [LIVE]"
-                colour = _CLR_LIVE
-            elif total_cues > 0 and i == prev_row:
-                badge = "  [STANDBY]"
-                colour = _CLR_PREVIZ
-            elif cue.status == CueStatus.PREVIZ:
-                badge = "  [PRE-VIZ]"
-                colour = _CLR_PREVIZ
+        try:
+            self._cue_list.setRowCount(total_cues)
+            self._cue_list._last_emitted_row = -1
+            for i, cue in enumerate(self._cues):
+                is_standby = (total_cues > 0 and i == target_row and cue.status != CueStatus.LIVE)
+                self._populate_cue_row(i, cue, is_standby=is_standby)
 
-            notes_icon = " 📝" if cue.notes else ""
-            text = (f"#{_format_cid(cue.cue_id)}  [{cue.media_type.value:<5}]  "
-                    f"{cue.name:<24}  —  L{cue.layer}{notes_icon}{badge}")
-            item = QListWidgetItem(text)
-            item.setForeground(QColor(colour))
-            if cue.notes:
-                item.setToolTip(f"Note di Regia: {cue.notes}\nFile: {cue.file_path}")
+            valid_prev = [r for r in prev_selected if 0 <= r < total_cues]
+            if len(valid_prev) > 1 and select_row is None and keep_selection:
+                self._cue_list.select_rows(valid_prev, anchor_row=target_row if target_row in valid_prev else valid_prev[0])
+            elif 0 <= target_row < total_cues:
+                self._cue_list.setCurrentRow(target_row)
             else:
-                item.setToolTip(f"File: {cue.file_path}")
-            self._cue_list.addItem(item)
+                self._cue_list.clearSelection()
+                self._last_selection_sig = None
+        finally:
+            self._cue_list.blockSignals(False)
+            self._updating_cue_list = False
 
-        if keep_selection and 0 <= prev_row < len(self._cues):
-            self._cue_list.setCurrentRow(prev_row)
-        self._cue_list.blockSignals(False)
+    def _selected_rows(self) -> list[int]:
+        if not hasattr(self, "_cue_list"):
+            return []
+        return [r for r in self._cue_list.selected_rows() if 0 <= r < len(self._cues)]
+
+    def _selected_cues(self) -> list[Cue]:
+        return [self._cues[r] for r in self._selected_rows()]
+
+    def _anchor_row_and_cue(self) -> tuple[int, Optional[Cue]]:
+        rows = self._selected_rows()
+        if not rows:
+            return -1, None
+        curr = self._cue_list.currentRow()
+        anchor_row = curr if curr in rows else rows[0]
+        return anchor_row, self._cues[anchor_row]
 
     def _selected_cue(self) -> Optional[Cue]:
-        row = self._cue_list.currentRow()
-        if 0 <= row < len(self._cues):
-            return self._cues[row]
-        return None
+        _, cue = self._anchor_row_and_cue()
+        return cue
+
+    # ── Waveform & Preview Layout Helpers ─────────────────────────────
 
     def update_waveform_duration(self, duration_sec: float) -> None:
-        """Called when media duration is detected by the player."""
         self._active_test_duration = max(0.001, duration_sec)
-        if hasattr(self, "_spin_out"):
-            self._spin_out.set_media_duration(self._active_test_duration)
+        self._inspector.spin_out.set_media_duration(self._active_test_duration)
         cue = self._selected_cue()
         if cue:
             self._waveform.set_in_out_seconds(cue.in_point, cue.out_point, self._active_test_duration)
 
     def _update_waveform_markers(self, cue: Optional[Cue] = None) -> None:
-        """Update IN/OUT markers on the waveform widget."""
         if cue is None:
             cue = self._selected_cue()
         if cue is None or cue.media_type == MediaType.IMAGE:
             return
-        total_dur = getattr(self, "_active_test_duration", 0.0)
-        self._waveform.set_in_out_seconds(cue.in_point, cue.out_point, total_dur)
+        self._waveform.set_in_out_seconds(cue.in_point, cue.out_point, self._active_test_duration)
 
-    # ── Inspector Callbacks & Nudge ───────────────────────────────────
+    def _update_crop_reference_for_cue(self, cue: Cue) -> None:
+        """Supply exact pixel dimensions (cached header/frame size) to Inspector Crop %/px."""
+        cached = self._media_res_cache.get(cue.file_path)
+        if cached is not None:
+            self._inspector.set_crop_reference_size(cached[0], cached[1])
+            return
+        if cue.media_type == MediaType.IMAGE and os.path.isfile(cue.file_path):
+            sz = QImageReader(cue.file_path).size()
+            if sz.isValid() and sz.width() > 0 and sz.height() > 0:
+                res = (sz.width(), sz.height())
+                self._media_res_cache[cue.file_path] = res
+                self._inspector.set_crop_reference_size(res[0], res[1])
+                return
+        self._inspector.set_crop_reference_size(1920, 1080)
 
-    def _on_nudge_position(self, dx: float, dy: float) -> None:
-        """Nudge position X, Y by a small delta (e.g. 0.01 = 1% screen)."""
-        nx = round(max(-2.0, min(2.0, self._spin_pos_x.value() + dx)), 2)
-        ny = round(max(-2.0, min(2.0, self._spin_pos_y.value() + dy)), 2)
-        self._spin_pos_x.setValue(nx)
-        self._spin_pos_y.setValue(ny)
+    @Slot(int, int)
+    def _on_video_resolution_detected(self, width: int, height: int) -> None:
+        cue = self._selected_cue()
+        if cue and cue.media_type == MediaType.VIDEO and width > 0 and height > 0:
+            self._media_res_cache[cue.file_path] = (width, height)
+            self._inspector.set_crop_reference_size(width, height)
 
-    def _on_reset_position(self) -> None:
-        """Reset position X, Y to center (0.00, 0.00)."""
-        self._spin_pos_x.setValue(0.0)
-        self._spin_pos_y.setValue(0.0)
+    def _render_cue_in_preview(self, cue: Cue, load_image: bool = True) -> None:
+        if cue.media_type == MediaType.VIDEO:
+            if load_image:
+                self.update_preview_video_layout(
+                    scale=cue.scale, crop=cue.crop,
+                    pos_x=cue.position_x, pos_y=cue.position_y,
+                    opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+                )
+            else:
+                self.show_preview_video(
+                    scale=cue.scale, crop=cue.crop,
+                    pos_x=cue.position_x, pos_y=cue.position_y,
+                    opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+                )
+        elif cue.media_type == MediaType.IMAGE:
+            self.show_preview_image(
+                cue.file_path, scale=cue.scale, crop=cue.crop,
+                pos_x=cue.position_x, pos_y=cue.position_y,
+                opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+            )
+        elif cue.media_type == MediaType.AUDIO:
+            self.show_preview_audio()
 
-    def _on_reset_scale(self) -> None:
-        """Reset scale to 1.0x (100%)."""
-        self._slider_scale.setValue(100)
+    # ── Inspector & Waveform Interaction ──────────────────────────────
 
-    def _on_reset_crop(self) -> None:
-        """Reset crop to full frame (0, 0, 0, 0)."""
-        self._spin_crop_l.setValue(0.0)
-        self._spin_crop_r.setValue(0.0)
-        self._spin_crop_t.setValue(0.0)
-        self._spin_crop_b.setValue(0.0)
+    def _update_inspector(self, cue: Optional[Cue]) -> None:
+        if cue is None:
+            self._inspector.load_cue(None)
+            return
+        sel_cues = self._selected_cues()
+        anchor_row, anchor_cue = self._anchor_row_and_cue()
+        if anchor_cue is not None:
+            self._update_crop_reference_for_cue(anchor_cue)
+        if len(sel_cues) > 1:
+            self._inspector.load_selection(sel_cues, anchor_cue=anchor_cue, anchor_row=anchor_row)
+        else:
+            self._inspector.load_cue(cue, anchor_row)
+        if anchor_cue is not None:
+            self._update_waveform_markers(anchor_cue)
 
-    def _on_loop_chk_toggled(self, checked: bool) -> None:
-        """Handle Loop toggle state."""
-        self._combo_loop_mode.setEnabled(checked)
-        self._spin_loop_count.setEnabled(checked)
-        self._on_inspector_value_changed()
+    @Slot(str)
+    def _on_batch_field_edited(self, field_key: str) -> None:
+        """Apply a single modified inspector property uniformly across same-type multi-selection."""
+        sel_rows = self._selected_rows()
+        if len(sel_rows) < 2:
+            return
+        sel_cues = [self._cues[r] for r in sel_rows]
+        if len({c.media_type for c in sel_cues}) != 1:
+            return
 
-    def _on_loop_mode_changed(self, index: int) -> None:
-        """Show custom spinbox when 'Personalizzato...' is selected."""
-        self._spin_loop_count.setVisible(index == 6)
-        self._on_inspector_value_changed()
+        self._inspector.apply_batch_field(field_key, sel_cues)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        self._refresh_rows_in_place(sel_rows)
+
+        anchor_row, anchor = self._anchor_row_and_cue()
+        if anchor is not None:
+            if field_key in ("in_point", "out_point"):
+                self._update_waveform_markers(anchor)
+                self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point)
+            if field_key == "volume":
+                self.live_volume_changed.emit(self._inspector.slider_volume.value())
+            if anchor.media_type in (MediaType.VIDEO, MediaType.IMAGE):
+                self._render_cue_in_preview(anchor, load_image=(anchor.media_type == MediaType.VIDEO))
+            if self._live_mirror_active:
+                self._mirror_active_cue_to_live()
+
+    @Slot()
+    def _on_inspector_value_changed(self) -> None:
+        sel_cues = self._selected_cues()
+        if len(sel_cues) != 1:
+            return
+        self._apply_inspector_to_cue()
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        cue = sel_cues[0]
+        self._update_selected_list_item(cue)
+        if cue.media_type in (MediaType.VIDEO, MediaType.IMAGE):
+            self._render_cue_in_preview(cue, load_image=(cue.media_type == MediaType.VIDEO))
+        if self._live_mirror_active:
+            self._mirror_active_cue_to_live()
+
+    def _apply_inspector_to_cue(self) -> None:
+        sel_cues = self._selected_cues()
+        if len(sel_cues) != 1:
+            return
+        cue = sel_cues[0]
+        self._inspector.apply_to_cue(cue)
+        self._update_waveform_markers(cue)
+        self.live_volume_changed.emit(self._inspector.slider_volume.value())
+        self.preview_in_out_changed.emit(cue.in_point, cue.out_point)
 
     @Slot(float, float)
     def _on_preview_position_changed(self, pos_x: float, pos_y: float) -> None:
-        """Handle interactive mouse dragging on the StudioPreviewMonitor."""
-        self._spin_pos_x.blockSignals(True)
-        self._spin_pos_y.blockSignals(True)
-        self._spin_pos_x.setValue(pos_x)
-        self._spin_pos_y.setValue(pos_y)
-        self._spin_pos_x.blockSignals(False)
-        self._spin_pos_y.blockSignals(False)
-        cue = self._selected_cue()
-        if cue:
+        self._inspector.set_position_silent(pos_x, pos_y)
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        for cue in sel_cues:
             cue.position_x = pos_x
             cue.position_y = pos_y
-            self._mark_modified(True)
-            if getattr(self, "_live_mirror_active", False):
-                self._mirror_active_cue_to_live()
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        if self._live_mirror_active:
+            self._mirror_active_cue_to_live()
 
     @Slot(float, float, float, float)
-    def _on_preview_crop_changed(self, crop_l: float, crop_r: float, crop_t: float, crop_b: float) -> None:
-        """Handle interactive mouse crop handles on the StudioPreviewMonitor."""
-        self._spin_crop_l.blockSignals(True)
-        self._spin_crop_r.blockSignals(True)
-        self._spin_crop_t.blockSignals(True)
-        self._spin_crop_b.blockSignals(True)
-
-        self._spin_crop_l.setValue(round(crop_l * 100.0, 1))
-        self._spin_crop_r.setValue(round(crop_r * 100.0, 1))
-        self._spin_crop_t.setValue(round(crop_t * 100.0, 1))
-        self._spin_crop_b.setValue(round(crop_b * 100.0, 1))
-
-        self._spin_crop_l.blockSignals(False)
-        self._spin_crop_r.blockSignals(False)
-        self._spin_crop_t.blockSignals(False)
-        self._spin_crop_b.blockSignals(False)
-
-        cue = self._selected_cue()
-        if cue:
-            cue.crop = {
-                "x": round(crop_l, 4),
-                "y": round(crop_t, 4),
-                "w": max(0.01, round(1.0 - crop_l - crop_r, 4)),
-                "h": max(0.01, round(1.0 - crop_t - crop_b, 4)),
-            }
-            self._mark_modified(True)
-            if getattr(self, "_live_mirror_active", False):
-                self._mirror_active_cue_to_live()
-
-    def _set_inspector_enabled(self, enabled: bool, media_type: Optional[MediaType] = None) -> None:
-        """Enable or disable inspector controls with context-aware logic per media type."""
-        self._btn_layer1.setEnabled(enabled)
-        self._btn_layer2.setEnabled(enabled)
-        self._btn_layer3.setEnabled(enabled)
-        self._edit_cue_name.setEnabled(enabled)
-        self._edit_cue_notes.setEnabled(enabled)
-
-        all_media_controls = (
-            self._spin_pos_x, self._spin_pos_y,
-            self._btn_nudge_left, self._btn_nudge_up, self._btn_nudge_down, self._btn_nudge_right, self._btn_pos_center,
-            self._slider_scale, self._btn_scale_reset,
-            self._slider_opacity, self._btn_opacity_reset,
-            self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
-            self._spin_fade_in, self._spin_fade_out,
-            self._combo_aspect, self._slider_volume,
-            self._loop_card, self._chk_loop, self._combo_loop_mode, self._spin_loop_count,
-            self._spin_in, self._spin_out, self._spin_hold_time,
-        )
-
-        if not enabled or media_type is None:
-            self._edit_cue_name.clear()
-            self._edit_cue_notes.clear()
-            for w in all_media_controls:
-                w.setEnabled(False)
+    def _on_preview_crop_changed(self, crop_l: float, crop_r: float,
+                                 crop_t: float, crop_b: float) -> None:
+        self._inspector.set_crop_silent(crop_l, crop_r, crop_t, crop_b)
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
             return
-
-        # Common transitions
-        self._spin_fade_in.setEnabled(True)
-        self._spin_fade_out.setEnabled(True)
-
-        if media_type == MediaType.AUDIO:
-            for w in (self._spin_pos_x, self._spin_pos_y,
-                      self._btn_nudge_left, self._btn_nudge_up, self._btn_nudge_down, self._btn_nudge_right, self._btn_pos_center,
-                      self._slider_scale, self._btn_scale_reset,
-                      self._slider_opacity, self._btn_opacity_reset,
-                      self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
-                      self._combo_aspect, self._spin_hold_time):
-                w.setEnabled(False)
-            for w in (self._slider_volume, self._loop_card, self._chk_loop, self._spin_in, self._spin_out):
-                w.setEnabled(True)
-            self._combo_loop_mode.setEnabled(self._chk_loop.isChecked())
-            self._spin_loop_count.setEnabled(self._chk_loop.isChecked())
-
-        elif media_type == MediaType.IMAGE:
-            for w in (self._spin_pos_x, self._spin_pos_y,
-                      self._btn_nudge_left, self._btn_nudge_up, self._btn_nudge_down, self._btn_nudge_right, self._btn_pos_center,
-                      self._slider_scale, self._btn_scale_reset,
-                      self._slider_opacity, self._btn_opacity_reset,
-                      self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
-                      self._combo_aspect, self._slider_volume, self._spin_hold_time):
-                w.setEnabled(True)
-            self._loop_card.setEnabled(False)
-            self._chk_loop.setEnabled(False)
-            self._combo_loop_mode.setEnabled(False)
-            self._spin_loop_count.setEnabled(False)
-            self._spin_in.setEnabled(False)
-            self._spin_out.setEnabled(False)
-
-        elif media_type == MediaType.VIDEO:
-            for w in (self._spin_pos_x, self._spin_pos_y,
-                      self._btn_nudge_left, self._btn_nudge_up, self._btn_nudge_down, self._btn_nudge_right, self._btn_pos_center,
-                      self._slider_scale, self._btn_scale_reset,
-                      self._slider_opacity, self._btn_opacity_reset,
-                      self._spin_crop_l, self._spin_crop_r, self._spin_crop_t, self._spin_crop_b, self._btn_crop_reset,
-                      self._combo_aspect, self._slider_volume,
-                      self._loop_card, self._chk_loop, self._spin_in, self._spin_out):
-                w.setEnabled(True)
-            self._combo_loop_mode.setEnabled(self._chk_loop.isChecked())
-            self._spin_loop_count.setEnabled(self._chk_loop.isChecked())
-            self._spin_hold_time.setEnabled(False)
-
-    def _update_inspector(self, cue: Optional[Cue]) -> None:
-        """Populate inspector fields from the given cue, or disable if None."""
-        if cue is None:
-            self._grp_inspector.setTitle("ISPETTORE CUE (Nessuna cue selezionata)")
-            self._set_inspector_enabled(False)
-            return
-
-        self._updating_inspector = True
-        try:
-            self._grp_inspector.setTitle(
-                f"ISPETTORE CUE — #{_format_cid(cue.cue_id)} [{cue.media_type.value}] '{cue.name}'"
-            )
-            self._set_inspector_enabled(True, cue.media_type)
-
-            self._edit_cue_name.setText(cue.name)
-            self._edit_cue_notes.setText(cue.notes)
-            self._btn_layer1.setChecked(cue.layer == 1)
-            self._btn_layer2.setChecked(cue.layer == 2)
-            self._btn_layer3.setChecked(cue.layer == 3)
-
-            self._spin_pos_x.setValue(cue.position_x)
-            self._spin_pos_y.setValue(cue.position_y)
-            self._slider_scale.setValue(int(cue.scale * 100))
-            self._lbl_scale.setText(f"{cue.scale:.1f}x")
-            self._slider_opacity.setValue(int(cue.opacity * 100))
-            self._lbl_opacity.setText(f"{int(cue.opacity * 100)}%")
-
-            # L, R, T, B from crop dict (percentages 0.0% to 99.0%)
-            crop_x = cue.crop.get("x", 0.0)
-            crop_y = cue.crop.get("y", 0.0)
-            crop_w = cue.crop.get("w", 1.0)
-            crop_h = cue.crop.get("h", 1.0)
-            self._spin_crop_l.setValue(round(crop_x * 100.0, 1))
-            self._spin_crop_r.setValue(round(max(0.0, 1.0 - crop_x - crop_w) * 100.0, 1))
-            self._spin_crop_t.setValue(round(crop_y * 100.0, 1))
-            self._spin_crop_b.setValue(round(max(0.0, 1.0 - crop_y - crop_h) * 100.0, 1))
-
-            self._spin_fade_in.setValue(cue.fade_in)
-            self._spin_fade_out.setValue(cue.fade_out)
-            self._spin_hold_time.setValue(cue.hold_time)
-            self._slider_volume.setValue(int(cue.volume * 100))
-
-            self._chk_loop.setChecked(cue.loop)
-            self._combo_loop_mode.setEnabled(cue.loop)
-            self._spin_loop_count.setEnabled(cue.loop)
-
-            count = getattr(cue, "loop_count", 0)
-            if count == 0:
-                self._combo_loop_mode.setCurrentIndex(0)
-                self._spin_loop_count.setVisible(False)
-            elif count == 2:
-                self._combo_loop_mode.setCurrentIndex(1)
-                self._spin_loop_count.setVisible(False)
-            elif count == 3:
-                self._combo_loop_mode.setCurrentIndex(2)
-                self._spin_loop_count.setVisible(False)
-            elif count == 4:
-                self._combo_loop_mode.setCurrentIndex(3)
-                self._spin_loop_count.setVisible(False)
-            elif count == 5:
-                self._combo_loop_mode.setCurrentIndex(4)
-                self._spin_loop_count.setVisible(False)
-            elif count == 10:
-                self._combo_loop_mode.setCurrentIndex(5)
-                self._spin_loop_count.setVisible(False)
-            else:
-                self._combo_loop_mode.setCurrentIndex(6)
-                self._spin_loop_count.setValue(count)
-                self._spin_loop_count.setVisible(True)
-
-            self._spin_in.setValue(cue.in_point)
-            self._spin_out.setValue(cue.out_point if cue.out_point else 0.0)
-
-            # Aspect ratio
-            idx = 0
-            if cue.aspect_ratio == "16:9":
-                idx = 1
-            elif cue.aspect_ratio == "4:3":
-                idx = 2
-            elif cue.aspect_ratio == "21:9":
-                idx = 3
-            elif cue.aspect_ratio == "1:1":
-                idx = 4
-            self._combo_aspect.setCurrentIndex(idx)
-            self._update_waveform_markers(cue)
-        finally:
-            self._updating_inspector = False
-
-    def _on_inspector_value_changed(self, *_args) -> None:
-        """Propagate UI inspector changes back to the cue data model and autosave."""
-        if not self._updating_inspector:
-            self._apply_inspector_to_cue()
-            self._mark_modified(True)
-            cue = self._selected_cue()
-            if cue:
-                self._update_selected_list_item(cue)
-                if cue.media_type == MediaType.VIDEO:
-                    self.update_preview_video_layout(
-                        scale=cue.scale, crop=cue.crop,
-                        pos_x=cue.position_x, pos_y=cue.position_y,
-                        opacity=cue.opacity,
-                    )
-                elif cue.media_type == MediaType.IMAGE:
-                    self.show_preview_image(
-                        cue.file_path, scale=cue.scale, crop=cue.crop,
-                        pos_x=cue.position_x, pos_y=cue.position_y,
-                        opacity=cue.opacity,
-                    )
-
-                if getattr(self, "_live_mirror_active", False):
-                    self._mirror_active_cue_to_live()
-
-    def _apply_inspector_to_cue(self) -> None:
-        """Write inspector values back to the selected cue."""
-        cue = self._selected_cue()
-        if cue is None:
-            return
-        new_name = self._edit_cue_name.text().strip()
-        if new_name:
-            cue.name = new_name
-        cue.notes = self._edit_cue_notes.text().strip()
-
-        # Position X and Y
-        cue.position_x = round(self._spin_pos_x.value(), 3)
-        cue.position_y = round(self._spin_pos_y.value(), 3)
-
-        # Scale & Opacity
-        cue.scale = round(self._slider_scale.value() / 100.0, 2)
-        cue.opacity = round(self._slider_opacity.value() / 100.0, 2)
-
-        # Crop (L, R, T, B in percentage -> 0.0 to 1.0 normalized)
-        crop_l = self._spin_crop_l.value() / 100.0
-        crop_r = self._spin_crop_r.value() / 100.0
-        crop_t = self._spin_crop_t.value() / 100.0
-        crop_b = self._spin_crop_b.value() / 100.0
-        cue.crop = {
-            "x": round(crop_l, 4),
-            "y": round(crop_t, 4),
-            "w": max(0.01, round(1.0 - crop_l - crop_r, 4)),
-            "h": max(0.01, round(1.0 - crop_t - crop_b, 4)),
+        crop_dict = {
+            "x": round(crop_l, 6),
+            "y": round(crop_t, 6),
+            "w": max(0.01, round(1.0 - crop_l - crop_r, 6)),
+            "h": max(0.01, round(1.0 - crop_t - crop_b, 6)),
         }
-
-        cue.fade_in = self._spin_fade_in.value()
-        cue.fade_out = self._spin_fade_out.value()
-        cue.hold_time = self._spin_hold_time.value()
-        cue.volume = self._slider_volume.value() / 100.0
-
-        cue.loop = self._chk_loop.isChecked()
-        if cue.loop:
-            idx = self._combo_loop_mode.currentIndex()
-            if idx == 0:
-                cue.loop_count = 0
-            elif idx == 1:
-                cue.loop_count = 2
-            elif idx == 2:
-                cue.loop_count = 3
-            elif idx == 3:
-                cue.loop_count = 4
-            elif idx == 4:
-                cue.loop_count = 5
-            elif idx == 5:
-                cue.loop_count = 10
-            elif idx == 6:
-                cue.loop_count = max(1, int(self._spin_loop_count.value()))
-        else:
-            cue.loop_count = 0
-
-        cue.in_point = self._spin_in.value()
-
-        out_val = self._spin_out.value()
-        if out_val > 0 and out_val <= cue.in_point:
-            out_val = round(cue.in_point + 0.05, 2)
-            self._spin_out.blockSignals(True)
-            self._spin_out.setValue(out_val)
-            self._spin_out.blockSignals(False)
-
-        cue.out_point = out_val if out_val > 0 else None
-
-        ar_text = self._combo_aspect.currentText()
-        cue.aspect_ratio = None if ar_text == "Native" else ar_text
-        self._update_waveform_markers(cue)
-
-        # Emit real-time updates for Live volume and Pre-Viz in/out seeking
-        self.live_volume_changed.emit(self._slider_volume.value())
-        self.preview_in_out_changed.emit(cue.in_point, cue.out_point)
+        for cue in sel_cues:
+            cue.crop = dict(crop_dict)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        if self._live_mirror_active:
+            self._mirror_active_cue_to_live()
 
     @Slot(float)
     def _on_waveform_in_changed(self, new_in: float) -> None:
-        """Handle mouse dragging of IN marker on the waveform."""
-        self._spin_in.blockSignals(True)
-        self._spin_in.setValue(new_in)
-        self._spin_in.blockSignals(False)
-        cue = self._selected_cue()
-        if cue:
+        self._inspector.set_in_silent(new_in)
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        for cue in sel_cues:
             cue.in_point = new_in
-            self._mark_modified(True)
-            self.preview_in_out_changed.emit(cue.in_point, cue.out_point)
+            if cue.out_point is not None and cue.out_point <= new_in:
+                cue.out_point = round(new_in + 0.05, 2)
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        anchor = self._selected_cue()
+        if anchor:
+            self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point)
 
     @Slot(float)
     def _on_waveform_out_changed(self, new_out: float) -> None:
-        """Handle mouse dragging of OUT marker on the waveform."""
-        self._spin_out.blockSignals(True)
-        self._spin_out.setValue(new_out)
-        self._spin_out.blockSignals(False)
-        cue = self._selected_cue()
-        if cue:
-            cue.out_point = new_out if new_out > 0 else None
-            self._mark_modified(True)
-            self.preview_in_out_changed.emit(cue.in_point, cue.out_point)
-
-    # ── Mute Preview Toggle & Live Layer Controls ─────────────────────
-
-    def _update_mute_preview_style(self) -> None:
-        """Update toggle button visual style based on active mute state."""
-        if hasattr(self, "_btn_preview_mute"):
-            if self._btn_preview_mute.isChecked():
-                self._btn_preview_mute.setText("🔒 MUTE: ON")
-                self._btn_preview_mute.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: #4d3800;
-                        color: {_CLR_PREVIZ};
-                        border: 1px solid {_CLR_PREVIZ};
-                        border-radius: 3px;
-                        padding: 2px 10px;
-                        font-weight: bold;
-                        font-size: 10px;
-                        height: 22px;
-                    }}
-                    QPushButton:hover {{
-                        background-color: #664d00;
-                    }}
-                """)
+        self._inspector.set_out_silent(new_out)
+        sel_cues = self._selected_cues()
+        if not sel_cues or len({c.media_type for c in sel_cues}) != 1:
+            return
+        for cue in sel_cues:
+            if new_out <= 0.0:
+                cue.out_point = None
+            elif new_out <= cue.in_point:
+                cue.out_point = round(cue.in_point + 0.05, 2)
             else:
-                self._btn_preview_mute.setText("🔊 CUFFIA: ON")
-                self._btn_preview_mute.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: #004d20;
-                        color: {_CLR_LIVE};
-                        border: 1px solid {_CLR_LIVE};
-                        border-radius: 3px;
-                        padding: 2px 10px;
-                        font-weight: bold;
-                        font-size: 10px;
-                        height: 22px;
-                    }}
-                    QPushButton:hover {{
-                        background-color: #00662a;
-                    }}
-                """)
+                cue.out_point = new_out
+        self._schedule_undo_point()
+        self._mark_modified(True)
+        anchor = self._selected_cue()
+        if anchor:
+            self.preview_in_out_changed.emit(anchor.in_point, anchor.out_point)
+
+    # ── Preview Mute & Live Layer Controls ────────────────────────────
 
     @Slot(bool)
     def _on_preview_mute_toggled(self, is_muted: bool) -> None:
-        """Toggle preview mute on explicit operator request."""
-        self._update_mute_preview_style()
+        self._preview_panel.update_mute_style()
         self.preview_mute_toggled.emit(is_muted)
         state_txt = "Silenzioso (Muto)" if is_muted else "Ascolto Attivo"
         self._status_label.setText(f"Audio Preview: {state_txt}")
 
+    @Slot(int)
     def _on_clear_live_layer(self, layer: int) -> None:
-        """Remove / stop media currently running on the given layer."""
         self._reset_live_label(layer)
         for cue in self._cues:
             if cue.layer == layer and cue.status == CueStatus.LIVE:
@@ -2663,40 +1161,18 @@ class MainWindow(QMainWindow):
         self._status_label.setText(f"Layer {layer} arrestato e rimosso dal Live")
         logger.info("[LIVE STATUS] Cleared Layer %d", layer)
 
-    def _reset_live_label(self, layer: int) -> None:
-        labels = {1: self._lbl_live_l1, 2: self._lbl_live_l2, 3: self._lbl_live_l3}
-        lbl = labels.get(layer)
-        if lbl:
-            lbl.setText(f"Layer {layer}: —")
-            lbl.setStyleSheet("""
-                QLabel {
-                    background-color: #2b2b2b;
-                    border: 1px solid #555;
-                    border-radius: 3px;
-                    padding: 4px 8px;
-                    font-size: 12px;
-                    color: #777;
-                }
-            """)
-
-    # ── Layer 0 (Tappo) & Hardware Acceleration ───────────────────────
+    # ── Layer 0 (Tappo) ───────────────────────────────────────────────
 
     def set_layer0_image(self, file_path: Optional[str]) -> bool:
-        """Update the Layer 0 (tappo) background image across output and UI."""
-        success = self._output.set_layer0_image(file_path)
-        if success:
+        if self._output.set_layer0_image(file_path):
             self._layer0_image = file_path
-            name = Path(file_path).name if file_path else "Logo BlindCue (Predefinito)"
-            if hasattr(self, "_lbl_tappo_info"):
-                self._lbl_tappo_info.setText(f"Tappo (L0): {name}")
-            if hasattr(self, "_preview_monitor"):
-                self._preview_monitor.set_layer0_image(file_path)
+            self._live_status.set_layer0_label(file_path)
+            self._preview_monitor.set_layer0_image(file_path)
             return True
         return False
 
     @Slot()
     def _on_choose_layer0(self) -> None:
-        """Prompt operator to select a custom Layer 0 failsafe image."""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Seleziona Immagine di Tappo (Layer 0)",
@@ -2713,242 +1189,176 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_reset_layer0(self) -> None:
-        """Reset Layer 0 to the bundled BlindCue official logo."""
         self._output.reset_layer0_default()
         self._layer0_image = None
-        if hasattr(self, "_lbl_tappo_info"):
-            self._lbl_tappo_info.setText("Tappo (L0): Logo BlindCue (Predefinito)")
-        if hasattr(self, "_preview_monitor"):
-            self._preview_monitor.set_layer0_image(str(_LOGO_PATH))
+        self._live_status.set_layer0_label(None)
+        self._preview_monitor.set_layer0_image(str(DEFAULT_LOGO_PATH))
         self._mark_modified(True)
         self._auto_save()
         self._status_label.setText("Tappo (Layer 0) ripristinato al logo predefinito")
 
-    @staticmethod
-    def _get_hardware_details() -> dict:
-        cpu_cores = os.cpu_count() or 1
-        cpu_model = "Multi-core CPU"
-        try:
-            with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
-                for line in f:
-                    if "model name" in line:
-                        cpu_model = line.split(":", 1)[1].strip()
-                        break
-        except Exception:
-            pass
-
-        gpu_desc = "Scheda Grafica Integrata / Discreta"
-        if shutil.which("lspci"):
-            try:
-                res = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
-                lines = [line for line in res.stdout.splitlines() if any(k in line for k in ["VGA", "3D", "Display"])]
-                if lines:
-                    parts = lines[0].split(":", 2)
-                    gpu_desc = parts[-1].strip() if len(parts) >= 3 else lines[0]
-            except Exception:
-                pass
-        elif os.path.exists("/dev/dri/renderD128"):
-            gpu_desc = "Mesa Direct Rendering (DRI/DRM)"
-
-        has_vaapi = os.path.exists("/dev/dri/renderD128")
-        wayland_session = os.environ.get("WAYLAND_DISPLAY", "")
-        return {
-            "cpu_cores": cpu_cores,
-            "cpu_model": cpu_model,
-            "gpu_desc": gpu_desc,
-            "has_vaapi": has_vaapi,
-            "wayland_session": wayland_session,
-        }
-
-    def _detect_hardware_brief(self) -> str:
-        info = self._get_hardware_details()
-        cores = info["cpu_cores"]
-        gpu = info["gpu_desc"]
-        if "Intel" in gpu:
-            gpu_short = "Intel Graphics"
-        elif "NVIDIA" in gpu or "GeForce" in gpu:
-            gpu_short = "NVIDIA GPU"
-        elif "AMD" in gpu or "Radeon" in gpu:
-            gpu_short = "AMD Radeon"
-        else:
-            gpu_short = gpu[:20]
-        accel = "VA-API/OpenGL" if info["has_vaapi"] else "EGL/OpenGL"
-        return f"🖥️ CPU: {cores} Cores | 🎮 GPU: {gpu_short} ({accel})"
-
-    @Slot()
-    def _on_hardware_info(self) -> None:
-        info = self._get_hardware_details()
-        dialog_txt = (
-            f"<h3>Architettura Hardware & Prestazioni BlindCue</h3>"
-            f"<p><b>Processore (CPU):</b> {info['cpu_model']}<br/>"
-            f"• Core / Thread rilevati: <b>{info['cpu_cores']} core</b></p>"
-            f"<p><b>Scheda Video (GPU):</b> {info['gpu_desc']}<br/>"
-            f"• Accelerazione Hardware DRI/DRM (/dev/dri): <b>{'Attiva (VA-API / EGL)' if info['has_vaapi'] else 'Mesa Software'}</b><br/>"
-            f"• Sessione Grafica: <b>Native Wayland ({info['wayland_session'] or 'Attivo'})</b></p>"
-            f"<hr/>"
-            f"<h4>Come BlindCue sfrutta l'Hardware per la Massima Stabilità Live:</h4>"
-            f"<ul>"
-            f"<li><b>GPU Offloading:</b> Il compositing di tutti i layer (0, 1, 2, 3) e lo scaling video/immagini avvengono interamente sulla GPU tramite Wayland EGL/OpenGL. La CPU non esegue operazioni pesanti di ridisegno pixel.</li>"
-            f"<li><b>Decodifica Video Hardware:</b> QtMultimedia e FFmpeg interrogano automaticamente la GPU (tramite VA-API per Intel/AMD o NVDEC per NVIDIA). I frame vengono decodificati direttamente nelle texture video senza intasare la RAM.</li>"
-            f"<li><b>Architettura Multi-Core Isolato:</b> BlindCue distribuisce il carico su più thread separati:"
-            f"<ul>"
-            f"<li><i>Core UI:</i> Riservato all'interfaccia utente (event loop a 60 fps garantito, nessun freeze).</li>"
-            f"<li><i>Core Audio/Video:</i> Thread prioritario a latenza minima con buffer circolare per evitare audio glitch.</li>"
-            f"<li><i>Core Background:</i> Pool di thread worker asincroni per l'analisi della forma d'onda e salvataggio atomico.</li>"
-            f"</ul>"
-            f"</li>"
-            f"</ul>"
-            f"<p style='color: #00e676;'><b>Risultato:</b> Zero crash, latenza impercettibile sul tasto GO e carico CPU medio inferiore al 5%.</p>"
-        )
-        QMessageBox.information(self, "BlindCue — Info Hardware & Accelerazione", dialog_txt)
-
-    # ── Slots ─────────────────────────────────────────────────────────
+    # ── Selection & Live Mirror ───────────────────────────────────────
 
     @Slot(int)
-    def _on_cue_selected(self, row: int) -> None:
-        if 0 <= row < len(self._cues):
-            self._current_index = row
-            cue = self._cues[row]
-            self._update_inspector(cue)
-            self._request_waveform(cue)
-            self._waveform.set_playhead(None)
-            icon = "🎬" if cue.media_type == MediaType.VIDEO else ("🎵" if cue.media_type == MediaType.AUDIO else "🖼")
-            self._lbl_preview_info.setText(f"{icon} #{_format_cid(cue.cue_id)} {cue.name}")
-            self._lbl_preview_info.setToolTip(f"File: {cue.file_path}")
-            self._lbl_cue_standby.setText(f"Standby: #{_format_cid(cue.cue_id)} [{cue.media_type.value}]")
+    def _on_cue_selected(self, _row: int) -> None:
+        self._sync_selection_state()
 
-            if cue.media_type == MediaType.IMAGE:
-                self.show_preview_image(cue.file_path, scale=cue.scale, crop=cue.crop,
-                                       pos_x=cue.position_x, pos_y=cue.position_y, opacity=cue.opacity)
-            elif cue.media_type == MediaType.VIDEO:
-                self.show_preview_video(scale=cue.scale, crop=cue.crop,
-                                       pos_x=cue.position_x, pos_y=cue.position_y, opacity=cue.opacity)
-            elif cue.media_type == MediaType.AUDIO:
-                self.show_preview_audio()
+    @Slot()
+    def _on_cue_selection_changed(self) -> None:
+        self._sync_selection_state()
 
-            if getattr(self, "_live_mirror_active", False):
+    def _sync_selection_state(self) -> None:
+        """Update Inspector, Standby badges, Pre-Viz, and Waveform for 0, 1, or N selected cues."""
+        if self._updating_cue_list:
+            return
+        if not self._undo.restoring and self._undo.is_debounce_active():
+            self._commit_undo_point()
+
+        sel_rows = self._selected_rows()
+        anchor_row, cue = self._anchor_row_and_cue()
+        sig = (tuple(sel_rows), anchor_row, cue.cue_id if cue else None)
+        if sig == self._last_selection_sig:
+            return
+        prev_anchor_id = self._last_selection_sig[2] if self._last_selection_sig else None
+        self._last_selection_sig = sig
+
+        if cue is not None and 0 <= anchor_row < len(self._cues):
+            self._current_index = anchor_row
+            self._undo.update_current_index(anchor_row)
+            self._refresh_rows_in_place(list(range(len(self._cues))))
+
+            sel_cues = [self._cues[r] for r in sel_rows]
+            self._update_crop_reference_for_cue(cue)
+            self._inspector.load_selection(sel_cues, anchor_cue=cue, anchor_row=anchor_row)
+
+            if cue.cue_id != prev_anchor_id:
+                self._request_waveform(cue)
+                self._waveform.set_playhead(None)
+                self._render_cue_in_preview(cue, load_image=False)
+                self.cue_preview_requested.emit(cue)
+
+            self._update_waveform_markers(cue)
+            self._update_cue_readouts(anchor_row, cue)
+            if len(sel_cues) > 1:
+                mtypes = {c.media_type for c in sel_cues}
+                if len(mtypes) == 1:
+                    self._lbl_cue_standby.setText(
+                        f"Selezione: {len(sel_cues)} {cue.media_type.value}"
+                    )
+                else:
+                    self._lbl_cue_standby.setText(f"Selezione mista: {len(sel_cues)} cue")
+
+            if self._live_mirror_active:
                 self._mirror_active_cue_to_live()
 
-            self.cue_preview_requested.emit(cue)
-            logger.debug("Cue selected: %s", cue)
+            logger.debug("Cue selected (count=%d): %s", len(sel_cues), cue)
         else:
-            self._update_inspector(None)
+            self._inspector.load_cue(None)
             self.clear_preview()
             self._lbl_preview_info.setText("— Nessun file selezionato —")
             self._lbl_cue_standby.setText("Standby: Nessuna")
 
-    # ── Live Mirror (Rehearsal / Progettazione) ───────────────────────
+    def _push_cue_to_output(self, cue: Cue) -> None:
+        """Render an IMAGE or VIDEO cue onto its assigned output layer."""
+        if cue.media_type == MediaType.IMAGE:
+            self._output.show_image(
+                cue.layer,
+                cue.file_path,
+                opacity=cue.opacity,
+                crop=cue.crop,
+                scale=cue.scale,
+                pos_x=cue.position_x,
+                pos_y=cue.position_y,
+                aspect_ratio=cue.aspect_ratio,
+            )
+        elif cue.media_type == MediaType.VIDEO:
+            self._output.show_video_widget(
+                scale=cue.scale,
+                crop=cue.crop,
+                pos_x=cue.position_x,
+                pos_y=cue.position_y,
+                opacity=cue.opacity,
+                layer=cue.layer,
+                aspect_ratio=cue.aspect_ratio,
+            )
 
     @Slot(bool)
     def _on_live_mirror_toggled(self, active: bool) -> None:
         self._live_mirror_active = active
+        self._preview_panel.set_live_mirror_style(active)
         if active:
-            self._btn_live_mirror.setText("🔴 MIRROR: ON")
-            self._btn_live_mirror.setStyleSheet("""
-                QPushButton {
-                    background-color: #5c1818;
-                    color: #ff5252;
-                    border: 1px solid #ff5252;
-                    border-radius: 3px;
-                    font-weight: bold;
-                    font-size: 10px;
-                    padding: 1px 8px;
-                }
-                QPushButton:hover {
-                    background-color: #7a2020;
-                }
-            """)
-            self._status_label.setText("PROGETTAZIONE: LIVE MIRROR ATTIVO (Modifiche visibili sullo schermo esterno)")
+            self._status_label.setText(
+                "PROGETTAZIONE: LIVE MIRROR ATTIVO (Modifiche visibili sullo schermo esterno)"
+            )
             self._mirror_active_cue_to_live()
         else:
-            self._btn_live_mirror.setText("🔗 MIRROR LIVE: OFF")
-            self._btn_live_mirror.setStyleSheet("""
-                QPushButton {
-                    background-color: #2b2b2b;
-                    color: #888888;
-                    border: 1px solid #555555;
-                    border-radius: 3px;
-                    font-weight: bold;
-                    font-size: 10px;
-                    padding: 1px 8px;
-                }
-                QPushButton:hover {
-                    background-color: #383838;
-                    color: #ccc;
-                }
-            """)
-            self._status_label.setText("LIVE MIRROR DISATTIVATO — Anteprima isolata (Pronto per lo spettacolo)")
+            self._status_label.setText(
+                "LIVE MIRROR DISATTIVATO — Anteprima isolata (Pronto per lo spettacolo)"
+            )
             self._restore_live_output()
 
     def _mirror_active_cue_to_live(self) -> None:
         cue = self._selected_cue()
-        if not cue or not getattr(self, "_live_mirror_active", False):
+        if not cue or not self._live_mirror_active:
             return
         try:
-            if cue.media_type == MediaType.IMAGE:
-                self._output.show_image(
-                    cue.layer,
-                    cue.file_path,
-                    opacity=cue.opacity,
-                    crop=cue.crop,
-                    scale=cue.scale,
-                    pos_x=cue.position_x,
-                    pos_y=cue.position_y,
+            prev_layer = self._last_mirrored_layer
+            if prev_layer is not None and prev_layer != cue.layer:
+                live_on_prev = next(
+                    (c for c in self._cues if c.status == CueStatus.LIVE and c.layer == prev_layer),
+                    None,
                 )
-            elif cue.media_type == MediaType.VIDEO:
-                self._output.show_video_widget(
-                    scale=cue.scale,
-                    crop=cue.crop,
-                    pos_x=cue.position_x,
-                    pos_y=cue.position_y,
-                    opacity=cue.opacity,
-                )
+                if live_on_prev is None:
+                    self._output.clear_layer(prev_layer)
+                else:
+                    self._push_cue_to_output(live_on_prev)
+
+            self._last_mirrored_layer = cue.layer
+            self._push_cue_to_output(cue)
         except Exception as exc:
             logger.error("[LIVE MIRROR] Error mirroring cue: %s", exc)
 
     def _restore_live_output(self) -> None:
         try:
+            self._last_mirrored_layer = None
             live_cues = [c for c in self._cues if c.status == CueStatus.LIVE]
             if not live_cues:
                 self._output.show_fallback()
             else:
                 self._output.clear_all_layers()
                 for c in live_cues:
-                    if c.media_type == MediaType.IMAGE:
-                        self._output.show_image(
-                            c.layer,
-                            c.file_path,
-                            opacity=c.opacity,
-                            crop=c.crop,
-                            scale=c.scale,
-                            pos_x=c.position_x,
-                            pos_y=c.position_y,
-                        )
-                    elif c.media_type == MediaType.VIDEO:
-                        self._output.show_video_widget(
-                            scale=c.scale,
-                            crop=c.crop,
-                            pos_x=c.position_x,
-                            pos_y=c.position_y,
-                            opacity=c.opacity,
-                        )
+                    self._push_cue_to_output(c)
         except Exception as exc:
             logger.error("[LIVE MIRROR] Error restoring live output: %s", exc)
 
+    @Slot(int)
     def _set_layer(self, layer: int) -> None:
-        self._btn_layer1.setChecked(layer == 1)
-        self._btn_layer2.setChecked(layer == 2)
-        self._btn_layer3.setChecked(layer == 3)
-        cue = self._selected_cue()
-        if cue:
-            cue.layer = layer
-            self._refresh_cue_list()
+        sel_rows = self._selected_rows()
+        if not sel_rows:
+            return
+        sel_cues = [self._cues[r] for r in sel_rows]
+        if len({c.media_type for c in sel_cues}) != 1:
+            return
+
+        self._inspector.set_layer_checked(layer)
+        changed = any(cue.layer != layer for cue in sel_cues)
+        if changed:
+            if self._undo.is_debounce_active():
+                self._commit_undo_point()
+            for cue in sel_cues:
+                cue.layer = layer
+            self._refresh_rows_in_place(sel_rows)
+            if len(sel_cues) > 1:
+                anchor_row, anchor = self._anchor_row_and_cue()
+                self._inspector.load_selection(sel_cues, anchor_cue=anchor, anchor_row=anchor_row)
+            self._commit_undo_point()
             self._mark_modified(True)
+            self._auto_save()
+
+    # ── Playback Transport (GO / Blackout) ────────────────────────────
 
     @Slot()
     def _on_go(self) -> None:
-        """Fire the current/selected cue and advance standby to the next cue."""
-        # Safety guard: if focus is currently inside a text input or spinbox, do not fire GO!
         focus_w = QApplication.focusWidget()
         if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
             return
@@ -2959,8 +1369,7 @@ class MainWindow(QMainWindow):
 
         self._apply_inspector_to_cue()
 
-        # Prioritize currently selected row in cue list
-        row = self._cue_list.currentRow()
+        row, _ = self._anchor_row_and_cue()
         if 0 <= row < len(self._cues):
             target_idx = row
         elif 0 <= self._current_index < len(self._cues):
@@ -2969,8 +1378,6 @@ class MainWindow(QMainWindow):
             target_idx = 0
 
         cue = self._cues[target_idx]
-
-        # Reset any previous LIVE status on this layer
         for other in self._cues:
             if other.layer == cue.layer and other.cue_id != cue.cue_id and other.status == CueStatus.LIVE:
                 other.status = CueStatus.LOADED
@@ -2979,36 +1386,20 @@ class MainWindow(QMainWindow):
         self._current_index = target_idx
         self.cue_fired.emit(cue)
         self._refresh_cue_list(keep_selection=False)
+        self._update_live_layer_label(cue)
 
-        # Update live status control bar
-        layer_labels = {1: self._lbl_live_l1, 2: self._lbl_live_l2, 3: self._lbl_live_l3}
-        lbl = layer_labels.get(cue.layer)
-        if lbl:
-            lbl.setText(f"LIVE: [{cue.media_type.value}] {cue.name}  (Layer {cue.layer})")
-            lbl.setStyleSheet(f"""
-                QLabel {{
-                    background-color: #16361a;
-                    border: 1px solid {_CLR_LIVE};
-                    border-radius: 3px;
-                    padding: 4px 8px;
-                    font-size: 12px;
-                    font-weight: bold;
-                    color: {_CLR_LIVE};
-                }}
-            """)
-
-        # Auto-advance standby selection to the next cue for the subsequent GO
+        ref = format_cue_ref(target_idx, cue)
         next_idx = target_idx + 1
         if next_idx < len(self._cues):
             self._cue_list.setCurrentRow(next_idx)
+            next_ref = format_cue_ref(next_idx, self._cues[next_idx])
             self._status_label.setText(
-                f"LIVE → Cue #{cue.cue_id} '{cue.name}' (Layer {cue.layer}) | Standby: #{self._cues[next_idx].cue_id} '{self._cues[next_idx].name}'"
+                f"LIVE → {ref} '{cue.name}' (Layer {cue.layer}) | Standby: {next_ref} '{self._cues[next_idx].name}'"
             )
         else:
-            # Reached end: keep selection on current cue and allow re-firing anytime!
             self._cue_list.setCurrentRow(target_idx)
             self._status_label.setText(
-                f"LIVE → Cue #{cue.cue_id} '{cue.name}' (Layer {cue.layer}) — Fine scaletta (premi GO per rilanciare)"
+                f"LIVE → {ref} '{cue.name}' (Layer {cue.layer}) — Fine scaletta (premi GO per rilanciare)"
             )
 
         self._auto_save()
@@ -3016,18 +1407,17 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_blackout(self) -> None:
-        """Show Layer 0 (failsafe) on the output and clear all live indicators."""
         self._output.show_fallback()
         for cue in self._cues:
             if cue.status == CueStatus.LIVE:
                 cue.status = CueStatus.LOADED
         self._refresh_cue_list()
-        self._reset_live_label(1)
-        self._reset_live_label(2)
-        self._reset_live_label(3)
+        self._live_status.reset_all_layers()
         self.blackout_requested.emit()
         self._status_label.setText("BLACKOUT — Output ripristinato a Layer 0 (Tappo)")
         logger.info("[BLACKOUT] Activated")
+
+    # ── Cue List Manipulation ─────────────────────────────────────────
 
     def _on_add_media(self, media_type: MediaType) -> None:
         ext_map = {
@@ -3036,32 +1426,31 @@ class MainWindow(QMainWindow):
             MediaType.IMAGE: "Image (*.png *.jpg *.jpeg *.bmp *.gif *.webp)",
         }
         file_path, _ = QFileDialog.getOpenFileName(
-            self, f"Add {media_type.value}", "",
-            ext_map.get(media_type, "All Files (*)"))
+            self, f"Add {media_type.value}", "", ext_map.get(media_type, "All Files (*)")
+        )
         if file_path:
             self._add_cue_from_file(file_path, media_type)
 
-    def _add_cue_from_file(self, file_path: str,
-                           media_type: Optional[MediaType] = None) -> None:
+    def _add_cue_from_file(self, file_path: str, media_type: Optional[MediaType] = None) -> None:
         if media_type is None:
             media_type = self._detect_media_type(file_path)
         if media_type is None:
-            QMessageBox.warning(self, "Unsupported File",
-                                f"Cannot determine media type for:\n{file_path}")
+            QMessageBox.warning(self, "Unsupported File", f"Cannot determine media type for:\n{file_path}")
             return
 
-        name = os.path.basename(file_path)
-        cue = Cue(name=name, media_type=media_type, file_path=file_path)
+        cue = Cue(name=os.path.basename(file_path), media_type=media_type, file_path=file_path)
         errors = cue.validate()
         if errors:
-            QMessageBox.warning(self, "Validation Error",
-                                "\n".join(errors))
+            QMessageBox.warning(self, "Validation Error", "\n".join(errors))
             return
 
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
         cue.status = CueStatus.LOADED
         self._cues.append(cue)
         self._refresh_cue_list()
         self._cue_list.setCurrentRow(len(self._cues) - 1)
+        self._commit_undo_point()
         self._mark_modified(True)
         self._status_label.setText(f"Added: {cue}")
         self._auto_save()
@@ -3071,57 +1460,72 @@ class MainWindow(QMainWindow):
     def _on_file_dropped(self, file_path: str) -> None:
         self._add_cue_from_file(file_path)
 
+    def _move_selected_cue(self, delta: int) -> None:
+        sel_rows = self._selected_rows()
+        if len(sel_rows) != 1:
+            return
+        row = sel_rows[0]
+        target_row = row + delta
+        if not (0 <= row < len(self._cues) and 0 <= target_row < len(self._cues)):
+            return
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        self._cues[row], self._cues[target_row] = self._cues[target_row], self._cues[row]
+        self._current_index = target_row
+        self._refresh_cue_list(keep_selection=False, select_row=target_row)
+        self._sync_inspector_header_and_text(target_row, self._cues[target_row])
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._auto_save()
+
     @Slot()
     def _on_move_up(self) -> None:
-        row = self._cue_list.currentRow()
-        if row > 0:
-            self._cues[row], self._cues[row - 1] = (
-                self._cues[row - 1], self._cues[row])
-            self._refresh_cue_list()
-            self._cue_list.setCurrentRow(row - 1)
-            self._mark_modified(True)
-            self._auto_save()
+        self._move_selected_cue(-1)
 
     @Slot()
     def _on_move_down(self) -> None:
-        row = self._cue_list.currentRow()
-        if 0 <= row < len(self._cues) - 1:
-            self._cues[row], self._cues[row + 1] = (
-                self._cues[row + 1], self._cues[row])
-            self._refresh_cue_list()
-            self._cue_list.setCurrentRow(row + 1)
-            self._mark_modified(True)
-            self._auto_save()
+        self._move_selected_cue(1)
 
     @Slot()
     def _on_delete_cue(self) -> None:
-        # Safety guard: if focus is in a text input or spinbox, do not delete the cue!
         focus_w = QApplication.focusWidget()
         if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
             return
 
-        row = self._cue_list.currentRow()
-        if 0 <= row < len(self._cues):
-            removed = self._cues.pop(row)
-            self._refresh_cue_list(keep_selection=False)
-            if self._cues:
-                new_row = min(row, len(self._cues) - 1)
-                self._cue_list.setCurrentRow(new_row)
-            else:
-                self._current_index = -1
-                self._waveform.set_peaks(np.array([]))
-                self._waveform.set_in_out_seconds(0.0, None, 0.0)
-                self._lbl_preview_info.setText("— Nessun file selezionato —")
-                self.set_preview_time(0.0, 0.0)
-                self.clear_preview()
-                self._update_inspector(None)
-            self._mark_modified(True)
-            self._status_label.setText(f"Deleted: #{removed.cue_id} '{removed.name}'")
-            self._auto_save()
-            logger.info("Deleted cue: %s", removed)
+        sel_rows = self._selected_rows()
+        if not sel_rows:
+            return
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        anchor_row, _ = self._anchor_row_and_cue()
+        self._undo.update_current_index(anchor_row)
+
+        removed = [self._cues.pop(r) for r in sorted(sel_rows, reverse=True)]
+        first_row = sel_rows[0]
+        self._refresh_cue_list(keep_selection=False)
+        if self._cues:
+            self._cue_list.setCurrentRow(min(first_row, len(self._cues) - 1))
+        else:
+            self._current_index = -1
+            self._reset_idle_preview_ui()
+            self._update_inspector(None)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        if len(removed) == 1:
+            rem = removed[0]
+            self._status_label.setText(
+                f"Deleted: {format_cue_ref(first_row, rem)} '{rem.name}' (Ctrl+Z per ripristinare)"
+            )
+        else:
+            self._status_label.setText(
+                f"Eliminate {len(removed)} cue selezionate (Ctrl+Z per ripristinare)"
+            )
+        self._auto_save()
+        logger.info("Deleted %d cue(s)", len(removed))
+
+    # ── Persistence & Crash Recovery ──────────────────────────────────
 
     def _auto_save(self) -> None:
-        """Autosave active state if cues exist or Layer 0 is customized."""
         if self._cues or self._layer0_image:
             try:
                 self._apply_inspector_to_cue()
@@ -3136,14 +1540,14 @@ class MainWindow(QMainWindow):
                 logger.warning("[AUTOSAVE] Auto-save error: %s", exc)
 
     def _check_crash_recovery(self) -> None:
-        """Inspect if a previous session terminated abnormally and offer to restore."""
+        if self._cues:
+            return
         recovery = self._project_manager.check_crash_recovery()
         if not recovery:
             return
 
         saved_at = recovery.get("saved_at", "sconosciuto")
         cues_count = recovery.get("cues_count", len(recovery.get("cues", [])))
-
         reply = QMessageBox.question(
             self,
             "BlindCue — Ripristino Sessione (Crash Recovery)",
@@ -3156,15 +1560,14 @@ class MainWindow(QMainWindow):
         )
 
         if reply == QMessageBox.StandardButton.Yes:
-            raw_cues = recovery.get("cues", [])
             self._cues.clear()
-            for item in raw_cues:
+            for item in recovery.get("cues", []):
                 try:
                     cue = Cue.from_dict(item)
                     cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE
                     self._cues.append(cue)
-                except Exception as e:
-                    logger.warning("[RECOVERY] Error recovering cue: %s", e)
+                except Exception as exc:
+                    logger.warning("[RECOVERY] Error recovering cue: %s", exc)
             self._current_index = recovery.get("current_cue_index", -1)
             self._current_project_path = recovery.get("active_project_path")
 
@@ -3175,9 +1578,12 @@ class MainWindow(QMainWindow):
             else:
                 self._on_reset_layer0()
 
-            self._refresh_cue_list()
+            self._refresh_cue_list(keep_selection=False)
             if 0 <= self._current_index < len(self._cues):
                 self._cue_list.setCurrentRow(self._current_index)
+            elif self._cues:
+                self._cue_list.setCurrentRow(0)
+            self._reset_undo_history()
             self._mark_modified(True)
             self._status_label.setText(f"Sessione ripristinata con successo ({len(self._cues)} cue)")
             logger.info("[RECOVERY] Restored %d cues from autosave", len(self._cues))
@@ -3185,53 +1591,48 @@ class MainWindow(QMainWindow):
             self._project_manager.clear_autosave()
             logger.info("[RECOVERY] User discarded autosave recovery")
 
+    def _confirm_save_if_modified(self, title: str, message: str) -> bool:
+        """Prompt user to save dirty state; returns True to continue action or False to abort."""
+        if not (self._is_modified and self._cues):
+            return True
+        ret = QMessageBox.question(
+            self,
+            title,
+            message,
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Save,
+        )
+        if ret == QMessageBox.StandardButton.Save:
+            return self._on_save_show()
+        return ret != QMessageBox.StandardButton.Cancel
+
     @Slot()
     def _on_new_show(self) -> None:
-        """Create a new empty show."""
-        if self._is_modified and self._cues:
-            ret = QMessageBox.question(
-                self,
-                "Nuovo Show",
-                "Ci sono modifiche non salvate nel progetto corrente.\nVuoi salvarle prima di creare un nuovo show?",
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Save,
-            )
-            if ret == QMessageBox.StandardButton.Save:
-                if not self._on_save_show():
-                    return
-            elif ret == QMessageBox.StandardButton.Cancel:
-                return
+        if not self._confirm_save_if_modified(
+            "Nuovo Show",
+            "Ci sono modifiche non salvate nel progetto corrente.\nVuoi salvarle prima di creare un nuovo show?",
+        ):
+            return
 
         self._cues.clear()
         self._current_index = -1
         self._current_project_path = None
         self._on_reset_layer0()
         self._refresh_cue_list()
-        self._waveform.set_peaks(np.array([]))
-        self._waveform.set_in_out_seconds(0.0, None, 0.0)
-        self.set_preview_time(0.0, 0.0)
-        self.clear_preview()
+        self._reset_idle_preview_ui()
         self._update_inspector(None)
+        self._reset_undo_history()
         self._mark_modified(False)
         self._status_label.setText("Nuovo show creato")
         self._auto_save()
 
     @Slot()
     def _on_open_show(self) -> None:
-        """Open a .blindcue or .json show file."""
-        if self._is_modified and self._cues:
-            ret = QMessageBox.question(
-                self,
-                "Apri Show",
-                "Ci sono modifiche non salvate.\nVuoi salvare prima di aprire un altro show?",
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Save,
-            )
-            if ret == QMessageBox.StandardButton.Save:
-                if not self._on_save_show():
-                    return
-            elif ret == QMessageBox.StandardButton.Cancel:
-                return
+        if not self._confirm_save_if_modified(
+            "Apri Show",
+            "Ci sono modifiche non salvate.\nVuoi salvare prima di aprire un altro show?",
+        ):
+            return
 
         file_path, _ = QFileDialog.getOpenFileName(
             self,
@@ -3248,18 +1649,18 @@ class MainWindow(QMainWindow):
             self._current_index = current_idx
             self._current_project_path = file_path
 
-            # Restore custom Layer 0 image if specified in project settings
             layer0 = settings.get("layer0_image") if isinstance(settings, dict) else None
             if layer0 and os.path.isfile(layer0):
                 self.set_layer0_image(layer0)
             else:
                 self._on_reset_layer0()
 
-            self._refresh_cue_list()
+            self._refresh_cue_list(keep_selection=False)
             if 0 <= self._current_index < len(self._cues):
                 self._cue_list.setCurrentRow(self._current_index)
             elif self._cues:
                 self._cue_list.setCurrentRow(0)
+            self._reset_undo_history()
             self._mark_modified(False)
             self._status_label.setText(f"Caricato: {Path(file_path).name} ({len(cues)} cue)")
             self._auto_save()
@@ -3269,14 +1670,12 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_save_show(self) -> bool:
-        """Save show to active path, or ask for path if untitled."""
         if not self._current_project_path:
             return self._on_save_as_show()
         return self._do_save(self._current_project_path)
 
     @Slot()
     def _on_save_as_show(self) -> bool:
-        """Prompt user for a destination file and save."""
         suggested = self._current_project_path or "my_show.blindcue"
         file_path, _ = QFileDialog.getSaveFileName(
             self,
@@ -3292,7 +1691,6 @@ class MainWindow(QMainWindow):
         return self._do_save(file_path)
 
     def _do_save(self, file_path: str) -> bool:
-        """Execute physical save via ProjectManager."""
         self._apply_inspector_to_cue()
         settings = {"layer0_image": self._layer0_image} if self._layer0_image else {}
         success = self._project_manager.save_project(
@@ -3306,16 +1704,14 @@ class MainWindow(QMainWindow):
             self._status_label.setText(f"Salvato con successo: {Path(file_path).name}")
             self._auto_save()
             return True
-        else:
-            QMessageBox.critical(self, "Errore Salvataggio", f"Impossibile salvare il file in:\n{file_path}")
-            return False
+        QMessageBox.critical(self, "Errore Salvataggio", f"Impossibile salvare il file in:\n{file_path}")
+        return False
 
     @Slot()
     def _on_quit(self) -> None:
         self.close()
 
     def closeEvent(self, event) -> None:  # noqa: N802
-        """Handle application close with unsaved changes prompt and clean shutdown."""
         if not self._force_closing and self._is_modified and self._cues:
             ret = QMessageBox.question(
                 self,
@@ -3332,34 +1728,28 @@ class MainWindow(QMainWindow):
                 event.ignore()
                 return
 
+        app = QApplication.instance()
+        if app is not None:
+            app.removeEventFilter(self)
         self._project_manager.mark_clean_exit()
         self._output.force_close()
         event.accept()
 
-    @Slot()
-    def _on_about(self) -> None:
-        QMessageBox.about(
-            self, "About BlindCue",
-            "<h2>BlindCue v0.1</h2>"
-            "<p>Minimal failsafe cue player for live shows.</p>"
-            "<p>Layer 0 always active • 100% Native Wayland QtMultimedia</p>"
-            "<p>© 2026 — Zero crash in live.</p>")
-
-    # ── Waveform ──────────────────────────────────────────────────────
+    # ── Waveform Background Worker ────────────────────────────────────
 
     def _request_waveform(self, cue: Cue) -> None:
-        """Launch background waveform extraction for audio/video cues."""
         if cue.media_type == MediaType.IMAGE:
             self._waveform.set_peaks(np.array([]))
             return
         try:
-            analyzer = WaveformAnalyzer(cue.file_path,
-                                        self._waveform.width())
+            analyzer = WaveformAnalyzer(cue.file_path, self._waveform.width())
             self._active_analyzers.add(analyzer)
             analyzer.signals.finished.connect(
-                lambda path, peaks, a=analyzer: self._on_analyzer_ready(a, path, peaks))
+                lambda path, peaks, a=analyzer: self._on_analyzer_ready(a, path, peaks)
+            )
             analyzer.signals.error.connect(
-                lambda path, msg, a=analyzer: self._on_analyzer_failed(a, path, msg))
+                lambda path, msg, a=analyzer: self._on_analyzer_failed(a, path, msg)
+            )
             self._thread_pool.start(analyzer)
         except Exception as exc:
             logger.error("Waveform request failed: %s", exc)
@@ -3376,46 +1766,46 @@ class MainWindow(QMainWindow):
         logger.warning("Waveform error for %s: %s", path, msg)
         self._waveform.set_peaks(np.array([]))
 
-    # ── Preview Visual Helpers ────────────────────────────────────────
+    # ── Preview Visual Pass-Throughs ──────────────────────────────────
 
     def show_preview_image(self, file_path: str, scale: float = 1.0, crop: Optional[dict] = None,
-                           pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        """Display a static image in the preview monitor with transforms."""
-        self._preview_monitor.show_image(file_path, scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y, opacity=opacity)
+                           pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0,
+                           aspect_ratio: Optional[str] = None) -> None:
+        self._preview_monitor.show_image(
+            file_path, scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
+            opacity=opacity, aspect_ratio=aspect_ratio,
+        )
 
     def show_preview_video(self, scale: float = 1.0, crop: Optional[dict] = None,
-                           pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        """Display preview video with transforms."""
-        self._preview_monitor.show_video(scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y, opacity=opacity)
+                           pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0,
+                           aspect_ratio: Optional[str] = None) -> None:
+        self._preview_monitor.show_video(
+            scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
+            opacity=opacity, aspect_ratio=aspect_ratio,
+        )
 
     def update_preview_video_layout(self, scale: float = 1.0, crop: Optional[dict] = None,
-                                    pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0) -> None:
-        """Update transforms of preview video in real time."""
-        self._preview_monitor.update_video_layout(scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y, opacity=opacity)
+                                    pos_x: float = 0.0, pos_y: float = 0.0, opacity: float = 1.0,
+                                    aspect_ratio: Optional[str] = None) -> None:
+        self._preview_monitor.update_video_layout(
+            scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
+            opacity=opacity, aspect_ratio=aspect_ratio,
+        )
 
     def show_preview_audio(self) -> None:
-        """Display audio preview banner over Layer 0."""
         self._preview_monitor.show_audio()
 
     def set_preview_audio_playing(self, is_playing: bool) -> None:
-        """Toggle animated equalizer spectrum meter in preview."""
         self._preview_monitor.set_audio_playing(is_playing)
 
     def clear_preview(self) -> None:
-        """Clear media in preview and return to Layer 0."""
         self._preview_monitor.clear_media()
 
-    # ── Overrides ─────────────────────────────────────────────────────
-
     def get_preview_video_sink(self) -> QVideoSink:
-        """Return the native video sink for preview video rendering."""
         return self._preview_monitor.get_video_sink()
 
     def get_preview_video_widget(self) -> Any:
-        """Return the video sink for QMediaPlayer.setVideoOutput()."""
         return self._preview_monitor.get_video_sink()
 
     def get_preview_wid(self) -> int:
-        """Return 0 for native Wayland / QVideoSink rendering."""
         return 0
-

@@ -118,6 +118,8 @@ class LivePlayer(QObject):
              end: Optional[float] = None) -> None:
         """Load a media file for playback."""
         try:
+            if self._fade_timer is not None and self._fade_timer.isActive():
+                self._fade_timer.stop()
             self._start_ms = max(0, int(start * 1000))
             self._end_ms = int(end * 1000) if (end is not None and end > 0) else None
             self._current_loop_iteration = 0
@@ -156,6 +158,8 @@ class LivePlayer(QObject):
     def stop(self) -> None:
         """Stop playback completely."""
         try:
+            if self._fade_timer is not None and self._fade_timer.isActive():
+                self._fade_timer.stop()
             self._player.stop()
             logger.debug("[LIVE] stop()")
         except Exception as exc:

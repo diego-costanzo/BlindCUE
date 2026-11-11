@@ -288,10 +288,23 @@ BlindCUE/
     │   ├── player_test.py              # Player QtMultimedia per banco regia (muto di default)
     │   └── audio_analyzer.py           # Analizzatore asincrono waveform via ffmpeg pipe e numpy
     │
-    └── ui/                             # Interfaccia grafica utente Wayland-nativa
+    └── ui/                             # Interfaccia grafica utente Wayland-nativa (modulare)
         ├── __init__.py
-        ├── main_window.py              # Finestra di regia (Scaletta, Pre-Viz 16:9, Ispettore, Waveform)
-        └── output_window.py            # Finestra schermo esterno con Layer 0 dinamico e compositing L1-L3
+        ├── main_window.py              # Orchestratore principale di regia (Menu, GO, Mirror, Show I/O)
+        ├── output_window.py            # Finestra schermo esterno con Layer 0 dinamico e compositing L1-L3
+        ├── cue_list_panel.py           # Pannello Scaletta Cue con contatori e pulsanti rapidi
+        ├── cue_table.py                # Tabella 3 colonne (#, Q, Nome / Media) e delegate custom
+        ├── preview_panel.py            # Pannello Pre-Viz (toolbar, timer digitale, transport, mute)
+        ├── preview_monitor.py          # Monitor 16:9 WYSIWYG con clip rigoroso e 8 maniglie crop
+        ├── layout_math.py              # Calcolo geometria frame condiviso (crop ai bordi + aspect ratio)
+        ├── inspector_panel.py          # Pannello Ispettore Cue (dati, layer, trasformazioni, crop %/px, loop)
+        ├── live_status_panel.py        # Pannello Live Output Status (monitor L1-L3, Cut, Blackout, Tappo)
+        ├── waveform_widget.py          # Widget interattivo forma d'onda con trascinamento marcatori IN/OUT
+        ├── drop_zone.py                # Area Drag & Drop per importazione rapida media
+        ├── spinboxes.py                # SpinBox ad alta precisione tolleranti a '.' e ','
+        ├── undo_manager.py             # Motore Undo / Redo leggero a snapshot (Ctrl+Z / Ctrl+Y)
+        ├── hardware_info.py            # Diagnostica CPU/GPU/DRI e finestre informative
+        └── theme.py                    # Palette colori Pro Broadcast, foglio stile Qt ed estensioni media
 ```
 
 ---

@@ -59,6 +59,7 @@ class Cue:
         position_y:  Vertical position offset.
         position_z:  Depth / z-order offset.
         scale:       Scale factor (1.0 = native size).
+        q_label:     Modifiable script callout (e.g. "Q-2", "Q-9a", free text).
     """
 
     # ── Class-level auto-increment counter ────────────────────────────
@@ -71,6 +72,7 @@ class Cue:
 
     # ── Optional / defaulted fields ───────────────────────────────────
     cue_id: int = field(default_factory=lambda: next(Cue._id_counter))
+    q_label: str = ""  # Script cue / copione callout (e.g., "Q-2", "Q-9a")
     layer: int = 1
     volume: float = 1.0
     loop: bool = False
@@ -151,6 +153,7 @@ class Cue:
         """Serialize the cue to a plain dict suitable for JSON storage."""
         return {
             "cue_id": self.cue_id,
+            "q_label": self.q_label,
             "name": self.name,
             "media_type": self.media_type.value,
             "file_path": self.file_path,
@@ -186,6 +189,7 @@ class Cue:
             media_type=MediaType(data["media_type"]),
             file_path=data["file_path"],
             cue_id=data["cue_id"],
+            q_label=str(data.get("q_label", "") or ""),
             layer=data.get("layer", 1),
             volume=data.get("volume", 1.0),
             loop=data.get("loop", False),
