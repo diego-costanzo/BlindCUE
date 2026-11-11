@@ -17,6 +17,18 @@ CLR_PREVIZ = "#f59e0b"     # Studio amber
 CLR_GO = "#10b981"         # Emerald GO
 CLR_ACCENT = "#38bdf8"     # Sky cyan accent
 
+# Curated Cue Scene/Group Color Palette (empty = default uncolored)
+CUE_COLOR_PALETTE: tuple[tuple[str, str], ...] = (
+    ("", "Nessun Colore (Predefinito)"),
+    ("#ef4444", "Rosso — Atto / Effetto"),
+    ("#f59e0b", "Ambra — Dialogo / Luce Calda"),
+    ("#10b981", "Verde — Musica / Ambiente"),
+    ("#06b6d4", "Ciano — Video / Proiezione"),
+    ("#3b82f6", "Blu — Cambio Scena"),
+    ("#a855f7", "Viola — Sogno / Atmosfera"),
+    ("#ec4899", "Magenta — Evento Speciale"),
+)
+
 # Supported file extensions
 VIDEO_EXT = {".mp4", ".mkv", ".avi", ".mov", ".webm", ".flv", ".wmv", ".m4v"}
 AUDIO_EXT = {".mp3", ".wav", ".flac", ".ogg", ".aac", ".m4a", ".wma", ".opus"}
@@ -68,17 +80,23 @@ DARK_STYLESHEET = f"""
         font-weight: bold;
     }}
     QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {{
-        background-color: #0f1520;
-        border: 1px solid #283548;
-        border-radius: 4px;
-        padding: 4px 6px;
-        color: #f1f5f9;
+        background-color: #080d14;
+        border: 1px solid #354761;
+        border-radius: 5px;
+        padding: 3px 7px;
+        color: #f8fafc;
         font-size: 11px;
+        min-height: 24px;
         selection-background-color: #0284c7;
     }}
+    QSpinBox, QDoubleSpinBox {{
+        min-height: 26px;
+        max-height: 26px;
+        padding: 2px 24px 2px 7px;
+    }}
     QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
-        border: 1px solid {CLR_ACCENT};
-        background-color: #141c2b;
+        border: 1.5px solid {CLR_ACCENT};
+        background-color: #0e1624;
     }}
     QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {{
         background-color: #0a0d14;
@@ -88,7 +106,10 @@ DARK_STYLESHEET = f"""
     QSpinBox::up-button, QDoubleSpinBox::up-button {{
         subcontrol-origin: border;
         subcontrol-position: top right;
-        width: 20px;
+        top: 1px;
+        right: 1px;
+        width: 21px;
+        height: 12px;
         background-color: #1c2738;
         border-left: 1px solid #2d3c52;
         border-bottom: 1px solid #2d3c52;
@@ -104,7 +125,10 @@ DARK_STYLESHEET = f"""
     QSpinBox::down-button, QDoubleSpinBox::down-button {{
         subcontrol-origin: border;
         subcontrol-position: bottom right;
-        width: 20px;
+        bottom: 1px;
+        right: 1px;
+        width: 21px;
+        height: 12px;
         background-color: #1c2738;
         border-left: 1px solid #2d3c52;
         border-bottom-right-radius: 4px;
@@ -186,21 +210,30 @@ DARK_STYLESHEET = f"""
     QLabel {{
         color: {CLR_TEXT};
     }}
+    QSlider {{
+        min-height: 22px;
+        max-height: 22px;
+        background: transparent;
+    }}
     QSlider::groove:horizontal {{
         height: 6px;
+        margin: 8px 8px;
         background: #1c2636;
         border-radius: 3px;
         border: 1px solid #283548;
     }}
     QSlider::sub-page:horizontal {{
+        height: 6px;
+        margin: 8px 0px 8px 8px;
         background: #0284c7;
         border-radius: 3px;
     }}
     QSlider::handle:horizontal {{
         width: 14px;
-        margin: -5px 0;
+        height: 14px;
+        margin: -5px -7px;
         background: {CLR_ACCENT};
-        border-radius: 7px;
+        border-radius: 8px;
         border: 1px solid #ffffff;
     }}
     QSlider::handle:horizontal:hover {{
@@ -208,6 +241,36 @@ DARK_STYLESHEET = f"""
     }}
     QSlider::handle:horizontal:disabled {{
         background: #475569;
+        border-color: #334155;
+    }}
+    QTabWidget::pane {{
+        background-color: #0e141e;
+        border: 1px solid #243347;
+        border-radius: 6px;
+        top: -1px;
+    }}
+    QTabBar::tab {{
+        background-color: #111824;
+        color: #94a3b8;
+        border: 1px solid #202d3f;
+        border-bottom: none;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
+        padding: 6px 9px;
+        margin-right: 3px;
+        font-size: 11px;
+        font-weight: bold;
+    }}
+    QTabBar::tab:hover:!selected {{
+        background-color: #192434;
+        color: #e2e8f0;
+        border-color: #354761;
+    }}
+    QTabBar::tab:selected {{
+        background-color: #142132;
+        color: #ffffff;
+        border-color: {CLR_ACCENT};
+        border-top: 2px solid {CLR_ACCENT};
     }}
     QCheckBox {{
         spacing: 6px;

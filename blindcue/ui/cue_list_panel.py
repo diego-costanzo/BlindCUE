@@ -74,15 +74,18 @@ class CueListPanel(QGroupBox):
 
         cue_summary_bar = QHBoxLayout()
         cue_summary_bar.setSpacing(6)
-        self.lbl_count = QLabel("0 Cue caricate")
-        self.lbl_count.setStyleSheet("color: #00bcd4; font-size: 11px; font-weight: bold;")
+        self.lbl_count = QLabel("0 Cue")
+        self.lbl_count.setStyleSheet(
+            "color: #38bdf8; background-color: #0e1c2b; border: 1px solid #1e3a5f; "
+            "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 1px 6px;"
+        )
         self.lbl_standby = QLabel("Standby: Nessuna")
         self.lbl_standby.setMinimumWidth(0)
         self.lbl_standby.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        self.lbl_standby.setStyleSheet("color: #888; font-size: 11px; font-weight: bold;")
+        self.lbl_standby.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: bold;")
         self.btn_go_live = QPushButton("🎭 VAI IN LIVE")
         self.btn_go_live.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_go_live.setFixedHeight(22)
+        self.btn_go_live.setFixedHeight(24)
         self.btn_go_live.setToolTip(
             "Apri la modalità semplificata LIVE (Show Mode) centrata su Scaletta, GO, PAUSA TUTTO e PANIC [F5 / Ctrl+L]"
         )
@@ -158,14 +161,15 @@ class CueListPanel(QGroupBox):
         btn_edit_row.addWidget(self.btn_delete, stretch=2)
         layout.addLayout(btn_edit_row)
 
-        # 3-State Sequencing Link Mode Selector (Blocco | Auto-GO | Simultanea)
+        # 3-State Sequencing Link Mode Selector (Blocco | Auto-GO | Simultanea) — Fixed height prevents hover jump!
         link_box = QFrame()
+        link_box.setFixedHeight(74)
         link_box.setStyleSheet(
             "QFrame { background-color: #101620; border: 1px solid #1e293b; border-radius: 5px; }"
         )
         link_layout = QVBoxLayout(link_box)
         link_layout.setContentsMargins(6, 5, 6, 4)
-        link_layout.setSpacing(3)
+        link_layout.setSpacing(4)
 
         follow_row = QHBoxLayout()
         follow_row.setSpacing(4)
@@ -191,6 +195,9 @@ class CueListPanel(QGroupBox):
 
         self.lbl_follow_hint = QLabel("⏹ Blocco: attende il prossimo GO manuale")
         self.lbl_follow_hint.setWordWrap(True)
+        self.lbl_follow_hint.setFixedHeight(34)
+        self.lbl_follow_hint.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self.lbl_follow_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.lbl_follow_hint.setStyleSheet("color: #64748b; font-size: 9px; border: none; background: transparent;")
         link_layout.addWidget(self.lbl_follow_hint)
         layout.addWidget(link_box)

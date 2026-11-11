@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QLocale, QPointF
+from PySide6.QtCore import QLocale, QPointF, QSize
 from PySide6.QtGui import QColor, QPainter, QPen, QValidator
-from PySide6.QtWidgets import QDoubleSpinBox, QStyle, QStyleOptionSpinBox, QWidget
+from PySide6.QtWidgets import QDoubleSpinBox, QSizePolicy, QStyle, QStyleOptionSpinBox, QWidget
 
 from ui.theme import CLR_ACCENT
 
@@ -20,6 +20,11 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
         super().__init__(parent)
         self.setLocale(QLocale.c())
         self.setKeyboardTracking(False)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+
+    def minimumSizeHint(self) -> QSize:  # noqa: N802
+        sh = super().minimumSizeHint()
+        return QSize(min(sh.width(), 76), max(26, sh.height()))
 
     def _strip_affixes(self, text: str) -> str:
         clean = text.replace(",", ".")
@@ -79,21 +84,21 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
         base_color = QColor("#475569") if not enabled else (
             QColor(CLR_ACCENT) if hovered else QColor("#cbd5e1")
         )
-        pen = QPen(base_color, 1.4)
+        pen = QPen(base_color, 1)
         painter.setPen(pen)
 
-        # Draw '+' in top button
+        # Draw symmetric 7px '+' in top button
         if up_rect.isValid() and up_rect.width() >= 8:
-            c_up = up_rect.center()
-            arm = 3.0
-            painter.drawLine(QPointF(c_up.x() - arm, c_up.y()), QPointF(c_up.x() + arm, c_up.y()))
-            painter.drawLine(QPointF(c_up.x(), c_up.y() - arm), QPointF(c_up.x(), c_up.y() + arm))
+            ux = (up_rect.left() + up_rect.right()) // 2
+            uy = (up_rect.top() + up_rect.bottom()) // 2
+            painter.drawLine(ux - 3, uy, ux + 3, uy)
+            painter.drawLine(ux, uy - 3, ux, uy + 3)
 
-        # Draw '-' in bottom button
+        # Draw identical 7px '-' in bottom button
         if down_rect.isValid() and down_rect.width() >= 8:
-            c_dn = down_rect.center()
-            arm = 3.0
-            painter.drawLine(QPointF(c_dn.x() - arm, c_dn.y()), QPointF(c_dn.x() + arm, c_dn.y()))
+            dx = (down_rect.left() + down_rect.right()) // 2
+            dy = (down_rect.top() + down_rect.bottom()) // 2
+            painter.drawLine(dx - 3, dy, dx + 3, dy)
 
         painter.end()
 

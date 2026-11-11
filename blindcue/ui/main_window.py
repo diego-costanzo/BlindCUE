@@ -44,14 +44,17 @@ from engine.envelope import (
     normalize_sections,
     split_sections_at,
 )
-from models.cue import Cue, CueStatus, FollowMode, MediaType
+from models.cue import Cue, CueStatus, FollowMode, MediaType, _sanitize_hex_color
 from models.project_manager import ProjectManager
 from ui.cue_list_panel import CueListPanel
 from ui.cue_table import (
+    ROLE_CUE_COLOR,
     ROLE_FOLLOW_MODE,
     ROLE_HAS_NOTES,
+    ROLE_INCOMING_LINK,
     ROLE_LAYER,
     ROLE_MEDIA_TYPE,
+    ROLE_PREV_COLOR,
     ROLE_STATUS_CLR,
     ROLE_STATUS_TXT,
     ROLE_TIMING_BADGE,
@@ -104,7 +107,7 @@ _MEDIA_ICONS = {
     MediaType.IMAGE: "🖼",
 }
 
-_DEFAULT_TOP_RATIOS: tuple[float, float, float] = (0.24, 0.49, 0.27)
+_DEFAULT_TOP_RATIOS: tuple[float, float, float] = (0.25, 0.45, 0.30)
 
 
 class MainWindow(QMainWindow):
@@ -198,7 +201,7 @@ class MainWindow(QMainWindow):
             return
         avail = target.availableGeometry()
         if avail.width() > 0 and avail.height() > 0:
-            self.setMinimumSize(min(1100, avail.width()), min(680, avail.height()))
+            self.setMinimumSize(min(1240, avail.width()), min(740, avail.height()))
             w = min(1400, avail.width())
             h = min(850, avail.height())
             x = avail.x() + max(0, (avail.width() - w) // 2)
@@ -484,6 +487,7 @@ class MainWindow(QMainWindow):
         self._cue_list.itemSelectionChanged.connect(self._on_cue_selection_changed)
         self._cue_list.cellDoubleClicked.connect(self._on_cue_cell_double_clicked)
         self._cue_list.itemChanged.connect(self._on_cue_item_changed)
+        self._cue_list.color_selected.connect(self._set_cue_color)
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
         self._cue_list_panel.move_up_requested.connect(self._on_move_up)
         self._cue_list_panel.move_down_requested.connect(self._on_move_down)
@@ -540,15 +544,17 @@ class MainWindow(QMainWindow):
         self._inspector.value_changed.connect(self._on_inspector_value_changed)
         self._inspector.batch_field_edited.connect(self._on_batch_field_edited)
         self._inspector.layer_selected.connect(self._set_layer)
+        self._inspector.color_selected.connect(self._set_cue_color)
+        self._inspector.follow_mode_selected.connect(self._set_follow_mode)
         self._inspector.in_out_reset_requested.connect(self._on_reset_in_out)
         self._bind_inspector_aliases()
         top_splitter.addWidget(self._inspector)
 
         top_splitter.setChildrenCollapsible(False)
-        top_splitter.setStretchFactor(0, 24)
-        top_splitter.setStretchFactor(1, 49)
-        top_splitter.setStretchFactor(2, 27)
-        top_splitter.setSizes([336, 686, 378])
+        top_splitter.setStretchFactor(0, 25)
+        top_splitter.setStretchFactor(1, 45)
+        top_splitter.setStretchFactor(2, 30)
+        top_splitter.setSizes([350, 630, 420])
         top_splitter.splitterMoved.connect(self._on_top_splitter_moved)
         root_layout.addWidget(top_splitter, stretch=7)
 
@@ -687,8 +693,8 @@ class MainWindow(QMainWindow):
         if total <= 0:
             return
         r0, r1, r2 = self._top_ratios
-        w0 = max(260, int(round(total * r0)))
-        w2 = max(340, int(round(total * r2)))
+        w0 = max(290, int(round(total * r0)))
+        w2 = max(360, int(round(total * r2)))
         w1 = max(380, total - w0 - w2)
         self._applying_splitter_layout = True
         try:
@@ -875,6 +881,10 @@ class MainWindow(QMainWindow):
             )
             self._cue_list.setItem(row, 2, item_name)
         item_name.setText(cue.name)
+        cue_color = getattr(cue, "color", "") or ""
+        prev_color = (getattr(self._cues[row - 1], "color", "") or "") if row > 0 else ""
+        incoming_link = self._cues[row - 1].follow_mode if row > 0 else ""
+
         item_name.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
         item_name.setData(ROLE_LAYER, cue.layer)
         item_name.setData(ROLE_HAS_NOTES, bool(cue.notes))
@@ -883,6 +893,12 @@ class MainWindow(QMainWindow):
         item_name.setData(ROLE_STATUS_TXT, status_txt)
         item_name.setData(ROLE_STATUS_CLR, colour)
         item_name.setToolTip(tooltip)
+
+        for cell in (item_num, item_q, item_name):
+            cell.setData(ROLE_CUE_COLOR, cue_color)
+            cell.setData(ROLE_PREV_COLOR, prev_color)
+            cell.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
+            cell.setData(ROLE_INCOMING_LINK, incoming_link)
 
     def _sync_inspector_header_and_text(self, row: int, cue: Cue) -> None:
         if 0 <= row < len(self._cues) and row == self._cue_list.currentRow():
@@ -1139,11 +1155,11 @@ class MainWindow(QMainWindow):
 
         total_cues = len(self._cues)
         if total_cues == 0:
-            self._lbl_cue_count.setText("0 Cue in scaletta")
+            self._lbl_cue_count.setText("0 Cue")
             self._lbl_cue_standby.setText("Standby: Nessuna")
             self._update_inspector(None)
         else:
-            self._lbl_cue_count.setText(f"{total_cues} Cue in scaletta")
+            self._lbl_cue_count.setText(f"{total_cues} Cue")
             standby_row = target_row if (0 <= target_row < total_cues) else 0
             standby_cue = self._cues[standby_row]
             self._lbl_cue_standby.setText(
@@ -2180,10 +2196,32 @@ class MainWindow(QMainWindow):
         sel_cues = [self._cues[r] for r in sel_rows]
         changed = any(cue.follow_mode != mode for cue in sel_cues)
         self._cue_list_panel.set_follow_mode_checked(mode, enabled=True)
+        self._inspector.set_follow_mode_silent(mode, enabled=True)
         if changed:
             for cue in sel_cues:
                 cue.follow_mode = mode
-            self._refresh_rows_in_place(sel_rows)
+            self._refresh_rows_in_place(list(range(len(self._cues))))
+            self._sync_live_view()
+            self._commit_undo_point()
+            self._mark_modified(True)
+            self._auto_save()
+
+    @Slot(str)
+    def _set_cue_color(self, color_hex: str) -> None:
+        """Assign or clear visual scene group colour across selected cue(s)."""
+        sel_rows = self._selected_rows()
+        if not sel_rows:
+            return
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        clean = _sanitize_hex_color(color_hex)
+        sel_cues = [self._cues[r] for r in sel_rows]
+        changed = any(getattr(cue, "color", "") != clean for cue in sel_cues)
+        self._inspector.set_color_silent(clean)
+        if changed:
+            for cue in sel_cues:
+                cue.color = clean
+            self._refresh_rows_in_place(list(range(len(self._cues))))
             self._sync_live_view()
             self._commit_undo_point()
             self._mark_modified(True)

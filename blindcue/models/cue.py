@@ -47,6 +47,18 @@ _VALID_FADE_CURVES = ("log", "scurve", "linear")
 _VALID_FOLLOW_MODES = tuple(m.value for m in FollowMode)
 
 
+def _sanitize_hex_color(value: object) -> str:
+    """Validate optional '#RRGGBB' hex group colour; return '' when empty or malformed."""
+    txt = str(value or "").strip()
+    if len(txt) == 7 and txt.startswith("#"):
+        try:
+            int(txt[1:], 16)
+            return txt.lower()
+        except ValueError:
+            return ""
+    return ""
+
+
 @dataclass
 class CueSection:
     """Contiguous virtual section inside an audio or video Cue."""
@@ -136,6 +148,7 @@ class Cue:
     pre_delay: float = 0.0
     post_delay: float = 0.0
     follow_mode: str = FollowMode.MANUAL.value
+    color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
     fade_curve: str = "log"  # "log" (perceptual), "scurve" (cosine), "linear"
     volume_points: list[list[float]] = field(default_factory=list)   # [[time_sec, level 0..1], ...]
     opacity_points: list[list[float]] = field(default_factory=list)  # [[time_sec, opacity 0..1], ...]
@@ -240,6 +253,7 @@ class Cue:
             "pre_delay": round(float(self.pre_delay), 3),
             "post_delay": round(float(self.post_delay), 3),
             "follow_mode": self.follow_mode,
+            "color": _sanitize_hex_color(self.color),
             "fade_curve": self.fade_curve,
             "volume_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.volume_points],
             "opacity_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.opacity_points],
@@ -285,6 +299,7 @@ class Cue:
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES
                 else FollowMode.MANUAL.value
             ),
+            color=_sanitize_hex_color(data.get("color", "")),
             fade_curve=(
                 data.get("fade_curve", "log")
                 if data.get("fade_curve", "log") in _VALID_FADE_CURVES

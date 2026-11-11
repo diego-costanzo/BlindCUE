@@ -62,9 +62,10 @@ Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L
 - **Pre-Viz 16:9 WYSIWYG + `MIRROR LIVE` Foto & Video**:
   - Trascinamento diretto posizione, **8 maniglie per ritaglio sul frame**, equalizer audio animato.
   - Attivando **`MIRROR LIVE`**, le regolazioni su Foto **e Video in Standby** si vedono in tempo reale sul proiettore esterno senza emettere audio in sala.
-- **Ispettore Cue Completo & Modifiche Multi-Selezione**:
-  - Richiamo copione `Q`, Nome, Note, selezione Layer tattile (`L1 Sfondo`, `L2 Principale`, `L3 Overlay`).
-  - `Pos X/Y` + tasti nudge/Centro, `Scala`, `Opacità`, `Aspect Ratio` (`Nativo`, `16:9`, `4:3`, `21:9`, `1:1`), **Crop ancorato ai bordi in `%` o `px` reali**, `Fade In/Out`, **`Pre-Delay`**, **`Post-Delay`**, `Durata Img`, `Volume`, `Loop` (`∞` o `N` ripetizioni) e `IN/OUT`.
+- **Ispettore Cue a 3 Schede (Linguette) & Modifiche Multi-Selezione**:
+  - **Scheda `🎯 Cue · Tempi`**: richiamo copione `Q`, Nome, Note, **Colori Gruppo/Scena (con divisori visivi e binario sinistro grafico per cue collegate)**, selezione Layer (`L1`, `L2`, `L3`), **`Pre-Delay`**, **`Post-Delay`**, **`Durata Img`** e sequenza (`Blocco / Auto-GO / Simult.`).
+  - **Scheda `🖼 Video · Foto`**: `Pos X/Y` + nudge/Centro, `Scala`, `Opacità`, `Formato`, **Crop in `%` o `px` reali** e guida contestuale.
+  - **Scheda `🎵 Audio · Tagli`**: `Volume`, `Fade In/Out`, `IN/OUT` e `Loop` (`∞` o `N` ripetizioni).
   - Selezionando più cue dello stesso tipo puoi applicare modifiche batch in un colpo solo (tutto protetto da **Undo / Redo** fino a 40 step).
 - **Forma d'Onda Pro (`Zoom 1.0×–32.0×`) & Editor Automazioni**:
   - Campionamento ad alta risoluzione in background su `QThreadPool` (FFmpeg PCM + NumPy fino a `3200+` picchi), zoom ancorato al cursore, pan con scrollbar/mouse.

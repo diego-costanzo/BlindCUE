@@ -30,6 +30,29 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+
+class _ZoomStepButton(QPushButton):
+    """Square zoom +/- button drawing symmetrical crisp vector strokes instead of font glyphs."""
+
+    def __init__(self, is_plus: bool, parent: Optional[QWidget] = None) -> None:
+        super().__init__("", parent)
+        self._is_plus = is_plus
+        self.setFixedSize(22, 22)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        color = QColor("#e2e8f0") if self.isEnabled() else QColor("#475569")
+        painter.setPen(QPen(color, 1.5))
+        cx = self.width() // 2
+        cy = self.height() // 2
+        painter.drawLine(cx - 4, cy, cx + 4, cy)
+        if self._is_plus:
+            painter.drawLine(cx, cy - 4, cx, cy + 4)
+        painter.end()
+
 from engine.envelope import (
     FADE_CURVE_LABELS,
     add_or_update_point,
@@ -1244,32 +1267,28 @@ class WaveformPanel(QGroupBox):
         strip_env.addStretch(1)
 
         zoom_btn_ss = (
-            "QPushButton { background: #141720; color: #94a3b8; border: 1px solid #262b38; "
-            "border-radius: 3px; font-size: 11px; font-weight: 700; padding: 0px 5px; }"
-            "QPushButton:hover:enabled { background: #1e293b; color: #e2e8f0; border-color: #38bdf8; }"
-            "QPushButton:disabled { color: #3f4756; border-color: #1c202b; }"
+            "QPushButton { background: #141923; border: 1px solid #2b384c; border-radius: 4px; padding: 0px; }"
+            "QPushButton:hover:enabled { background: #1e293b; border-color: #38bdf8; }"
+            "QPushButton:pressed:enabled { background: #0d121a; }"
+            "QPushButton:disabled { background: #10141c; border-color: #1c222e; }"
         )
-        self.btn_zoom_out = QPushButton("−")
-        self.btn_zoom_out.setFixedSize(20, 20)
-        self.btn_zoom_out.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_zoom_out = _ZoomStepButton(is_plus=False)
         self.btn_zoom_out.setToolTip("Zoom indietro forma d'onda (rotella giù)")
         self.btn_zoom_out.setStyleSheet(zoom_btn_ss)
 
         self.btn_zoom_label = QPushButton("1.0×")
-        self.btn_zoom_label.setFixedHeight(20)
-        self.btn_zoom_label.setMinimumWidth(40)
+        self.btn_zoom_label.setFixedHeight(22)
+        self.btn_zoom_label.setMinimumWidth(42)
         self.btn_zoom_label.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_zoom_label.setToolTip("Zoom forma d'onda — clicca per ripristinare 1.0× (o doppio clic / Ctrl+0)")
         self.btn_zoom_label.setStyleSheet(
-            "QPushButton { background: #0f121a; color: #38bdf8; border: 1px solid #262b38; "
-            "border-radius: 3px; font-size: 10px; font-weight: 700; padding: 0px 5px; }"
+            "QPushButton { background: #0f121a; color: #38bdf8; border: 1px solid #2b384c; "
+            "border-radius: 4px; font-size: 10px; font-weight: 700; padding: 0px 5px; }"
             "QPushButton:hover:enabled { background: #1e293b; border-color: #38bdf8; }"
-            "QPushButton:disabled { color: #3f4756; border-color: #1c202b; }"
+            "QPushButton:disabled { color: #3f4756; border-color: #1c222e; }"
         )
 
-        self.btn_zoom_in = QPushButton("+")
-        self.btn_zoom_in.setFixedSize(20, 20)
-        self.btn_zoom_in.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_zoom_in = _ZoomStepButton(is_plus=True)
         self.btn_zoom_in.setToolTip("Zoom avanti forma d'onda (rotella su)")
         self.btn_zoom_in.setStyleSheet(zoom_btn_ss)
 

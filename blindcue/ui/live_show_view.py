@@ -9,12 +9,16 @@ from PySide6.QtCore import QDateTime, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
     QAbstractItemView,
+    QApplication,
     QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
     QPushButton,
     QSizePolicy,
+    QStyle,
+    QStyledItemDelegate,
+    QStyleOptionViewItem,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -22,7 +26,39 @@ from PySide6.QtWidgets import (
 )
 
 from models.cue import Cue, CueStatus, FollowMode, MediaType
-from ui.cue_table import format_cue_ref
+from ui.cue_table import (
+    ROLE_CUE_COLOR,
+    ROLE_FOLLOW_MODE,
+    ROLE_INCOMING_LINK,
+    ROLE_PREV_COLOR,
+    format_cue_ref,
+    paint_cue_row_decorations,
+)
+
+
+class LiveCueRowDelegate(QStyledItemDelegate):
+    """Paints left-rail link connectors and cue group colours onto Live Show table rows."""
+
+    def paint(self, painter, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        is_sel = bool(opt.state & QStyle.StateFlag.State_Selected)
+        if index.column() == 0:
+            txt = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+            fg = index.data(Qt.ItemDataRole.ForegroundRole)
+            style = opt.widget.style() if opt.widget else QApplication.style()
+            opt.text = ""
+            opt.state &= ~QStyle.StateFlag.State_HasFocus
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+            painter.save()
+            painter.setFont(opt.font)
+            painter.setPen(fg.color() if fg is not None else QColor("#e2e8f0"))
+            painter.drawText(opt.rect.adjusted(18, 0, -2, 0), Qt.AlignmentFlag.AlignCenter, txt)
+            painter.restore()
+            return
+        super().paint(painter, option, index)
+        paint_cue_row_decorations(painter, option.rect, index, is_selected=is_sel)
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ
 
@@ -227,10 +263,11 @@ class LiveShowPanel(QWidget):
         hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
         hdr.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.live_table.setColumnWidth(0, 46)
+        self.live_table.setColumnWidth(0, 56)
         self.live_table.setColumnWidth(1, 80)
         self.live_table.setColumnWidth(4, 290)
         self.live_table.setColumnWidth(5, 145)
+        self.live_table.setItemDelegate(LiveCueRowDelegate(self.live_table))
 
         self.live_table.cellClicked.connect(self._on_table_clicked)
         self.live_table.cellDoubleClicked.connect(self._on_table_double_clicked)
@@ -513,8 +550,15 @@ class LiveShowPanel(QWidget):
                 it_state.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
 
                 items = (it_num, it_q, it_name, it_notes, it_timing, it_state)
+                cue_color = getattr(cue, "color", "") or ""
+                prev_color = (getattr(cues[r - 1], "color", "") or "") if r > 0 else ""
+                incoming_link = cues[r - 1].follow_mode if r > 0 else ""
                 for c_idx, it in enumerate(items):
                     it.setBackground(row_bg)
+                    it.setData(ROLE_CUE_COLOR, cue_color)
+                    it.setData(ROLE_PREV_COLOR, prev_color)
+                    it.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
+                    it.setData(ROLE_INCOMING_LINK, incoming_link)
                     if c_idx == 1 and q_str != "—":
                         pass
                     elif c_idx == 3:

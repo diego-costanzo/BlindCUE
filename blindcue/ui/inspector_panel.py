@@ -1,4 +1,4 @@
-"""Right-column Cue Inspector panel (metadata, compositing layer, transform, %/px crop, fades, audio/loop)."""
+"""Right-column Tabbed Cue Inspector panel (Cue & Timing tabs, Visual transform/crop, Audio/Loop/Fades)."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFrame,
+    QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -18,21 +19,21 @@ from PySide6.QtWidgets import (
     QScrollArea,
     QSizePolicy,
     QSlider,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
 
-from models.cue import Cue, MediaType
+from models.cue import Cue, FollowMode, MediaType, _sanitize_hex_color
 from ui.cue_table import format_cue_ref
 from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
-from ui.theme import CLR_ACCENT, NUDGE_BTN_STYLE
+from ui.theme import CLR_ACCENT, CUE_COLOR_PALETTE, NUDGE_BTN_STYLE
 
 # Preset index <-> repetition count mapping (0 = infinite loop)
 _LOOP_PRESET_COUNTS = (0, 2, 3, 4, 5, 10)
 _COUNT_TO_PRESET_IDX = {count: idx for idx, count in enumerate(_LOOP_PRESET_COUNTS)}
 _LOOP_CUSTOM_IDX = len(_LOOP_PRESET_COUNTS)
 
-# (UI label, canonical model value)
 _ASPECT_OPTIONS: list[tuple[str, Optional[str]]] = [
     ("Native (Automatico)", None),
     ("16:9 (Widescreen)", "16:9"),
@@ -41,35 +42,40 @@ _ASPECT_OPTIONS: list[tuple[str, Optional[str]]] = [
     ("1:1 (Quadrato)", "1:1"),
 ]
 
-# Layer button visual definitions: (layer_num, label, tooltip, checked_bg, checked_border)
 _LAYER_BTN_SPECS = (
     (1, "L1: Sfondo", "Layer 1 (Default): Livello di sfondo o base scena", "#065f46", "#10b981"),
     (2, "L2: Principale", "Layer 2: Livello multimediale intermedio (sopra L1)", "#075985", "#38bdf8"),
-    (3, "L3: Overlay", "Layer 3: Livello superiore in primo piano (grafica, loghi, sovraimpressioni)", "#78350f", "#f59e0b"),
+    (3, "L3: Overlay", "Layer 3: Livello superiore in primo piano (grafica, loghi, titoli)", "#78350f", "#f59e0b"),
+)
+
+_FOLLOW_MINI_SPECS = (
+    (FollowMode.MANUAL.value, "⏹ Blocco", "Attende GO manuale (default)", "#065f46", "#10b981"),
+    (FollowMode.AUTO_FOLLOW.value, "⤵ Auto-GO", "Avvia la successiva dopo Pre+Durata+Post", "#0c4a6e", "#38bdf8"),
+    (FollowMode.SIMULTANEOUS.value, "⇉ Simult.", "Avvia insieme la successiva sul GO", "#78350f", "#f59e0b"),
 )
 
 
 def _make_layer_btn_style(checked_bg: str, checked_border: str) -> str:
-    """Return unmistakable tactile button styling with hover & active color states."""
+    """Return tactile toggle button styling with clear hover and active selection border."""
     return f"""
         QPushButton {{
-            background-color: #1c2636;
+            background-color: #182231;
             color: #cbd5e1;
             border: 1px solid #3c4f6b;
             border-bottom: 2px solid #2b3a50;
             border-radius: 5px;
-            padding: 4px 4px;
+            padding: 3px 4px;
             font-size: 11px;
             font-weight: bold;
         }}
         QPushButton:hover:!checked {{
-            background-color: #26354d;
+            background-color: #24334a;
             border: 1px solid {checked_border};
             border-bottom: 2px solid {checked_border};
             color: #ffffff;
         }}
         QPushButton:pressed {{
-            background-color: #131c28;
+            background-color: #111924;
         }}
         QPushButton:checked {{
             background-color: {checked_bg};
@@ -84,17 +90,46 @@ def _make_layer_btn_style(checked_bg: str, checked_border: str) -> str:
     """
 
 
+def _make_swatch_style(hex_color: str) -> str:
+    """Return circular/pill colour swatch button style with bright white active ring."""
+    fill = hex_color if hex_color else "#1a2332"
+    border_idle = hex_color if hex_color else "#475569"
+    return f"""
+        QPushButton {{
+            background-color: {fill};
+            border: 1px solid {border_idle};
+            border-radius: 4px;
+            color: #94a3b8;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 0px;
+        }}
+        QPushButton:hover:!checked {{
+            border: 2px solid #cbd5e1;
+        }}
+        QPushButton:checked {{
+            border: 2.5px solid #ffffff;
+            color: #ffffff;
+        }}
+        QPushButton:disabled {{
+            background-color: #111722;
+            border-color: #1e293b;
+            color: #334155;
+        }}
+    """
+
+
 _UNIT_PILL_STYLE = f"""
     QPushButton {{
         background-color: #182230;
         color: #94a3b8;
         border: 1px solid #2b3b52;
-        border-radius: 3px;
+        border-radius: 4px;
         padding: 1px 8px;
         font-size: 10px;
         font-weight: bold;
         min-width: 28px;
-        height: 20px;
+        height: 22px;
     }}
     QPushButton:hover:!checked {{
         background-color: #223146;
@@ -115,12 +150,14 @@ _UNIT_PILL_STYLE = f"""
 
 
 class CueInspectorPanel(QGroupBox):
-    """Scrollable Cue Properties Inspector with fixed width stability, %/px crop, and batch edit."""
+    """Tabbed Cue Properties Inspector organized into Cue & Timing, Visual Transform/Crop, and Audio/Loop."""
 
     value_changed = Signal()
     batch_field_edited = Signal(str)
     layer_selected = Signal(int)
     in_out_reset_requested = Signal()
+    color_selected = Signal(str)
+    follow_mode_selected = Signal(str)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
@@ -131,22 +168,23 @@ class CueInspectorPanel(QGroupBox):
         self._crop_ref_h: int = 1080
         self._norm_crop: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
         self._layer_buttons: dict[int, QPushButton] = {}
+        self._color_buttons: dict[str, QPushButton] = {}
+        self._follow_buttons: dict[str, QPushButton] = {}
 
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
-        self.setMinimumWidth(340)
+        self.setMinimumWidth(360)
         self._build_ui()
         self._connect_signals()
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
-        """Lock minimum width so long cue titles never stretch or shift the splitter."""
-        return QSize(340, 240)
+        return QSize(360, 240)
 
     def sizeHint(self) -> QSize:  # noqa: N802
-        return QSize(370, 560)
+        return QSize(400, 560)
 
     def _set_elided_title(self, full_title: str) -> None:
         self.setToolTip(full_title)
-        avail = max(240, self.width() - 32)
+        avail = max(260, self.width() - 32)
         elided = QFontMetrics(self.font()).elidedText(
             full_title, Qt.TextElideMode.ElideRight, avail
         )
@@ -155,178 +193,358 @@ class CueInspectorPanel(QGroupBox):
     def setTitle(self, title: str) -> None:  # noqa: N802
         self._set_elided_title(title)
 
+    # ── UI Construction Helpers ───────────────────────────────────────
+
     @staticmethod
-    def _make_section_header(title: str) -> QWidget:
-        w = QWidget()
-        lay = QHBoxLayout(w)
-        lay.setContentsMargins(0, 8, 0, 4)
-        lay.setSpacing(6)
-        lbl = QLabel(title)
-        lbl.setStyleSheet("color: #00bcd4; font-size: 11px; font-weight: bold; letter-spacing: 0.5px;")
-        line = QFrame()
-        line.setFrameShape(QFrame.Shape.HLine)
-        line.setStyleSheet("background-color: #383838; max-height: 1px; border: none;")
-        lay.addWidget(lbl)
-        lay.addWidget(line)
-        return w
+    def _make_card(title: str, guide: str = "") -> tuple[QFrame, QVBoxLayout]:
+        card = QFrame()
+        card.setObjectName("inspCard")
+        card.setMinimumWidth(0)
+        card.setStyleSheet(
+            "QFrame#inspCard { background-color: #101723; border: 1px solid #223044; border-radius: 6px; }"
+        )
+        lay = QVBoxLayout(card)
+        lay.setContentsMargins(8, 6, 8, 7)
+        lay.setSpacing(5)
 
-    def _build_ui(self) -> None:
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(4, 8, 4, 4)
+        lbl_title = QLabel(title)
+        lbl_title.setMinimumWidth(0)
+        lbl_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        lbl_title.setStyleSheet(
+            "color: #38bdf8; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; border: none; background: transparent;"
+        )
+        lay.addWidget(lbl_title)
+        if guide:
+            lbl_guide = QLabel(guide)
+            lbl_guide.setWordWrap(True)
+            lbl_guide.setMinimumWidth(0)
+            lbl_guide.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
+            lbl_guide.setStyleSheet(
+                "color: #7c8fa6; font-size: 9px; border: none; background: transparent;"
+            )
+            lay.addWidget(lbl_guide)
+        return card, lay
 
+    @staticmethod
+    def _make_field_label(text: str) -> QLabel:
+        lbl = QLabel(text)
+        lbl.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: bold; border: none; background: transparent;")
+        return lbl
+
+    @staticmethod
+    def _wrap_tab_scroll(inner: QWidget) -> QScrollArea:
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
-        scroll.setStyleSheet("background: transparent; border: none;")
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setWidget(inner)
+        return scroll
 
-        content = QWidget()
-        layout = QVBoxLayout(content)
-        layout.setContentsMargins(4, 4, 6, 4)
-        layout.setSpacing(6)
+    def _make_slider_row(
+        self, title: str, min_v: int, max_v: int, init_v: int, label_init: str, reset_tip: str
+    ) -> tuple[QHBoxLayout, QSlider, QLabel, QPushButton]:
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        lbl_t = self._make_field_label(title)
+        lbl_t.setFixedWidth(56)
+        slider = QSlider(Qt.Orientation.Horizontal)
+        slider.setRange(min_v, max_v)
+        slider.setValue(init_v)
+        slider.setMinimumWidth(80)
+        slider.setCursor(Qt.CursorShape.PointingHandCursor)
+        val_lbl = QLabel(label_init)
+        val_lbl.setFixedWidth(40)
+        val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        val_lbl.setStyleSheet("color: #e2e8f0; font-family: monospace; font-size: 11px; font-weight: bold; background: transparent;")
+        btn_rst = self._make_reset_icon_btn(reset_tip)
+        row.addWidget(lbl_t)
+        row.addWidget(slider, 1)
+        row.addWidget(val_lbl)
+        row.addWidget(btn_rst)
+        return row, slider, val_lbl, btn_rst
 
-        lbl_hint = QLabel("Proprietà del media selezionato prima o durante il Live")
-        lbl_hint.setStyleSheet("color: #777; font-size: 10px; margin-bottom: 2px;")
-        layout.addWidget(lbl_hint)
+    def _build_ui(self) -> None:
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(6, 8, 6, 6)
+        outer.setSpacing(6)
 
         self.lbl_multi_banner = QLabel()
         self.lbl_multi_banner.setWordWrap(True)
         self.lbl_multi_banner.setMinimumWidth(0)
         self.lbl_multi_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
         self.lbl_multi_banner.setVisible(False)
-        layout.addWidget(self.lbl_multi_banner)
+        outer.addWidget(self.lbl_multi_banner)
 
-        # ── 1. Dati Cue & Note di Regia ──
-        layout.addWidget(self._make_section_header("DATI CUE • NOTE DI REGIA"))
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setDocumentMode(False)
+        self.tab_widget.tabBar().setExpanding(True)
+        self.tab_widget.tabBar().setElideMode(Qt.TextElideMode.ElideNone)
+        outer.addWidget(self.tab_widget, stretch=1)
 
-        row_q = QHBoxLayout()
-        row_q.addWidget(QLabel("Q (Copione):"))
+        self._build_tab_cue_and_timing()
+        self._build_tab_visual()
+        self._build_tab_audio_and_cuts()
+
+    # ── Tab 1: Cue, Colore, Layer & Tempi (Pre / Durata / Post) ──────
+
+    def _build_tab_cue_and_timing(self) -> None:
+        page = QWidget()
+        page.setMinimumWidth(0)
+        page.setStyleSheet("background: transparent;")
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(4, 6, 4, 6)
+        lay.setSpacing(6)
+
+        # Card 1: Identità in Copione & Colore Gruppo
+        c1, l1 = self._make_card(
+            "1 · IDENTITÀ IN COPIONE & COLORE GRUPPO",
+            "I box scuri sono modificabili; usa un colore per dividere scene o atti in Scaletta.",
+        )
+        grid1 = QGridLayout()
+        grid1.setHorizontalSpacing(6)
+        grid1.setVerticalSpacing(5)
+
+        grid1.addWidget(self._make_field_label("Q (Copione):"), 0, 0)
         self.edit_cue_q = QLineEdit()
-        self.edit_cue_q.setMinimumWidth(60)
-        self.edit_cue_q.setPlaceholderText("Richiamo copione (es. Q-2, Q-9a, Sc.1...)")
-        self.edit_cue_q.setToolTip("Numero o sigla Q del copione: segue la cue anche se spostata in scaletta")
-        row_q.addWidget(self.edit_cue_q)
-        layout.addLayout(row_q)
+        self.edit_cue_q.setMinimumWidth(40)
+        self.edit_cue_q.setPlaceholderText("es. Q-2, Q-9a, Sc.1...")
+        self.edit_cue_q.setToolTip("Sigla di copione: resta legata alla cue anche se riordini la scaletta")
+        grid1.addWidget(self.edit_cue_q, 0, 1)
 
-        row_name = QHBoxLayout()
-        row_name.addWidget(QLabel("Nome:"))
+        grid1.addWidget(self._make_field_label("Nome Cue:"), 1, 0)
         self.edit_cue_name = QLineEdit()
-        self.edit_cue_name.setMinimumWidth(60)
-        self.edit_cue_name.setPlaceholderText("Nome della Cue...")
-        row_name.addWidget(self.edit_cue_name)
-        layout.addLayout(row_name)
+        self.edit_cue_name.setMinimumWidth(40)
+        self.edit_cue_name.setPlaceholderText("Titolo descrittivo in scaletta...")
+        grid1.addWidget(self.edit_cue_name, 1, 1)
 
-        row_notes = QHBoxLayout()
-        row_notes.addWidget(QLabel("Note:"))
+        grid1.addWidget(self._make_field_label("Note Regia:"), 2, 0)
         self.edit_cue_notes = QLineEdit()
-        self.edit_cue_notes.setMinimumWidth(60)
-        self.edit_cue_notes.setPlaceholderText("Appunti di regia (es. attacco battuta, sfumata...)")
-        row_notes.addWidget(self.edit_cue_notes)
-        layout.addLayout(row_notes)
+        self.edit_cue_notes.setMinimumWidth(40)
+        self.edit_cue_notes.setPlaceholderText("Attacco battuta, luci, note tecniche...")
+        grid1.addWidget(self.edit_cue_notes, 2, 1)
+        grid1.setColumnStretch(1, 1)
+        l1.addLayout(grid1)
 
-        # ── 2. Layer di Uscita ──
-        layout.addWidget(self._make_section_header("LAYER DI USCITA (COMPOSITING)"))
+        color_row = QHBoxLayout()
+        color_row.setSpacing(4)
+        lbl_clr = self._make_field_label("Colore:")
+        lbl_clr.setFixedWidth(48)
+        color_row.addWidget(lbl_clr)
+        for hex_val, clr_tip in CUE_COLOR_PALETTE:
+            btn = QPushButton("✕" if not hex_val else "")
+            btn.setCheckable(True)
+            btn.setFixedSize(24, 20)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(f"Colore Cue: {clr_tip}")
+            btn.setStyleSheet(_make_swatch_style(hex_val))
+            btn.clicked.connect(lambda _=False, hv=hex_val: self.color_selected.emit(hv))
+            color_row.addWidget(btn)
+            self._color_buttons[hex_val] = btn
+        color_row.addStretch()
+        l1.addLayout(color_row)
+        lay.addWidget(c1)
 
-        layer_layout = QHBoxLayout()
-        layer_layout.setContentsMargins(0, 2, 0, 2)
-        layer_layout.setSpacing(5)
+        # Card 2: Layer di Compositing
+        c2, l2 = self._make_card(
+            "2 · LAYER DI USCITA (SOVRAPPOSIZIONE)",
+            "Ordine visivo sullo schermo: L3 (sopra) → L2 → L1 → L0 Tappo di sicurezza.",
+        )
+        layer_row = QHBoxLayout()
+        layer_row.setSpacing(4)
         for layer_idx, label, tooltip, bg, border in _LAYER_BTN_SPECS:
             btn = QPushButton(label)
             btn.setToolTip(tooltip)
             btn.setCheckable(True)
-            btn.setFixedHeight(30)
+            btn.setFixedHeight(27)
             btn.setMinimumWidth(0)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            btn.setStyleSheet(_make_layer_btn_style(bg, border))
-            layer_layout.addWidget(btn)
+            btn.setStyleSheet(_make_layer_btn_style(bg, border).replace("font-size: 11px;", "font-size: 10px;"))
+            layer_row.addWidget(btn, 1)
             self._layer_buttons[layer_idx] = btn
-
         self.btn_layer1 = self._layer_buttons[1]
         self.btn_layer2 = self._layer_buttons[2]
         self.btn_layer3 = self._layer_buttons[3]
-        layout.addLayout(layer_layout)
+        l2.addLayout(layer_row)
+        lay.addWidget(c2)
 
-        # ── 3. Posizionamento, Zoom & Trasparenza ──
-        layout.addWidget(self._make_section_header("POSIZIONAMENTO • ZOOM • TRASPARENZA"))
+        # Card 3: Incastro Temporale (Pre · Durata · Post) & Sequenza
+        c3, l3 = self._make_card("3 · TEMPI DI INCASTRO (PRE · DURATA · POST)")
+        pipe_lbl = QLabel("GO  ▶  [⏳ Pre]  ▶  [▶ Media / Durata]  ▶  [⏱ Post]")
+        pipe_lbl.setWordWrap(True)
+        pipe_lbl.setMinimumWidth(0)
+        pipe_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
+        pipe_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pipe_lbl.setStyleSheet(
+            "background-color: #09111b; color: #7dd3fc; border: 1px solid #1e3a5f; "
+            "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 3px 4px;"
+        )
+        l3.addWidget(pipe_lbl)
 
-        pos_row = QHBoxLayout()
-        pos_row.setSpacing(6)
-        pos_row.addWidget(QLabel("Pos X:"))
+        timing_grid = QGridLayout()
+        timing_grid.setHorizontalSpacing(6)
+        timing_grid.setVerticalSpacing(5)
+
+        timing_grid.addWidget(self._make_field_label("Pre-Delay:"), 0, 0)
+        self.spin_pre_delay = SmartDoubleSpinBox()
+        self.spin_pre_delay.setMinimumWidth(68)
+        self.spin_pre_delay.setRange(0.0, 3600.0)
+        self.spin_pre_delay.setDecimals(1)
+        self.spin_pre_delay.setSingleStep(0.5)
+        self.spin_pre_delay.setSuffix(" s")
+        self.spin_pre_delay.setToolTip("Ritardo di partenza dopo il GO per incastrare la cue con altri layer")
+        timing_grid.addWidget(self.spin_pre_delay, 0, 1)
+
+        timing_grid.addWidget(self._make_field_label("Post-Delay:"), 0, 2)
+        self.spin_post_delay = SmartDoubleSpinBox()
+        self.spin_post_delay.setMinimumWidth(68)
+        self.spin_post_delay.setRange(0.0, 3600.0)
+        self.spin_post_delay.setDecimals(1)
+        self.spin_post_delay.setSingleStep(0.5)
+        self.spin_post_delay.setSuffix(" s")
+        self.spin_post_delay.setToolTip("Attesa extra dopo la fine del media prima di uscire o passare alla successiva")
+        timing_grid.addWidget(self.spin_post_delay, 0, 3)
+
+        timing_grid.addWidget(self._make_field_label("Durata Img:"), 1, 0)
+        self.spin_hold_time = SmartDoubleSpinBox()
+        self.spin_hold_time.setMinimumWidth(68)
+        self.spin_hold_time.setRange(0.0, 99999.0)
+        self.spin_hold_time.setDecimals(1)
+        self.spin_hold_time.setSingleStep(0.5)
+        self.spin_hold_time.setSuffix(" s")
+        self.spin_hold_time.setSpecialValueText("0 s (∞)")
+        self.spin_hold_time.setToolTip("Durata di permanenza in Live delle immagini statiche (0 = infinita)")
+        timing_grid.addWidget(self.spin_hold_time, 1, 1)
+
+        self.lbl_hold_hint = QLabel("Solo immagini (0 = ∞)")
+        self.lbl_hold_hint.setMinimumWidth(0)
+        self.lbl_hold_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.lbl_hold_hint.setStyleSheet("color: #64748b; font-size: 10px; border: none; background: transparent;")
+        timing_grid.addWidget(self.lbl_hold_hint, 1, 2, 1, 2)
+        timing_grid.setColumnStretch(1, 1)
+        timing_grid.setColumnStretch(3, 1)
+        l3.addLayout(timing_grid)
+
+        seq_row = QHBoxLayout()
+        seq_row.setSpacing(4)
+        seq_lbl = self._make_field_label("Dopo:")
+        seq_row.addWidget(seq_lbl)
+        for mode_val, label, tip, bg, border in _FOLLOW_MINI_SPECS:
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setMinimumWidth(0)
+            btn.setFixedHeight(23)
+            btn.setToolTip(tip)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setStyleSheet(
+                f"QPushButton {{ background-color: #161f2d; color: #94a3b8; border: 1px solid #2b3a4f; "
+                f"border-radius: 4px; font-size: 9px; font-weight: bold; padding: 0px 3px; }} "
+                f"QPushButton:hover:!checked {{ background-color: #202e42; border-color: {border}; color: #ffffff; }} "
+                f"QPushButton:checked {{ background-color: {bg}; border: 1px solid {border}; color: #ffffff; }} "
+                f"QPushButton:disabled {{ background-color: #0e131c; color: #475569; border-color: #1a2230; }}"
+            )
+            btn.clicked.connect(lambda _=False, m=mode_val: self.follow_mode_selected.emit(m))
+            self._follow_buttons[mode_val] = btn
+            seq_row.addWidget(btn, 1)
+        l3.addLayout(seq_row)
+        lay.addWidget(c3)
+        lay.addStretch()
+
+        self.tab_cue_timing = self._wrap_tab_scroll(page)
+        self.tab_widget.addTab(self.tab_cue_timing, "🎯 Cue · Tempi")
+
+    # ── Tab 2: Video & Immagine (Posizione, Scala, Opacità, Ritaglio) ──
+
+    def _build_tab_visual(self) -> None:
+        page = QWidget()
+        page.setStyleSheet("background: transparent;")
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(6, 7, 6, 7)
+        lay.setSpacing(7)
+
+        self.lbl_visual_guide = QLabel(
+            "💡 Suggerimento: puoi anche trascinare il riquadro o gli 8 bordi direttamente sull'Anteprima Pre-Viz 16:9."
+        )
+        self.lbl_visual_guide.setWordWrap(True)
+        self.lbl_visual_guide.setMinimumWidth(0)
+        self.lbl_visual_guide.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
+        self.lbl_visual_guide.setStyleSheet(
+            "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; "
+            "border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+        )
+        lay.addWidget(self.lbl_visual_guide)
+
+        c1, l1 = self._make_card("1 · POSIZIONAMENTO, ZOOM & TRASPARENZA")
+        pos_grid = QGridLayout()
+        pos_grid.setHorizontalSpacing(8)
+        pos_grid.addWidget(self._make_field_label("Pos X:"), 0, 0)
         self.spin_pos_x = SmartDoubleSpinBox()
         self.spin_pos_x.setRange(-2.0, 2.0)
         self.spin_pos_x.setSingleStep(0.01)
         self.spin_pos_x.setDecimals(2)
-        self.spin_pos_x.setToolTip(
-            "Offset orizzontale (-1.00 = sx, 0.00 = centro, +1.00 = dx). Puoi anche trascinare col mouse sull'anteprima!"
-        )
-        pos_row.addWidget(self.spin_pos_x)
+        self.spin_pos_x.setToolTip("Offset orizzontale (-1.00 = sx, 0.00 = centro, +1.00 = dx)")
+        pos_grid.addWidget(self.spin_pos_x, 0, 1)
 
-        pos_row.addWidget(QLabel("Pos Y:"))
+        pos_grid.addWidget(self._make_field_label("Pos Y:"), 0, 2)
         self.spin_pos_y = SmartDoubleSpinBox()
         self.spin_pos_y.setRange(-2.0, 2.0)
         self.spin_pos_y.setSingleStep(0.01)
         self.spin_pos_y.setDecimals(2)
-        self.spin_pos_y.setToolTip(
-            "Offset verticale (-1.00 = alto, 0.00 = centro, +1.00 = basso). Puoi anche trascinare col mouse sull'anteprima!"
-        )
-        pos_row.addWidget(self.spin_pos_y)
-        layout.addLayout(pos_row)
+        self.spin_pos_y.setToolTip("Offset verticale (-1.00 = alto, 0.00 = centro, +1.00 = basso)")
+        pos_grid.addWidget(self.spin_pos_y, 0, 3)
+        pos_grid.setColumnStretch(1, 1)
+        pos_grid.setColumnStretch(3, 1)
+        l1.addLayout(pos_grid)
 
         nudge_row = QHBoxLayout()
+        nudge_row.setSpacing(4)
         self.btn_nudge_left = self._make_nudge_btn("◀", "Sposta a sinistra (-0.01)")
         self.btn_nudge_up = self._make_nudge_btn("▲", "Sposta in alto (-0.01)")
         self.btn_nudge_down = self._make_nudge_btn("▼", "Sposta in basso (+0.01)")
         self.btn_nudge_right = self._make_nudge_btn("▶", "Sposta a destra (+0.01)")
         self.btn_pos_center = self._make_nudge_btn("⌖ Centro", "Ripristina posizione al centro (0.00, 0.00)")
-        for btn in (
-            self.btn_nudge_left, self.btn_nudge_up, self.btn_nudge_down,
-            self.btn_nudge_right, self.btn_pos_center,
+        for btn, st in (
+            (self.btn_nudge_left, 1), (self.btn_nudge_up, 1),
+            (self.btn_nudge_down, 1), (self.btn_nudge_right, 1), (self.btn_pos_center, 2),
         ):
-            nudge_row.addWidget(btn)
-        layout.addLayout(nudge_row)
+            nudge_row.addWidget(btn, st)
+        l1.addLayout(nudge_row)
 
-        scale_row = QHBoxLayout()
-        lbl_sc_title = QLabel("Scala / Zoom:")
-        lbl_sc_title.setFixedWidth(78)
-        scale_row.addWidget(lbl_sc_title)
-        self.slider_scale = QSlider(Qt.Orientation.Horizontal)
-        self.slider_scale.setRange(10, 500)
-        self.slider_scale.setValue(100)
-        self.slider_scale.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.lbl_scale = QLabel("1.0x")
-        self.lbl_scale.setFixedWidth(36)
-        self.lbl_scale.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.btn_scale_reset = self._make_reset_icon_btn("Ripristina scala a 1.0x")
-        scale_row.addWidget(self.slider_scale)
-        scale_row.addWidget(self.lbl_scale)
-        scale_row.addWidget(self.btn_scale_reset)
-        layout.addLayout(scale_row)
+        sc_row, self.slider_scale, self.lbl_scale, self.btn_scale_reset = self._make_slider_row(
+            "Scala:", 10, 500, 100, "1.0x", "Ripristina scala a 1.0x"
+        )
+        l1.addLayout(sc_row)
 
-        op_row = QHBoxLayout()
-        lbl_op_title = QLabel("Opacità:")
-        lbl_op_title.setFixedWidth(78)
-        op_row.addWidget(lbl_op_title)
-        self.slider_opacity = QSlider(Qt.Orientation.Horizontal)
-        self.slider_opacity.setRange(0, 100)
-        self.slider_opacity.setValue(100)
-        self.slider_opacity.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.lbl_opacity = QLabel("100%")
-        self.lbl_opacity.setFixedWidth(36)
-        self.lbl_opacity.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.btn_opacity_reset = self._make_reset_icon_btn("Ripristina opacità al 100% (piena visibilità)")
-        op_row.addWidget(self.slider_opacity)
-        op_row.addWidget(self.lbl_opacity)
-        op_row.addWidget(self.btn_opacity_reset)
-        layout.addLayout(op_row)
+        op_row, self.slider_opacity, self.lbl_opacity, self.btn_opacity_reset = self._make_slider_row(
+            "Opacità:", 0, 100, 100, "100%", "Ripristina opacità al 100%"
+        )
+        l1.addLayout(op_row)
 
-        # ── 4. Ritaglio (Crop % o px) ──
-        layout.addWidget(self._make_section_header("RITAGLIO (CROP)"))
+        ar_row = QHBoxLayout()
+        ar_row.setSpacing(8)
+        lbl_ar = self._make_field_label("Formato:")
+        lbl_ar.setFixedWidth(56)
+        ar_row.addWidget(lbl_ar)
+        self.combo_aspect = QComboBox()
+        self.combo_aspect.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.combo_aspect.setMinimumContentsLength(10)
+        self.combo_aspect.setMinimumWidth(80)
+        self.combo_aspect.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.combo_aspect.setToolTip("Forza le proporzioni del riquadro in Anteprima e Live")
+        for label, value in _ASPECT_OPTIONS:
+            self.combo_aspect.addItem(label, value)
+        ar_row.addWidget(self.combo_aspect, 1)
+        l1.addLayout(ar_row)
+        lay.addWidget(c1)
 
+        c2, l2 = self._make_card(
+            "2 · RITAGLIO BORDI (CROP)",
+            "Scegli % oppure pixel reali della sorgente per tagliare i bordi.",
+        )
         crop_unit_row = QHBoxLayout()
         crop_unit_row.setSpacing(4)
-        lbl_unit = QLabel("Unità:")
-        lbl_unit.setStyleSheet("color: #94a3b8; font-size: 10px;")
+        crop_unit_row.addWidget(self._make_field_label("Unità:"))
         self.btn_crop_pct = QPushButton("%")
         self.btn_crop_pct.setCheckable(True)
         self.btn_crop_pct.setChecked(True)
@@ -342,154 +560,140 @@ class CueInspectorPanel(QGroupBox):
         self.btn_crop_px.setStyleSheet(_UNIT_PILL_STYLE)
 
         self.lbl_crop_ref = QLabel("1920×1080 px")
-        self.lbl_crop_ref.setStyleSheet("color: #64748b; font-size: 10px;")
+        self.lbl_crop_ref.setStyleSheet("color: #64748b; font-size: 10px; font-family: monospace; background: transparent;")
         self.lbl_crop_ref.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
-        crop_unit_row.addWidget(lbl_unit)
+        self.btn_crop_reset = self._make_nudge_btn("⟲ Reset", "Rimuove il ritaglio e mostra il fotogramma intero")
         crop_unit_row.addWidget(self.btn_crop_pct)
         crop_unit_row.addWidget(self.btn_crop_px)
         crop_unit_row.addStretch()
         crop_unit_row.addWidget(self.lbl_crop_ref)
-        layout.addLayout(crop_unit_row)
+        crop_unit_row.addSpacing(4)
+        crop_unit_row.addWidget(self.btn_crop_reset)
+        l2.addLayout(crop_unit_row)
 
-        crop_row1 = QHBoxLayout()
-        crop_row1.setSpacing(6)
-        crop_row1.addWidget(QLabel("Sinistra:"))
+        crop_grid = QGridLayout()
+        crop_grid.setHorizontalSpacing(8)
+        crop_grid.setVerticalSpacing(5)
+        crop_grid.addWidget(self._make_field_label("Sinistra:"), 0, 0)
         self.spin_crop_l = self._make_crop_spin("Ritaglio bordo sinistro")
-        crop_row1.addWidget(self.spin_crop_l)
-        crop_row1.addWidget(QLabel("Destra:"))
+        crop_grid.addWidget(self.spin_crop_l, 0, 1)
+
+        crop_grid.addWidget(self._make_field_label("Destra:"), 0, 2)
         self.spin_crop_r = self._make_crop_spin("Ritaglio bordo destro")
-        crop_row1.addWidget(self.spin_crop_r)
-        layout.addLayout(crop_row1)
+        crop_grid.addWidget(self.spin_crop_r, 0, 3)
 
-        crop_row2 = QHBoxLayout()
-        crop_row2.setSpacing(6)
-        crop_row2.addWidget(QLabel("Alto:"))
+        crop_grid.addWidget(self._make_field_label("Alto:"), 1, 0)
         self.spin_crop_t = self._make_crop_spin("Ritaglio bordo superiore")
-        crop_row2.addWidget(self.spin_crop_t)
-        crop_row2.addWidget(QLabel("Basso:"))
+        crop_grid.addWidget(self.spin_crop_t, 1, 1)
+
+        crop_grid.addWidget(self._make_field_label("Basso:"), 1, 2)
         self.spin_crop_b = self._make_crop_spin("Ritaglio bordo inferiore")
-        crop_row2.addWidget(self.spin_crop_b)
-        layout.addLayout(crop_row2)
+        crop_grid.addWidget(self.spin_crop_b, 1, 3)
+        crop_grid.setColumnStretch(1, 1)
+        crop_grid.setColumnStretch(3, 1)
+        l2.addLayout(crop_grid)
+        lay.addWidget(c2)
+        lay.addStretch()
 
-        crop_btn_row = QHBoxLayout()
-        self.btn_crop_reset = self._make_nudge_btn(
-            "⟲ Reset Ritaglio", "Rimuove il ritaglio e mostra il fotogramma intero"
+        self.tab_visual = self._wrap_tab_scroll(page)
+        self.tab_widget.addTab(self.tab_visual, "🖼 Video · Foto")
+
+    # ── Tab 3: Audio, Fade, Tagli IN/OUT & Ripetizioni Loop ───────────
+
+    def _build_tab_audio_and_cuts(self) -> None:
+        page = QWidget()
+        page.setMinimumWidth(0)
+        page.setStyleSheet("background: transparent;")
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(4, 6, 4, 6)
+        lay.setSpacing(6)
+
+        self.lbl_audio_guide = QLabel(
+            "💡 Dissolvenze (Fade In/Out) attive anche sulle Immagini; inviluppi avanzati e Sezioni A/B/C nella Forma d'Onda."
         )
-        crop_btn_row.addStretch()
-        crop_btn_row.addWidget(self.btn_crop_reset)
-        layout.addLayout(crop_btn_row)
+        self.lbl_audio_guide.setWordWrap(True)
+        self.lbl_audio_guide.setMinimumWidth(0)
+        self.lbl_audio_guide.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
+        self.lbl_audio_guide.setStyleSheet(
+            "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; "
+            "border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+        )
+        lay.addWidget(self.lbl_audio_guide)
 
-        # ── 5. Transizioni & Aspect Ratio ──
-        layout.addWidget(self._make_section_header("TRANSIZIONI • ASPECT RATIO"))
+        # Card 1: Volume Master
+        c1, l1 = self._make_card(
+            "1 · VOLUME PRINCIPALE (AUDIO / VIDEO)",
+            "Livello base del media; puoi disegnare variazioni nel tempo direttamente sulla Forma d'Onda.",
+        )
+        vol_row, self.slider_volume, self.lbl_volume, self.btn_volume_reset = self._make_slider_row(
+            "Volume:", 0, 100, 100, "100%", "Ripristina volume al 100%"
+        )
+        l1.addLayout(vol_row)
+        lay.addWidget(c1)
 
-        fade_row = QHBoxLayout()
-        fade_row.setSpacing(6)
-        fade_row.addWidget(QLabel("Fade In:"))
+        # Card 2: Dissolvenze (Fade IN/OUT)
+        c2, l2 = self._make_card(
+            "2 · DISSOLVENZE (FADE IN / OUT)",
+            "Applicate dolcemente all'ingresso e all'uscita su Audio, Video e Immagini a durata.",
+        )
+        fade_grid = QGridLayout()
+        fade_grid.setHorizontalSpacing(6)
+        fade_grid.addWidget(self._make_field_label("Fade In:"), 0, 0)
         self.spin_fade_in = SmartDoubleSpinBox()
+        self.spin_fade_in.setMinimumWidth(68)
         self.spin_fade_in.setRange(0.0, 30.0)
         self.spin_fade_in.setDecimals(1)
         self.spin_fade_in.setSingleStep(0.2)
         self.spin_fade_in.setSuffix(" s")
-        fade_row.addWidget(self.spin_fade_in)
+        fade_grid.addWidget(self.spin_fade_in, 0, 1)
 
-        fade_row.addWidget(QLabel("Fade Out:"))
+        fade_grid.addWidget(self._make_field_label("Fade Out:"), 0, 2)
         self.spin_fade_out = SmartDoubleSpinBox()
+        self.spin_fade_out.setMinimumWidth(68)
         self.spin_fade_out.setRange(0.0, 30.0)
         self.spin_fade_out.setDecimals(1)
         self.spin_fade_out.setSingleStep(0.2)
         self.spin_fade_out.setSuffix(" s")
-        fade_row.addWidget(self.spin_fade_out)
-        layout.addLayout(fade_row)
+        fade_grid.addWidget(self.spin_fade_out, 0, 3)
+        fade_grid.setColumnStretch(1, 1)
+        fade_grid.setColumnStretch(3, 1)
+        l2.addLayout(fade_grid)
+        lay.addWidget(c2)
 
-        hold_row = QHBoxLayout()
-        hold_row.addWidget(QLabel("Durata Img:"))
-        self.spin_hold_time = SmartDoubleSpinBox()
-        self.spin_hold_time.setRange(0.0, 99999.0)
-        self.spin_hold_time.setDecimals(1)
-        self.spin_hold_time.setSingleStep(0.5)
-        self.spin_hold_time.setSuffix(" s")
-        self.spin_hold_time.setSpecialValueText("0 s (Infinita)")
-        self.spin_hold_time.setToolTip(
-            "Tempo di permanenza in Live dell'immagine prima della rimozione automatica. 0 = infinita."
+        # Card 3: Punti di taglio IN / OUT
+        c3, l3 = self._make_card(
+            "3 · TAGLIO TEMPORALE (PUNTI IN / OUT)",
+            "Imposta dove inizia e finisce la traccia (tasti rapidi [I] / [O] sulla Testina della Timeline).",
         )
-        hold_row.addWidget(self.spin_hold_time)
-        layout.addLayout(hold_row)
+        io_row = QHBoxLayout()
+        io_row.setSpacing(5)
+        io_row.addWidget(self._make_field_label("IN:"))
+        self.spin_in = InPointSpinBox()
+        self.spin_in.setMinimumWidth(68)
+        io_row.addWidget(self.spin_in, 1)
+        io_row.addWidget(self._make_field_label("OUT:"))
+        self.spin_out = OutPointSpinBox()
+        self.spin_out.setMinimumWidth(78)
+        io_row.addWidget(self.spin_out, 1)
+        self.btn_io_reset = self._make_reset_icon_btn("Ripristina IN a 0.00s e OUT a Fine")
+        io_row.addWidget(self.btn_io_reset)
+        l3.addLayout(io_row)
+        lay.addWidget(c3)
 
-        delay_row = QHBoxLayout()
-        delay_row.setSpacing(6)
-        delay_row.addWidget(QLabel("Pre-Delay:"))
-        self.spin_pre_delay = SmartDoubleSpinBox()
-        self.spin_pre_delay.setRange(0.0, 3600.0)
-        self.spin_pre_delay.setDecimals(1)
-        self.spin_pre_delay.setSingleStep(0.5)
-        self.spin_pre_delay.setSuffix(" s")
-        self.spin_pre_delay.setToolTip(
-            "Ritardo di avvio dopo il GO prima che il file parta (utile per incastrarlo con altri layer)"
-        )
-        delay_row.addWidget(self.spin_pre_delay)
-
-        delay_row.addWidget(QLabel("Post-Delay:"))
-        self.spin_post_delay = SmartDoubleSpinBox()
-        self.spin_post_delay.setRange(0.0, 3600.0)
-        self.spin_post_delay.setDecimals(1)
-        self.spin_post_delay.setSingleStep(0.5)
-        self.spin_post_delay.setSuffix(" s")
-        self.spin_post_delay.setToolTip(
-            "Attesa dopo la fine del file prima di uscire e avviare l'eventuale Auto-GO successivo"
-        )
-        delay_row.addWidget(self.spin_post_delay)
-        layout.addLayout(delay_row)
-
-        ar_row = QHBoxLayout()
-        ar_row.addWidget(QLabel("Formato:"))
-        self.combo_aspect = QComboBox()
-        self.combo_aspect.setMinimumWidth(80)
-        self.combo_aspect.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.combo_aspect.setToolTip("Forza le proporzioni del riquadro in Anteprima e Live (es. 16:9, 4:3, 1:1)")
-        for label, value in _ASPECT_OPTIONS:
-            self.combo_aspect.addItem(label, value)
-        ar_row.addWidget(self.combo_aspect, 1)
-        layout.addLayout(ar_row)
-
-        # ── 6. Audio & Riproduzione ──
-        layout.addWidget(self._make_section_header("AUDIO • RIPRODUZIONE"))
-
-        vol_row = QHBoxLayout()
-        lbl_vol_title = QLabel("Volume:")
-        lbl_vol_title.setFixedWidth(78)
-        vol_row.addWidget(lbl_vol_title)
-        self.slider_volume = QSlider(Qt.Orientation.Horizontal)
-        self.slider_volume.setRange(0, 100)
-        self.slider_volume.setValue(100)
-        self.slider_volume.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.lbl_volume = QLabel("100%")
-        self.lbl_volume.setFixedWidth(36)
-        self.lbl_volume.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.btn_volume_reset = self._make_reset_icon_btn("Ripristina volume al 100%")
-        vol_row.addWidget(self.slider_volume)
-        vol_row.addWidget(self.lbl_volume)
-        vol_row.addWidget(self.btn_volume_reset)
-        layout.addLayout(vol_row)
-
+        # Card 4: Ripetizione Loop
         self.loop_card = QFrame()
         self.loop_card.setObjectName("loopCard")
-        self.loop_card.setStyleSheet("""
-            QFrame#loopCard {
-                background-color: #101722;
-                border: 1px solid #1e2c3d;
-                border-radius: 6px;
-                padding: 6px 8px;
-                margin-top: 4px;
-                margin-bottom: 4px;
-            }
-        """)
+        self.loop_card.setMinimumWidth(0)
+        self.loop_card.setStyleSheet(
+            "QFrame#loopCard { background-color: #101723; border: 1px solid #223044; border-radius: 6px; }"
+        )
         loop_card_layout = QVBoxLayout(self.loop_card)
-        loop_card_layout.setContentsMargins(8, 6, 8, 6)
+        loop_card_layout.setContentsMargins(8, 6, 8, 7)
         loop_card_layout.setSpacing(6)
 
         loop_top_row = QHBoxLayout()
-        self.chk_loop = QCheckBox("🔁  RIPETI IN LOOP")
+        self.chk_loop = QCheckBox("🔁  4 · RIPETI CUE IN LOOP")
         self.chk_loop.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_loop.setStyleSheet("""
             QCheckBox {
@@ -497,6 +701,7 @@ class CueInspectorPanel(QGroupBox):
                 font-size: 11px;
                 color: #10b981;
                 spacing: 8px;
+                background: transparent;
             }
             QCheckBox::indicator {
                 width: 18px;
@@ -513,12 +718,12 @@ class CueInspectorPanel(QGroupBox):
         loop_card_layout.addLayout(loop_top_row)
 
         loop_options_row = QHBoxLayout()
-        lbl_mode = QLabel("Modalità:")
-        lbl_mode.setStyleSheet("color: #94a3b8; font-size: 11px;")
-        loop_options_row.addWidget(lbl_mode)
+        loop_options_row.addWidget(self._make_field_label("Ripetizioni:"))
 
         self.combo_loop_mode = QComboBox()
-        self.combo_loop_mode.setMinimumWidth(60)
+        self.combo_loop_mode.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.combo_loop_mode.setMinimumContentsLength(10)
+        self.combo_loop_mode.setMinimumWidth(50)
         self.combo_loop_mode.setCursor(Qt.CursorShape.PointingHandCursor)
         self.combo_loop_mode.addItems([
             "∞ Continuo (Infinito)",
@@ -536,28 +741,15 @@ class CueInspectorPanel(QGroupBox):
         self.spin_loop_count.setDecimals(0)
         self.spin_loop_count.setSingleStep(1)
         self.spin_loop_count.setSuffix(" rip.")
-        self.spin_loop_count.setFixedWidth(82)
+        self.spin_loop_count.setFixedWidth(74)
         self.spin_loop_count.setVisible(False)
         loop_options_row.addWidget(self.spin_loop_count)
-
         loop_card_layout.addLayout(loop_options_row)
-        layout.addWidget(self.loop_card)
+        lay.addWidget(self.loop_card)
+        lay.addStretch()
 
-        io_row = QHBoxLayout()
-        io_row.setSpacing(6)
-        io_row.addWidget(QLabel("IN:"))
-        self.spin_in = InPointSpinBox()
-        io_row.addWidget(self.spin_in)
-        io_row.addWidget(QLabel("OUT:"))
-        self.spin_out = OutPointSpinBox()
-        io_row.addWidget(self.spin_out)
-        self.btn_io_reset = self._make_reset_icon_btn("Ripristina IN a 0.00s e OUT a Fine")
-        io_row.addWidget(self.btn_io_reset)
-        layout.addLayout(io_row)
-
-        layout.addStretch()
-        scroll.setWidget(content)
-        outer.addWidget(scroll)
+        self.tab_audio_cuts = self._wrap_tab_scroll(page)
+        self.tab_widget.addTab(self.tab_audio_cuts, "🎵 Audio · Tagli")
 
     @staticmethod
     def _make_nudge_btn(text: str, tooltip: str) -> QPushButton:
@@ -751,13 +943,25 @@ class CueInspectorPanel(QGroupBox):
         self._emit_change("crop_reset")
 
     def reset_in_out(self) -> None:
-        """Emit shared reset signal to restore IN=0.00s and OUT=Fine cleanly."""
         self.in_out_reset_requested.emit()
 
     def set_layer_checked(self, layer: Optional[int]) -> None:
-        """Highlight the button matching *layer*, or uncheck all when *layer* is None."""
         for idx, btn in self._layer_buttons.items():
             btn.setChecked(layer == idx)
+
+    def set_color_silent(self, color_hex: Optional[str]) -> None:
+        clean = _sanitize_hex_color(color_hex) if color_hex is not None else "__MIXED__"
+        for hv, btn in self._color_buttons.items():
+            btn.blockSignals(True)
+            btn.setChecked(color_hex is not None and hv == clean)
+            btn.blockSignals(False)
+
+    def set_follow_mode_silent(self, mode: Optional[str], *, enabled: bool = True) -> None:
+        for m, btn in self._follow_buttons.items():
+            btn.blockSignals(True)
+            btn.setEnabled(enabled)
+            btn.setChecked(enabled and (m == mode))
+            btn.blockSignals(False)
 
     def set_position_silent(self, pos_x: float, pos_y: float) -> None:
         for w, val in ((self.spin_pos_x, pos_x), (self.spin_pos_y, pos_y)):
@@ -818,6 +1022,10 @@ class CueInspectorPanel(QGroupBox):
                             multi_mode: bool = False) -> None:
         for btn in self._layer_buttons.values():
             btn.setEnabled(enabled)
+        for btn in self._color_buttons.values():
+            btn.setEnabled(enabled)
+        for btn in self._follow_buttons.values():
+            btn.setEnabled(enabled)
 
         identity_enabled = enabled and not multi_mode
         self.edit_cue_q.setEnabled(identity_enabled)
@@ -841,9 +1049,12 @@ class CueInspectorPanel(QGroupBox):
 
         if not enabled or media_type is None:
             self.set_layer_checked(None)
+            self.set_color_silent("")
+            self.set_follow_mode_silent(FollowMode.MANUAL.value, enabled=False)
             self.edit_cue_q.clear()
             self.edit_cue_name.clear()
             self.edit_cue_notes.clear()
+            self.lbl_hold_hint.setText("Seleziona una cue")
             for w in all_media_controls:
                 w.setEnabled(False)
             return
@@ -880,8 +1091,41 @@ class CueInspectorPanel(QGroupBox):
         self.combo_loop_mode.setEnabled(is_timed and self.chk_loop.isChecked())
         self.spin_loop_count.setEnabled(is_timed and self.chk_loop.isChecked())
 
+        if media_type == MediaType.IMAGE:
+            self.lbl_hold_hint.setText("0 s = Infinita in Live")
+            self.lbl_visual_guide.setText(
+                "💡 Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9."
+            )
+            self.lbl_visual_guide.setStyleSheet(
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+            )
+            self.lbl_audio_guide.setText(
+                "ℹ Cue Immagine: puoi impostare Fade In/Out (e l'inviluppo Opacità in basso). Volume, Tagli e Loop valgono per Audio/Video."
+            )
+        elif media_type == MediaType.AUDIO:
+            self.lbl_hold_hint.setText("Usa IN / OUT o Forma d'Onda")
+            self.lbl_visual_guide.setText(
+                "ℹ Cue Audio selezionata: Posizione, Zoom, Opacità e Ritaglio valgono solo per Video e Immagini."
+            )
+            self.lbl_visual_guide.setStyleSheet(
+                "background-color: #2b1d07; color: #fcd34d; border: 1px solid #b45309; border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+            )
+            self.lbl_audio_guide.setText(
+                "💡 Regola Volume, Fade, punti IN/OUT o Loop; usa la Forma d'Onda sotto per curve e Sezioni A/B/C."
+            )
+        else:
+            self.lbl_hold_hint.setText("Usa IN / OUT del video")
+            self.lbl_visual_guide.setText(
+                "💡 Video selezionato: trascina posizione/crop sull'Anteprima Pre-Viz e attiva MIRROR LIVE per allineare sul proiettore."
+            )
+            self.lbl_visual_guide.setStyleSheet(
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+            )
+            self.lbl_audio_guide.setText(
+                "💡 Regola Volume traccia video, Fade In/Out, punti IN/OUT e Loop (o Sezioni nella Timeline)."
+            )
+
     def _populate_media_fields(self, cue: Cue) -> None:
-        """Populate transform, fade, loop, audio, and timing widgets from *cue*."""
         self.spin_pos_x.setValue(cue.position_x)
         self.spin_pos_y.setValue(cue.position_y)
         self.slider_scale.setValue(int(cue.scale * 100))
@@ -951,6 +1195,8 @@ class CueInspectorPanel(QGroupBox):
             self.edit_cue_name.setText(cue.name)
             self.edit_cue_notes.setText(cue.notes)
             self.set_layer_checked(cue.layer)
+            self.set_color_silent(getattr(cue, "color", ""))
+            self.set_follow_mode_silent(cue.follow_mode, enabled=True)
             self._populate_media_fields(cue)
         finally:
             self._updating = False
@@ -985,6 +1231,10 @@ class CueInspectorPanel(QGroupBox):
         lead = anchor_cue if (anchor_cue in cues) else cues[0]
         layers = {c.layer for c in cues}
         common_layer = next(iter(layers)) if len(layers) == 1 else None
+        colors = {getattr(c, "color", "") for c in cues}
+        common_color: Optional[str] = next(iter(colors)) if len(colors) == 1 else None
+        modes = {c.follow_mode for c in cues}
+        common_mode: Optional[str] = next(iter(modes)) if len(modes) == 1 else None
 
         self._multi_mode = True
         self._updating = True
@@ -1010,6 +1260,8 @@ class CueInspectorPanel(QGroupBox):
             self.edit_cue_name.setText(f"[{len(cues)} file {mtype.value} selezionati]")
             self.edit_cue_notes.setText("")
             self.set_layer_checked(common_layer)
+            self.set_color_silent(common_color)
+            self.set_follow_mode_silent(common_mode, enabled=True)
             self._populate_media_fields(lead)
         finally:
             self._updating = False

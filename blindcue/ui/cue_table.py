@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QItemSelectionModel, QRect, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen
+from PySide6.QtCore import QItemSelectionModel, QPointF, QRect, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QHeaderView,
     QLineEdit,
+    QMenu,
     QStyle,
     QStyledItemDelegate,
     QStyleOptionViewItem,
@@ -19,9 +20,9 @@ from PySide6.QtWidgets import (
 )
 
 from models.cue import Cue
-from ui.theme import CLR_ACCENT, CLR_TEXT
+from ui.theme import CLR_ACCENT, CLR_TEXT, CUE_COLOR_PALETTE
 
-# Custom item roles for the 3-column Cue Sequence Table (Col 2 stores cue.name in EditRole)
+# Custom item roles for Cue Tables (Col 2 stores cue.name in EditRole)
 ROLE_MEDIA_TYPE = Qt.ItemDataRole.UserRole + 1
 ROLE_LAYER = Qt.ItemDataRole.UserRole + 2
 ROLE_HAS_NOTES = Qt.ItemDataRole.UserRole + 3
@@ -29,6 +30,75 @@ ROLE_STATUS_TXT = Qt.ItemDataRole.UserRole + 4
 ROLE_STATUS_CLR = Qt.ItemDataRole.UserRole + 5
 ROLE_FOLLOW_MODE = Qt.ItemDataRole.UserRole + 6
 ROLE_TIMING_BADGE = Qt.ItemDataRole.UserRole + 7
+ROLE_CUE_COLOR = Qt.ItemDataRole.UserRole + 8
+ROLE_PREV_COLOR = Qt.ItemDataRole.UserRole + 9
+ROLE_INCOMING_LINK = Qt.ItemDataRole.UserRole + 10
+
+_LINK_RAIL_COLORS = {
+    "SIMULTANEOUS": QColor("#f59e0b"),
+    "AUTO_FOLLOW": QColor("#38bdf8"),
+}
+
+
+def paint_cue_row_decorations(
+    painter: QPainter,
+    rect: QRect,
+    index,
+    *,
+    is_selected: bool = False,
+) -> None:
+    """Paint group colour wash, top chapter divider, and left link-chain rail shared by Project & LIVE tables."""
+    col = index.column()
+    cue_color = str(index.data(ROLE_CUE_COLOR) or "")
+    prev_color = str(index.data(ROLE_PREV_COLOR) or "")
+
+    painter.save()
+    if cue_color:
+        wash = QColor(cue_color)
+        if wash.isValid():
+            wash.setAlpha(24 if is_selected else 36)
+            painter.fillRect(rect, wash)
+            if col == 0:
+                ribbon = QColor(cue_color)
+                painter.fillRect(rect.left(), rect.top() + 1, 4, rect.height() - 2, ribbon)
+
+    if index.row() > 0 and cue_color != prev_color and (cue_color or prev_color):
+        div_clr = QColor(cue_color or prev_color)
+        if div_clr.isValid():
+            div_clr.setAlpha(155)
+            painter.setPen(QPen(div_clr, 1.5))
+            painter.drawLine(rect.left(), rect.top() + 1, rect.right(), rect.top() + 1)
+
+    if col == 0:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        incoming = str(index.data(ROLE_INCOMING_LINK) or "")
+        outgoing = str(index.data(ROLE_FOLLOW_MODE) or "")
+        rail_x = float(rect.left() + 11)
+        mid_y = float(rect.center().y())
+
+        if incoming in _LINK_RAIL_COLORS:
+            in_clr = _LINK_RAIL_COLORS[incoming]
+            painter.setPen(QPen(in_clr, 2.0))
+            painter.drawLine(QPointF(rail_x, float(rect.top())), QPointF(rail_x, mid_y))
+            painter.drawLine(QPointF(rail_x, mid_y), QPointF(rail_x + 6.0, mid_y))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(in_clr)
+            arrow = QPolygonF([
+                QPointF(rail_x + 8.5, mid_y),
+                QPointF(rail_x + 4.5, mid_y - 3.2),
+                QPointF(rail_x + 4.5, mid_y + 3.2),
+            ])
+            painter.drawPolygon(arrow)
+
+        if outgoing in _LINK_RAIL_COLORS:
+            out_clr = _LINK_RAIL_COLORS[outgoing]
+            painter.setPen(QPen(out_clr, 2.0))
+            painter.drawLine(QPointF(rail_x, mid_y), QPointF(rail_x, float(rect.bottom()) + 0.5))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(out_clr)
+            painter.drawEllipse(QPointF(rail_x, mid_y), 3.0, 3.0)
+
+    painter.restore()
 
 
 def format_cid(cue_id: object) -> str:
@@ -73,20 +143,36 @@ class CueTableDelegate(QStyledItemDelegate):
         style = opt.widget.style() if opt.widget else QApplication.style()
 
         if col == 0:
-            super().paint(painter, opt, index)
-            if opt.state & QStyle.StateFlag.State_Selected:
-                painter.save()
+            raw_num = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+            fg_brush = index.data(Qt.ItemDataRole.ForegroundRole)
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            is_sel = bool(opt.state & QStyle.StateFlag.State_Selected)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+            painter.save()
+            if is_sel and not str(index.data(ROLE_CUE_COLOR) or ""):
                 painter.fillRect(
                     opt.rect.left(), opt.rect.top() + 2, 3, opt.rect.height() - 4,
                     QColor(CLR_ACCENT),
                 )
-                painter.restore()
+            painter.setFont(opt.font)
+            pen_clr = fg_brush.color() if fg_brush is not None else QColor("#94a3b8")
+            painter.setPen(pen_clr)
+            painter.drawText(
+                opt.rect.adjusted(18, 0, -2, 0),
+                Qt.AlignmentFlag.AlignCenter,
+                raw_num,
+            )
+            painter.restore()
             return
 
         if col == 1:
             raw_q = str(index.data(Qt.ItemDataRole.EditRole) or "").strip()
             opt.text = ""
             style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(
+                painter, opt.rect, index, is_selected=bool(opt.state & QStyle.StateFlag.State_Selected)
+            )
             painter.save()
             font = QFont(opt.font)
             if raw_q:
@@ -119,6 +205,9 @@ class CueTableDelegate(QStyledItemDelegate):
 
             opt.text = ""
             style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(
+                painter, opt.rect, index, is_selected=bool(opt.state & QStyle.StateFlag.State_Selected)
+            )
 
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -176,24 +265,24 @@ class CueTableDelegate(QStyledItemDelegate):
             right_x -= lw + 4
 
             if follow_mode == "AUTO_FOLLOW":
-                fw = 18
+                fw = 46
                 fy = rect.top() + (rect.height() - lh) // 2
                 f_rect = QRect(right_x - fw, fy, fw, lh)
                 painter.setPen(QPen(QColor("#38bdf8"), 1))
                 painter.setBrush(QColor("#0c2638"))
                 painter.drawRoundedRect(f_rect, 3, 3)
                 painter.setPen(QColor("#7dd3fc"))
-                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⤵")
+                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⤵ AUTO")
                 right_x -= fw + 4
             elif follow_mode == "SIMULTANEOUS":
-                fw = 18
+                fw = 42
                 fy = rect.top() + (rect.height() - lh) // 2
                 f_rect = QRect(right_x - fw, fy, fw, lh)
                 painter.setPen(QPen(QColor("#f59e0b"), 1))
                 painter.setBrush(QColor("#332006"))
                 painter.drawRoundedRect(f_rect, 3, 3)
                 painter.setPen(QColor("#fcd34d"))
-                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⇉")
+                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⇉ SIM")
                 right_x -= fw + 4
 
             min_name_end = left_x + 52
@@ -257,6 +346,7 @@ class CueSequenceTable(QTableWidget):
     """Three-column cue sequence table (#, Q, Nome / Media) with row-level selection signal."""
 
     currentRowChanged = Signal(int)
+    color_selected = Signal(str)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(0, 3, parent)
@@ -279,8 +369,8 @@ class CueSequenceTable(QTableWidget):
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
         hdr.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self.setColumnWidth(0, 36)
-        self.setColumnWidth(1, 56)
+        self.setColumnWidth(0, 50)
+        self.setColumnWidth(1, 52)
 
         self.horizontalHeaderItem(0).setToolTip("Numero progressivo di posizione in scaletta (doppio click = GO)")
         self.horizontalHeaderItem(1).setToolTip("Richiamo copione Q (doppio click per modificare)")
@@ -355,6 +445,25 @@ class CueSequenceTable(QTableWidget):
         """Clear all rows while preserving the 3 column headers."""
         self._last_emitted_row = -1
         self.setRowCount(0)
+
+    def contextMenuEvent(self, event) -> None:  # noqa: N802
+        rows = self.selected_rows()
+        if not rows:
+            idx = self.indexAt(event.pos())
+            if idx.isValid():
+                self.setCurrentRow(idx.row())
+                rows = [idx.row()]
+        if not rows:
+            return
+
+        menu = QMenu(self)
+        color_menu = menu.addMenu("🎨 Colore Scena / Gruppo")
+        for hex_val, label in CUE_COLOR_PALETTE:
+            pm = QPixmap(14, 14)
+            pm.fill(QColor(hex_val) if hex_val else QColor("#283548"))
+            act = color_menu.addAction(QIcon(pm), label)
+            act.triggered.connect(lambda _=False, clr=hex_val: self.color_selected.emit(clr))
+        menu.exec(event.globalPos())
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         if event.key() == Qt.Key.Key_F2 and self.currentRow() >= 0 and self.currentColumn() == 0:

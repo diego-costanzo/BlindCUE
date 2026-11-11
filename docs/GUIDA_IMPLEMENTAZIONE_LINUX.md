@@ -84,8 +84,11 @@ BlindCue separa nettamente la fase di **Programmazione** dalla fase di **Spettac
   - Fai **doppio clic** sulla colonna **`Q`** (es. `Q-12a`) o sul **Nome** (oppure seleziona e premi **`[F2]`**).
   - Doppio clic sulla colonna `#` (numero progressivo) manda direttamente in **`GO`** quella riga.
   - Il **Focus Guard** disattiva `Spazio` e scorciatoie mentre stai scrivendo dentro un campo di testo.
-- **Note di Regia**: scrivile nell'Ispettore; nella Scaletta Progetto appare l'icona `📝` (visibile intera al passaggio del mouse), mentre in **Modalità LIVE** le Note hanno un'intera colonna dedicata sempre leggibile.
-- **Selezione Multipla (`Ctrl+Click` o `Shift+Click`)**: selezionando più cue dello stesso tipo (es. 5 Immagini o 4 Audio), l'Ispettore abilita la modifica simultanea dei soli parametri comuni (`Layer`, `Opacità`, `Scala`, `Pre-Delay`, `Post-Delay`, `Fade`, ecc.), lasciando intatti i nomi individuali.
+- **Colori Scena / Gruppo & Cue Collegate Visibili**:
+  - Assegna un colore dalla prima scheda dell'Ispettore (**Colore**) oppure con **tasto destro su una o più cue → `Colore Scena / Gruppo`**: compare una fascia laterale colorata con un divisore tra atti/scene (visibile anche in Modalità LIVE).
+  - Le cue collegate con **`Auto-GO`** (ciano `⤵`) o **`Simultanea`** (ambra `⇉`) mostrano sia il badge a destra sia una **linea grafica con freccia sul lato sinistro del numero `#`** che unisce visivamente le cue incatenate.
+- **Note di Regia**: scrivile nella prima scheda dell'Ispettore; nella Scaletta Progetto appare l'icona `📝` (visibile intera al passaggio del mouse), mentre in **Modalità LIVE** le Note hanno un'intera colonna dedicata sempre leggibile.
+- **Selezione Multipla (`Ctrl+Click` o `Shift+Click`)**: selezionando più cue dello stesso tipo (es. 5 Immagini o 4 Audio), l'Ispettore abilita la modifica simultanea dei soli parametri comuni (`Colore`, `Layer`, `Opacità`, `Scala`, `Pre-Delay`, `Post-Delay`, `Fade`, ecc.), lasciando intatti i nomi individuali.
 - **Undo / Redo (`Ctrl+Z` / `Ctrl+Y`)**: fino a `40` passaggi di annullamento protetti da debounce (`450ms`), senza mai toccare eventuali cue già in onda.
 
 [↑ Indice](#indice) · [← Precedente](#sec-2) · [Sezione Successiva: Layer di Compositing →](#sec-4)
@@ -126,13 +129,16 @@ Ogni cue è indirizzata a uno dei 3 livelli indipendenti selezionabili nell'**Is
 
 <a id="sec-5"></a>
 
-## 5. Ispettore Cue: Posizione, Zoom, Aspect Ratio & Ritaglio (`%` / `px`)
+## 5. Ispettore Cue a Schede: Tempi, Posizione, Zoom & Ritaglio (`%` / `px`)
 
-Nell'**Ispettore Cue** (e direttamente sul monitor **Pre-Viz 16:9**):
-- **Posizione (`Pos X`, `Pos Y`)**: muovi con i numeri, usa i 4 tasti freccia *nudge* + `⊕ Centro`, oppure **trascina il media con il mouse** direttamente dentro il monitor di anteprima 16:9.
-- **Scala / Zoom (`0.1x – 3.0x`)** e **Opacità (`0% – 100%`)**: ogni cursore ha il pulsante reset individuale `↺`.
-- **Formato (`Aspect Ratio`)**: `Nativo`, `16:9`, `4:3`, `21:9`, `1:1` — ridimensiona la proporzione del riquadro prima dell'eventuale ritaglio.
-- **Ritaglio (`Crop`) in `%` oppure `px`**:
+L'**Ispettore Cue** a destra è diviso in **3 schede pratiche (linguette)** per avere subito sott'occhio ciò che ti serve senza dover scorrere all'infinito:
+1. **`🎯 Cue · Tempi`**: `Q (Copione)`, `Nome Cue`, `Note Regia`, **Colori Gruppo**, selezione `Layer (L1/L2/L3)` e soprattutto i tempi **`Pre-Delay`**, **`Durata Img`**, **`Post-Delay`** e sequenza (**`Blocco / Auto-GO / Simult.`**).
+2. **`🖼 Video · Foto`**:
+   - **Posizione (`Pos X`, `Pos Y`)**: muovi con i numeri, usa i 4 tasti freccia *nudge* + `⌖ Centro`, oppure **trascina il media con il mouse** direttamente dentro il monitor di anteprima 16:9.
+   - **Scala / Zoom (`0.1x – 5.0x`)** e **Opacità (`0% – 100%`)**: ogni cursore ha il pulsante reset individuale `⟲`.
+   - **Formato (`Aspect Ratio`)**: `Nativo`, `16:9`, `4:3`, `21:9`, `1:1` — ridimensiona la proporzione del riquadro prima dell'eventuale ritaglio.
+   - **Ritaglio (`Crop`) in `%` oppure `px`**:
+3. **`🎵 Audio · Tagli`**: `Volume`, `Fade In/Out` (attivo anche sulle Immagini), tagli `IN/OUT` e `Loop`.
   - Commuta tra **Percentuale (`%`)** e **Pixel reali (`px`)** rispetto alla risoluzione del file (es. `1920×1080 px`).
   - **Ritaglio ancorato ai bordi**: tagliando il lato destro o superiore il media resta fermo nello spazio di scena invece di ricentrarsi (mostrando esattamente quale porzione viene tagliata via).
   - Puoi anche tirare le **8 maniglie bianche/cyan** direttamente sui bordi e sugli angoli nel monitor Pre-Viz.
