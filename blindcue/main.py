@@ -145,6 +145,16 @@ def main() -> int:
     except Exception as exc:
         logger.error("[MAIN] Could not create test player: %s", exc)
 
+    # ── Device & Hardware Routing Manager ─────────────────────────────
+    from engine.device_manager import DeviceManager
+    device_mgr = DeviceManager()
+    device_mgr.register_live_players(list(live_players.values()))
+    device_mgr.register_test_player(test_player)
+    device_mgr.register_output_window(output_win)
+    if output_screen is not None:
+        device_mgr.set_target_screen(output_screen)
+    main_win.set_device_manager(device_mgr)
+
     # ── Wire per-layer video deck swap + real-time opacity callbacks ──
     for layer, lp in live_players.items():
         lp.set_secondary_video_output(output_win.get_secondary_video_item(layer))

@@ -13,7 +13,7 @@ import os
 from typing import Any, Callable, Optional, Sequence
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
 
 from engine.envelope import SectionSequencer, evaluate_cue_level
 from models.cue import CueSection
@@ -53,6 +53,7 @@ class LivePlayer(QObject):
         self._current_loop_iteration: int = 0
 
         # Lazy standby deck for pre-cued anti-stutter jumps (allocated only when needed)
+        self._audio_device: Optional[QAudioDevice] = None
         self._standby_player: Optional[QMediaPlayer] = None
         self._standby_audio: Optional[QAudioOutput] = None
         self._standby_target_ms: Optional[int] = None
@@ -85,6 +86,8 @@ class LivePlayer(QObject):
         try:
             self._player = QMediaPlayer(self)
             self._audio = QAudioOutput(self)
+            if self._audio_device is not None and not self._audio_device.isNull():
+                self._audio.setDevice(self._audio_device)
             self._player.setAudioOutput(self._audio)
 
             if self._video_output is not None:
@@ -105,6 +108,8 @@ class LivePlayer(QObject):
             return
         self._standby_player = QMediaPlayer(self)
         self._standby_audio = QAudioOutput(self)
+        if self._audio_device is not None and not self._audio_device.isNull():
+            self._standby_audio.setDevice(self._audio_device)
         self._standby_audio.setVolume(0.0)
         self._standby_player.setAudioOutput(self._standby_audio)
         if self._standby_video_output is not None:
@@ -140,6 +145,15 @@ class LivePlayer(QObject):
 
     def set_opacity_callback(self, callback: Optional[Callable[[float], None]]) -> None:
         self._opacity_cb = callback
+
+    def set_audio_device(self, device: Optional[QAudioDevice]) -> None:
+        """Assign live output audio device (e.g. Master Sala / PA system)."""
+        self._audio_device = device
+        if self._audio is not None and device is not None and not device.isNull():
+            self._audio.setDevice(device)
+        if self._standby_audio is not None and device is not None and not device.isNull():
+            self._standby_audio.setDevice(device)
+        logger.info("[LIVE] Audio device assigned: %s", device.description() if device and not device.isNull() else "Default")
 
     # ── Automation & Section Configuration ────────────────────────────
 

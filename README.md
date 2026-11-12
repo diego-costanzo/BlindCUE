@@ -58,7 +58,10 @@ Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L
 
 ## ⚙️ Funzionalità Implementate
 
-- **Doppio Motore Isolato (Live vs Pre-Viz)**: 3 player indipendenti (`L1`, `L2`, `L3`) per l'uscita pubblica e 1 player `TestPlayer` muto di default per collaudare in cuffia (`MUTE ON/OFF`).
+- **Doppio Motore Isolato (Live vs Pre-Viz) & Routing Audio / Video**:
+  - 3 player indipendenti (`L1`, `L2`, `L3`) per l'uscita pubblica e 1 player `TestPlayer` muto di default per collaudare in cuffia (`MUTE ON/OFF`).
+  - **Pannello `⚙️ Dispositivi · Uscite`**: assegna l'uscita **Master Sala (PA)** e il **Monitor Cuffia Tecnico (PFL)** su schede audio diverse, seleziona il monitor/proiettore a caldo e imposta il profilo prestazionale (`Auto`, `🍃 Eco` per portatili datati o `🚀 Performance`).
+  - **Protezione Live GC (`ShowRuntimeGuard`)**: sospende i cicli pesanti del Garbage Collector durante la Modalità LIVE per garantire zero micro-lag sulle Cue.
 - **Pre-Viz 16:9 WYSIWYG + `MIRROR LIVE` Foto & Video**:
   - Trascinamento diretto posizione, **8 maniglie per ritaglio sul frame**, equalizer audio animato.
   - Attivando **`MIRROR LIVE`**, le regolazioni su Foto **e Video in Standby** si vedono in tempo reale sul proiettore esterno senza emettere audio in sala.

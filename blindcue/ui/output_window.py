@@ -821,6 +821,20 @@ class OutputWindow(QWidget):
     def attach_to_screen(self, screen: QScreen, is_external: bool = True) -> None:
         self.configure_screen(screen, is_external=is_external)
 
+    def current_target_screen(self) -> Optional[QScreen]:
+        """Return currently attached QScreen."""
+        return self._target_screen
+
+    def set_target_screen(self, screen: QScreen) -> None:
+        """Switch output window to *screen* dynamically at runtime."""
+        if screen is None or screen == self._target_screen:
+            return
+        from PySide6.QtWidgets import QApplication
+        primary = QApplication.primaryScreen()
+        is_external = (screen != primary)
+        logger.info("[OUTPUT] Re-binding output to screen '%s' (is_external=%s)", screen.name(), is_external)
+        self.configure_screen(screen, is_external=is_external)
+
     def toggle_fullscreen(self) -> None:
         """Toggle fullscreen mode on the current screen."""
         if self.isFullScreen():

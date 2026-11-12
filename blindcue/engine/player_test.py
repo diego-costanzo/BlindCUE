@@ -11,7 +11,7 @@ import logging
 from typing import Any, Callable, Optional, Sequence
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
-from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
+from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
 
 from engine.envelope import SectionSequencer, evaluate_cue_level
 from models.cue import CueSection
@@ -38,6 +38,7 @@ class TestPlayer(QObject):
         self.signals = _TestSignals()
         self._video_output = video_output or video_widget
         self._opacity_cb: Optional[Callable[[float], None]] = None
+        self._audio_device: Optional[QAudioDevice] = None
 
         self._is_muted: bool = True
         self._preview_volume: float = 0.8
@@ -71,6 +72,8 @@ class TestPlayer(QObject):
         try:
             self._player = QMediaPlayer(self)
             self._audio = QAudioOutput(self)
+            if self._audio_device is not None and not self._audio_device.isNull():
+                self._audio.setDevice(self._audio_device)
             self._player.setAudioOutput(self._audio)
 
             if self._video_output is not None:
@@ -97,6 +100,13 @@ class TestPlayer(QObject):
 
     def set_opacity_callback(self, callback: Optional[Callable[[float], None]]) -> None:
         self._opacity_cb = callback
+
+    def set_audio_device(self, device: Optional[QAudioDevice]) -> None:
+        """Assign preview / pre-viz audio device (e.g. Headphones / PFL monitor)."""
+        self._audio_device = device
+        if self._audio is not None and device is not None and not device.isNull():
+            self._audio.setDevice(device)
+        logger.info("[TEST] Preview audio device assigned: %s", device.description() if device and not device.isNull() else "Default")
 
     def set_mute(self, is_muted: bool) -> None:
         self._is_muted = is_muted

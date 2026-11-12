@@ -63,7 +63,12 @@ from ui.cue_table import (
     format_cue_ref,
 )
 from ui.drop_zone import DropZone
-from ui.hardware_info import detect_hardware_brief, show_about_dialog, show_hardware_info_dialog
+from ui.hardware_info import (
+    ShowRuntimeGuard,
+    detect_hardware_brief,
+    show_about_dialog,
+    show_hardware_info_dialog,
+)
 from ui.inspector_panel import CueInspectorPanel
 from ui.live_show_view import LiveShowPanel
 from ui.live_status_panel import LiveStatusPanel
@@ -136,6 +141,7 @@ class MainWindow(QMainWindow):
         self._current_index: int = -1
         self._thread_pool = QThreadPool.globalInstance()
         self._test_player = None
+        self._device_mgr = None
         self._active_analyzers: set = set()
         self._active_test_duration: float = 0.0
         self._active_section_idx: int = -1
@@ -442,6 +448,10 @@ class MainWindow(QMainWindow):
         show_menu.addAction(
             QAction("&Ripristina Tappo Predefinito", self, triggered=self._on_reset_layer0)
         )
+        show_menu.addSeparator()
+        show_menu.addAction(
+            QAction("⚙️ &Dispositivi & Hardware (Audio / Video / Profilo)…", self, triggered=self.open_device_settings_dialog)
+        )
 
         view_menu = mb.addMenu("&View")
         self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)
@@ -459,7 +469,7 @@ class MainWindow(QMainWindow):
 
         help_menu = mb.addMenu("&Help")
         help_menu.addAction(
-            QAction("&Info Hardware & Accelerazione…", self, triggered=lambda: show_hardware_info_dialog(self))
+            QAction("&Info Hardware & Accelerazione…", self, triggered=self._show_hw_info)
         )
         help_menu.addSeparator()
         help_menu.addAction(
@@ -665,6 +675,15 @@ class MainWindow(QMainWindow):
         self._lbl_hw_info = QLabel(detect_hardware_brief())
         self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
         sb.addWidget(self._lbl_hw_info)
+
+        self._btn_device_settings = QPushButton("⚙️ Dispositivi · Uscite")
+        self._btn_device_settings.setFixedHeight(20)
+        self._btn_device_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_device_settings.setToolTip(
+            "Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro)."
+        )
+        self._btn_device_settings.clicked.connect(self.open_device_settings_dialog)
+        sb.addWidget(self._btn_device_settings)
 
         self._btn_lock_layout = QPushButton("🔒 Layout: Bloccato")
         self._btn_lock_layout.setCheckable(True)
@@ -923,15 +942,47 @@ class MainWindow(QMainWindow):
             self._act_live_mode.blockSignals(False)
         self._central_stack.setCurrentIndex(1 if enabled else 0)
         if enabled:
+            prof = self._device_mgr.get_effective_profile() if self._device_mgr else "auto"
+            ShowRuntimeGuard.on_live_mode_enter(prof)
             self._sync_live_view()
             self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]")
         else:
+            ShowRuntimeGuard.on_live_mode_exit()
             QTimer.singleShot(0, self._apply_top_splitter_ratios)
             self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
 
     @Slot()
     def toggle_live_mode(self) -> None:
         self.set_live_mode(not self._live_mode)
+
+    def set_device_manager(self, mgr: Any) -> None:
+        """Register the central DeviceManager and wire its signals to the UI."""
+        self._device_mgr = mgr
+        if mgr is not None:
+            mgr.profile_changed.connect(self._update_hardware_status_bar)
+            mgr.master_device_changed.connect(self._update_hardware_status_bar)
+            mgr.target_screen_changed.connect(self._update_hardware_status_bar)
+            self._update_hardware_status_bar()
+
+    def open_device_settings_dialog(self) -> None:
+        """Open the Device & Hardware configuration dialog."""
+        if self._device_mgr is None:
+            return
+        from ui.device_settings_dialog import DeviceSettingsDialog
+        dlg = DeviceSettingsDialog(self._device_mgr, self)
+        dlg.exec()
+        self._update_hardware_status_bar()
+
+    def _update_hardware_status_bar(self, *args: Any) -> None:
+        """Refresh the hardware and device brief in the status bar."""
+        if hasattr(self, "_lbl_hw_info"):
+            pref = self._device_mgr.get_profile_preference() if self._device_mgr else "auto"
+            self._lbl_hw_info.setText(detect_hardware_brief(pref))
+
+    def _show_hw_info(self) -> None:
+        """Open detailed hardware information dialog."""
+        pref = self._device_mgr.get_profile_preference() if self._device_mgr else "auto"
+        show_hardware_info_dialog(self, pref)
 
     def set_known_duration(self, file_path: str, dur_sec: float) -> None:
         if file_path and dur_sec > 0:

@@ -44,6 +44,14 @@ Quando usi il **Tappo Predefinito**, BlindCue proietta attorno al proprio logo u
 - **Doppi cerchi concentrici e diagonali**: se il cerchio appare ovale o le diagonali non sono simmetriche, il proiettore ha inclinazione trapezoidale (*keystone*) o aspect ratio errato.
 - **Lettura risoluzione in basso a destra**: mostra in tempo reale risoluzione esatta e rapporto d'aspetto ricevuti dal proiettore (es. `L0 TAPPO • 1920×1080 (16:9)`).
 
+### ⚙️ Gestione Dispositivi di Regia & Profilo Adattivo (`⚙️ Dispositivi · Uscite`)
+Cliccando sul pulsante **`⚙️ Dispositivi · Uscite`** nella barra di stato in basso (oppure dal menu `Show → Dispositivi & Hardware`), si apre il pannello di configurazione per:
+1. **Routing Audio Master (Impianto Sala / PA)**: seleziona la scheda audio USB o interfaccia collegata all'impianto pubblico per le Cue in onda.
+2. **Pre-Ascolto / Monitor (Cuffia Tecnico / PFL)**: indirizza l'audio di test e anteprima direttamente alla presa cuffia della regia, permettendo di verificare i brani prima di mandare il `GO` in sala.
+3. **Schermo Live Output**: visualizza tutti i display collegati e permette di riassegnare a caldo il proiettore esterno (con pulsante `🔄 Rileva` per cavi HDMI/DP collegati a programma aperto).
+4. **Profilo Prestazioni Hardware**: `Auto` (calcolato all'avvio), `🍃 Eco` (ottimizzato per macchine datate o con $\le 4\text{ GB}$ di RAM), `⚡ Standard` o `🚀 Performance` (workstation multi-core).
+5. **Protezione GC Live (`ShowRuntimeGuard`)**: quando entri in Modalità LIVE (`[F5]`), il Garbage Collector di Python viene automaticamente posticipato per azzerare qualsiasi rischio di micro-lag durante l'esecuzione delle Cue.
+
 <details>
 <summary>▶ Come sostituire il Tappo con la locandina dello spettacolo (e come ripristinarlo)</summary>
 
@@ -316,6 +324,23 @@ chmod +x install.sh run.sh
 | **Governor CPU `performance`** | **Consigliata** | `sudo cpupower frequency-set -g performance` | Azzeramento micro-latenze di risveglio CPU |
 | **Accelerazione GPU (`VA-API` / `NVDEC`)** | **Rilevata in automatico** | Verificabile in `Help → Info Hardware` | Mantiene il carico CPU tipicamente sotto il `5–8%` |
 | **Priorità processo (`nice`)** | **Facoltativa** | `nice -n -5 ./run.sh` | Priorità alta al processo di regia rispetto ai servizi di sfondo |
+
+</details>
+
+<details>
+<summary>▶ Linee Guida Hardware: Da Portatili Datati (es. MacBook Air 2014 / 4GB RAM) a Workstation Pro</summary>
+
+#### Portatili Datati / Muletti di Regia (es. MacBook Air 2014 con 4GB di RAM)
+Grazie alla decodifica hardware `VA-API` e al profilo `🍃 Eco`, BlindCue può gestire spettacoli completi anche su macchine leggere e datate con le seguenti buone pratiche:
+1. **Formato Video Ottimale:** Usa sempre **H.264 (AVC) a 1080p Full HD**. Le schede Intel Haswell (HD 5000) decodificano H.264 a zero carico CPU; evita HEVC/H.265 a 10-bit o AV1 che richiederebbero decodifica software.
+2. **Durata e Dimensioni:** Brani audio di 3–5 minuti e clip video di 2–10 minuti consumano pochissima memoria. Il sistema operativo Linux minimale (~600MB) unito a BlindCue (~120MB) lascia **oltre 2.5–3 GB di RAM liberi** per lo spettacolo.
+3. **Uscita Display Singola:** Macchine come il MacBook Air 2014 dispongono di una sola uscita fisica Thunderbolt/Mini-DP, ideale per pilotare 1 proiettore o schermo di sala esterno.
+
+#### Workstation da Regia Multi-Schermo & Pro
+Sulle macchine con 8+ core, 16+ GB di RAM e GPU dedicata (NVIDIA/AMD), il profilo `🚀 Performance` abilita:
+- Thread pool espanso per elaborazioni asincrone istantanee su forme d'onda.
+- Compositing 4K fluido su tutti i layer.
+- Routing multicanale audio tramite PipeWire a latenza minima.
 
 </details>
 
