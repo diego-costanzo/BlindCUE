@@ -50,6 +50,7 @@ class CueListPanel(QGroupBox):
     add_media_requested = Signal(object)  # MediaType
     add_group_requested = Signal()
     ungroup_requested = Signal()
+    extract_child_requested = Signal()
     move_up_requested = Signal()
     move_down_requested = Signal()
     delete_requested = Signal()
@@ -105,6 +106,7 @@ class CueListPanel(QGroupBox):
         self.table = CueSequenceTable()
         self.table.group_requested.connect(self.add_group_requested)
         self.table.ungroup_requested.connect(self.ungroup_requested)
+        self.table.extract_child_requested.connect(self.extract_child_requested)
         layout.addWidget(self.table)
 
         btn_add_row = QHBoxLayout()

@@ -75,6 +75,11 @@ Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L
     - `🎲 Random` (Variazioni e scelte casuali anti-ripetizione immediata).
     - `🔁 Loop Scena` (Ciclo continuo degli elementi interni).
   - **Scheda dedicata nell'Ispettore (`📁 Gruppo · Scena`)**: riepilogo conteggio elementi, durata totale stimata, regolazione tempi Pre/Post-Wait, lista modificabile con rimozione rapida elemento (`✕`) e scioglimento gruppo (`🔓 Sciogli Gruppo`).
+  - **Estrazione flessibile ed intuitiva di Cue da un Gruppo**:
+    - **Scorciatoia universale `Ctrl+Shift+G`**: scioglie il gruppo se è selezionato il contenitore, oppure estrae la singola cue selezionata posizionandola subito all'esterno della scena.
+    - **Menu Contestuale (Tasto Destro)**: opzione diretta `"⏏ Estrai dal Gruppo (Ctrl+Shift+G)"`.
+    - **Pannello Ispettore (Scheda `🎯 Cue · Tempi`)**: banner informativo con pulsante rapido `"⏏ Estrai dal Gruppo"`.
+    - **Spostamento intelligente (`Alt+▲` / `Alt+▼`)**: muovendo una cue oltre il limite superiore (sopra l'intestazione della scena) o inferiore del gruppo, la cue si sgancia automaticamente tornando a livello radice.
   - Auto-espansione automatica quando una cue interna diventa Standby o Live, garantendo la visibilità continua all'operatore.
 - **Ispettore Cue a Schede (Linguette) & Modifiche Multi-Selezione**:
   - **Scheda `🎯 Cue · Tempi`**: richiamo copione `Q`, Nome, Note, **Colori Gruppo/Scena (con divisori visivi e binario sinistro grafico per cue collegate)**, selezione Layer (`L1`, `L2`, `L3`), **`Pre-Delay`**, **`Post-Delay`**, **`Durata Img`** e sequenza (`Blocco / Auto-GO / Simult.`).

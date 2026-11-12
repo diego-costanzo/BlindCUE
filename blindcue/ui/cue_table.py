@@ -431,6 +431,7 @@ class CueSequenceTable(QTableWidget):
     group_collapse_toggled = Signal(int)
     group_requested = Signal()
     ungroup_requested = Signal()
+    extract_child_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(0, 3, parent)
@@ -555,15 +556,22 @@ class CueSequenceTable(QTableWidget):
 
         # Group actions
         if len(rows) > 0:
-            act_grp = menu.addAction("📁 Raggruppa in Scena (Ctrl+G)")
-            act_grp.triggered.connect(self.group_requested)
-
             curr_item = self.item(rows[0], 2)
-            if curr_item and curr_item.data(ROLE_IS_GROUP):
+            is_grp = bool(curr_item and curr_item.data(ROLE_IS_GROUP))
+            parent_id = curr_item.data(ROLE_PARENT_ID) if curr_item else None
+
+            if not is_grp:
+                act_grp = menu.addAction("📁 Raggruppa in Scena (Ctrl+G)")
+                act_grp.triggered.connect(self.group_requested)
+
+            if is_grp:
                 act_toggle = menu.addAction("▶ / ▼ Espandi o Collassa Gruppo")
                 act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(rows[0]))
-                act_ungrp = menu.addAction("🔓 Sciogli Gruppo (Ungroup)")
+                act_ungrp = menu.addAction("🔓 Sciogli Gruppo (Ctrl+Shift+G)")
                 act_ungrp.triggered.connect(self.ungroup_requested)
+            elif parent_id is not None:
+                act_extract = menu.addAction("⏏ Estrai dal Gruppo (Ctrl+Shift+G)")
+                act_extract.triggered.connect(self.extract_child_requested)
 
             menu.addSeparator()
 

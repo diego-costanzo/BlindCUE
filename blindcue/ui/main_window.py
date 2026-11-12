@@ -243,6 +243,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence(Qt.Key.Key_F5), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
+        QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
 
     def _is_text_input_focused(self) -> bool:
         focus_w = QApplication.focusWidget()
@@ -508,6 +509,7 @@ class MainWindow(QMainWindow):
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
         self._cue_list_panel.add_group_requested.connect(self._on_add_group)
         self._cue_list_panel.ungroup_requested.connect(self._ungroup_selected)
+        self._cue_list_panel.extract_child_requested.connect(self._extract_selected_from_group)
         self._cue_list.group_collapse_toggled.connect(self._toggle_group_collapsed)
         self._cue_list_panel.move_up_requested.connect(self._on_move_up)
         self._cue_list_panel.move_down_requested.connect(self._on_move_down)
@@ -571,6 +573,7 @@ class MainWindow(QMainWindow):
         self._inspector.group_collapse_toggled.connect(self._toggle_group_collapse_from_inspector)
         self._inspector.ungroup_requested.connect(self._ungroup_selected)
         self._inspector.remove_child_requested.connect(self._on_remove_child_from_group)
+        self._inspector.extract_child_requested.connect(self._extract_selected_from_group)
         self._bind_inspector_aliases()
         top_splitter.addWidget(self._inspector)
 
@@ -2599,6 +2602,18 @@ class MainWindow(QMainWindow):
             return
         if self._undo.is_debounce_active():
             self._commit_undo_point()
+
+        moving_cue = self._cues[row]
+        target_cue = self._cues[target_row]
+
+        # Extract if moving past group boundaries
+        if delta < 0 and moving_cue.parent_id == target_cue.cue_id:
+            moving_cue.parent_id = None
+            self._status_label.setText(f"Estratta cue '{moving_cue.name}' dal gruppo (spostata sopra la scena)")
+        elif delta > 0 and moving_cue.parent_id is not None and target_cue.parent_id != moving_cue.parent_id:
+            moving_cue.parent_id = None
+            self._status_label.setText(f"Estratta cue '{moving_cue.name}' dal gruppo (spostata sotto la scena)")
+
         self._cues[row], self._cues[target_row] = self._cues[target_row], self._cues[row]
         self._current_index = target_row
         self._refresh_cue_list(keep_selection=False, select_row=target_row)
@@ -2799,20 +2814,56 @@ class MainWindow(QMainWindow):
 
     @Slot(int)
     def _on_remove_child_from_group(self, child_cue_id: int) -> None:
-        """Remove a child cue from its parent group."""
+        """Remove a child cue from its parent group and place it outside."""
         child = next((c for c in self._cues if c.cue_id == child_cue_id), None)
-        if child is not None:
-            if self._undo.is_debounce_active():
-                self._commit_undo_point()
-            child.parent_id = None
-            self._refresh_cue_list(keep_selection=True)
+        if child is None or child.parent_id is None:
+            return
+        parent_group = next((c for c in self._cues if c.cue_id == child.parent_id), None)
+        if self._undo.is_debounce_active():
             self._commit_undo_point()
-            self._mark_modified(True)
-            anchor_row, group_cue = self._anchor_row_and_cue()
-            if group_cue and group_cue.media_type == MediaType.GROUP:
-                children = [c for c in self._cues if c.parent_id == group_cue.cue_id]
-                self._inspector.load_group_children(children, group_cue)
-            self._status_label.setText(f"Rimossa cue '{child.name}' dal gruppo")
+        child.parent_id = None
+        if parent_group is not None:
+            siblings = [c for c in self._cues if c.parent_id == parent_group.cue_id and c != child]
+            self._cues.remove(child)
+            if siblings:
+                last_sibling_idx = self._cues.index(siblings[-1])
+                self._cues.insert(last_sibling_idx + 1, child)
+            else:
+                p_idx = self._cues.index(parent_group)
+                self._cues.insert(p_idx + 1, child)
+        target_row = self._cues.index(child)
+        self._refresh_cue_list(keep_selection=False, select_row=target_row)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        anchor_row, group_cue = self._anchor_row_and_cue()
+        if group_cue and group_cue.media_type == MediaType.GROUP:
+            children = [c for c in self._cues if c.parent_id == group_cue.cue_id]
+            self._inspector.load_group_children(children, group_cue)
+        self._status_label.setText(f"Estratta cue '{child.name}' dal gruppo (spostata all'esterno)")
+
+    @Slot()
+    def _extract_selected_from_group(self) -> None:
+        """Extract the selected cue(s) from their parent group."""
+        sel_cues = [c for c in self._selected_cues() if c.parent_id is not None]
+        if not sel_cues:
+            anchor_row, cue = self._anchor_row_and_cue()
+            if cue and cue.parent_id is not None:
+                sel_cues = [cue]
+        if not sel_cues:
+            return
+        for c in sel_cues:
+            self._on_remove_child_from_group(c.cue_id)
+
+    @Slot()
+    def _on_ctrl_shift_g(self) -> None:
+        """Ungroup if group is selected, or extract if child cue is selected."""
+        anchor_row, cue = self._anchor_row_and_cue()
+        if cue is None:
+            return
+        if cue.media_type == MediaType.GROUP:
+            self._ungroup_selected()
+        elif cue.parent_id is not None:
+            self._extract_selected_from_group()
 
     @Slot(str)
     def _set_group_mode(self, mode: str) -> None:

@@ -172,6 +172,7 @@ class CueInspectorPanel(QGroupBox):
     group_collapse_toggled = Signal()
     ungroup_requested = Signal()
     remove_child_requested = Signal(int)
+    extract_child_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
@@ -362,6 +363,32 @@ class CueInspectorPanel(QGroupBox):
             self._color_buttons[hex_val] = btn
         color_row.addStretch()
         l1.addLayout(color_row)
+
+        # Banner for cues belonging to a parent group
+        self.frame_group_membership = QFrame()
+        self.frame_group_membership.setStyleSheet(
+            "background-color: #1e1533; border: 1px solid #7c3aed; border-radius: 4px; padding: 2px;"
+        )
+        mbr_layout = QHBoxLayout(self.frame_group_membership)
+        mbr_layout.setContentsMargins(6, 3, 6, 3)
+        mbr_layout.setSpacing(6)
+
+        self.lbl_group_membership = QLabel("📁 In Scena")
+        self.lbl_group_membership.setStyleSheet("color: #c084fc; font-size: 10px; font-weight: bold; border: none; background: transparent;")
+        mbr_layout.addWidget(self.lbl_group_membership, stretch=1)
+
+        self.btn_extract_from_group = QPushButton("⏏ Estrai dal Gruppo")
+        self.btn_extract_from_group.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_extract_from_group.setToolTip("Rimuove questa cue dal gruppo e la sposta all'esterno della scena (Ctrl+Shift+G)")
+        self.btn_extract_from_group.setStyleSheet(
+            "QPushButton { background-color: #3b1d6e; color: #f3e8ff; border: 1px solid #a855f7; border-radius: 3px; font-size: 10px; font-weight: bold; padding: 2px 6px; } "
+            "QPushButton:hover { background-color: #581c87; color: #ffffff; border-color: #c084fc; }"
+        )
+        self.btn_extract_from_group.clicked.connect(self.extract_child_requested)
+        mbr_layout.addWidget(self.btn_extract_from_group)
+
+        self.frame_group_membership.setVisible(False)
+        l1.addWidget(self.frame_group_membership)
         lay.addWidget(c1)
 
         # Card 2: Layer di Compositing
@@ -1329,6 +1356,7 @@ class CueInspectorPanel(QGroupBox):
         )
 
         if not enabled or media_type is None:
+            self.frame_group_membership.setVisible(False)
             self.set_layer_checked(None)
             self.set_color_silent("")
             self.set_follow_mode_silent(FollowMode.MANUAL.value, enabled=False)
@@ -1483,6 +1511,7 @@ class CueInspectorPanel(QGroupBox):
             self.set_enabled_for_cue(True, cue.media_type, multi_mode=False)
 
             if cue.media_type == MediaType.GROUP:
+                self.frame_group_membership.setVisible(False)
                 self.edit_group_q.setText(cue.q_label)
                 self.edit_group_name.setText(cue.name)
                 self.edit_group_notes.setText(cue.notes)
@@ -1495,6 +1524,11 @@ class CueInspectorPanel(QGroupBox):
                 else:
                     self.btn_group_collapse_toggle.setText("▶ Collassa Gruppo in Scaletta")
             else:
+                if cue.parent_id is not None:
+                    self.frame_group_membership.setVisible(True)
+                    self.lbl_group_membership.setText("📁 Questa cue appartiene a una Scena / Gruppo")
+                else:
+                    self.frame_group_membership.setVisible(False)
                 self.edit_cue_q.setText(cue.q_label)
                 self.edit_cue_name.setText(cue.name)
                 self.edit_cue_notes.setText(cue.notes)
@@ -1514,6 +1548,8 @@ class CueInspectorPanel(QGroupBox):
         if len(cues) == 1:
             self.load_cue(cues[0], anchor_row)
             return
+
+        self.frame_group_membership.setVisible(False)
 
         media_types = {c.media_type for c in cues}
         if len(media_types) > 1:
