@@ -15,6 +15,8 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QPushButton,
     QScrollArea,
     QSizePolicy,
@@ -24,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from models.cue import Cue, FollowMode, MediaType, _sanitize_hex_color
+from models.cue import Cue, FollowMode, GroupMode, MediaType, _sanitize_hex_color
 from ui.cue_table import format_cue_ref
 from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
 from ui.theme import CLR_ACCENT, CUE_COLOR_PALETTE, NUDGE_BTN_STYLE
@@ -52,6 +54,14 @@ _FOLLOW_MINI_SPECS = (
     (FollowMode.MANUAL.value, "⏹ Blocco", "Attende GO manuale (default)", "#065f46", "#10b981"),
     (FollowMode.AUTO_FOLLOW.value, "⤵ Auto-GO", "Avvia la successiva dopo Pre+Durata+Post", "#0c4a6e", "#38bdf8"),
     (FollowMode.SIMULTANEOUS.value, "⇉ Simult.", "Avvia insieme la successiva sul GO", "#78350f", "#f59e0b"),
+)
+
+_GROUP_MODE_SPECS = (
+    ("SIMULTANEOUS", "⇉ Simultaneo", "Fire All: tutti i media del gruppo partono contemporaneamente sul GO.", "#065f46", "#10b981"),
+    ("SEQUENCE", "⤵ Sequenziale", "Cascata: un solo GO lancia tutta la sequenza interna rispettando i ritardi Pre/Durata/Post.", "#0c4a6e", "#38bdf8"),
+    ("STEP", "⏹ Passo-Passo", "Capitolo teatrale: ogni pressione manuale di GO avanza di un elemento all'interno della scena.", "#312e81", "#818cf8"),
+    ("RANDOM", "🎲 Random / Var.", "Sceglie a caso un elemento del gruppo evitando la ripetizione immediata.", "#701a75", "#f472b6"),
+    ("LOOP", "🔁 Loop Scena", "Cicla continuamente tutti gli elementi interni finché non viene dato lo stop.", "#78350f", "#f59e0b"),
 )
 
 
@@ -158,6 +168,10 @@ class CueInspectorPanel(QGroupBox):
     in_out_reset_requested = Signal()
     color_selected = Signal(str)
     follow_mode_selected = Signal(str)
+    group_mode_selected = Signal(str)
+    group_collapse_toggled = Signal()
+    ungroup_requested = Signal()
+    remove_child_requested = Signal(int)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
@@ -170,6 +184,8 @@ class CueInspectorPanel(QGroupBox):
         self._layer_buttons: dict[int, QPushButton] = {}
         self._color_buttons: dict[str, QPushButton] = {}
         self._follow_buttons: dict[str, QPushButton] = {}
+        self._group_color_buttons: dict[str, QPushButton] = {}
+        self._group_mode_buttons: dict[str, QPushButton] = {}
 
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
         self.setMinimumWidth(360)
@@ -286,6 +302,8 @@ class CueInspectorPanel(QGroupBox):
         self._build_tab_cue_and_timing()
         self._build_tab_visual()
         self._build_tab_audio_and_cuts()
+        self._build_tab_group()
+        self.tab_widget.setTabVisible(3, False)
 
     # ── Tab 1: Cue, Colore, Layer & Tempi (Pre / Durata / Post) ──────
 
@@ -751,6 +769,170 @@ class CueInspectorPanel(QGroupBox):
         self.tab_audio_cuts = self._wrap_tab_scroll(page)
         self.tab_widget.addTab(self.tab_audio_cuts, "🎵 Audio · Tagli")
 
+    # ── Tab 4: Gruppo · Scena ─────────────────────────────────────────
+
+    def _build_tab_group(self) -> None:
+        page = QWidget()
+        page.setMinimumWidth(0)
+        page.setStyleSheet("background: transparent;")
+        lay = QVBoxLayout(page)
+        lay.setContentsMargins(4, 6, 4, 6)
+        lay.setSpacing(6)
+
+        # Card 1: Identità Gruppo / Scena & Colore
+        c1, l1 = self._make_card(
+            "1 · IDENTITÀ SCENA / GRUPPO & COLORE",
+            "I gruppi organizzano più media in una singola riga collassabile in Scaletta e Live.",
+        )
+        grid1 = QGridLayout()
+        grid1.setHorizontalSpacing(6)
+        grid1.setVerticalSpacing(5)
+
+        grid1.addWidget(self._make_field_label("Q (Copione):"), 0, 0)
+        self.edit_group_q = QLineEdit()
+        self.edit_group_q.setMinimumWidth(40)
+        self.edit_group_q.setPlaceholderText("es. G-1, Atto 1, Scena A...")
+        self.edit_group_q.setToolTip("Sigla di copione del gruppo: resta legata al gruppo se riordini la scaletta")
+        grid1.addWidget(self.edit_group_q, 0, 1)
+
+        grid1.addWidget(self._make_field_label("Nome Gruppo:"), 1, 0)
+        self.edit_group_name = QLineEdit()
+        self.edit_group_name.setMinimumWidth(40)
+        self.edit_group_name.setPlaceholderText("Titolo scena o sequenza...")
+        grid1.addWidget(self.edit_group_name, 1, 1)
+
+        grid1.addWidget(self._make_field_label("Note Regia:"), 2, 0)
+        self.edit_group_notes = QLineEdit()
+        self.edit_group_notes.setMinimumWidth(40)
+        self.edit_group_notes.setPlaceholderText("Note di regia o indicazioni palco per il gruppo...")
+        grid1.addWidget(self.edit_group_notes, 2, 1)
+        grid1.setColumnStretch(1, 1)
+        l1.addLayout(grid1)
+
+        # Timing Gruppo: Pre-Wait e Post-Wait
+        timing_row = QHBoxLayout()
+        timing_row.setSpacing(8)
+
+        lbl_pre = self._make_field_label("Pre-Wait:")
+        self.spin_group_pre_delay = SmartDoubleSpinBox()
+        self.spin_group_pre_delay.setRange(0.0, 3600.0)
+        self.spin_group_pre_delay.setSingleStep(0.5)
+        self.spin_group_pre_delay.setDecimals(1)
+        self.spin_group_pre_delay.setSuffix(" s")
+        self.spin_group_pre_delay.setToolTip("Attesa prima di avviare il gruppo alla pressione del GO.")
+
+        lbl_post = self._make_field_label("Post-Wait:")
+        self.spin_group_post_delay = SmartDoubleSpinBox()
+        self.spin_group_post_delay.setRange(0.0, 3600.0)
+        self.spin_group_post_delay.setSingleStep(0.5)
+        self.spin_group_post_delay.setDecimals(1)
+        self.spin_group_post_delay.setSuffix(" s")
+        self.spin_group_post_delay.setToolTip("Attesa al termine dell'esecuzione prima di passare alla cue successiva.")
+
+        timing_row.addWidget(lbl_pre)
+        timing_row.addWidget(self.spin_group_pre_delay)
+        timing_row.addWidget(lbl_post)
+        timing_row.addWidget(self.spin_group_post_delay)
+        timing_row.addStretch()
+        l1.addLayout(timing_row)
+
+        # Palette colore gruppo
+        color_row = QHBoxLayout()
+        color_row.setSpacing(4)
+        lbl_clr = self._make_field_label("Colore:")
+        lbl_clr.setFixedWidth(48)
+        color_row.addWidget(lbl_clr)
+        for hex_val, clr_tip in CUE_COLOR_PALETTE:
+            btn = QPushButton("✕" if not hex_val else "")
+            btn.setCheckable(True)
+            btn.setFixedSize(24, 20)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(f"Colore Scena: {clr_tip}")
+            btn.setStyleSheet(_make_swatch_style(hex_val))
+            btn.clicked.connect(lambda _=False, hv=hex_val: self.color_selected.emit(hv))
+            color_row.addWidget(btn)
+            self._group_color_buttons[hex_val] = btn
+        color_row.addStretch()
+        l1.addLayout(color_row)
+        lay.addWidget(c1)
+
+        # Card 2: Comportamento al GO (Modalità Scena)
+        c2, l2 = self._make_card(
+            "2 · COMPORTAMENTO AL GO (MODALITÀ SCENA)",
+            "Determina come vengono eseguiti i media contenuti nel gruppo quando si preme GO.",
+        )
+        self.lbl_group_mode_desc = QLabel()
+        self.lbl_group_mode_desc.setWordWrap(True)
+        self.lbl_group_mode_desc.setStyleSheet(
+            "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; "
+            "border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+        )
+        l2.addWidget(self.lbl_group_mode_desc)
+
+        mode_btn_grid = QVBoxLayout()
+        mode_btn_grid.setSpacing(4)
+        for mode_key, label, desc, bg, border in _GROUP_MODE_SPECS:
+            btn = QPushButton(label)
+            btn.setCheckable(True)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setToolTip(desc)
+            btn.setStyleSheet(_make_layer_btn_style(bg, border))
+            btn.clicked.connect(lambda _=False, mk=mode_key: self._on_group_mode_clicked(mk))
+            mode_btn_grid.addWidget(btn)
+            self._group_mode_buttons[mode_key] = btn
+        l2.addLayout(mode_btn_grid)
+        lay.addWidget(c2)
+
+        # Card 3: Elementi del Gruppo
+        c3, l3 = self._make_card(
+            "3 · ELEMENTI INTERNI AL GRUPPO",
+            "Lista dei media appartenenti a questo gruppo. Usa i pulsanti per espandere o gestire i membri.",
+        )
+        self.lbl_group_stats = QLabel("📁 0 cue nel gruppo")
+        self.lbl_group_stats.setStyleSheet("color: #94a3b8; font-size: 11px; font-weight: bold; background: transparent;")
+        l3.addWidget(self.lbl_group_stats)
+
+        self.list_group_children = QListWidget()
+        self.list_group_children.setMinimumHeight(110)
+        self.list_group_children.setMaximumHeight(180)
+        self.list_group_children.setStyleSheet(
+            "QListWidget { background-color: #0b111b; border: 1px solid #1f2d40; border-radius: 4px; color: #e2e8f0; font-size: 11px; padding: 2px; } "
+            "QListWidget::item { padding: 4px; border-bottom: 1px solid #16202e; border-radius: 3px; } "
+            "QListWidget::item:selected { background-color: #1e3a5f; color: #38bdf8; }"
+        )
+        l3.addWidget(self.list_group_children)
+
+        grp_actions_row = QHBoxLayout()
+        grp_actions_row.setSpacing(6)
+
+        self.btn_group_collapse_toggle = QPushButton("▶ Collassa / ▼ Espandi")
+        self.btn_group_collapse_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_group_collapse_toggle.setToolTip("Mostra o nascondi i figli del gruppo nella tabella Scaletta")
+        self.btn_group_collapse_toggle.setStyleSheet(NUDGE_BTN_STYLE.replace("min-width: 30px;", "padding: 4px 8px;"))
+        self.btn_group_collapse_toggle.clicked.connect(self.group_collapse_toggled)
+        grp_actions_row.addWidget(self.btn_group_collapse_toggle)
+
+        self.btn_group_remove_child = QPushButton("✕ Rimuovi Cue")
+        self.btn_group_remove_child.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_group_remove_child.setToolTip("Rimuove la cue selezionata dalla lista dal gruppo (torna al livello principale)")
+        self.btn_group_remove_child.setStyleSheet(NUDGE_BTN_STYLE.replace("min-width: 30px;", "padding: 4px 8px; color: #f87171;"))
+        self.btn_group_remove_child.clicked.connect(self._on_remove_selected_child_clicked)
+        grp_actions_row.addWidget(self.btn_group_remove_child)
+
+        self.btn_group_ungroup = QPushButton("🔓 Sciogli Gruppo")
+        self.btn_group_ungroup.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_group_ungroup.setToolTip("Elimina il contenitore del gruppo e rilascia tutte le sue cue in scaletta")
+        self.btn_group_ungroup.setStyleSheet(NUDGE_BTN_STYLE.replace("min-width: 30px;", "padding: 4px 8px; color: #fbbf24;"))
+        self.btn_group_ungroup.clicked.connect(self.ungroup_requested)
+        grp_actions_row.addWidget(self.btn_group_ungroup)
+
+        l3.addLayout(grp_actions_row)
+        lay.addWidget(c3)
+        lay.addStretch()
+
+        self.tab_group = self._wrap_tab_scroll(page)
+        self.tab_widget.addTab(self.tab_group, "📁 Gruppo · Scena")
+
     @staticmethod
     def _make_nudge_btn(text: str, tooltip: str) -> QPushButton:
         btn = QPushButton(text)
@@ -822,12 +1004,65 @@ class CueInspectorPanel(QGroupBox):
             (self.edit_cue_q.textEdited, "q_label"),
             (self.edit_cue_name.textEdited, "name"),
             (self.edit_cue_notes.textEdited, "notes"),
+            (self.edit_group_q.textEdited, "group_q"),
+            (self.edit_group_name.textEdited, "group_name"),
+            (self.edit_group_notes.textEdited, "group_notes"),
+            (self.spin_group_pre_delay.valueChanged, "group_pre_delay"),
+            (self.spin_group_post_delay.valueChanged, "group_post_delay"),
         )
         for sig, field_key in field_widgets:
             sig.connect(lambda *_args, key=field_key: self._emit_change(key))
 
         self.chk_loop.toggled.connect(self._on_loop_chk_toggled)
         self.combo_loop_mode.currentIndexChanged.connect(self._on_loop_mode_changed)
+
+    def _on_group_mode_clicked(self, mode_key: str) -> None:
+        self.set_group_mode_checked(mode_key)
+        self.group_mode_selected.emit(mode_key)
+
+    def set_group_mode_checked(self, mode_key: str) -> None:
+        for mk, btn in self._group_mode_buttons.items():
+            btn.setChecked(mk == mode_key)
+        for mk, label, desc, _, _ in _GROUP_MODE_SPECS:
+            if mk == mode_key:
+                self.lbl_group_mode_desc.setText(f"💡 {desc}")
+                break
+
+    def _on_remove_selected_child_clicked(self) -> None:
+        item = self.list_group_children.currentItem()
+        if item is not None:
+            child_id = item.data(Qt.ItemDataRole.UserRole)
+            if child_id is not None:
+                self.remove_child_requested.emit(int(child_id))
+
+    def load_group_children(self, children: list[Cue], group_cue: Optional[Cue] = None) -> None:
+        self.list_group_children.clear()
+        tot_dur = 0.0
+        for child in children:
+            if child.out_point is not None and child.out_point > child.in_point:
+                dur = child.out_point - child.in_point
+            elif child.hold_time > 0:
+                dur = child.hold_time
+            else:
+                dur = getattr(child, "duration", 0.0) or 0.0
+            tot_dur += dur
+            dur_str = f"{int(dur // 60):02d}:{dur % 60:05.2f}" if dur > 0 else "Manuale"
+            badge = f"[{child.media_type.value[:3]}]"
+            q_str = f"Q-{child.q_label}" if child.q_label else f"#{child.cue_id}"
+            item = QListWidgetItem(f"{badge} {q_str} · {child.name} ({dur_str})")
+            item.setData(Qt.ItemDataRole.UserRole, child.cue_id)
+            self.list_group_children.addItem(item)
+
+        mins = int(tot_dur // 60)
+        secs = tot_dur % 60
+        dur_txt = f"{mins:02d}:{secs:05.2f}" if tot_dur > 0 else "Non definita"
+        self.lbl_group_stats.setText(f"📁 {len(children)} cue nel gruppo · Durata stimata: {dur_txt}")
+
+        if group_cue:
+            if group_cue.collapsed:
+                self.btn_group_collapse_toggle.setText("▼ Espandi Gruppo in Scaletta")
+            else:
+                self.btn_group_collapse_toggle.setText("▶ Collassa Gruppo in Scaletta")
 
     def _on_layer_clicked(self, layer: int) -> None:
         self.set_layer_checked(layer)
@@ -955,6 +1190,10 @@ class CueInspectorPanel(QGroupBox):
             btn.blockSignals(True)
             btn.setChecked(color_hex is not None and hv == clean)
             btn.blockSignals(False)
+        for hv, btn in self._group_color_buttons.items():
+            btn.blockSignals(True)
+            btn.setChecked(color_hex is not None and hv == clean)
+            btn.blockSignals(False)
 
     def set_follow_mode_silent(self, mode: Optional[str], *, enabled: bool = True) -> None:
         for m, btn in self._follow_buttons.items():
@@ -1011,23 +1250,65 @@ class CueInspectorPanel(QGroupBox):
         self._updating = True
         try:
             self.setTitle(f"ISPETTORE CUE — {ref} [{cue.media_type.value}] '{cue.name}'")
-            if self.edit_cue_q.text() != cue.q_label:
-                self.edit_cue_q.setText(cue.q_label)
-            if self.edit_cue_name.text() != cue.name:
-                self.edit_cue_name.setText(cue.name)
+            if cue.media_type == MediaType.GROUP:
+                if self.edit_group_q.text() != cue.q_label:
+                    self.edit_group_q.setText(cue.q_label)
+                if self.edit_group_name.text() != cue.name:
+                    self.edit_group_name.setText(cue.name)
+                if self.edit_group_notes.text() != cue.notes:
+                    self.edit_group_notes.setText(cue.notes)
+            else:
+                if self.edit_cue_q.text() != cue.q_label:
+                    self.edit_cue_q.setText(cue.q_label)
+                if self.edit_cue_name.text() != cue.name:
+                    self.edit_cue_name.setText(cue.name)
+                if self.edit_cue_notes.text() != cue.notes:
+                    self.edit_cue_notes.setText(cue.notes)
         finally:
             self._updating = False
 
     def set_enabled_for_cue(self, enabled: bool, media_type: Optional[MediaType] = None,
                             multi_mode: bool = False) -> None:
-        for btn in self._layer_buttons.values():
-            btn.setEnabled(enabled)
-        for btn in self._color_buttons.values():
-            btn.setEnabled(enabled)
-        for btn in self._follow_buttons.values():
-            btn.setEnabled(enabled)
+        is_group = (media_type == MediaType.GROUP)
 
-        identity_enabled = enabled and not multi_mode
+        # Tab visibility: when GROUP, show tab 3 (Gruppo), hide tabs 0, 1, 2
+        # when NOT GROUP, show tabs 0, 1, 2, hide tab 3
+        if is_group:
+            self.tab_widget.setTabVisible(0, False)
+            self.tab_widget.setTabVisible(1, False)
+            self.tab_widget.setTabVisible(2, False)
+            self.tab_widget.setTabVisible(3, True)
+            self.tab_widget.setCurrentIndex(3)
+        else:
+            self.tab_widget.setTabVisible(0, True)
+            self.tab_widget.setTabVisible(1, True)
+            self.tab_widget.setTabVisible(2, True)
+            self.tab_widget.setTabVisible(3, False)
+            if self.tab_widget.currentIndex() == 3:
+                self.tab_widget.setCurrentIndex(0)
+
+        for btn in self._layer_buttons.values():
+            btn.setEnabled(enabled and not is_group)
+        for btn in self._color_buttons.values():
+            btn.setEnabled(enabled and not is_group)
+        for btn in self._follow_buttons.values():
+            btn.setEnabled(enabled and not is_group)
+
+        # Group controls
+        group_controls = (
+            self.edit_group_q, self.edit_group_name, self.edit_group_notes,
+            self.spin_group_pre_delay, self.spin_group_post_delay,
+            self.btn_group_collapse_toggle, self.btn_group_remove_child, self.btn_group_ungroup,
+            self.list_group_children,
+        )
+        for w in group_controls:
+            w.setEnabled(enabled and is_group and not multi_mode)
+        for btn in self._group_mode_buttons.values():
+            btn.setEnabled(enabled and is_group)
+        for btn in self._group_color_buttons.values():
+            btn.setEnabled(enabled and is_group)
+
+        identity_enabled = enabled and not multi_mode and not is_group
         self.edit_cue_q.setEnabled(identity_enabled)
         self.edit_cue_name.setEnabled(identity_enabled)
         self.edit_cue_notes.setEnabled(identity_enabled)
@@ -1054,7 +1335,17 @@ class CueInspectorPanel(QGroupBox):
             self.edit_cue_q.clear()
             self.edit_cue_name.clear()
             self.edit_cue_notes.clear()
+            self.edit_group_q.clear()
+            self.edit_group_name.clear()
+            self.edit_group_notes.clear()
+            self.list_group_children.clear()
+            self.lbl_group_stats.setText("📁 0 cue nel gruppo")
             self.lbl_hold_hint.setText("Seleziona una cue")
+            for w in all_media_controls:
+                w.setEnabled(False)
+            return
+
+        if is_group:
             for w in all_media_controls:
                 w.setEnabled(False)
             return
@@ -1191,13 +1482,26 @@ class CueInspectorPanel(QGroupBox):
             self.setTitle(f"ISPETTORE CUE — {ref} [{cue.media_type.value}] '{cue.name}'")
             self.set_enabled_for_cue(True, cue.media_type, multi_mode=False)
 
-            self.edit_cue_q.setText(cue.q_label)
-            self.edit_cue_name.setText(cue.name)
-            self.edit_cue_notes.setText(cue.notes)
-            self.set_layer_checked(cue.layer)
-            self.set_color_silent(getattr(cue, "color", ""))
-            self.set_follow_mode_silent(cue.follow_mode, enabled=True)
-            self._populate_media_fields(cue)
+            if cue.media_type == MediaType.GROUP:
+                self.edit_group_q.setText(cue.q_label)
+                self.edit_group_name.setText(cue.name)
+                self.edit_group_notes.setText(cue.notes)
+                self.spin_group_pre_delay.setValue(getattr(cue, "pre_delay", 0.0))
+                self.spin_group_post_delay.setValue(getattr(cue, "post_delay", 0.0))
+                self.set_color_silent(getattr(cue, "color", ""))
+                self.set_group_mode_checked(getattr(cue, "group_mode", GroupMode.STEP.value))
+                if getattr(cue, "collapsed", False):
+                    self.btn_group_collapse_toggle.setText("▼ Espandi Gruppo in Scaletta")
+                else:
+                    self.btn_group_collapse_toggle.setText("▶ Collassa Gruppo in Scaletta")
+            else:
+                self.edit_cue_q.setText(cue.q_label)
+                self.edit_cue_name.setText(cue.name)
+                self.edit_cue_notes.setText(cue.notes)
+                self.set_layer_checked(cue.layer)
+                self.set_color_silent(getattr(cue, "color", ""))
+                self.set_follow_mode_silent(cue.follow_mode, enabled=True)
+                self._populate_media_fields(cue)
         finally:
             self._updating = False
 
@@ -1268,6 +1572,16 @@ class CueInspectorPanel(QGroupBox):
 
     def apply_to_cue(self, cue: Cue) -> None:
         """Write all single-cue inspector field values onto *cue*."""
+        if cue.media_type == MediaType.GROUP:
+            cue.q_label = self.edit_group_q.text().strip()
+            new_name = self.edit_group_name.text().strip()
+            if new_name:
+                cue.name = new_name
+            cue.notes = self.edit_group_notes.text().strip()
+            cue.pre_delay = self.spin_group_pre_delay.value()
+            cue.post_delay = self.spin_group_post_delay.value()
+            return
+
         cue.q_label = self.edit_cue_q.text().strip()
         new_name = self.edit_cue_name.text().strip()
         if new_name:
@@ -1405,3 +1719,15 @@ class CueInspectorPanel(QGroupBox):
             elif field_key == "aspect_ratio":
                 ar_data = self.combo_aspect.currentData()
                 cue.aspect_ratio = ar_data if ar_data is not None else None
+            elif field_key == "group_q":
+                cue.q_label = self.edit_group_q.text().strip()
+            elif field_key == "group_name":
+                new_n = self.edit_group_name.text().strip()
+                if new_n:
+                    cue.name = new_n
+            elif field_key == "group_notes":
+                cue.notes = self.edit_group_notes.text().strip()
+            elif field_key == "group_pre_delay":
+                cue.pre_delay = self.spin_group_pre_delay.value()
+            elif field_key == "group_post_delay":
+                cue.post_delay = self.spin_group_post_delay.value()

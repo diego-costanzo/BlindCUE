@@ -15,7 +15,7 @@ Benvenuto nel **Manuale Operativo ufficiale di BlindCue**: una guida pratica pen
 |---|-----------|-------------|-------|
 | **1** | **Avvio, Proiettore & Tappo L0** | Collegare il secondo schermo e raddrizzare il proiettore con la griglia L0 | [Apri Sezione 1 →](#sec-1) |
 | **2** | **Modalità Progetto vs LIVE** | Differenze tra banco editing e Show Mode (`[F5]`) e blocco pannelli | [Apri Sezione 2 →](#sec-2) |
-| **3** | **Scaletta, Note & Batch** | Importare media, assegnare codici `Q`, Note di regia, Undo e selezione multipla | [Apri Sezione 3 →](#sec-3) |
+| **3** | **Scaletta, Gruppi/Scene & Note** | Raggruppare (`Ctrl+G`), collassare (`▶`/`▼`), 5 modi al GO, codici `Q` e batch | [Apri Sezione 3 →](#sec-3) |
 | **4** | **I 3 Layer di Compositing** | Impilare `L3 Overlay` / `L2 Principale` / `L1 Sfondo` senza conflitti | [Apri Sezione 4 →](#sec-4) |
 | **5** | **Posizione, Zoom, AR & Crop** | Inquadrare, deformare aspect ratio e ritagliare in `%` o `px` ancorati ai bordi | [Apri Sezione 5 →](#sec-5) |
 | **6** | **Pre-Viz Isolata & Mirror Live** | Pre-ascolto in cuffia, equalizzatore audio e Mirror Live di foto e video | [Apri Sezione 6 →](#sec-6) |
@@ -85,9 +85,24 @@ BlindCue separa nettamente la fase di **Programmazione** dalla fase di **Spettac
 
 <a id="sec-3"></a>
 
-## 3. Gestione Scaletta, Note, Codici `Q` & Selezione Multipla
+## 3. Gestione Scaletta, Gruppi/Scene, Note, Codici `Q` & Selezione Multipla
 
-- **Aggiungere file**: usa **`+ Video`**, **`+ Audio`**, **`+ Immagine`** oppure trascina uno o più file nell'area tratteggiata **Caricamento Rapido**.
+- **Aggiungere file e scene**: usa **`+ Video`**, **`+ Audio`**, **`+ Foto`**, **`+ Gruppo`** oppure trascina uno o più file nell'area tratteggiata **Caricamento Rapido**.
+- **Gruppi e Scene Teatrali Collassabili (`Ctrl+G` o tasto destro → `Raggruppa in Scena`)**:
+  - Seleziona una o più cue eterogenee (es. un audio d'ambiente, un video di sfondo e una foto titolo) e premi **`Ctrl+G`**: verranno raggruppate all'istante sotto una nuova riga contenitore viola di Scena.
+  - Se premi `+ Gruppo` senza selezioni attive, viene inserito un gruppo vuoto pronto per essere popolato.
+  - **Espansione e Collasso Istantaneo (`▶` / `▼`)**: clicca sulla freccia nella colonna `#` per nascondere tutti gli elementi interni in una sola riga pulita e snella. Funziona istantaneamente sia in Scaletta Progetto che nella Scaletta LIVE estesa. Quando una cue interna va in Standby o Live, il gruppo si auto-espande per garantire il controllo visivo al tecnico.
+  - **Albero Grafico Gerarchico**: i file all'interno di un gruppo mostrano una chiara indentazione visiva con rami ad albero (`├── ` e `└── ` per l'ultimo elemento), permettendo di distinguere a colpo d'occhio l'appartenenza alla scena.
+  - **Scheda Ispettore `📁 Gruppo · Scena`**: selezionando il gruppo, l'Ispettore apre automaticamente una scheda dedicata:
+    - **Identità & Colore Scena**: Sigla `Q` di copione, Nome, Note di Regia e palette colori.
+    - **Pre-Wait & Post-Wait Scena**: ritardi prima dell'attacco del gruppo e prima del passaggio alla cue successiva.
+    - **5 Comportamenti al GO**:
+      1. `⇉ Simultaneo`: tutti i file della scena partono simultaneamente con un solo GO.
+      2. `⤵ Sequenziale`: cascata interna che esegue i brani in sequenza continua.
+      3. `⏹ Passo-Passo`: capitolo teatrale classico, ogni pressione manuale di GO fa avanzare la scena di un elemento.
+      4. `🎲 Random`: sceglie a caso un elemento della scena evitando la ripetizione immediata.
+      5. `🔁 Loop Scena`: ciclo continuo degli elementi interni finché non viene dato lo stop.
+    - **Lista Membri & Statistiche**: mostra il numero di elementi e la durata totale stimata della scena, con pulsanti dedicati per rimuovere una singola cue dal gruppo (`✕ Rimuovi Cue`) o sciogliere completamente la scena (`🔓 Sciogli Gruppo`).
 - **Rinomina e Richiamo Copione (`Q`)**:
   - Fai **doppio clic** sulla colonna **`Q`** (es. `Q-12a`) o sul **Nome** (oppure seleziona e premi **`[F2]`**).
   - Doppio clic sulla colonna `#` (numero progressivo) manda direttamente in **`GO`** quella riga.

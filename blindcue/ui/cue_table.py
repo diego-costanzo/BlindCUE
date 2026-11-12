@@ -33,10 +33,24 @@ ROLE_TIMING_BADGE = Qt.ItemDataRole.UserRole + 7
 ROLE_CUE_COLOR = Qt.ItemDataRole.UserRole + 8
 ROLE_PREV_COLOR = Qt.ItemDataRole.UserRole + 9
 ROLE_INCOMING_LINK = Qt.ItemDataRole.UserRole + 10
+ROLE_PARENT_ID = Qt.ItemDataRole.UserRole + 11
+ROLE_IS_GROUP = Qt.ItemDataRole.UserRole + 12
+ROLE_GROUP_MODE = Qt.ItemDataRole.UserRole + 13
+ROLE_GROUP_COLLAPSED = Qt.ItemDataRole.UserRole + 14
+ROLE_CHILD_COUNT = Qt.ItemDataRole.UserRole + 15
+ROLE_IS_LAST_CHILD = Qt.ItemDataRole.UserRole + 16
 
 _LINK_RAIL_COLORS = {
     "SIMULTANEOUS": QColor("#f59e0b"),
     "AUTO_FOLLOW": QColor("#38bdf8"),
+}
+
+_GROUP_MODE_PILLS = {
+    "SIMULTANEOUS": ("⇉ SIMULT", QColor("#065f46"), QColor("#34d399")),
+    "SEQUENCE": ("⤵ CASCATA", QColor("#0c4a6e"), QColor("#38bdf8")),
+    "STEP": ("⏹ PASSO", QColor("#312e81"), QColor("#a5b4fc")),
+    "RANDOM": ("🎲 RND", QColor("#701a75"), QColor("#f472b6")),
+    "LOOP": ("🔁 LOOP", QColor("#78350f"), QColor("#fbbf24")),
 }
 
 
@@ -130,6 +144,7 @@ class CueTableDelegate(QStyledItemDelegate):
         "VIDEO": ("VID", QColor("#0284c7"), QColor("#e0f2fe")),
         "AUDIO": ("AUD", QColor("#0d9488"), QColor("#ccfbf1")),
         "IMAGE": ("IMG", QColor("#d97706"), QColor("#fef3c7")),
+        "GROUP": ("GRP", QColor("#6d28d9"), QColor("#ede9fe")),
     }
 
     def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
@@ -145,6 +160,8 @@ class CueTableDelegate(QStyledItemDelegate):
         if col == 0:
             raw_num = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
             fg_brush = index.data(Qt.ItemDataRole.ForegroundRole)
+            is_group = bool(index.data(ROLE_IS_GROUP))
+            is_collapsed = bool(index.data(ROLE_GROUP_COLLAPSED))
             opt.text = ""
             style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
             is_sel = bool(opt.state & QStyle.StateFlag.State_Selected)
@@ -157,12 +174,28 @@ class CueTableDelegate(QStyledItemDelegate):
                 )
             painter.setFont(opt.font)
             pen_clr = fg_brush.color() if fg_brush is not None else QColor("#94a3b8")
-            painter.setPen(pen_clr)
-            painter.drawText(
-                opt.rect.adjusted(18, 0, -2, 0),
-                Qt.AlignmentFlag.AlignCenter,
-                raw_num,
-            )
+
+            if is_group:
+                arrow_sym = "▶" if is_collapsed else "▼"
+                painter.setPen(QColor("#38bdf8"))
+                painter.drawText(
+                    opt.rect.adjusted(4, 0, -28, 0),
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    arrow_sym,
+                )
+                painter.setPen(pen_clr)
+                painter.drawText(
+                    opt.rect.adjusted(16, 0, -2, 0),
+                    Qt.AlignmentFlag.AlignCenter,
+                    raw_num,
+                )
+            else:
+                painter.setPen(pen_clr)
+                painter.drawText(
+                    opt.rect.adjusted(18, 0, -2, 0),
+                    Qt.AlignmentFlag.AlignCenter,
+                    raw_num,
+                )
             painter.restore()
             return
 
@@ -196,6 +229,11 @@ class CueTableDelegate(QStyledItemDelegate):
         if col == 2:
             name_text = str(index.data(Qt.ItemDataRole.EditRole) or "")
             media_type = str(index.data(ROLE_MEDIA_TYPE) or "")
+            is_group = bool(index.data(ROLE_IS_GROUP))
+            parent_id = index.data(ROLE_PARENT_ID)
+            child_count = int(index.data(ROLE_CHILD_COUNT) or 0)
+            group_mode = str(index.data(ROLE_GROUP_MODE) or "STEP")
+            is_last_child = bool(index.data(ROLE_IS_LAST_CHILD))
             layer = int(index.data(ROLE_LAYER) or 1)
             has_notes = bool(index.data(ROLE_HAS_NOTES))
             status_txt = str(index.data(ROLE_STATUS_TXT) or "")
@@ -214,9 +252,22 @@ class CueTableDelegate(QStyledItemDelegate):
             rect = opt.rect.adjusted(5, 3, -5, -3)
 
             left_x = rect.left()
+
+            # Indent child cue and draw tree connector branch
+            if parent_id is not None:
+                branch_sym = "└── " if is_last_child else "├── "
+                painter.setFont(QFont("monospace", 9))
+                painter.setPen(QColor("#64748b"))
+                painter.drawText(
+                    QRect(left_x, rect.top(), 22, rect.height()),
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    branch_sym,
+                )
+                left_x += 18
+
             if media_type in self._MEDIA_BADGE:
                 tag_txt, bg_clr, fg_clr = self._MEDIA_BADGE[media_type]
-                pill_w, pill_h = 28, 16
+                pill_w, pill_h = (32, 16) if is_group else (28, 16)
                 pill_y = rect.top() + (rect.height() - pill_h) // 2
                 pill_rect = QRect(left_x, pill_y, pill_w, pill_h)
                 painter.setPen(Qt.PenStyle.NoPen)
@@ -252,52 +303,80 @@ class CueTableDelegate(QStyledItemDelegate):
                 painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, status_txt)
                 right_x -= sw + 4
 
-            layer_str = f"L{layer}"
-            painter.setFont(tag_font)
-            lw, lh = 22, 16
-            ly = rect.top() + (rect.height() - lh) // 2
-            l_rect = QRect(right_x - lw, ly, lw, lh)
-            painter.setPen(QPen(QColor("#283548"), 1))
-            painter.setBrush(QColor("#1a2332"))
-            painter.drawRoundedRect(l_rect, 3, 3)
-            painter.setPen(QColor("#94a3b8"))
-            painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
-            right_x -= lw + 4
+            if is_group:
+                # Group mode pill on the right
+                if group_mode in _GROUP_MODE_PILLS:
+                    gm_txt, gm_bg, gm_fg = _GROUP_MODE_PILLS[group_mode]
+                    painter.setFont(tag_font)
+                    fm_gm = painter.fontMetrics()
+                    gm_w = fm_gm.horizontalAdvance(gm_txt) + 10
+                    gm_rect = QRect(right_x - gm_w, rect.top() + (rect.height() - 16) // 2, gm_w, 16)
+                    painter.setPen(QPen(gm_fg, 1))
+                    painter.setBrush(gm_bg)
+                    painter.drawRoundedRect(gm_rect, 3, 3)
+                    painter.setPen(gm_fg)
+                    painter.drawText(gm_rect, Qt.AlignmentFlag.AlignCenter, gm_txt)
+                    right_x -= gm_w + 4
 
-            if follow_mode == "AUTO_FOLLOW":
-                fw = 46
-                fy = rect.top() + (rect.height() - lh) // 2
-                f_rect = QRect(right_x - fw, fy, fw, lh)
-                painter.setPen(QPen(QColor("#38bdf8"), 1))
-                painter.setBrush(QColor("#0c2638"))
-                painter.drawRoundedRect(f_rect, 3, 3)
-                painter.setPen(QColor("#7dd3fc"))
-                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⤵ AUTO")
-                right_x -= fw + 4
-            elif follow_mode == "SIMULTANEOUS":
-                fw = 42
-                fy = rect.top() + (rect.height() - lh) // 2
-                f_rect = QRect(right_x - fw, fy, fw, lh)
-                painter.setPen(QPen(QColor("#f59e0b"), 1))
-                painter.setBrush(QColor("#332006"))
-                painter.drawRoundedRect(f_rect, 3, 3)
-                painter.setPen(QColor("#fcd34d"))
-                painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⇉ SIM")
-                right_x -= fw + 4
+                if child_count > 0:
+                    cc_txt = f"{child_count} Cue"
+                    painter.setFont(tag_font)
+                    fm_cc = painter.fontMetrics()
+                    cc_w = fm_cc.horizontalAdvance(cc_txt) + 10
+                    cc_rect = QRect(right_x - cc_w, rect.top() + (rect.height() - 16) // 2, cc_w, 16)
+                    painter.setPen(QPen(QColor("#334155"), 1))
+                    painter.setBrush(QColor("#0f172a"))
+                    painter.drawRoundedRect(cc_rect, 3, 3)
+                    painter.setPen(QColor("#94a3b8"))
+                    painter.drawText(cc_rect, Qt.AlignmentFlag.AlignCenter, cc_txt)
+                    right_x -= cc_w + 4
+            else:
+                layer_str = f"L{layer}"
+                painter.setFont(tag_font)
+                lw, lh = 22, 16
+                ly = rect.top() + (rect.height() - lh) // 2
+                l_rect = QRect(right_x - lw, ly, lw, lh)
+                painter.setPen(QPen(QColor("#283548"), 1))
+                painter.setBrush(QColor("#1a2332"))
+                painter.drawRoundedRect(l_rect, 3, 3)
+                painter.setPen(QColor("#94a3b8"))
+                painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
+                right_x -= lw + 4
+
+                if follow_mode == "AUTO_FOLLOW":
+                    fw = 46
+                    fy = rect.top() + (rect.height() - lh) // 2
+                    f_rect = QRect(right_x - fw, fy, fw, lh)
+                    painter.setPen(QPen(QColor("#38bdf8"), 1))
+                    painter.setBrush(QColor("#0c2638"))
+                    painter.drawRoundedRect(f_rect, 3, 3)
+                    painter.setPen(QColor("#7dd3fc"))
+                    painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⤵ AUTO")
+                    right_x -= fw + 4
+                elif follow_mode == "SIMULTANEOUS":
+                    fw = 42
+                    fy = rect.top() + (rect.height() - lh) // 2
+                    f_rect = QRect(right_x - fw, fy, fw, lh)
+                    painter.setPen(QPen(QColor("#f59e0b"), 1))
+                    painter.setBrush(QColor("#332006"))
+                    painter.drawRoundedRect(f_rect, 3, 3)
+                    painter.setPen(QColor("#fcd34d"))
+                    painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⇉ SIM")
+                    right_x -= fw + 4
 
             min_name_end = left_x + 52
             if timing_badge and right_x - 18 >= min_name_end:
                 tw = 16
-                ty = rect.top() + (rect.height() - lh) // 2
-                t_rect = QRect(right_x - tw, ty, tw, lh)
+                ty = rect.top() + (rect.height() - 16) // 2
+                t_rect = QRect(right_x - tw, ty, tw, 16)
                 painter.setPen(QColor("#a78bfa"))
                 painter.drawText(t_rect, Qt.AlignmentFlag.AlignCenter, timing_badge)
                 right_x -= tw + 2
 
             if has_notes and right_x - 18 >= min_name_end:
                 nw = 16
-                ny = rect.top() + (rect.height() - lh) // 2
-                n_rect = QRect(right_x - nw, ny, nw, lh)
+                ny = rect.top() + (rect.height() - 16) // 2
+                n_rect = QRect(right_x - nw, ny, nw, 16)
                 painter.setPen(QColor("#38bdf8"))
                 painter.drawText(n_rect, Qt.AlignmentFlag.AlignCenter, "📝")
                 right_x -= nw + 4
@@ -305,13 +384,15 @@ class CueTableDelegate(QStyledItemDelegate):
             avail_w = max(24, right_x - left_x - 4)
             name_rect = QRect(left_x, rect.top(), avail_w, rect.height())
             name_font = QFont(opt.font)
-            if status_txt in ("LIVE", "STANDBY"):
+            if status_txt in ("LIVE", "STANDBY") or is_group:
                 name_font.setBold(True)
             painter.setFont(name_font)
+            disp_name = ("📁 " + name_text) if (is_group and not name_text.startswith("📁")) else name_text
             elided_name = painter.fontMetrics().elidedText(
-                name_text, Qt.TextElideMode.ElideRight, avail_w
+                disp_name, Qt.TextElideMode.ElideRight, avail_w
             )
-            painter.setPen(QColor(status_clr))
+            name_clr = QColor("#c084fc") if is_group else QColor(status_clr)
+            painter.setPen(name_clr)
             painter.drawText(
                 name_rect,
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -347,6 +428,9 @@ class CueSequenceTable(QTableWidget):
 
     currentRowChanged = Signal(int)
     color_selected = Signal(str)
+    group_collapse_toggled = Signal(int)
+    group_requested = Signal()
+    ungroup_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(0, 3, parent)
@@ -446,6 +530,17 @@ class CueSequenceTable(QTableWidget):
         self._last_emitted_row = -1
         self.setRowCount(0)
 
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            idx = self.indexAt(event.pos())
+            if idx.isValid() and idx.column() == 0:
+                is_grp = bool(idx.data(ROLE_IS_GROUP))
+                if is_grp:
+                    self.group_collapse_toggled.emit(idx.row())
+                    event.accept()
+                    return
+        super().mousePressEvent(event)
+
     def contextMenuEvent(self, event) -> None:  # noqa: N802
         rows = self.selected_rows()
         if not rows:
@@ -457,6 +552,21 @@ class CueSequenceTable(QTableWidget):
             return
 
         menu = QMenu(self)
+
+        # Group actions
+        if len(rows) > 0:
+            act_grp = menu.addAction("📁 Raggruppa in Scena (Ctrl+G)")
+            act_grp.triggered.connect(self.group_requested)
+
+            curr_item = self.item(rows[0], 2)
+            if curr_item and curr_item.data(ROLE_IS_GROUP):
+                act_toggle = menu.addAction("▶ / ▼ Espandi o Collassa Gruppo")
+                act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(rows[0]))
+                act_ungrp = menu.addAction("🔓 Sciogli Gruppo (Ungroup)")
+                act_ungrp.triggered.connect(self.ungroup_requested)
+
+            menu.addSeparator()
+
         color_menu = menu.addMenu("🎨 Colore Scena / Gruppo")
         for hex_val, label in CUE_COLOR_PALETTE:
             pm = QPixmap(14, 14)

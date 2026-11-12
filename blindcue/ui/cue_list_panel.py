@@ -48,6 +48,8 @@ class CueListPanel(QGroupBox):
     """Left panel displaying the 3-column Cue Sequence Table and list action buttons."""
 
     add_media_requested = Signal(object)  # MediaType
+    add_group_requested = Signal()
+    ungroup_requested = Signal()
     move_up_requested = Signal()
     move_down_requested = Signal()
     delete_requested = Signal()
@@ -101,6 +103,8 @@ class CueListPanel(QGroupBox):
         layout.addLayout(cue_summary_bar)
 
         self.table = CueSequenceTable()
+        self.table.group_requested.connect(self.add_group_requested)
+        self.table.ungroup_requested.connect(self.ungroup_requested)
         layout.addWidget(self.table)
 
         btn_add_row = QHBoxLayout()
@@ -109,22 +113,29 @@ class CueListPanel(QGroupBox):
         self.btn_add_video = QPushButton("+ Video")
         self.btn_add_video.setToolTip("Aggiungi file video alla scaletta")
         self.btn_add_video.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; } "
+            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; } "
             "QPushButton:hover { border-color: #42a5f5; color: #42a5f5; }"
         )
 
         self.btn_add_audio = QPushButton("+ Audio")
         self.btn_add_audio.setToolTip("Aggiungi file audio alla scaletta")
         self.btn_add_audio.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; } "
+            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; } "
             "QPushButton:hover { border-color: #26a69a; color: #26a69a; }"
         )
 
-        self.btn_add_image = QPushButton("+ Immagine")
-        self.btn_add_image.setToolTip("Aggiungi immagine statica (Layer 1-3)")
+        self.btn_add_image = QPushButton("+ Foto")
+        self.btn_add_image.setToolTip("Aggiungi immagine / foto statica (Layer 1-3)")
         self.btn_add_image.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; } "
+            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; } "
             "QPushButton:hover { border-color: #ffa726; color: #ffa726; }"
+        )
+
+        self.btn_add_group = QPushButton("+ Gruppo")
+        self.btn_add_group.setToolTip("Crea un gruppo di cue / scena (Ctrl+G)")
+        self.btn_add_group.setStyleSheet(
+            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; border-color: #7c3aed; color: #c084fc; background-color: #1e1533; } "
+            "QPushButton:hover { background-color: #2e1d52; border-color: #a855f7; color: #ffffff; }"
         )
 
         self.btn_move_up = QPushButton("▲ Su")
@@ -146,11 +157,12 @@ class CueListPanel(QGroupBox):
         self.btn_add_video.clicked.connect(lambda: self.add_media_requested.emit(MediaType.VIDEO))
         self.btn_add_audio.clicked.connect(lambda: self.add_media_requested.emit(MediaType.AUDIO))
         self.btn_add_image.clicked.connect(lambda: self.add_media_requested.emit(MediaType.IMAGE))
+        self.btn_add_group.clicked.connect(self.add_group_requested)
         self.btn_move_up.clicked.connect(self.move_up_requested)
         self.btn_move_down.clicked.connect(self.move_down_requested)
         self.btn_delete.clicked.connect(self.delete_requested)
 
-        for btn in (self.btn_add_video, self.btn_add_audio, self.btn_add_image):
+        for btn in (self.btn_add_video, self.btn_add_audio, self.btn_add_image, self.btn_add_group):
             btn_add_row.addWidget(btn, stretch=1)
         layout.addLayout(btn_add_row)
 

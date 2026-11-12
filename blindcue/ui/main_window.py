@@ -44,16 +44,22 @@ from engine.envelope import (
     normalize_sections,
     split_sections_at,
 )
-from models.cue import Cue, CueStatus, FollowMode, MediaType, _sanitize_hex_color
+from models.cue import Cue, CueStatus, FollowMode, GroupMode, MediaType, _sanitize_hex_color
 from models.project_manager import ProjectManager
 from ui.cue_list_panel import CueListPanel
 from ui.cue_table import (
+    ROLE_CHILD_COUNT,
     ROLE_CUE_COLOR,
     ROLE_FOLLOW_MODE,
+    ROLE_GROUP_COLLAPSED,
+    ROLE_GROUP_MODE,
     ROLE_HAS_NOTES,
     ROLE_INCOMING_LINK,
+    ROLE_IS_GROUP,
+    ROLE_IS_LAST_CHILD,
     ROLE_LAYER,
     ROLE_MEDIA_TYPE,
+    ROLE_PARENT_ID,
     ROLE_PREV_COLOR,
     ROLE_STATUS_CLR,
     ROLE_STATUS_TXT,
@@ -236,6 +242,7 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_escape_pressed)
         QShortcut(QKeySequence(Qt.Key.Key_F5), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
+        QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
 
     def _is_text_input_focused(self) -> bool:
         focus_w = QApplication.focusWidget()
@@ -499,6 +506,9 @@ class MainWindow(QMainWindow):
         self._cue_list.itemChanged.connect(self._on_cue_item_changed)
         self._cue_list.color_selected.connect(self._set_cue_color)
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
+        self._cue_list_panel.add_group_requested.connect(self._on_add_group)
+        self._cue_list_panel.ungroup_requested.connect(self._ungroup_selected)
+        self._cue_list.group_collapse_toggled.connect(self._toggle_group_collapsed)
         self._cue_list_panel.move_up_requested.connect(self._on_move_up)
         self._cue_list_panel.move_down_requested.connect(self._on_move_down)
         self._cue_list_panel.delete_requested.connect(self._on_delete_cue)
@@ -557,6 +567,10 @@ class MainWindow(QMainWindow):
         self._inspector.color_selected.connect(self._set_cue_color)
         self._inspector.follow_mode_selected.connect(self._set_follow_mode)
         self._inspector.in_out_reset_requested.connect(self._on_reset_in_out)
+        self._inspector.group_mode_selected.connect(self._set_group_mode)
+        self._inspector.group_collapse_toggled.connect(self._toggle_group_collapse_from_inspector)
+        self._inspector.ungroup_requested.connect(self._ungroup_selected)
+        self._inspector.remove_child_requested.connect(self._on_remove_child_from_group)
         self._bind_inspector_aliases()
         top_splitter.addWidget(self._inspector)
 
@@ -622,6 +636,7 @@ class MainWindow(QMainWindow):
         self._live_show_panel.go_requested.connect(self._on_go)
         self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))
         self._live_show_panel.cue_row_double_clicked.connect(self._on_live_row_double_clicked)
+        self._live_show_panel.group_collapse_toggled.connect(self._toggle_group_collapsed)
         self._live_show_panel.pause_all_toggled.connect(self.pause_all_toggled.emit)
         self._live_show_panel.panic_requested.connect(self._on_panic)
         self._live_show_panel.break_loop_requested.connect(self._on_break_section_loop)
@@ -871,6 +886,17 @@ class MainWindow(QMainWindow):
 
         tooltip = self._cue_tooltip(row, cue)
 
+        is_group = (cue.media_type == MediaType.GROUP)
+        child_count = 0
+        if is_group:
+            child_count = sum(1 for c in self._cues if c.parent_id == cue.cue_id)
+
+        is_last_child = False
+        if cue.parent_id is not None:
+            siblings = [c for c in self._cues if c.parent_id == cue.parent_id]
+            if siblings and siblings[-1].cue_id == cue.cue_id:
+                is_last_child = True
+
         item_num = self._cue_list.item(row, 0)
         if item_num is None:
             item_num = QTableWidgetItem()
@@ -880,6 +906,8 @@ class MainWindow(QMainWindow):
         item_num.setText(f"#{row + 1}")
         item_num.setForeground(QColor(colour if status_txt in ("LIVE", "STANDBY") else CLR_TEXT_MUTED))
         item_num.setToolTip(tooltip)
+        item_num.setData(ROLE_IS_GROUP, is_group)
+        item_num.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
 
         item_q = self._cue_list.item(row, 1)
         if item_q is None:
@@ -911,6 +939,12 @@ class MainWindow(QMainWindow):
         item_name.setData(ROLE_TIMING_BADGE, "⏱" if (cue.pre_delay > 0 or cue.post_delay > 0) else "")
         item_name.setData(ROLE_STATUS_TXT, status_txt)
         item_name.setData(ROLE_STATUS_CLR, colour)
+        item_name.setData(ROLE_PARENT_ID, cue.parent_id)
+        item_name.setData(ROLE_IS_GROUP, is_group)
+        item_name.setData(ROLE_GROUP_MODE, getattr(cue, "group_mode", "STEP"))
+        item_name.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
+        item_name.setData(ROLE_CHILD_COUNT, child_count)
+        item_name.setData(ROLE_IS_LAST_CHILD, is_last_child)
         item_name.setToolTip(tooltip)
 
         for cell in (item_num, item_q, item_name):
@@ -918,6 +952,18 @@ class MainWindow(QMainWindow):
             cell.setData(ROLE_PREV_COLOR, prev_color)
             cell.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
             cell.setData(ROLE_INCOMING_LINK, incoming_link)
+
+        # Set row visibility based on parent collapse state
+        if cue.parent_id is not None:
+            parent_cue = next((c for c in self._cues if c.cue_id == cue.parent_id), None)
+            is_hidden = bool(parent_cue and parent_cue.collapsed)
+            self._cue_list.setRowHidden(row, is_hidden)
+            if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+                self._live_show_panel.live_table.setRowHidden(row, is_hidden)
+        else:
+            self._cue_list.setRowHidden(row, False)
+            if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+                self._live_show_panel.live_table.setRowHidden(row, False)
 
     def _sync_inspector_header_and_text(self, row: int, cue: Cue) -> None:
         if 0 <= row < len(self._cues) and row == self._cue_list.currentRow():
@@ -1205,12 +1251,16 @@ class MainWindow(QMainWindow):
             target_row = -1
 
         total_cues = len(self._cues)
+        group_count = sum(1 for c in self._cues if c.media_type == MediaType.GROUP)
         if total_cues == 0:
             self._lbl_cue_count.setText("0 Cue")
             self._lbl_cue_standby.setText("Standby: Nessuna")
             self._update_inspector(None)
         else:
-            self._lbl_cue_count.setText(f"{total_cues} Cue")
+            if group_count > 0:
+                self._lbl_cue_count.setText(f"{total_cues} Cue ({group_count} scene)")
+            else:
+                self._lbl_cue_count.setText(f"{total_cues} Cue")
             standby_row = target_row if (0 <= target_row < total_cues) else 0
             standby_cue = self._cues[standby_row]
             self._lbl_cue_standby.setText(
@@ -1431,6 +1481,9 @@ class MainWindow(QMainWindow):
             self._inspector.load_selection(sel_cues, anchor_cue=anchor_cue, anchor_row=anchor_row)
         else:
             self._inspector.load_cue(cue, anchor_row)
+            if cue.media_type == MediaType.GROUP:
+                children = [c for c in self._cues if c.parent_id == cue.cue_id]
+                self._inspector.load_group_children(children, cue)
         if anchor_cue is not None:
             self._update_waveform_markers(anchor_cue)
 
@@ -2035,6 +2088,9 @@ class MainWindow(QMainWindow):
             sel_cues = [self._cues[r] for r in sel_rows]
             self._update_crop_reference_for_cue(cue)
             self._inspector.load_selection(sel_cues, anchor_cue=cue, anchor_row=anchor_row)
+            if cue.media_type == MediaType.GROUP:
+                children = [c for c in self._cues if c.parent_id == cue.cue_id]
+                self._inspector.load_group_children(children, cue)
 
             if cue.cue_id != prev_anchor_id:
                 self._img_previz_timer.stop()
@@ -2303,8 +2359,21 @@ class MainWindow(QMainWindow):
         self._fire_cue_chain(target_idx)
 
     def _fire_cue_chain(self, start_idx: int) -> None:
-        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain."""
+        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution."""
         if not (0 <= start_idx < len(self._cues)):
+            return
+
+        start_cue = self._cues[start_idx]
+
+        # Auto-expand if cue belongs to a collapsed group
+        if start_cue.parent_id is not None:
+            parent_cue = next((c for c in self._cues if c.cue_id == start_cue.parent_id), None)
+            if parent_cue and parent_cue.collapsed:
+                p_row = self._cues.index(parent_cue)
+                self._toggle_group_collapsed(p_row)
+
+        if start_cue.media_type == MediaType.GROUP:
+            self._fire_group_cue(start_idx, start_cue)
             return
 
         chain_indices: list[int] = []
@@ -2347,6 +2416,99 @@ class MainWindow(QMainWindow):
             self._status_label.setText(
                 f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) — Fine scaletta (premi GO per rilanciare)"
             )
+
+        self._sync_live_view()
+        self._auto_save()
+
+    def _fire_group_cue(self, group_idx: int, group_cue: Cue) -> None:
+        """Execute a MediaType.GROUP container cue according to its group_mode."""
+        children = [c for c in self._cues if c.parent_id == group_cue.cue_id]
+        if not children:
+            next_idx = group_idx + 1
+            if next_idx < len(self._cues):
+                self._cue_list.setCurrentRow(next_idx)
+            self._sync_live_view()
+            return
+
+        self._live_show_panel.notify_first_go()
+        mode = getattr(group_cue, "group_mode", GroupMode.STEP.value)
+
+        if group_cue.collapsed:
+            self._toggle_group_collapsed(group_idx)
+
+        group_cue.status = CueStatus.LIVE
+
+        if mode == GroupMode.SIMULTANEOUS.value:
+            for child in children:
+                if child.pre_delay <= 0.02:
+                    for other in self._cues:
+                        if other.layer == child.layer and other.cue_id != child.cue_id and other.status == CueStatus.LIVE:
+                            other.status = CueStatus.LOADED
+                    child.status = CueStatus.LIVE
+                    self._update_live_layer_label(child)
+                self.cue_fired.emit(child)
+                logger.info("[GO-GROUP-SIMUL] Fired child #%d '%s'", child.cue_id, child.name)
+
+            self._refresh_cue_list(keep_selection=False)
+            last_child_idx = self._cues.index(children[-1])
+            next_idx = last_child_idx + 1
+            if next_idx < len(self._cues):
+                self._cue_list.setCurrentRow(next_idx)
+            else:
+                self._cue_list.setCurrentRow(last_child_idx)
+
+        elif mode == GroupMode.RANDOM.value:
+            import random
+            chosen = random.choice(children)
+            if chosen.pre_delay <= 0.02:
+                for other in self._cues:
+                    if other.layer == chosen.layer and other.cue_id != chosen.cue_id and other.status == CueStatus.LIVE:
+                        other.status = CueStatus.LOADED
+                chosen.status = CueStatus.LIVE
+                self._update_live_layer_label(chosen)
+            self.cue_fired.emit(chosen)
+            logger.info("[GO-GROUP-RANDOM] Fired random child #%d '%s'", chosen.cue_id, chosen.name)
+            self._refresh_cue_list(keep_selection=False)
+            last_child_idx = self._cues.index(children[-1])
+            next_idx = last_child_idx + 1
+            if next_idx < len(self._cues):
+                self._cue_list.setCurrentRow(next_idx)
+
+        elif mode == GroupMode.SEQUENCE.value:
+            first_child = children[0]
+            if first_child.pre_delay <= 0.02:
+                for other in self._cues:
+                    if other.layer == first_child.layer and other.cue_id != first_child.cue_id and other.status == CueStatus.LIVE:
+                        other.status = CueStatus.LOADED
+                first_child.status = CueStatus.LIVE
+                self._update_live_layer_label(first_child)
+            self.cue_fired.emit(first_child)
+            logger.info("[GO-GROUP-SEQ] Fired child 0 #%d '%s'", first_child.cue_id, first_child.name)
+            self._refresh_cue_list(keep_selection=False)
+            if len(children) > 1:
+                self._cue_list.setCurrentRow(self._cues.index(children[1]))
+            else:
+                next_idx = self._cues.index(first_child) + 1
+                if next_idx < len(self._cues):
+                    self._cue_list.setCurrentRow(next_idx)
+
+        else:  # STEP or LOOP
+            first_child = children[0]
+            if first_child.pre_delay <= 0.02:
+                for other in self._cues:
+                    if other.layer == first_child.layer and other.cue_id != first_child.cue_id and other.status == CueStatus.LIVE:
+                        other.status = CueStatus.LOADED
+                first_child.status = CueStatus.LIVE
+                self._update_live_layer_label(first_child)
+            self.cue_fired.emit(first_child)
+            logger.info("[GO-GROUP-STEP] Fired child 0 #%d '%s'", first_child.cue_id, first_child.name)
+            self._refresh_cue_list(keep_selection=False)
+            if len(children) > 1:
+                self._cue_list.setCurrentRow(self._cues.index(children[1]))
+            else:
+                next_idx = self._cues.index(first_child) + 1
+                if next_idx < len(self._cues):
+                    self._cue_list.setCurrentRow(next_idx)
 
         self._sync_live_view()
         self._auto_save()
@@ -2474,6 +2636,11 @@ class MainWindow(QMainWindow):
         self._undo.update_current_index(anchor_row)
 
         removed = [self._cues.pop(r) for r in sorted(sel_rows, reverse=True)]
+        for rem in removed:
+            if rem.media_type == MediaType.GROUP:
+                for c in self._cues:
+                    if c.parent_id == rem.cue_id:
+                        c.parent_id = None
         first_row = sel_rows[0]
         self._refresh_cue_list(keep_selection=False)
         if self._cues:
@@ -2495,6 +2662,180 @@ class MainWindow(QMainWindow):
             )
         self._auto_save()
         logger.info("Deleted %d cue(s)", len(removed))
+
+    # ── Group Cues & Scene Containers ─────────────────────────────────
+
+    @Slot()
+    def _on_add_group(self) -> None:
+        """Create a new Group cue, wrapping any selected cues or inserting an empty group."""
+        if self._live_mode:
+            return
+        sel_rows = self._selected_rows()
+        sel_cues = [self._cues[r] for r in sel_rows if self._cues[r].media_type != MediaType.GROUP]
+
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+
+        group_color = sel_cues[0].color if (sel_cues and sel_cues[0].color) else "#6366f1"
+        group_cue = Cue(
+            name="Nuova Scena / Gruppo",
+            file_path="",
+            media_type=MediaType.GROUP,
+            group_mode=GroupMode.STEP.value,
+            color=group_color,
+            layer=1,
+            collapsed=False,
+            status=CueStatus.LOADED,
+        )
+
+        if sel_cues:
+            insert_pos = min(sel_rows)
+            # Remove sel_cues from self._cues
+            remaining_cues = [c for c in self._cues if c not in sel_cues]
+            # Set parent_id on all sel_cues
+            for c in sel_cues:
+                c.parent_id = group_cue.cue_id
+            # Reconstruct list with group_cue and its children placed contiguously
+            new_cues = remaining_cues[:insert_pos] + [group_cue] + sel_cues + remaining_cues[insert_pos:]
+            self._cues = new_cues
+            target_row = insert_pos
+        else:
+            curr = self._cue_list.currentRow()
+            target_row = curr + 1 if 0 <= curr < len(self._cues) else len(self._cues)
+            self._cues.insert(target_row, group_cue)
+
+        self._refresh_cue_list(keep_selection=False)
+        self._cue_list.setCurrentRow(target_row)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(f"Creato Gruppo Scena: '{group_cue.name}'")
+        self._auto_save()
+        logger.info("[GROUP] Created group #%d '%s'", group_cue.cue_id, group_cue.name)
+
+    @Slot()
+    def _ungroup_selected(self) -> None:
+        """Dissolve the selected group (or parent of selected child), returning cues to root."""
+        if self._live_mode:
+            return
+        anchor_row, cue = self._anchor_row_and_cue()
+        if cue is None:
+            return
+
+        target_group: Optional[Cue] = None
+        if cue.media_type == MediaType.GROUP:
+            target_group = cue
+        elif cue.parent_id is not None:
+            target_group = next((c for c in self._cues if c.cue_id == cue.parent_id), None)
+
+        if target_group is None:
+            return
+
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+
+        # Detach children
+        for c in self._cues:
+            if c.parent_id == target_group.cue_id:
+                c.parent_id = None
+
+        # Remove group cue
+        if target_group in self._cues:
+            idx = self._cues.index(target_group)
+            self._cues.remove(target_group)
+            target_row = min(idx, len(self._cues) - 1)
+        else:
+            target_row = max(0, len(self._cues) - 1)
+
+        self._refresh_cue_list(keep_selection=False)
+        if 0 <= target_row < len(self._cues):
+            self._cue_list.setCurrentRow(target_row)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(f"Sciolto Gruppo: '{target_group.name}'")
+        self._auto_save()
+        logger.info("[GROUP] Ungrouped group #%d", target_group.cue_id)
+
+    @Slot(int)
+    def _toggle_group_collapsed(self, row: int) -> None:
+        """Toggle collapse/expand for the group at *row*."""
+        if not (0 <= row < len(self._cues)):
+            return
+        cue = self._cues[row]
+        if cue.media_type != MediaType.GROUP:
+            return
+
+        cue.collapsed = not cue.collapsed
+
+        # Apply visibility to both tables
+        for r, c in enumerate(self._cues):
+            if c.parent_id == cue.cue_id:
+                self._cue_list.setRowHidden(r, cue.collapsed)
+                if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+                    self._live_show_panel.live_table.setRowHidden(r, cue.collapsed)
+
+        # Update table row data
+        it_num = self._cue_list.item(row, 0)
+        if it_num:
+            it_num.setData(ROLE_GROUP_COLLAPSED, cue.collapsed)
+        it_name = self._cue_list.item(row, 2)
+        if it_name:
+            it_name.setData(ROLE_GROUP_COLLAPSED, cue.collapsed)
+        self._cue_list.viewport().update()
+
+        # Update button text in inspector if group is active
+        if self._selected_cue() is cue:
+            if cue.collapsed:
+                self._inspector.btn_group_collapse_toggle.setText("▼ Espandi Gruppo in Scaletta")
+            else:
+                self._inspector.btn_group_collapse_toggle.setText("▶ Collassa Gruppo in Scaletta")
+
+        self._sync_live_view()
+
+    @Slot()
+    def _toggle_group_collapse_from_inspector(self) -> None:
+        anchor_row, cue = self._anchor_row_and_cue()
+        if cue and cue.media_type == MediaType.GROUP:
+            self._toggle_group_collapsed(anchor_row)
+
+    @Slot(int)
+    def _on_remove_child_from_group(self, child_cue_id: int) -> None:
+        """Remove a child cue from its parent group."""
+        child = next((c for c in self._cues if c.cue_id == child_cue_id), None)
+        if child is not None:
+            if self._undo.is_debounce_active():
+                self._commit_undo_point()
+            child.parent_id = None
+            self._refresh_cue_list(keep_selection=True)
+            self._commit_undo_point()
+            self._mark_modified(True)
+            anchor_row, group_cue = self._anchor_row_and_cue()
+            if group_cue and group_cue.media_type == MediaType.GROUP:
+                children = [c for c in self._cues if c.parent_id == group_cue.cue_id]
+                self._inspector.load_group_children(children, group_cue)
+            self._status_label.setText(f"Rimossa cue '{child.name}' dal gruppo")
+
+    @Slot(str)
+    def _set_group_mode(self, mode: str) -> None:
+        """Update group execution mode across selected group cue(s)."""
+        sel_cues = [c for c in self._selected_cues() if c.media_type == MediaType.GROUP]
+        if not sel_cues:
+            anchor_row, cue = self._anchor_row_and_cue()
+            if cue and cue.media_type == MediaType.GROUP:
+                sel_cues = [cue]
+        if not sel_cues:
+            return
+
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+
+        for c in sel_cues:
+            c.group_mode = mode
+
+        self._refresh_rows_in_place(self._selected_rows())
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._sync_live_view()
+        self._status_label.setText(f"Modalità Gruppo impostata a: {mode}")
 
     # ── Persistence & Crash Recovery ──────────────────────────────────
 

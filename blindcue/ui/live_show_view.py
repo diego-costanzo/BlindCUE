@@ -29,7 +29,9 @@ from models.cue import Cue, CueStatus, FollowMode, MediaType
 from ui.cue_table import (
     ROLE_CUE_COLOR,
     ROLE_FOLLOW_MODE,
+    ROLE_GROUP_COLLAPSED,
     ROLE_INCOMING_LINK,
+    ROLE_IS_GROUP,
     ROLE_PREV_COLOR,
     format_cue_ref,
     paint_cue_row_decorations,
@@ -44,7 +46,12 @@ class LiveCueRowDelegate(QStyledItemDelegate):
         self.initStyleOption(opt, index)
         is_sel = bool(opt.state & QStyle.StateFlag.State_Selected)
         if index.column() == 0:
-            txt = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+            is_grp = bool(index.data(ROLE_IS_GROUP))
+            is_collapsed = bool(index.data(ROLE_GROUP_COLLAPSED))
+            if is_grp:
+                txt = "▶" if is_collapsed else "▼"
+            else:
+                txt = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
             fg = index.data(Qt.ItemDataRole.ForegroundRole)
             style = opt.widget.style() if opt.widget else QApplication.style()
             opt.text = ""
@@ -75,13 +82,23 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
     if cue.pre_delay > 0:
         parts.append(f"Pre +{cue.pre_delay:.1f}s")
 
-    if cue.media_type == MediaType.IMAGE:
+    if cue.media_type == MediaType.GROUP:
+        mode_tag = {
+            "SIMULTANEOUS": "Simultaneo",
+            "SEQUENCE": "Sequenziale",
+            "STEP": "Passo-Passo",
+            "RANDOM": "Random",
+            "LOOP": "Loop Scena",
+        }.get(getattr(cue, "group_mode", "STEP"), getattr(cue, "group_mode", "STEP"))
+        parts.append(f"📁 {mode_tag}")
+    elif cue.media_type == MediaType.IMAGE:
         if cue.hold_time <= 0:
             dur_str = "∞"
         elif cue.hold_time < 10.0:
             dur_str = f"{cue.hold_time:.1f}s"
         else:
             dur_str = _fmt_mmss(cue.hold_time)
+        parts.append(dur_str)
     else:
         raw_dur = 0.0
         if cue.out_point is not None and cue.out_point > cue.in_point:
@@ -91,7 +108,7 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
         dur_str = _fmt_mmss(raw_dur) if raw_dur > 0 else "--:--"
         if cue.loop:
             dur_str = f"{dur_str} 🔁"
-    parts.append(dur_str)
+        parts.append(dur_str)
 
     if cue.post_delay > 0:
         parts.append(f"Post +{cue.post_delay:.1f}s")
@@ -107,6 +124,7 @@ class LiveShowPanel(QWidget):
     go_requested = Signal()
     cue_row_clicked = Signal(int)
     cue_row_double_clicked = Signal(int)
+    group_collapse_toggled = Signal(int)
     pause_all_toggled = Signal()
     panic_requested = Signal()
     break_loop_requested = Signal()
@@ -440,8 +458,13 @@ class LiveShowPanel(QWidget):
             self.lbl_clock.setText(now_txt)
         self._refresh_stopwatch_ui()
 
-    def _on_table_clicked(self, row: int, _col: int) -> None:
+    def _on_table_clicked(self, row: int, col: int) -> None:
         if not self._updating_table and row >= 0:
+            if col == 0:
+                it = self.live_table.item(row, col)
+                if it and it.data(ROLE_IS_GROUP):
+                    self.group_collapse_toggled.emit(row)
+                    return
             self.cue_row_clicked.emit(row)
 
     def _on_table_double_clicked(self, row: int, _col: int) -> None:
@@ -524,9 +547,29 @@ class LiveShowPanel(QWidget):
                     it_q.setForeground(QColor(CLR_ACCENT))
                     it_q.setFont(bold_font)
                 # Col 2: Media badge text + name
-                short_type = {"VIDEO": "VID", "AUDIO": "AUD", "IMAGE": "IMG"}.get(cue.media_type.value, "CUE")
-                sec_tag = f"  [{len(cue.sections)} sez.]" if cue.sections else ""
-                it_name = QTableWidgetItem(f"[{short_type}]  {cue.name}{sec_tag}")
+                is_group = (cue.media_type == MediaType.GROUP)
+                if is_group:
+                    child_count = sum(1 for c in cues if c.parent_id == cue.cue_id)
+                    arrow = "▶" if getattr(cue, "collapsed", False) else "▼"
+                    mode_short = {
+                        "SIMULTANEOUS": "Simult.",
+                        "SEQUENCE": "Seq.",
+                        "STEP": "Passo",
+                        "RANDOM": "Rand.",
+                        "LOOP": "Loop",
+                    }.get(getattr(cue, "group_mode", "STEP"), getattr(cue, "group_mode", "STEP"))
+                    it_name = QTableWidgetItem(f"[GRP · {mode_short}]  {arrow} 📁 {cue.name}  ({child_count} cue)")
+                elif cue.parent_id is not None:
+                    siblings = [c for c in cues if c.parent_id == cue.parent_id]
+                    branch = "└── " if (siblings and siblings[-1].cue_id == cue.cue_id) else "├── "
+                    short_type = {"VIDEO": "VID", "AUDIO": "AUD", "IMAGE": "IMG"}.get(cue.media_type.value, "CUE")
+                    sec_tag = f"  [{len(cue.sections)} sez.]" if cue.sections else ""
+                    it_name = QTableWidgetItem(f"   {branch}[{short_type}]  {cue.name}{sec_tag}")
+                else:
+                    short_type = {"VIDEO": "VID", "AUDIO": "AUD", "IMAGE": "IMG"}.get(cue.media_type.value, "CUE")
+                    sec_tag = f"  [{len(cue.sections)} sez.]" if cue.sections else ""
+                    it_name = QTableWidgetItem(f"[{short_type}]  {cue.name}{sec_tag}")
+
                 if is_live or is_standby or is_waiting:
                     it_name.setFont(bold_font)
                 # Col 3: Regia notes directly readable!
@@ -537,7 +580,14 @@ class LiveShowPanel(QWidget):
                 it_timing.setFont(mono_font)
                 it_timing.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 # Col 5: Layer + Status / Phase
-                if phase_txt:
+                if is_group:
+                    if is_live:
+                        st_str = "SCENA LIVE"
+                    elif is_standby:
+                        st_str = "STANDBY"
+                    else:
+                        st_str = "SCENA"
+                elif phase_txt:
                     st_str = f"L{cue.layer} • {phase_txt}"
                 elif is_live:
                     st_str = f"L{cue.layer} • LIVE"
@@ -553,6 +603,8 @@ class LiveShowPanel(QWidget):
                 cue_color = getattr(cue, "color", "") or ""
                 prev_color = (getattr(cues[r - 1], "color", "") or "") if r > 0 else ""
                 incoming_link = cues[r - 1].follow_mode if r > 0 else ""
+                it_num.setData(ROLE_IS_GROUP, is_group)
+                it_num.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
                 for c_idx, it in enumerate(items):
                     it.setBackground(row_bg)
                     it.setData(ROLE_CUE_COLOR, cue_color)
@@ -569,14 +621,22 @@ class LiveShowPanel(QWidget):
                         it.setForeground(fg_main)
                     self.live_table.setItem(r, c_idx, it)
 
+                # Set row visibility based on parent collapsed state
+                if cue.parent_id is not None:
+                    parent = next((c for c in cues if c.cue_id == cue.parent_id), None)
+                    self.live_table.setRowHidden(r, bool(parent and parent.collapsed))
+                else:
+                    self.live_table.setRowHidden(r, False)
+
             if 0 <= standby_row < len(cues):
                 self.live_table.selectRow(standby_row)
                 sb_cue = cues[standby_row]
                 ref = format_cue_ref(standby_row, sb_cue)
                 notes_part = f"   │   Note: {sb_cue.notes}" if sb_cue.notes else ""
                 pre_part = f"   │   Pre +{sb_cue.pre_delay:.1f}s" if sb_cue.pre_delay > 0 else ""
+                layer_part = f"  [L{sb_cue.layer}]" if sb_cue.media_type != MediaType.GROUP else "  [SCENA/GRUPPO]"
                 self.lbl_standby_banner.setText(
-                    f"PROSSIMA (STANDBY):  {ref}  '{sb_cue.name}'  [L{sb_cue.layer}]{pre_part}{notes_part}"
+                    f"PROSSIMA (STANDBY):  {ref}  '{sb_cue.name}'{layer_part}{pre_part}{notes_part}"
                 )
                 self.btn_go.setText(f"▶   GO:  {ref} '{sb_cue.name}'   [ SPAZIO ]")
             else:

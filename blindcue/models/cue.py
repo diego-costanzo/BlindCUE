@@ -21,6 +21,7 @@ class MediaType(Enum):
     VIDEO = "VIDEO"
     AUDIO = "AUDIO"
     IMAGE = "IMAGE"
+    GROUP = "GROUP"
 
 
 class CueStatus(Enum):
@@ -38,6 +39,15 @@ class FollowMode(Enum):
     SIMULTANEOUS = "SIMULTANEOUS"  # Simultanea: avvia subito la successiva insieme a questa
 
 
+class GroupMode(Enum):
+    """Execution modes for Group cue containers."""
+    SIMULTANEOUS = "SIMULTANEOUS"  # Fire All: tutti gli elementi del gruppo partono insieme sul GO
+    SEQUENCE = "SEQUENCE"          # Cascata / Auto-follow: un solo GO lancia la catena interna
+    STEP = "STEP"                  # Passo-Passo (Capitolo): ogni GO avanza di un elemento nel gruppo
+    RANDOM = "RANDOM"              # Random / Variazioni: sceglie a caso un elemento (anti-ripetizione)
+    LOOP = "LOOP"                  # Loop continuo: cicla gli elementi interni della scena
+
+
 def _default_crop() -> Dict[str, float]:
     """Return default full-frame crop rectangle."""
     return {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
@@ -45,6 +55,7 @@ def _default_crop() -> Dict[str, float]:
 
 _VALID_FADE_CURVES = ("log", "scurve", "linear")
 _VALID_FOLLOW_MODES = tuple(m.value for m in FollowMode)
+_VALID_GROUP_MODES = tuple(m.value for m in GroupMode)
 
 
 def _sanitize_hex_color(value: object) -> str:
@@ -149,6 +160,9 @@ class Cue:
     post_delay: float = 0.0
     follow_mode: str = FollowMode.MANUAL.value
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
+    parent_id: Optional[int] = None  # None = root cue; int = belongs to parent Group cue
+    group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
+    collapsed: bool = False  # UI collapse state for GROUP cues
     fade_curve: str = "log"  # "log" (perceptual), "scurve" (cosine), "linear"
     volume_points: list[list[float]] = field(default_factory=list)   # [[time_sec, level 0..1], ...]
     opacity_points: list[list[float]] = field(default_factory=list)  # [[time_sec, opacity 0..1], ...]
@@ -170,8 +184,11 @@ class Cue:
         """
         errors: list[str] = []
 
-        if not os.path.isfile(self.file_path):
+        if self.media_type != MediaType.GROUP and not os.path.isfile(self.file_path):
             errors.append(f"Media file not found: {self.file_path}")
+
+        if self.group_mode not in _VALID_GROUP_MODES:
+            errors.append(f"group_mode must be one of {_VALID_GROUP_MODES} – got {self.group_mode}")
 
         if self.layer not in (1, 2, 3):
             errors.append(f"Layer must be 1, 2, or 3 – got {self.layer}")
@@ -254,6 +271,9 @@ class Cue:
             "post_delay": round(float(self.post_delay), 3),
             "follow_mode": self.follow_mode,
             "color": _sanitize_hex_color(self.color),
+            "parent_id": self.parent_id,
+            "group_mode": self.group_mode,
+            "collapsed": self.collapsed,
             "fade_curve": self.fade_curve,
             "volume_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.volume_points],
             "opacity_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.opacity_points],
@@ -300,6 +320,13 @@ class Cue:
                 else FollowMode.MANUAL.value
             ),
             color=_sanitize_hex_color(data.get("color", "")),
+            parent_id=data.get("parent_id"),
+            group_mode=(
+                data.get("group_mode", GroupMode.STEP.value)
+                if data.get("group_mode", GroupMode.STEP.value) in _VALID_GROUP_MODES
+                else GroupMode.STEP.value
+            ),
+            collapsed=bool(data.get("collapsed", False)),
             fade_curve=(
                 data.get("fade_curve", "log")
                 if data.get("fade_curve", "log") in _VALID_FADE_CURVES

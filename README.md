@@ -65,7 +65,18 @@ Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L
 - **Pre-Viz 16:9 WYSIWYG + `MIRROR LIVE` Foto & Video**:
   - Trascinamento diretto posizione, **8 maniglie per ritaglio sul frame**, equalizer audio animato.
   - Attivando **`MIRROR LIVE`**, le regolazioni su Foto **e Video in Standby** si vedono in tempo reale sul proiettore esterno senza emettere audio in sala.
-- **Ispettore Cue a 3 Schede (Linguette) & Modifiche Multi-Selezione**:
+- **Gruppi e Scene Teatrali Collassabili (`Ctrl+G` o `+ Gruppo`)**:
+  - Raggruppa più cue eterogenee (Audio, Video, Immagini) in un contenitore di scena con colore personalizzato e albero gerarchico grafico (`├── `, `└── `).
+  - **Espansione / Collasso istantaneo (`▶`/`▼`)** sia in Vista Progetto che nella Scaletta LIVE estesa per mantenere scalette lunghe pulite e leggibili.
+  - **5 Modalità di esecuzione avanzate**:
+    - `⇉ Simultaneo` (Fire All: tutti i media partono insieme sul GO).
+    - `⤵ Sequenziale` (Cascata continua con rispetto dei ritardi Pre/Post).
+    - `⏹ Passo-Passo` (Capitolo teatrale: ogni pressione del GO avanza di un elemento interno alla scena).
+    - `🎲 Random` (Variazioni e scelte casuali anti-ripetizione immediata).
+    - `🔁 Loop Scena` (Ciclo continuo degli elementi interni).
+  - **Scheda dedicata nell'Ispettore (`📁 Gruppo · Scena`)**: riepilogo conteggio elementi, durata totale stimata, regolazione tempi Pre/Post-Wait, lista modificabile con rimozione rapida elemento (`✕`) e scioglimento gruppo (`🔓 Sciogli Gruppo`).
+  - Auto-espansione automatica quando una cue interna diventa Standby o Live, garantendo la visibilità continua all'operatore.
+- **Ispettore Cue a Schede (Linguette) & Modifiche Multi-Selezione**:
   - **Scheda `🎯 Cue · Tempi`**: richiamo copione `Q`, Nome, Note, **Colori Gruppo/Scena (con divisori visivi e binario sinistro grafico per cue collegate)**, selezione Layer (`L1`, `L2`, `L3`), **`Pre-Delay`**, **`Post-Delay`**, **`Durata Img`** e sequenza (`Blocco / Auto-GO / Simult.`).
   - **Scheda `🖼 Video · Foto`**: `Pos X/Y` + nudge/Centro, `Scala`, `Opacità`, `Formato`, **Crop in `%` o `px` reali** e guida contestuale.
   - **Scheda `🎵 Audio · Tagli`**: `Volume`, `Fade In/Out`, `IN/OUT` e `Loop` (`∞` o `N` ripetizioni).
@@ -140,6 +151,7 @@ chmod +x install.sh run.sh
 | <kbd>F5</kbd> / <kbd>Ctrl</kbd>+<kbd>L</kbd> | Passa a **Modalità LIVE** | Torna a **Modalità Progetto** |
 | <kbd>Spazio</kbd> | **GO** *(bloccato mentre scrivi in caselle testo)* | **GO** (Avvia cue in Standby / catena Simultanea) |
 | <kbd>Esc</kbd> | Ferma ascolto/anteprima **Pre-Viz** | **🚨 PANIC STOP TOTALE (0ms)** |
+| <kbd>Ctrl</kbd> + <kbd>G</kbd> | **Crea Gruppo / Scena** (raggruppa selezione) | *(Disabilitato per sicurezza)* |
 | <kbd>Ctrl</kbd> + <kbd>B</kbd> | **Blackout** con micro-fade `0.2s` verso Layer 0 | **Blackout** con micro-fade `0.2s` verso Layer 0 |
 | <kbd>I</kbd> / <kbd>O</kbd> | Imposta `IN` / `OUT` alla testina nella waveform | *(Disabilitato per sicurezza)* |
 | <kbd>F2</kbd> | Modifica inline `Q` / `Nome` | *(Disabilitato — sola lettura)* |
