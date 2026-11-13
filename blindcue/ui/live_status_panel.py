@@ -2,12 +2,32 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Optional
 
-from PySide6.QtCore import QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QLinearGradient, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QGroupBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal
+from PySide6.QtGui import (
+    QColor,
+    QCursor,
+    QFont,
+    QFontMetrics,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+    QPolygonF,
+)
+from PySide6.QtWidgets import (
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMenu,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from models.cue import Cue, MediaType
 from ui.theme import CLR_LIVE, CLR_PREVIZ
@@ -23,7 +43,14 @@ def _fmt_mmss(sec: float) -> str:
 
 
 class _LiveLayerBar(QWidget):
-    """Progressive status bar showing Left elapsed, Center cue title, Right countdown, and fill."""
+    """Progressive status bar showing Left elapsed, Center cue title, Right countdown, and fill.
+
+    Supports interactive live playhead seeking, mouse drag scrubbing, wheel nudging,
+    and right-click rehearsal jump actions.
+    """
+
+    seek_requested = Signal(int, float)       # (layer_idx, target_sec)
+    play_pause_requested = Signal(int)        # (layer_idx)
 
     def __init__(self, layer_idx: int, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -39,9 +66,137 @@ class _LiveLayerBar(QWidget):
         self._is_paused: bool = False
         self._is_looping_inf: bool = False
         self._phase: str = ""  # "" (normal), "PRE" (Pre-Delay), "POST" (Post-Delay)
+
+        # Interactive scrub state
+        self._hover_active: bool = False
+        self._hover_x: float = -1.0
+        self._hover_sec: float = 0.0
+        self._is_dragging: bool = False
+        self._drag_sec: float = 0.0
+        self._last_drag_seek_time: float = 0.0
+
+        self.setMouseTracking(True)
         self.setMinimumWidth(0)
         self.setFixedHeight(28)
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+
+    def _is_seekable(self) -> bool:
+        return (
+            self._is_live
+            and self._media_type in (MediaType.AUDIO, MediaType.VIDEO)
+            and self._end_sec > self._start_sec
+            and self._phase not in ("PRE", "POST")
+        )
+
+    def _x_to_sec(self, x: float) -> float:
+        w = max(1.0, float(self.width()))
+        ratio = max(0.0, min(1.0, float(x) / w))
+        span = max(0.01, self._end_sec - self._start_sec)
+        return self._start_sec + ratio * span
+
+    def enterEvent(self, event) -> None:  # noqa: N802
+        if self._is_seekable():
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        self._hover_active = False
+        self._hover_x = -1.0
+        self.unsetCursor()
+        self.update()
+        super().leaveEvent(event)
+
+    def mouseMoveEvent(self, event) -> None:  # noqa: N802
+        if not self._is_seekable():
+            super().mouseMoveEvent(event)
+            return
+        x = float(event.position().x())
+        target_sec = self._x_to_sec(x)
+        self._hover_active = True
+        self._hover_x = x
+        self._hover_sec = target_sec
+
+        if self._is_dragging:
+            self._drag_sec = target_sec
+            now = time.monotonic()
+            if now - self._last_drag_seek_time >= 0.08:
+                self._last_drag_seek_time = now
+                self.seek_requested.emit(self._layer_idx, target_sec)
+        self.update()
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if not self._is_seekable():
+            super().mousePressEvent(event)
+            return
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._is_dragging = True
+            target_sec = self._x_to_sec(event.position().x())
+            self._drag_sec = target_sec
+            self._last_drag_seek_time = time.monotonic()
+            self.seek_requested.emit(self._layer_idx, target_sec)
+            self.update()
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton and self._is_dragging:
+            self._is_dragging = False
+            target_sec = self._x_to_sec(event.position().x())
+            self._pos_sec = target_sec
+            self.seek_requested.emit(self._layer_idx, target_sec)
+            self.update()
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802
+        if not self._is_seekable():
+            super().wheelEvent(event)
+            return
+        delta = event.angleDelta().y()
+        step = 5.0 if delta > 0 else -5.0
+        new_pos = max(self._start_sec, min(self._end_sec, self._pos_sec + step))
+        self.seek_requested.emit(self._layer_idx, new_pos)
+        self.update()
+        event.accept()
+
+    def contextMenuEvent(self, event) -> None:  # noqa: N802
+        if not self._is_seekable():
+            super().contextMenuEvent(event)
+            return
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            "QMenu { background-color: #0f172a; color: #e2e8f0; border: 1px solid #334155; padding: 4px; } "
+            "QMenu::item { padding: 6px 18px; border-radius: 3px; font-weight: bold; font-size: 11px; } "
+            "QMenu::item:selected { background-color: #1e293b; color: #38bdf8; }"
+        )
+        act_minus10 = menu.addAction("⏪ Salta Indietro di 10s")
+        act_minus10.triggered.connect(
+            lambda: self.seek_requested.emit(self._layer_idx, max(self._start_sec, self._pos_sec - 10.0))
+        )
+
+        act_minus5 = menu.addAction("⏪ Salta Indietro di 5s")
+        act_minus5.triggered.connect(
+            lambda: self.seek_requested.emit(self._layer_idx, max(self._start_sec, self._pos_sec - 5.0))
+        )
+
+        act_plus10 = menu.addAction("⏩ Salta Avanti di 10s")
+        act_plus10.triggered.connect(
+            lambda: self.seek_requested.emit(self._layer_idx, min(self._end_sec, self._pos_sec + 10.0))
+        )
+
+        act_start = menu.addAction("⏮ Riavvia da Inizio Cue (In-Point)")
+        act_start.triggered.connect(lambda: self.seek_requested.emit(self._layer_idx, self._start_sec))
+
+        menu.addSeparator()
+        if self._is_paused:
+            act_pp = menu.addAction("▶ Riprendi Riproduzione")
+        else:
+            act_pp = menu.addAction("⏸ Metti in Pausa (Prove)")
+        act_pp.triggered.connect(lambda: self.play_pause_requested.emit(self._layer_idx))
+
+        menu.exec(event.globalPos())
 
     def set_live(self, cue: Cue, duration_sec: float = 0.0, preserve_timing: bool = False) -> None:
         same_live = preserve_timing and self._is_live and self._cue_id == cue.cue_id
@@ -95,8 +250,9 @@ class _LiveLayerBar(QWidget):
             self._is_looping_inf = is_looping_inf
             changed = True
         if abs(pos_sec - self._pos_sec) >= 0.05 or changed:
-            self._pos_sec = max(0.0, pos_sec)
-            self.update()
+            if not self._is_dragging:
+                self._pos_sec = max(0.0, pos_sec)
+                self.update()
 
     def set_phase_progress(self, cue: Cue, phase: str, elapsed_sec: float, total_sec: float) -> None:
         """Show active Pre-Delay or Post-Delay countdown bar cleanly on the layer."""
@@ -129,6 +285,10 @@ class _LiveLayerBar(QWidget):
         self._end_sec = 0.0
         self._is_paused = False
         self._is_looping_inf = False
+        self._hover_active = False
+        self._hover_x = -1.0
+        self._is_dragging = False
+        self.unsetCursor()
         self.update()
 
     def text(self) -> str:
@@ -154,12 +314,13 @@ class _LiveLayerBar(QWidget):
             self._media_type == MediaType.IMAGE and self._end_sec > self._start_sec
         )
         progress = 0.0
-        elapsed_cue = max(0.0, self._pos_sec - self._start_sec)
+        cur_pos = self._drag_sec if (self._is_dragging and self._is_seekable()) else self._pos_sec
+        elapsed_cue = max(0.0, cur_pos - self._start_sec)
         remaining: Optional[float] = None
         if is_timed and self._end_sec > self._start_sec:
             span = max(0.01, self._end_sec - self._start_sec)
             progress = min(1.0, max(0.0, elapsed_cue / span))
-            remaining = max(0.0, self._end_sec - self._pos_sec)
+            remaining = max(0.0, self._end_sec - cur_pos)
 
         left_str = ""
         right_str = ""
@@ -234,8 +395,13 @@ class _LiveLayerBar(QWidget):
                 grad.setColorAt(1.0, QColor(0, 230, 118, 150))
                 edge_clr = QColor("#69f0ae")
             p.fillRect(QRectF(0.0, 0.0, fill_w, float(h)), grad)
-            p.setPen(QPen(edge_clr, 1.5))
-            p.drawLine(int(fill_w), 2, int(fill_w), h - 2)
+            p.setPen(QPen(edge_clr, 2.0))
+            p.drawLine(int(fill_w), 1, int(fill_w), h - 1)
+            # Scrubber notches
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(edge_clr)
+            p.drawPolygon(QPolygonF([QPointF(fill_w - 3.5, 0), QPointF(fill_w + 3.5, 0), QPointF(fill_w, 4.0)]))
+            p.drawPolygon(QPolygonF([QPointF(fill_w - 3.5, h), QPointF(fill_w + 3.5, h), QPointF(fill_w, h - 4.0)]))
         p.restore()
 
         # Crisp border highlight
@@ -303,6 +469,45 @@ class _LiveLayerBar(QWidget):
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter,
             elided_title,
         )
+
+        # Hover / Drag scrubbing visual indicator & floating time pill
+        if is_timed and (self._is_dragging or (self._hover_active and self._is_seekable())):
+            span = max(0.01, self._end_sec - self._start_sec)
+            active_x = (
+                w * max(0.0, min(1.0, (self._drag_sec - self._start_sec) / span))
+                if self._is_dragging
+                else self._hover_x
+            )
+            time_sec = self._drag_sec if self._is_dragging else self._hover_sec
+            rel_sec = max(0.0, time_sec - self._start_sec)
+            time_txt = f"⏱ {_fmt_mmss(rel_sec)}"
+
+            p.save()
+            p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            line_clr = QColor("#fde047") if self._is_dragging else QColor("#38bdf8")
+            line_clr.setAlpha(245 if self._is_dragging else 180)
+            p.setPen(QPen(line_clr, 1.5, Qt.PenStyle.SolidLine if self._is_dragging else Qt.PenStyle.DashLine))
+            p.drawLine(int(active_x), 1, int(active_x), h - 1)
+
+            badge_font = QFont("monospace", 8, QFont.Weight.Bold)
+            p.setFont(badge_font)
+            fm_b = QFontMetrics(badge_font)
+            bw = fm_b.horizontalAdvance(time_txt) + 12
+            bh = 17
+            bx = max(2.0, min(float(w - bw - 2), active_x - bw / 2.0))
+            by = 2.0
+            b_rect = QRectF(bx, by, bw, bh)
+
+            p.setPen(QPen(line_clr, 1.0))
+            bg_clr = QColor("#221b05" if self._is_dragging else "#082f49")
+            bg_clr.setAlpha(235)
+            p.setBrush(bg_clr)
+            p.drawRoundedRect(b_rect, 3.5, 3.5)
+
+            p.setPen(line_clr)
+            p.drawText(b_rect, Qt.AlignmentFlag.AlignCenter, time_txt)
+            p.restore()
+
         p.end()
 
 
@@ -311,6 +516,7 @@ class LiveStatusPanel(QGroupBox):
 
     clear_layer_clicked = Signal(int)
     layer_play_pause_clicked = Signal(int)
+    layer_seek_requested = Signal(int, float)
     blackout_clicked = Signal()
     choose_layer0_clicked = Signal()
     reset_layer0_clicked = Signal()
@@ -325,6 +531,7 @@ class LiveStatusPanel(QGroupBox):
         self._compact_live_mode = compact_live_mode
         self._layer_labels: dict[int, _LiveLayerBar] = {}
         self._play_pause_buttons: dict[int, QPushButton] = {}
+        self._jump_back_buttons: dict[int, QPushButton] = {}
         self._clear_buttons: dict[int, QPushButton] = {}
         self._build_ui()
 
@@ -348,6 +555,20 @@ class LiveStatusPanel(QGroupBox):
             row = QHBoxLayout()
             row.setSpacing(5)
             bar = _LiveLayerBar(layer)
+            bar.seek_requested.connect(self.layer_seek_requested.emit)
+            bar.play_pause_requested.connect(self.layer_play_pause_clicked.emit)
+
+            btn_back10 = QPushButton("⏪")
+            btn_back10.setFixedSize(24, 24)
+            btn_back10.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_back10.setVisible(False)
+            btn_back10.setToolTip(f"Salta indietro di 10s su Layer {layer} (utile nelle prove per ripetere la battuta)")
+            btn_back10.setStyleSheet(
+                "QPushButton { background-color: #122030; color: #93c5fd; border: 1px solid #2563eb; "
+                "border-radius: 12px; font-size: 10px; font-weight: bold; padding: 0; } "
+                "QPushButton:hover { background-color: #1d3557; color: #ffffff; border-color: #60a5fa; }"
+            )
+            btn_back10.clicked.connect(lambda _=False, idx=layer: self._on_quick_jump_backward(idx, 10.0))
 
             btn_pp = QPushButton("⏸")
             btn_pp.setFixedSize(24, 24)
@@ -363,10 +584,12 @@ class LiveStatusPanel(QGroupBox):
             btn.clicked.connect(lambda _=False, idx=layer: self.clear_layer_clicked.emit(idx))
 
             row.addWidget(bar, stretch=1)
+            row.addWidget(btn_back10)
             row.addWidget(btn_pp)
             row.addWidget(btn)
             layout.addLayout(row)
             self._layer_labels[layer] = bar
+            self._jump_back_buttons[layer] = btn_back10
             self._play_pause_buttons[layer] = btn_pp
             self._clear_buttons[layer] = btn
 
@@ -434,16 +657,25 @@ class LiveStatusPanel(QGroupBox):
                 "QPushButton:hover { background-color: #1a3d29; color: #ffffff; border-color: #00e676; }"
             )
 
+    def _on_quick_jump_backward(self, layer: int, delta_sec: float = 10.0) -> None:
+        bar = self._layer_labels.get(layer)
+        if bar is not None and bar._is_seekable():
+            target = max(bar._start_sec, bar._pos_sec - delta_sec)
+            self.layer_seek_requested.emit(layer, target)
+
     def set_layer_live(self, cue: Cue, duration_sec: float = 0.0, preserve_timing: bool = False) -> None:
         bar = self._layer_labels.get(cue.layer)
         if bar is not None:
             bar.set_live(cue, duration_sec=duration_sec, preserve_timing=preserve_timing)
+        is_playable = cue.media_type in (MediaType.AUDIO, MediaType.VIDEO)
         btn_pp = self._play_pause_buttons.get(cue.layer)
         if btn_pp is not None:
-            is_playable = cue.media_type in (MediaType.AUDIO, MediaType.VIDEO)
             btn_pp.setVisible(is_playable)
             if not preserve_timing:
                 self._style_play_pause_btn(btn_pp, paused=False)
+        btn_back = self._jump_back_buttons.get(cue.layer)
+        if btn_back is not None:
+            btn_back.setVisible(is_playable)
 
     def set_layer_progress(
         self,
@@ -466,6 +698,9 @@ class LiveStatusPanel(QGroupBox):
         btn_pp = self._play_pause_buttons.get(layer)
         if btn_pp is not None:
             btn_pp.setVisible(False)
+        btn_back = self._jump_back_buttons.get(layer)
+        if btn_back is not None:
+            btn_back.setVisible(False)
 
     def set_layer_paused(self, layer: int, paused: bool) -> None:
         bar = self._layer_labels.get(layer)
@@ -483,6 +718,9 @@ class LiveStatusPanel(QGroupBox):
         if btn_pp is not None:
             btn_pp.setVisible(False)
             self._style_play_pause_btn(btn_pp, paused=False)
+        btn_back = self._jump_back_buttons.get(layer)
+        if btn_back is not None:
+            btn_back.setVisible(False)
 
     def reset_all_layers(self) -> None:
         # Display Layers top-to-bottom in visual Z-order (Overlay L3 on top -> Sfondo L1 on bottom)

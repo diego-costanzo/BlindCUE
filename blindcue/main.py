@@ -779,6 +779,34 @@ def main() -> int:
 
     main_win.layer_play_pause_requested.connect(_on_layer_play_pause_requested)
 
+    def _on_layer_seek_requested(layer: int, position_sec: float) -> None:
+        """Seek active Audio/Video live player to position_sec (rehearsal scrub & skip)."""
+        live_cue = active_live_cues.get(layer)
+        lp = live_players.get(layer)
+        if live_cue is None or lp is None or live_cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
+            return
+        dur = live_durations.get(layer, 0.0)
+        if dur <= 0 and lp.duration_seconds() > 0:
+            dur = lp.duration_seconds()
+            live_durations[layer] = dur
+        start_sec, eff_end, is_inf = _live_effective_bounds(live_cue, dur if dur > 0 else 999999.0)
+        target = max(start_sec, min(eff_end, position_sec))
+        lp.seek(target)
+        live_positions[layer] = target
+        main_win.update_live_layer_progress(
+            layer,
+            target,
+            start_sec=start_sec,
+            end_sec=eff_end,
+            is_looping_inf=is_inf,
+        )
+        sel = main_win._selected_cue()
+        if sel is not None and sel.cue_id == live_cue.cue_id:
+            main_win.set_waveform_playhead_seconds(target, eff_end, "LIVE")
+        logger.info("[MAIN] Live Layer %d seeked to %.2fs for cue '%s'", layer, target, live_cue.name)
+
+    main_win.layer_seek_requested.connect(_on_layer_seek_requested)
+
     # ── Connect preview transport and mute controls ───────────────────
     if test_player is not None:
         main_win.preview_mute_toggled.connect(test_player.set_mute)

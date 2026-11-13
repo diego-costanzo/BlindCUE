@@ -622,8 +622,17 @@ class LivePlayer(QObject):
         try:
             player, _ = self._deck_pair()
             ms = max(0, int(position * 1000))
+            if self._sequencer.active:
+                for idx, sec in enumerate(self._sequencer.sections):
+                    s_end = sec.end if sec.end is not None else self._sequencer.eff_end
+                    if sec.start <= position <= s_end:
+                        self._sequencer.current_index = idx
+                        self._sequencer.iteration = 0
+                        self.signals.section_changed.emit(idx)
+                        break
             player.setPosition(ms)
             self._apply_envelope_at(position)
+            self._pre_cue_next_target()
         except Exception as exc:
             logger.error("[LIVE] seek() failed: %s", exc, exc_info=True)
 

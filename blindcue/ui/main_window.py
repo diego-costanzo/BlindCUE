@@ -136,6 +136,7 @@ class MainWindow(QMainWindow):
     section_jump_requested = Signal(object, int, bool)   # emits (Cue, section_idx, is_live_jump)
     section_break_loop_requested = Signal(object, bool)  # emits (Cue, is_live_jump)
     layer_play_pause_requested = Signal(int)             # emits live layer (1..3) pause/resume toggle
+    layer_seek_requested = Signal(int, float)            # emits live layer (1..3) and target position in seconds
     panic_requested = Signal()                           # emits instant 0ms Panic stop all
     pause_all_toggled = Signal()                         # emits global Show Pause/Resume toggle
 
@@ -621,6 +622,7 @@ class MainWindow(QMainWindow):
         self._live_status.choose_layer0_clicked.connect(self._on_choose_layer0)
         self._live_status.reset_layer0_clicked.connect(self._on_reset_layer0)
         self._live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
+        self._live_status.layer_seek_requested.connect(self.layer_seek_requested.emit)
         bottom_splitter.addWidget(self._live_status)
 
         drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
@@ -645,6 +647,7 @@ class MainWindow(QMainWindow):
         self._live_show_panel.break_loop_requested.connect(self._on_break_section_loop)
         self._live_show_panel.live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
         self._live_show_panel.live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
+        self._live_show_panel.live_status.layer_seek_requested.connect(self.layer_seek_requested.emit)
 
         self._status_panels: list[LiveStatusPanel] = [
             self._live_status,
