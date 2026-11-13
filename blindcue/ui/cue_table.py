@@ -39,6 +39,15 @@ ROLE_GROUP_MODE = Qt.ItemDataRole.UserRole + 13
 ROLE_GROUP_COLLAPSED = Qt.ItemDataRole.UserRole + 14
 ROLE_CHILD_COUNT = Qt.ItemDataRole.UserRole + 15
 ROLE_IS_LAST_CHILD = Qt.ItemDataRole.UserRole + 16
+ROLE_SECTION_COUNT = Qt.ItemDataRole.UserRole + 17
+ROLE_LOOP = Qt.ItemDataRole.UserRole + 18
+ROLE_PRE_DELAY = Qt.ItemDataRole.UserRole + 19
+ROLE_POST_DELAY = Qt.ItemDataRole.UserRole + 20
+ROLE_DURATION_TXT = Qt.ItemDataRole.UserRole + 21
+ROLE_NOTES_TXT = Qt.ItemDataRole.UserRole + 22
+ROLE_IS_LIVE = Qt.ItemDataRole.UserRole + 23
+ROLE_IS_STANDBY = Qt.ItemDataRole.UserRole + 24
+ROLE_PHASE_TXT = Qt.ItemDataRole.UserRole + 25
 
 _LINK_RAIL_COLORS = {
     "SIMULTANEOUS": QColor("#f59e0b"),
@@ -65,16 +74,31 @@ def paint_cue_row_decorations(
     col = index.column()
     cue_color = str(index.data(ROLE_CUE_COLOR) or "")
     prev_color = str(index.data(ROLE_PREV_COLOR) or "")
+    is_live = bool(index.data(ROLE_IS_LIVE))
+    is_standby = bool(index.data(ROLE_IS_STANDBY))
 
     painter.save()
     if cue_color:
         wash = QColor(cue_color)
         if wash.isValid():
-            wash.setAlpha(24 if is_selected else 36)
+            wash.setAlpha(20 if is_selected else 30)
             painter.fillRect(rect, wash)
-            if col == 0:
+            if col == 0 and not is_live and not is_standby:
                 ribbon = QColor(cue_color)
                 painter.fillRect(rect.left(), rect.top() + 1, 4, rect.height() - 2, ribbon)
+
+    if is_live:
+        live_wash = QColor("#092919")
+        live_wash.setAlpha(150)
+        painter.fillRect(rect, live_wash)
+        if col == 0:
+            painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#10b981"))
+    elif is_standby:
+        sb_wash = QColor("#261a08")
+        sb_wash.setAlpha(160)
+        painter.fillRect(rect, sb_wash)
+        if col == 0:
+            painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#f59e0b"))
 
     if index.row() > 0 and cue_color != prev_color and (cue_color or prev_color):
         div_clr = QColor(cue_color or prev_color)

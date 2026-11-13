@@ -49,8 +49,18 @@ Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L
    - Interfaccia a 6 pannelli proporzionati e bloccabili (`🔒 Pannelli Bloccati` / `🔓 Sbloccabili`): **Scaletta Cue**, **Anteprima Pre-Viz 16:9**, **Ispettore Cue** sopra; **Forma d'Onda & Automazioni**, **Live Output Status**, **Drag & Drop** sotto.
    - Pensata per tagliare, croppare, disegnare inviluppi, creare sezioni e provare in cuffia in totale isolamento.
 2. **🎭 Modalità LIVE (Show Mode — Esecuzione Spettacolo)**
-   - Schermata pulita dominata dalla **Scaletta LIVE estesa a 6 colonne** (`#`, `Q`, `Media`, `Note di Regia sempre leggibili`, `Tempi · Sequenza`, `Layer / Stato`), con **ora di sistema centrata** e **Cronometro Spettacolo (`⏱`)** in alto a destra (avvio automatico al 1° `GO` o manuale con clic per cronometrare le filate + reset `↺`).
-   - Blocca le scorciatoie di modifica/cancellazione accidentale ed evidenzia i soli comandi essenziali di regia: **`GO [SPAZIO]`**, **`⏸ PAUSA TUTTO` / `▶ RIPRENDI TUTTO`** e **`🚨 PANIC [ESC]`** in alto a destra lontano da `GO` (`Blackout` morbido `0.2s` sempre richiamabile da `Ctrl+B` o in Vista Progetto).
+   - Schermata teatrale ad altissima leggibilità dominata dalla **Scaletta LIVE estesa a 6 colonne** con rendering grafico custom pixel-perfect:
+     - **Colonna `#`**: barra luminosa verticale verde neon (`● LIVE`) o oro ambra (`▶ STANDBY`), nastro con colore personalizzato cue, freccia `▶`/`▼` per gruppi e binari di collegamento a catena (`Auto-GO` e `Simultanee`) con frecce direzionali.
+     - **Colonna `Q`**: richiamo copione in capsula ciano scuro (`#082f49`) ad alto contrasto.
+     - **Colonna `Media / Titolo Cue`**: badge arrotondati dedicati (`VID`, `AUD`, `IMG`, `GRP`), indentazione ad albero con rami gerarchici (`├── `, `└── `), titolo ad alta visibilità, pillole di sezione `[N sez.]`, badge `🔁 LOOP`, e pillole modalità scena (`⇉ SIMULT`, `⤵ CASCATA`, `⏹ PASSO`, `🎲 RND`, `🔁 LOOP`) con conteggio cue interne.
+     - **Colonna `Note di Regia`**: icona taccuino `📝`, testo sempre visibile e avviso in capsula ambra per parole chiave urgenti di regia (`ATTENZIONE`, `BUIO TOTALE`, `EMERGENZA`, `PERICOLO`).
+     - **Colonna `Tempi · Sequenza`**: pillola `Pre +X.Xs` ambra, durata calcolata/stimata in monospace bold, pillola `Post +X.Xs` viola e pillola modalità avanzamento (`⏹ MANUALE`, `⤵ AUTO-GO`, `⇉ SIMULT`).
+     - **Colonna `Layer · Stato`**: capsula layer `L1`/`L2`/`L3`/`GRP` e badge di stato dinamico (`● LIVE` verde smeraldo, `⏳ ATTESA` ciano, `▶ STANDBY` oro ambra, `PRONTO` ardesia).
+     - **Lavaggio a Colori & Divisori di Scena**: l'intero sfondo della riga riceve la tinta della cue con linee divisorie sottili al cambio di colore/capitolo.
+     - **Hero Bar Standby**: prompter panoramico ad alta leggibilità con capsula ambra `▶ STANDBY`, nome cue, layer, tipo media, avviso di pre-delay/auto-follow e note di regia.
+     - **Controllo da Tastiera & Menu Contestuale Pro**: Spazio lancia il GO, Esc attiva il PANIC, frecce Su/Giù scorrono lo Standby, doppio clic esegue la cue istantaneamente, tasto destro apre il menu contestuale per salto rapido (`GO Forzato`, `Imposta Standby`, `Espandi/Collassa`).
+     - **Ora esatta di sistema centrata** e **Cronometro Spettacolo (`⏱`)** in alto a destra (avvio automatico al 1° `GO` o manuale per le filate + reset `↺`).
+     - Blocca le scorciatoie di modifica/cancellazione accidentale ed evidenzia i soli comandi essenziali di regia: **`GO [SPAZIO]`**, **`⏸ PAUSA TUTTO` / `▶ RIPRENDI TUTTO`** e **`🚨 PANIC [ESC]`** in alto a destra lontano da `GO`.
 
 ---
 

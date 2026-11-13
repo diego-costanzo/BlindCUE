@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from PySide6.QtCore import QDateTime, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont
+from PySide6.QtCore import QDateTime, QPointF, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QHeaderView,
     QLabel,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QStyle,
@@ -27,45 +28,35 @@ from PySide6.QtWidgets import (
 
 from models.cue import Cue, CueStatus, FollowMode, MediaType
 from ui.cue_table import (
+    ROLE_CHILD_COUNT,
     ROLE_CUE_COLOR,
+    ROLE_DURATION_TXT,
     ROLE_FOLLOW_MODE,
     ROLE_GROUP_COLLAPSED,
+    ROLE_GROUP_MODE,
+    ROLE_HAS_NOTES,
     ROLE_INCOMING_LINK,
     ROLE_IS_GROUP,
+    ROLE_IS_LAST_CHILD,
+    ROLE_IS_LIVE,
+    ROLE_IS_STANDBY,
+    ROLE_LAYER,
+    ROLE_LOOP,
+    ROLE_MEDIA_TYPE,
+    ROLE_NOTES_TXT,
+    ROLE_PARENT_ID,
+    ROLE_PHASE_TXT,
+    ROLE_POST_DELAY,
+    ROLE_PRE_DELAY,
     ROLE_PREV_COLOR,
+    ROLE_SECTION_COUNT,
+    ROLE_STATUS_CLR,
+    ROLE_STATUS_TXT,
+    _GROUP_MODE_PILLS,
+    _LINK_RAIL_COLORS,
     format_cue_ref,
     paint_cue_row_decorations,
 )
-
-
-class LiveCueRowDelegate(QStyledItemDelegate):
-    """Paints left-rail link connectors and cue group colours onto Live Show table rows."""
-
-    def paint(self, painter, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
-        opt = QStyleOptionViewItem(option)
-        self.initStyleOption(opt, index)
-        is_sel = bool(opt.state & QStyle.StateFlag.State_Selected)
-        if index.column() == 0:
-            is_grp = bool(index.data(ROLE_IS_GROUP))
-            is_collapsed = bool(index.data(ROLE_GROUP_COLLAPSED))
-            if is_grp:
-                txt = "▶" if is_collapsed else "▼"
-            else:
-                txt = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
-            fg = index.data(Qt.ItemDataRole.ForegroundRole)
-            style = opt.widget.style() if opt.widget else QApplication.style()
-            opt.text = ""
-            opt.state &= ~QStyle.StateFlag.State_HasFocus
-            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
-            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
-            painter.save()
-            painter.setFont(opt.font)
-            painter.setPen(fg.color() if fg is not None else QColor("#e2e8f0"))
-            painter.drawText(opt.rect.adjusted(18, 0, -2, 0), Qt.AlignmentFlag.AlignCenter, txt)
-            painter.restore()
-            return
-        super().paint(painter, option, index)
-        paint_cue_row_decorations(painter, option.rect, index, is_selected=is_sel)
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ
 
@@ -115,6 +106,512 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
 
     link_ico = _LINK_ICONS.get(cue.follow_mode, "⏹")
     return " · ".join(parts) + f"  {link_ico}"
+
+
+class LiveCueTable(QTableWidget):
+    """Specialized Live Show table with direct keyboard navigation, context actions, and click signals."""
+
+    go_requested = Signal()
+    panic_requested = Signal()
+    standby_selected = Signal(int)
+    fire_row_requested = Signal(int)
+    group_collapse_toggled = Signal(int)
+
+    def __init__(self, parent: Optional[QWidget] = None) -> None:
+        super().__init__(0, 6, parent)
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        key = event.key()
+        if key == Qt.Key.Key_Space:
+            self.go_requested.emit()
+            event.accept()
+            return
+        if key == Qt.Key.Key_Escape:
+            self.panic_requested.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+        if key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown):
+            curr = self.currentRow()
+            if curr >= 0:
+                self.standby_selected.emit(curr)
+
+    def contextMenuEvent(self, event) -> None:  # noqa: N802
+        row = self.rowAt(event.pos().y())
+        if row < 0 or row >= self.rowCount():
+            return
+        self.selectRow(row)
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            "QMenu { background-color: #0f172a; color: #e2e8f0; border: 1px solid #334155; padding: 4px; } "
+            "QMenu::item { padding: 6px 18px; border-radius: 3px; font-weight: bold; font-size: 11px; } "
+            "QMenu::item:selected { background-color: #1e293b; color: #38bdf8; }"
+        )
+        act_go = menu.addAction("▶ Fai partire subito questa Cue (GO Forzato)")
+        act_go.triggered.connect(lambda: self.fire_row_requested.emit(row))
+
+        act_sb = menu.addAction("🎯 Imposta come Prossima Cue (Standby)")
+        act_sb.triggered.connect(lambda: self.standby_selected.emit(row))
+
+        it_num = self.item(row, 0)
+        if it_num and it_num.data(ROLE_IS_GROUP):
+            menu.addSeparator()
+            is_col = bool(it_num.data(ROLE_GROUP_COLLAPSED))
+            act_toggle = menu.addAction("▼ Espandi Gruppo" if is_col else "▶ Collassa Gruppo")
+            act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(row))
+
+        menu.exec(event.globalPos())
+
+
+class LiveCueRowDelegate(QStyledItemDelegate):
+    """High-contrast, distraction-free delegate for Live Show table with custom pills, tree branches, and timing."""
+
+    _MEDIA_BADGE = {
+        "VIDEO": ("VID", QColor("#0284c7"), QColor("#e0f2fe")),
+        "AUDIO": ("AUD", QColor("#0d9488"), QColor("#ccfbf1")),
+        "IMAGE": ("IMG", QColor("#d97706"), QColor("#fef3c7")),
+        "GROUP": ("GRP", QColor("#6d28d9"), QColor("#ede9fe")),
+    }
+
+    _URGENT_NOTES_KEYWORDS = (
+        "ATTENZIONE", "PERICOLO", "BUIO TOTALE", "STOP IMMEDIATO", "EMERGENZA", "AVVISO", "ALLARME"
+    )
+
+    def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        super().initStyleOption(option, index)
+        option.state &= ~QStyle.StateFlag.State_HasFocus
+
+    def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        col = index.column()
+        opt = QStyleOptionViewItem(option)
+        self.initStyleOption(opt, index)
+        style = opt.widget.style() if opt.widget else QApplication.style()
+
+        is_sel = bool(opt.state & QStyle.StateFlag.State_Selected)
+        is_live = bool(index.data(ROLE_IS_LIVE))
+        is_standby = bool(index.data(ROLE_IS_STANDBY))
+        is_group = bool(index.data(ROLE_IS_GROUP))
+        is_collapsed = bool(index.data(ROLE_GROUP_COLLAPSED))
+        phase_txt = str(index.data(ROLE_PHASE_TXT) or "")
+        is_waiting = bool(phase_txt)
+
+        # ── Col 0: # & Group Chevron & Link Rail ──────────────────────────────
+        if col == 0:
+            raw_num = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            pen_clr = QColor("#4ade80") if is_live else (QColor("#fcd34d") if is_standby else QColor("#94a3b8"))
+
+            if is_group:
+                arrow_sym = "▶" if is_collapsed else "▼"
+                painter.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
+                painter.setPen(QColor("#38bdf8"))
+                painter.drawText(
+                    opt.rect.adjusted(6, 0, -28, 0),
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    arrow_sym,
+                )
+                painter.setFont(QFont("monospace", 10, QFont.Weight.Bold))
+                painter.setPen(pen_clr)
+                painter.drawText(
+                    opt.rect.adjusted(20, 0, -2, 0),
+                    Qt.AlignmentFlag.AlignCenter,
+                    raw_num,
+                )
+            else:
+                painter.setFont(
+                    QFont("monospace", 10, QFont.Weight.Bold if (is_live or is_standby) else QFont.Weight.Normal)
+                )
+                painter.setPen(pen_clr)
+                painter.drawText(
+                    opt.rect.adjusted(18, 0, -2, 0),
+                    Qt.AlignmentFlag.AlignCenter,
+                    raw_num,
+                )
+            painter.restore()
+            return
+
+        # ── Col 1: Q Script Callout ───────────────────────────────────────────
+        if col == 1:
+            raw_q = str(index.data(Qt.ItemDataRole.DisplayRole) or "").strip()
+            if raw_q == "—":
+                raw_q = ""
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = opt.rect
+
+            if raw_q:
+                font = QFont(opt.font)
+                font.setPointSize(9)
+                font.setBold(True)
+                painter.setFont(font)
+                fm = painter.fontMetrics()
+                pw = max(34, fm.horizontalAdvance(raw_q) + 12)
+                ph = 20
+                px = rect.left() + (rect.width() - pw) // 2
+                py = rect.top() + (rect.height() - ph) // 2
+                pill_rect = QRect(px, py, pw, ph)
+
+                painter.setPen(QPen(QColor("#0284c7"), 1))
+                painter.setBrush(QColor("#082f49"))
+                painter.drawRoundedRect(pill_rect, 4, 4)
+                painter.setPen(QColor("#38bdf8"))
+                painter.drawText(pill_rect, Qt.AlignmentFlag.AlignCenter, raw_q)
+            else:
+                painter.setFont(opt.font)
+                painter.setPen(QColor("#334155"))
+                painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "—")
+            painter.restore()
+            return
+
+        # ── Col 2: Media / Titolo Cue ─────────────────────────────────────────
+        if col == 2:
+            name_text = str(index.data(Qt.ItemDataRole.EditRole) or index.data(Qt.ItemDataRole.DisplayRole) or "")
+            media_type = str(index.data(ROLE_MEDIA_TYPE) or "")
+            parent_id = index.data(ROLE_PARENT_ID)
+            child_count = int(index.data(ROLE_CHILD_COUNT) or 0)
+            group_mode = str(index.data(ROLE_GROUP_MODE) or "STEP")
+            is_last_child = bool(index.data(ROLE_IS_LAST_CHILD))
+            sec_count = int(index.data(ROLE_SECTION_COUNT) or 0)
+            is_loop = bool(index.data(ROLE_LOOP))
+
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = opt.rect.adjusted(6, 3, -6, -3)
+            left_x = rect.left()
+
+            # Indent child cue with branch connector
+            if parent_id is not None:
+                branch_sym = "└── " if is_last_child else "├── "
+                painter.setFont(QFont("monospace", 10))
+                painter.setPen(QColor("#64748b"))
+                painter.drawText(
+                    QRect(left_x, rect.top(), 24, rect.height()),
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    branch_sym,
+                )
+                left_x += 20
+
+            # Media badge pill
+            if media_type in self._MEDIA_BADGE:
+                tag_txt, bg_clr, fg_clr = self._MEDIA_BADGE[media_type]
+                pill_w, pill_h = (34, 18) if is_group else (30, 18)
+                pill_y = rect.top() + (rect.height() - pill_h) // 2
+                pill_rect = QRect(left_x, pill_y, pill_w, pill_h)
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(bg_clr)
+                painter.drawRoundedRect(pill_rect, 3, 3)
+
+                badge_font = QFont(opt.font)
+                badge_font.setPointSize(8)
+                badge_font.setBold(True)
+                painter.setFont(badge_font)
+                painter.setPen(fg_clr)
+                painter.drawText(pill_rect, Qt.AlignmentFlag.AlignCenter, tag_txt)
+                left_x += pill_w + 8
+
+            right_x = rect.right()
+            tag_font = QFont(opt.font)
+            tag_font.setPointSize(8)
+            tag_font.setBold(True)
+
+            # Right badges
+            if is_group:
+                if group_mode in _GROUP_MODE_PILLS:
+                    gm_txt, gm_bg, gm_fg = _GROUP_MODE_PILLS[group_mode]
+                    painter.setFont(tag_font)
+                    fm_gm = painter.fontMetrics()
+                    gm_w = fm_gm.horizontalAdvance(gm_txt) + 12
+                    gm_rect = QRect(right_x - gm_w, rect.top() + (rect.height() - 18) // 2, gm_w, 18)
+                    painter.setPen(QPen(gm_fg, 1))
+                    painter.setBrush(gm_bg)
+                    painter.drawRoundedRect(gm_rect, 3, 3)
+                    painter.setPen(gm_fg)
+                    painter.drawText(gm_rect, Qt.AlignmentFlag.AlignCenter, gm_txt)
+                    right_x -= gm_w + 6
+
+                if child_count > 0:
+                    cc_txt = f"{child_count} Cue"
+                    painter.setFont(tag_font)
+                    fm_cc = painter.fontMetrics()
+                    cc_w = fm_cc.horizontalAdvance(cc_txt) + 10
+                    cc_rect = QRect(right_x - cc_w, rect.top() + (rect.height() - 18) // 2, cc_w, 18)
+                    painter.setPen(QPen(QColor("#334155"), 1))
+                    painter.setBrush(QColor("#0f172a"))
+                    painter.drawRoundedRect(cc_rect, 3, 3)
+                    painter.setPen(QColor("#94a3b8"))
+                    painter.drawText(cc_rect, Qt.AlignmentFlag.AlignCenter, cc_txt)
+                    right_x -= cc_w + 6
+            else:
+                if is_loop:
+                    loop_txt = "🔁 LOOP"
+                    painter.setFont(tag_font)
+                    fm_lp = painter.fontMetrics()
+                    lp_w = fm_lp.horizontalAdvance(loop_txt) + 10
+                    lp_rect = QRect(right_x - lp_w, rect.top() + (rect.height() - 18) // 2, lp_w, 18)
+                    painter.setPen(QPen(QColor("#d97706"), 1))
+                    painter.setBrush(QColor("#451a03"))
+                    painter.drawRoundedRect(lp_rect, 3, 3)
+                    painter.setPen(QColor("#fbbf24"))
+                    painter.drawText(lp_rect, Qt.AlignmentFlag.AlignCenter, loop_txt)
+                    right_x -= lp_w + 6
+
+                if sec_count > 0:
+                    sec_txt = f"[{sec_count} sez.]"
+                    painter.setFont(tag_font)
+                    fm_sec = painter.fontMetrics()
+                    sec_w = fm_sec.horizontalAdvance(sec_txt) + 8
+                    sec_rect = QRect(right_x - sec_w, rect.top() + (rect.height() - 18) // 2, sec_w, 18)
+                    painter.setPen(QPen(QColor("#334155"), 1))
+                    painter.setBrush(QColor("#1e293b"))
+                    painter.drawRoundedRect(sec_rect, 3, 3)
+                    painter.setPen(QColor("#94a3b8"))
+                    painter.drawText(sec_rect, Qt.AlignmentFlag.AlignCenter, sec_txt)
+                    right_x -= sec_w + 6
+
+            avail_w = max(24, right_x - left_x - 4)
+            name_rect = QRect(left_x, rect.top(), avail_w, rect.height())
+            name_font = QFont(opt.font)
+            name_font.setPointSize(11)
+            if is_live or is_standby or is_group or is_waiting:
+                name_font.setBold(True)
+            painter.setFont(name_font)
+
+            if is_group:
+                disp_name = "📁 " + (name_text[2:].strip() if name_text.startswith("📁") else name_text)
+                name_clr = QColor("#c084fc")
+            elif is_live:
+                disp_name = name_text
+                name_clr = QColor("#4ade80")
+            elif is_standby:
+                disp_name = name_text
+                name_clr = QColor("#fef08a")
+            elif is_waiting:
+                disp_name = name_text
+                name_clr = QColor("#7dd3fc")
+            else:
+                disp_name = name_text
+                name_clr = QColor("#f8fafc")
+
+            elided_name = painter.fontMetrics().elidedText(disp_name, Qt.TextElideMode.ElideRight, avail_w)
+            painter.setPen(name_clr)
+            painter.drawText(name_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, elided_name)
+            painter.restore()
+            return
+
+        # ── Col 3: Note di Regia ──────────────────────────────────────────────
+        if col == 3:
+            notes_text = str(index.data(ROLE_NOTES_TXT) or "").strip()
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = opt.rect.adjusted(6, 3, -6, -3)
+
+            if notes_text:
+                is_urgent = any(k in notes_text.upper() for k in self._URGENT_NOTES_KEYWORDS)
+
+                if is_urgent:
+                    painter.setPen(QPen(QColor("#d97706"), 1))
+                    painter.setBrush(QColor(69, 26, 3, 160))
+                    painter.drawRoundedRect(rect, 4, 4)
+
+                painter.setFont(QFont(opt.font.family(), 9))
+                painter.setPen(QColor("#f59e0b" if is_urgent else "#38bdf8"))
+                painter.drawText(
+                    QRect(rect.left() + 4, rect.top(), 20, rect.height()),
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    "📝",
+                )
+
+                note_font = QFont(opt.font)
+                note_font.setPointSize(9)
+                if is_urgent:
+                    note_font.setBold(True)
+                painter.setFont(note_font)
+                note_clr = QColor("#fef3c7" if is_urgent else "#cbd5e1")
+                painter.setPen(note_clr)
+                avail_w = max(20, rect.width() - 28)
+                elided = painter.fontMetrics().elidedText(notes_text, Qt.TextElideMode.ElideRight, avail_w)
+                painter.drawText(
+                    QRect(rect.left() + 26, rect.top(), avail_w, rect.height()),
+                    Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
+                    elided,
+                )
+            else:
+                painter.setFont(opt.font)
+                painter.setPen(QColor("#334155"))
+                painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "—")
+
+            painter.restore()
+            return
+
+        # ── Col 4: Tempi · Sequenza ───────────────────────────────────────────
+        if col == 4:
+            pre_delay = float(index.data(ROLE_PRE_DELAY) or 0.0)
+            post_delay = float(index.data(ROLE_POST_DELAY) or 0.0)
+            dur_str = str(index.data(ROLE_DURATION_TXT) or "--:--")
+            follow_mode = str(index.data(ROLE_FOLLOW_MODE) or "MANUAL")
+
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = opt.rect.adjusted(6, 3, -6, -3)
+
+            tag_font = QFont(opt.font)
+            tag_font.setPointSize(8)
+            tag_font.setBold(True)
+            painter.setFont(tag_font)
+
+            if follow_mode == "AUTO_FOLLOW":
+                fm_txt, fm_bg, fm_border, fm_fg = "⤵ AUTO-GO", QColor("#0c2638"), QColor("#38bdf8"), QColor("#7dd3fc")
+                fm_w = 68
+            elif follow_mode == "SIMULTANEOUS":
+                fm_txt, fm_bg, fm_border, fm_fg = "⇉ SIMULT", QColor("#332006"), QColor("#f59e0b"), QColor("#fcd34d")
+                fm_w = 66
+            else:
+                fm_txt, fm_bg, fm_border, fm_fg = "⏹ MANUALE", QColor("#131a26"), QColor("#243144"), QColor("#94a3b8")
+                fm_w = 70
+
+            right_x = rect.right()
+            fm_rect = QRect(right_x - fm_w, rect.top() + (rect.height() - 18) // 2, fm_w, 18)
+            painter.setPen(QPen(fm_border, 1))
+            painter.setBrush(fm_bg)
+            painter.drawRoundedRect(fm_rect, 3, 3)
+            painter.setPen(fm_fg)
+            painter.drawText(fm_rect, Qt.AlignmentFlag.AlignCenter, fm_txt)
+            right_x -= fm_w + 6
+
+            left_x = rect.left()
+
+            if pre_delay > 0:
+                pre_txt = f"Pre +{pre_delay:.1f}s"
+                painter.setFont(tag_font)
+                pw = painter.fontMetrics().horizontalAdvance(pre_txt) + 8
+                p_rect = QRect(left_x, rect.top() + (rect.height() - 18) // 2, pw, 18)
+                painter.setPen(QPen(QColor("#d97706"), 1))
+                painter.setBrush(QColor("#332006"))
+                painter.drawRoundedRect(p_rect, 3, 3)
+                painter.setPen(QColor("#fbbf24"))
+                painter.drawText(p_rect, Qt.AlignmentFlag.AlignCenter, pre_txt)
+                left_x += pw + 6
+
+            if post_delay > 0:
+                post_txt = f"Post +{post_delay:.1f}s"
+                painter.setFont(tag_font)
+                post_w = painter.fontMetrics().horizontalAdvance(post_txt) + 8
+                post_rect = QRect(right_x - post_w, rect.top() + (rect.height() - 18) // 2, post_w, 18)
+                painter.setPen(QPen(QColor("#7c3aed"), 1))
+                painter.setBrush(QColor("#2e1065"))
+                painter.drawRoundedRect(post_rect, 3, 3)
+                painter.setPen(QColor("#c084fc"))
+                painter.drawText(post_rect, Qt.AlignmentFlag.AlignCenter, post_txt)
+                right_x -= post_w + 6
+
+            center_w = max(20, right_x - left_x)
+            dur_rect = QRect(left_x, rect.top(), center_w, rect.height())
+            dur_font = QFont("monospace", 10, QFont.Weight.Bold)
+            painter.setFont(dur_font)
+            painter.setPen(QColor("#e2e8f0"))
+            painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
+
+            painter.restore()
+            return
+
+        # ── Col 5: Layer · Stato LIVE ─────────────────────────────────────────
+        if col == 5:
+            layer = int(index.data(ROLE_LAYER) or 1)
+            phase_txt = str(index.data(ROLE_PHASE_TXT) or "")
+
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+
+            painter.save()
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+            rect = opt.rect.adjusted(6, 3, -6, -3)
+
+            layer_txt = "GRP" if is_group else f"L{layer}"
+            layer_font = QFont(opt.font)
+            layer_font.setPointSize(8)
+            layer_font.setBold(True)
+            painter.setFont(layer_font)
+
+            lw = 32 if is_group else 26
+            lh = 18
+            ly = rect.top() + (rect.height() - lh) // 2
+            l_rect = QRect(rect.left(), ly, lw, lh)
+
+            if is_group:
+                painter.setPen(QPen(QColor("#7c3aed"), 1))
+                painter.setBrush(QColor("#2e1065"))
+                painter.drawRoundedRect(l_rect, 3, 3)
+                painter.setPen(QColor("#c084fc"))
+            else:
+                painter.setPen(QPen(QColor("#334155"), 1))
+                painter.setBrush(QColor("#1e293b"))
+                painter.drawRoundedRect(l_rect, 3, 3)
+                painter.setPen(QColor("#94a3b8"))
+            painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_txt)
+
+            tag_font = QFont(opt.font)
+            tag_font.setPointSize(8.5)
+            tag_font.setBold(True)
+            painter.setFont(tag_font)
+
+            if is_live:
+                st_label = "● LIVE"
+                st_bg = QColor("#064e3b")
+                st_border = QColor("#10b981")
+                st_fg = QColor("#4ade80")
+            elif phase_txt:
+                st_label = f"⏳ {phase_txt}"
+                st_bg = QColor("#082f49")
+                st_border = QColor("#0284c7")
+                st_fg = QColor("#7dd3fc")
+            elif is_standby:
+                st_label = "▶ STANDBY"
+                st_bg = QColor("#451a03")
+                st_border = QColor("#d97706")
+                st_fg = QColor("#fbbf24")
+            else:
+                st_label = "PRONTO"
+                st_bg = QColor("#101722")
+                st_border = QColor("#1e293b")
+                st_fg = QColor("#64748b")
+
+            fm_st = painter.fontMetrics()
+            sw = max(72, fm_st.horizontalAdvance(st_label) + 12)
+            sh = 20
+            sx = rect.right() - sw
+            sy = rect.top() + (rect.height() - sh) // 2
+            s_rect = QRect(sx, sy, sw, sh)
+
+            painter.setPen(QPen(st_border, 1.5 if (is_live or is_standby) else 1.0))
+            painter.setBrush(st_bg)
+            painter.drawRoundedRect(s_rect, 4, 4)
+            painter.setPen(st_fg)
+            painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, st_label)
+
+            painter.restore()
+            return
 
 
 class LiveShowPanel(QWidget):
@@ -193,7 +690,7 @@ class LiveShowPanel(QWidget):
         left_layout.addWidget(self.lbl_show_badge)
         left_layout.addStretch(1)
 
-        # Dead-center real-time wall clock (balanced left/right stretch=1 containers)
+        # Dead-center real-time wall clock
         self.lbl_clock = QLabel("00:00:00")
         self.lbl_clock.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_clock.setStyleSheet(
@@ -208,7 +705,7 @@ class LiveShowPanel(QWidget):
         right_layout.setSpacing(6)
         right_layout.addStretch(1)
 
-        # Show duration stopwatch (auto-starts on 1st GO or clickable anytime for rehearsals)
+        # Show duration stopwatch
         self.btn_stopwatch = QPushButton("⏱  00:00:00")
         self.btn_stopwatch.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_stopwatch.setFixedHeight(34)
@@ -255,12 +752,12 @@ class LiveShowPanel(QWidget):
         root.addWidget(top_bar)
 
         # ── 2. Center Hero Area: Extended 6-Column Live Scaletta ──────────────
-        self.live_table = QTableWidget(0, 6)
+        self.live_table = LiveCueTable()
         self.live_table.setHorizontalHeaderLabels([
             "#", "Q", "Media / Cue", "Note di Regia", "Tempi · Sequenza", "Layer / Stato"
         ])
         self.live_table.verticalHeader().setVisible(False)
-        self.live_table.verticalHeader().setDefaultSectionSize(34)
+        self.live_table.verticalHeader().setDefaultSectionSize(38)
         self.live_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.live_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.live_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -269,7 +766,7 @@ class LiveShowPanel(QWidget):
         self.live_table.setStyleSheet(
             "QTableWidget { background-color: #0b0f16; border: 1px solid #1e293b; border-radius: 6px; "
             "font-size: 13px; gridline-color: #161f2c; } "
-            "QTableWidget::item { padding: 4px 8px; border-bottom: 1px solid #131b26; } "
+            "QTableWidget::item { padding: 4px 6px; border-bottom: 1px solid #131b26; } "
             "QHeaderView::section { background-color: #131a26; color: #94a3b8; font-weight: bold; "
             "font-size: 11px; padding: 6px; border: none; border-bottom: 1px solid #243144; }"
         )
@@ -278,41 +775,55 @@ class LiveShowPanel(QWidget):
         hdr.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
         hdr.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.live_table.setColumnWidth(0, 56)
-        self.live_table.setColumnWidth(1, 80)
-        self.live_table.setColumnWidth(4, 290)
-        self.live_table.setColumnWidth(5, 145)
+        self.live_table.setColumnWidth(0, 60)
+        self.live_table.setColumnWidth(1, 76)
+        self.live_table.setColumnWidth(3, 270)
+        self.live_table.setColumnWidth(4, 260)
+        self.live_table.setColumnWidth(5, 160)
         self.live_table.setItemDelegate(LiveCueRowDelegate(self.live_table))
 
         self.live_table.cellClicked.connect(self._on_table_clicked)
         self.live_table.cellDoubleClicked.connect(self._on_table_double_clicked)
+        self.live_table.go_requested.connect(self.go_requested)
+        self.live_table.panic_requested.connect(self.panic_requested)
+        self.live_table.standby_selected.connect(self.cue_row_clicked)
+        self.live_table.fire_row_requested.connect(self.cue_row_double_clicked)
+        self.live_table.group_collapse_toggled.connect(self.group_collapse_toggled)
         root.addWidget(self.live_table, stretch=1)
 
-        # Standby Info Banner + optional Break Section Loop shortcut
+        # Standby Hero Bar + optional Break Section Loop shortcut
         standby_bar = QFrame()
-        standby_bar.setFixedHeight(34)
+        standby_bar.setFixedHeight(40)
         standby_bar.setStyleSheet(
-            "QFrame { background-color: #111824; border: 1px solid #243044; border-radius: 5px; }"
+            "QFrame { background-color: #0b111a; border: 1px solid #1e2d42; border-radius: 6px; }"
         )
         sb_layout = QHBoxLayout(standby_bar)
-        sb_layout.setContentsMargins(10, 2, 10, 2)
+        sb_layout.setContentsMargins(12, 2, 12, 2)
         sb_layout.setSpacing(10)
 
-        self.lbl_standby_banner = QLabel("STANDBY: Nessuna cue pronta")
+        self.lbl_standby_pill = QLabel("▶ STANDBY")
+        self.lbl_standby_pill.setFixedHeight(26)
+        self.lbl_standby_pill.setStyleSheet(
+            "QLabel { background-color: #451a03; color: #fbbf24; border: 1px solid #d97706; "
+            "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; }"
+        )
+        sb_layout.addWidget(self.lbl_standby_pill)
+
+        self.lbl_standby_banner = QLabel("Nessuna cue pronta in scaletta")
         self.lbl_standby_banner.setMinimumWidth(0)
         self.lbl_standby_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_standby_banner.setStyleSheet(
-            f"QLabel {{ color: {CLR_PREVIZ}; font-size: 12px; font-weight: bold; border: none; }}"
+            "QLabel { color: #f8fafc; font-size: 13px; font-weight: bold; border: none; background: transparent; }"
         )
         sb_layout.addWidget(self.lbl_standby_banner, stretch=1)
 
         self.btn_break_loop = QPushButton("⏭ Esci da Loop Sezione")
         self.btn_break_loop.setVisible(False)
         self.btn_break_loop.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_break_loop.setFixedHeight(24)
+        self.btn_break_loop.setFixedHeight(26)
         self.btn_break_loop.setStyleSheet(
             "QPushButton { background-color: #78350f; color: #fef3c7; border: 1px solid #f59e0b; "
             "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 10px; } "
@@ -514,111 +1025,97 @@ class LiveShowPanel(QWidget):
         try:
             self.live_table.setRowCount(len(cues))
             phases = phase_tags or {}
-            bold_font = QFont("sans-serif", 12, QFont.Weight.Bold)
-            mono_font = QFont("monospace", 10)
 
             for r, cue in enumerate(cues):
                 is_live = (cue.status == CueStatus.LIVE)
                 is_standby = (r == standby_row and not is_live)
                 phase_txt = phases.get(cue.cue_id, "")
                 is_waiting = bool(phase_txt)
-
-                if is_live:
-                    row_bg = QColor("#092919")
-                    fg_main = QColor(CLR_LIVE)
-                elif is_waiting:
-                    row_bg = QColor("#0e2136")
-                    fg_main = QColor("#7dd3fc")
-                elif is_standby:
-                    row_bg = QColor("#261a08")
-                    fg_main = QColor(CLR_PREVIZ)
-                else:
-                    row_bg = QColor("#0d121a" if r % 2 == 0 else "#101620")
-                    fg_main = QColor("#e2e8f0")
-
-                # Col 0: #
-                it_num = QTableWidgetItem(f"{r + 1}")
-                it_num.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # Col 1: Q
-                q_str = (cue.q_label or "").strip() or "—"
-                it_q = QTableWidgetItem(q_str)
-                it_q.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                if q_str != "—":
-                    it_q.setForeground(QColor(CLR_ACCENT))
-                    it_q.setFont(bold_font)
-                # Col 2: Media badge text + name
                 is_group = (cue.media_type == MediaType.GROUP)
-                if is_group:
-                    child_count = sum(1 for c in cues if c.parent_id == cue.cue_id)
-                    arrow = "▶" if getattr(cue, "collapsed", False) else "▼"
-                    mode_short = {
-                        "SIMULTANEOUS": "Simult.",
-                        "SEQUENCE": "Seq.",
-                        "STEP": "Passo",
-                        "RANDOM": "Rand.",
-                        "LOOP": "Loop",
-                    }.get(getattr(cue, "group_mode", "STEP"), getattr(cue, "group_mode", "STEP"))
-                    it_name = QTableWidgetItem(f"[GRP · {mode_short}]  {arrow} 📁 {cue.name}  ({child_count} cue)")
-                elif cue.parent_id is not None:
-                    siblings = [c for c in cues if c.parent_id == cue.parent_id]
-                    branch = "└── " if (siblings and siblings[-1].cue_id == cue.cue_id) else "├── "
-                    short_type = {"VIDEO": "VID", "AUDIO": "AUD", "IMAGE": "IMG"}.get(cue.media_type.value, "CUE")
-                    sec_tag = f"  [{len(cue.sections)} sez.]" if cue.sections else ""
-                    it_name = QTableWidgetItem(f"   {branch}[{short_type}]  {cue.name}{sec_tag}")
-                else:
-                    short_type = {"VIDEO": "VID", "AUDIO": "AUD", "IMAGE": "IMG"}.get(cue.media_type.value, "CUE")
-                    sec_tag = f"  [{len(cue.sections)} sez.]" if cue.sections else ""
-                    it_name = QTableWidgetItem(f"[{short_type}]  {cue.name}{sec_tag}")
 
-                if is_live or is_standby or is_waiting:
-                    it_name.setFont(bold_font)
-                # Col 3: Regia notes directly readable!
-                it_notes = QTableWidgetItem(cue.notes or "—")
-                # Col 4: Timing & Link summary
+                # Duration string calculation
                 dur_hint = known_durations.get(cue.file_path, 0.0)
-                it_timing = QTableWidgetItem(format_cue_timing_summary(cue, dur_hint))
-                it_timing.setFont(mono_font)
-                it_timing.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                # Col 5: Layer + Status / Phase
                 if is_group:
-                    if is_live:
-                        st_str = "SCENA LIVE"
-                    elif is_standby:
-                        st_str = "STANDBY"
+                    children = [c for c in cues if c.parent_id == cue.cue_id]
+                    child_count = len(children)
+                    tot_d = 0.0
+                    for ch in children:
+                        ch_hint = known_durations.get(ch.file_path, 0.0)
+                        if ch.out_point is not None and ch.out_point > ch.in_point:
+                            tot_d += (ch.out_point - ch.in_point)
+                        elif ch_hint > 0:
+                            tot_d += max(0.0, ch_hint - ch.in_point)
+                        elif ch.media_type == MediaType.IMAGE:
+                            tot_d += ch.hold_time if ch.hold_time > 0 else 5.0
+                    dur_str = f"~{_fmt_mmss(tot_d)}" if tot_d > 0 else "[Scena]"
+                elif cue.media_type == MediaType.IMAGE:
+                    child_count = 0
+                    if cue.hold_time <= 0:
+                        dur_str = "∞"
+                    elif cue.hold_time < 10.0:
+                        dur_str = f"{cue.hold_time:.1f}s"
                     else:
-                        st_str = "SCENA"
-                elif phase_txt:
-                    st_str = f"L{cue.layer} • {phase_txt}"
-                elif is_live:
-                    st_str = f"L{cue.layer} • LIVE"
-                elif is_standby:
-                    st_str = f"L{cue.layer} • STANDBY"
+                        dur_str = _fmt_mmss(cue.hold_time)
                 else:
-                    st_str = f"L{cue.layer}"
-                it_state = QTableWidgetItem(st_str)
-                it_state.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                it_state.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
+                    child_count = 0
+                    raw_dur = 0.0
+                    if cue.out_point is not None and cue.out_point > cue.in_point:
+                        raw_dur = cue.out_point - cue.in_point
+                    elif dur_hint > 0:
+                        raw_dur = max(0.0, dur_hint - cue.in_point)
+                    dur_str = _fmt_mmss(raw_dur) if raw_dur > 0 else "--:--"
 
-                items = (it_num, it_q, it_name, it_notes, it_timing, it_state)
+                is_last_child = False
+                if cue.parent_id is not None:
+                    siblings = [c for c in cues if c.parent_id == cue.parent_id]
+                    if siblings and siblings[-1].cue_id == cue.cue_id:
+                        is_last_child = True
+
                 cue_color = getattr(cue, "color", "") or ""
                 prev_color = (getattr(cues[r - 1], "color", "") or "") if r > 0 else ""
                 incoming_link = cues[r - 1].follow_mode if r > 0 else ""
-                it_num.setData(ROLE_IS_GROUP, is_group)
-                it_num.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
+
+                it_num = QTableWidgetItem(f"{r + 1}")
+                it_q = QTableWidgetItem((cue.q_label or "").strip() or "—")
+                it_name = QTableWidgetItem(cue.name)
+                it_notes = QTableWidgetItem(cue.notes or "")
+                it_timing = QTableWidgetItem(dur_str)
+                it_state = QTableWidgetItem(
+                    "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
+                )
+
+                items = (it_num, it_q, it_name, it_notes, it_timing, it_state)
                 for c_idx, it in enumerate(items):
-                    it.setBackground(row_bg)
                     it.setData(ROLE_CUE_COLOR, cue_color)
                     it.setData(ROLE_PREV_COLOR, prev_color)
                     it.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
                     it.setData(ROLE_INCOMING_LINK, incoming_link)
-                    if c_idx == 1 and q_str != "—":
-                        pass
-                    elif c_idx == 3:
-                        it.setForeground(QColor("#cbd5e1" if cue.notes else "#475569"))
-                    elif c_idx == 4:
-                        it.setForeground(QColor("#93c5fd" if cue.follow_mode != FollowMode.MANUAL.value else "#94a3b8"))
-                    else:
-                        it.setForeground(fg_main)
+                    it.setData(ROLE_IS_GROUP, is_group)
+                    it.setData(ROLE_PARENT_ID, cue.parent_id)
+                    it.setData(ROLE_IS_LAST_CHILD, is_last_child)
+                    it.setData(ROLE_CHILD_COUNT, child_count)
+                    it.setData(ROLE_GROUP_MODE, getattr(cue, "group_mode", "STEP"))
+                    it.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
+                    it.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
+                    it.setData(ROLE_LAYER, cue.layer)
+                    it.setData(ROLE_HAS_NOTES, bool(cue.notes))
+                    it.setData(ROLE_NOTES_TXT, cue.notes or "")
+                    it.setData(ROLE_IS_LIVE, is_live)
+                    it.setData(ROLE_IS_STANDBY, is_standby)
+                    it.setData(ROLE_SECTION_COUNT, len(cue.sections))
+                    it.setData(ROLE_LOOP, cue.loop)
+                    it.setData(ROLE_PRE_DELAY, cue.pre_delay)
+                    it.setData(ROLE_POST_DELAY, cue.post_delay)
+                    it.setData(ROLE_DURATION_TXT, dur_str)
+                    it.setData(ROLE_PHASE_TXT, phase_txt)
+                    it.setData(
+                        ROLE_STATUS_TXT,
+                        "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO")),
+                    )
+                    it.setData(
+                        ROLE_STATUS_CLR,
+                        "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8")),
+                    )
                     self.live_table.setItem(r, c_idx, it)
 
                 # Set row visibility based on parent collapsed state
@@ -632,16 +1129,31 @@ class LiveShowPanel(QWidget):
                 self.live_table.selectRow(standby_row)
                 sb_cue = cues[standby_row]
                 ref = format_cue_ref(standby_row, sb_cue)
-                notes_part = f"   │   Note: {sb_cue.notes}" if sb_cue.notes else ""
-                pre_part = f"   │   Pre +{sb_cue.pre_delay:.1f}s" if sb_cue.pre_delay > 0 else ""
-                layer_part = f"  [L{sb_cue.layer}]" if sb_cue.media_type != MediaType.GROUP else "  [SCENA/GRUPPO]"
+
+                q_badge = f"[{sb_cue.q_label.strip()}] " if (sb_cue.q_label and sb_cue.q_label.strip()) else ""
+                layer_badge = f"[L{sb_cue.layer}]" if sb_cue.media_type != MediaType.GROUP else "[SCENA]"
+                type_tag = sb_cue.media_type.value[:3]
+
+                extra_tags: list[str] = []
+                if sb_cue.pre_delay > 0:
+                    extra_tags.append(f"⏳ Pre +{sb_cue.pre_delay:.1f}s")
+                if sb_cue.follow_mode == FollowMode.AUTO_FOLLOW.value:
+                    extra_tags.append("⤵ Auto-GO al termine")
+                elif sb_cue.follow_mode == FollowMode.SIMULTANEOUS.value:
+                    extra_tags.append("⇉ + Cue successiva simultanea")
+                if sb_cue.loop:
+                    extra_tags.append("🔁 Loop")
+
+                extras_str = ("   │   " + " · ".join(extra_tags)) if extra_tags else ""
+                notes_str = f"   │   📝 Note: {sb_cue.notes}" if sb_cue.notes else ""
+
                 self.lbl_standby_banner.setText(
-                    f"PROSSIMA (STANDBY):  {ref}  '{sb_cue.name}'{layer_part}{pre_part}{notes_part}"
+                    f"PROSSIMA IN STANDBY:  #{standby_row + 1} {q_badge}'{sb_cue.name}'  {layer_badge} [{type_tag}]{extras_str}{notes_str}"
                 )
                 self.btn_go.setText(f"▶   GO:  {ref} '{sb_cue.name}'   [ SPAZIO ]")
             else:
                 self.live_table.clearSelection()
-                self.lbl_standby_banner.setText("STANDBY: Nessuna cue pronta in scaletta")
+                self.lbl_standby_banner.setText("Nessuna cue pronta in scaletta")
                 self.btn_go.setText("▶   GO  —  PROSSIMA CUE   [ SPAZIO ]")
 
             self.btn_break_loop.setVisible(show_break_loop)
