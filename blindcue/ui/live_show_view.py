@@ -41,6 +41,7 @@ from ui.cue_table import (
     ROLE_IS_LIVE,
     ROLE_IS_STANDBY,
     ROLE_LAYER,
+    ROLE_LAYER_CONFLICT,
     ROLE_LOOP,
     ROLE_MEDIA_TYPE,
     ROLE_NOTES_TXT,
@@ -548,18 +549,28 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             rect = opt.rect.adjusted(6, 3, -6, -3)
 
-            layer_txt = "GRP" if is_group else f"L{layer}"
+            conflict_reason = str(index.data(ROLE_LAYER_CONFLICT) or "")
+            if is_group:
+                layer_txt = "⚠️ GRP" if conflict_reason else "GRP"
+            else:
+                layer_txt = f"⚠️ L{layer}" if conflict_reason else f"L{layer}"
             layer_font = QFont(opt.font)
             layer_font.setPointSize(8)
             layer_font.setBold(True)
             painter.setFont(layer_font)
 
-            lw = 32 if is_group else 26
+            fm_lt = painter.fontMetrics()
+            lw = fm_lt.horizontalAdvance(layer_txt) + 8
             lh = 18
             ly = rect.top() + (rect.height() - lh) // 2
             l_rect = QRect(rect.left(), ly, lw, lh)
 
-            if is_group:
+            if conflict_reason:
+                painter.setPen(QPen(QColor("#d97706"), 1))
+                painter.setBrush(QColor("#451a03"))
+                painter.drawRoundedRect(l_rect, 3, 3)
+                painter.setPen(QColor("#fbbf24"))
+            elif is_group:
                 painter.setPen(QPen(QColor("#7c3aed"), 1))
                 painter.setBrush(QColor("#2e1065"))
                 painter.drawRoundedRect(l_rect, 3, 3)
@@ -1021,12 +1032,14 @@ class LiveShowPanel(QWidget):
         known_durations: dict[str, float],
         phase_tags: Optional[dict[int, str]] = None,
         show_break_loop: bool = False,
+        layer_conflicts: Optional[dict[int, Any]] = None,
     ) -> None:
         """Refresh the extended Live Scaletta table, standby banner, and GO target label."""
         self._updating_table = True
         try:
             self.live_table.setRowCount(len(cues))
             phases = phase_tags or {}
+            conflicts = layer_conflicts or {}
 
             for r, cue in enumerate(cues):
                 is_live = (cue.status == CueStatus.LIVE)
@@ -1086,6 +1099,9 @@ class LiveShowPanel(QWidget):
                     "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
                 )
 
+                conflict = conflicts.get(cue.cue_id)
+                conflict_txt = conflict.reason if hasattr(conflict, "reason") else str(conflict or "")
+
                 items = (it_num, it_q, it_name, it_notes, it_timing, it_state)
                 for c_idx, it in enumerate(items):
                     it.setData(ROLE_CUE_COLOR, cue_color)
@@ -1100,6 +1116,7 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
                     it.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
                     it.setData(ROLE_LAYER, cue.layer)
+                    it.setData(ROLE_LAYER_CONFLICT, conflict_txt)
                     it.setData(ROLE_HAS_NOTES, bool(cue.notes))
                     it.setData(ROLE_NOTES_TXT, cue.notes or "")
                     it.setData(ROLE_IS_LIVE, is_live)
@@ -1118,6 +1135,8 @@ class LiveShowPanel(QWidget):
                         ROLE_STATUS_CLR,
                         "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8")),
                     )
+                    if conflict_txt:
+                        it.setToolTip(f"⚠️ {conflict_txt}")
                     self.live_table.setItem(r, c_idx, it)
 
                 # Set row visibility based on parent collapsed state

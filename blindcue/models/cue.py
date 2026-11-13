@@ -11,7 +11,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -362,3 +362,146 @@ class Cue:
             f"[{self.media_type.value}] L{self.layer} "
             f"({self.status.value})"
         )
+
+
+@dataclass
+class LayerConflict:
+    """Represents a simultaneous layer collision between two or more cues."""
+
+    cue_id: int
+    conflicting_with_ids: list[int]
+    conflicting_with_names: list[str]
+    layer: int
+    reason: str
+
+
+def _record_conflict(
+    conflicts: dict[int, LayerConflict],
+    cue_id: int,
+    conflicting_ids: list[int],
+    conflicting_names: list[str],
+    layer: int,
+    reason: str,
+) -> None:
+    if cue_id not in conflicts:
+        conflicts[cue_id] = LayerConflict(
+            cue_id=cue_id,
+            conflicting_with_ids=list(conflicting_ids),
+            conflicting_with_names=list(conflicting_names),
+            layer=layer,
+            reason=reason,
+        )
+    else:
+        existing = conflicts[cue_id]
+        for cid, cname in zip(conflicting_ids, conflicting_names):
+            if cid not in existing.conflicting_with_ids:
+                existing.conflicting_with_ids.append(cid)
+                existing.conflicting_with_names.append(cname)
+        if reason not in existing.reason:
+            existing.reason += f"\n• {reason}"
+
+
+def detect_layer_conflicts(cues: Sequence[Cue]) -> dict[int, LayerConflict]:
+    """Scan cues and detect simultaneous layer collisions (non-blocking pre-flight check).
+
+    Collisions occur when two or more playable cues (VIDEO, AUDIO, IMAGE) share the
+    same layer (1, 2, or 3) and are triggered simultaneously:
+      1. Direct children of a Group in SIMULTANEOUS mode.
+      2. Chained cues where preceding cues use FollowMode.SIMULTANEOUS.
+
+    Returns a dict mapping cue_id -> LayerConflict for all affected cues (including
+    groups that contain collisions).
+    """
+    conflicts: dict[int, LayerConflict] = {}
+    if not cues:
+        return conflicts
+
+    # 1. Group simultaneous collisions (GroupMode.SIMULTANEOUS)
+    for group in cues:
+        if group.media_type != MediaType.GROUP:
+            continue
+        if getattr(group, "group_mode", GroupMode.STEP.value) != GroupMode.SIMULTANEOUS.value:
+            continue
+
+        children = [c for c in cues if c.parent_id == group.cue_id and c.media_type != MediaType.GROUP]
+        by_layer: dict[int, list[Cue]] = {}
+        for ch in children:
+            by_layer.setdefault(ch.layer, []).append(ch)
+
+        for layer, layer_children in by_layer.items():
+            if len(layer_children) > 1:
+                # Flag each colliding child
+                for child in layer_children:
+                    others = [c for c in layer_children if c.cue_id != child.cue_id]
+                    other_names = ", ".join(f"'{o.name}'" for o in others)
+                    reason = (
+                        f"Conflitto Layer {layer}: Viene attivato in simultanea con {other_names} "
+                        f"nel gruppo '{group.name}' sullo stesso Layer {layer}. "
+                        f"Assegna un layer differente (L1, L2, L3)."
+                    )
+                    _record_conflict(
+                        conflicts,
+                        child.cue_id,
+                        [o.cue_id for o in others],
+                        [o.name for o in others],
+                        layer,
+                        reason,
+                    )
+                # Flag the group container itself
+                all_names = ", ".join(f"'{c.name}'" for c in layer_children)
+                grp_reason = (
+                    f"Conflitto Layer {layer}: {len(layer_children)} elementi ({all_names}) "
+                    f"condividono il Layer {layer} in modalità simultanea. Assegna layer differenti (L1, L2, L3)."
+                )
+                _record_conflict(
+                    conflicts,
+                    group.cue_id,
+                    [c.cue_id for c in layer_children],
+                    [c.name for c in layer_children],
+                    layer,
+                    grp_reason,
+                )
+
+    # 2. Sequential SIMULTANEOUS follow-mode chains
+    i = 0
+    n = len(cues)
+    while i < n:
+        if cues[i].follow_mode == FollowMode.SIMULTANEOUS.value:
+            chain: list[Cue] = [cues[i]]
+            j = i
+            while j < n and cues[j].follow_mode == FollowMode.SIMULTANEOUS.value:
+                j += 1
+                if j < n:
+                    chain.append(cues[j])
+                    if cues[j].media_type == MediaType.GROUP:
+                        break
+
+            playable = [c for c in chain if c.media_type != MediaType.GROUP]
+            by_layer: dict[int, list[Cue]] = {}
+            for c in playable:
+                by_layer.setdefault(c.layer, []).append(c)
+
+            for layer, layer_cues in by_layer.items():
+                if len(layer_cues) > 1:
+                    for cue in layer_cues:
+                        others = [c for c in layer_cues if c.cue_id != cue.cue_id]
+                        other_names = ", ".join(f"'{o.name}'" for o in others)
+                        reason = (
+                            f"Conflitto Layer {layer}: Avvio simultaneo (Follow Simultaneo) "
+                            f"con {other_names} sullo stesso Layer {layer}. "
+                            f"Assegna un layer differente (L1, L2, L3)."
+                        )
+                        _record_conflict(
+                            conflicts,
+                            cue.cue_id,
+                            [o.cue_id for o in others],
+                            [o.name for o in others],
+                            layer,
+                            reason,
+                        )
+            i = j
+        else:
+            i += 1
+
+    return conflicts
+

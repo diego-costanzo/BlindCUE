@@ -412,6 +412,16 @@ class CueInspectorPanel(QGroupBox):
         self.btn_layer2 = self._layer_buttons[2]
         self.btn_layer3 = self._layer_buttons[3]
         l2.addLayout(layer_row)
+
+        self.lbl_layer_conflict = QLabel()
+        self.lbl_layer_conflict.setWordWrap(True)
+        self.lbl_layer_conflict.setStyleSheet(
+            "background-color: #3b1d07; color: #fde047; border: 1px solid #d97706; "
+            "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 4px 6px;"
+        )
+        self.lbl_layer_conflict.setVisible(False)
+        l2.addWidget(self.lbl_layer_conflict)
+
         lay.addWidget(c2)
 
         # Card 3: Incastro Temporale (Pre · Durata · Post) & Sequenza
@@ -908,6 +918,16 @@ class CueInspectorPanel(QGroupBox):
             mode_btn_grid.addWidget(btn)
             self._group_mode_buttons[mode_key] = btn
         l2.addLayout(mode_btn_grid)
+
+        self.lbl_group_layer_conflict = QLabel()
+        self.lbl_group_layer_conflict.setWordWrap(True)
+        self.lbl_group_layer_conflict.setStyleSheet(
+            "background-color: #3b1d07; color: #fde047; border: 1px solid #d97706; "
+            "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 4px 6px;"
+        )
+        self.lbl_group_layer_conflict.setVisible(False)
+        l2.addWidget(self.lbl_group_layer_conflict)
+
         lay.addWidget(c2)
 
         # Card 3: Elementi del Gruppo
@@ -1211,6 +1231,20 @@ class CueInspectorPanel(QGroupBox):
         for idx, btn in self._layer_buttons.items():
             btn.setChecked(layer == idx)
 
+    def set_layer_conflict(self, conflict: Optional[Any] = None) -> None:
+        """Display or hide visual pre-flight layer collision alert in Card 2 and Group Tab."""
+        if conflict:
+            reason = conflict.reason if hasattr(conflict, "reason") else str(conflict)
+            self.lbl_layer_conflict.setText(f"⚠️ {reason}")
+            self.lbl_layer_conflict.setVisible(True)
+            self.lbl_group_layer_conflict.setText(f"⚠️ {reason}")
+            self.lbl_group_layer_conflict.setVisible(True)
+        else:
+            self.lbl_layer_conflict.setText("")
+            self.lbl_layer_conflict.setVisible(False)
+            self.lbl_group_layer_conflict.setText("")
+            self.lbl_group_layer_conflict.setVisible(False)
+
     def set_color_silent(self, color_hex: Optional[str]) -> None:
         clean = _sanitize_hex_color(color_hex) if color_hex is not None else "__MIXED__"
         for hv, btn in self._color_buttons.items():
@@ -1507,6 +1541,8 @@ class CueInspectorPanel(QGroupBox):
         """Load a single cue into the inspector, or disable when *cue* is None."""
         self._multi_mode = False
         self.lbl_multi_banner.setVisible(False)
+        self.lbl_layer_conflict.setVisible(False)
+        self.lbl_group_layer_conflict.setVisible(False)
 
         if cue is None:
             self.setTitle("ISPETTORE CUE (Nessuna cue selezionata)")
@@ -1551,6 +1587,8 @@ class CueInspectorPanel(QGroupBox):
     def load_selection(self, cues: list[Cue], anchor_cue: Optional[Cue] = None,
                        anchor_row: int = -1) -> None:
         """Load 0, 1, or N selected cues with same-type batch editing support."""
+        self.lbl_layer_conflict.setVisible(False)
+        self.lbl_group_layer_conflict.setVisible(False)
         if not cues:
             self.load_cue(None)
             return

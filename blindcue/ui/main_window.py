@@ -44,7 +44,16 @@ from engine.envelope import (
     normalize_sections,
     split_sections_at,
 )
-from models.cue import Cue, CueStatus, FollowMode, GroupMode, MediaType, _sanitize_hex_color
+from models.cue import (
+    Cue,
+    CueStatus,
+    FollowMode,
+    GroupMode,
+    LayerConflict,
+    MediaType,
+    _sanitize_hex_color,
+    detect_layer_conflicts,
+)
 from models.project_manager import ProjectManager
 from ui.cue_list_panel import CueListPanel
 from ui.cue_table import (
@@ -58,6 +67,7 @@ from ui.cue_table import (
     ROLE_IS_GROUP,
     ROLE_IS_LAST_CHILD,
     ROLE_LAYER,
+    ROLE_LAYER_CONFLICT,
     ROLE_MEDIA_TYPE,
     ROLE_PARENT_ID,
     ROLE_PREV_COLOR,
@@ -145,6 +155,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self._output = output_window
         self._cues: list[Cue] = []
+        self._layer_conflicts: dict[int, LayerConflict] = {}
         self._current_index: int = -1
         self._thread_pool = QThreadPool.globalInstance()
         self._test_player = None
@@ -847,7 +858,10 @@ class MainWindow(QMainWindow):
             self._preview_panel.set_time(current_sec, total_sec)
 
     def _cue_tooltip(self, row: int, cue: Cue) -> str:
-        parts = [f"Posizione: #{row + 1}"]
+        parts = []
+        if cue.cue_id in self._layer_conflicts:
+            parts.append(f"⚠️ ATTENZIONE: {self._layer_conflicts[cue.cue_id].reason}\n")
+        parts.append(f"Posizione: #{row + 1}")
         if cue.q_label:
             parts.append(f"Q (Copione): {cue.q_label}")
         parts.append(f"Nome: {cue.name}")
@@ -951,8 +965,12 @@ class MainWindow(QMainWindow):
         prev_color = (getattr(self._cues[row - 1], "color", "") or "") if row > 0 else ""
         incoming_link = self._cues[row - 1].follow_mode if row > 0 else ""
 
+        conflict = self._layer_conflicts.get(cue.cue_id)
+        conflict_txt = conflict.reason if conflict else ""
+
         item_name.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
         item_name.setData(ROLE_LAYER, cue.layer)
+        item_name.setData(ROLE_LAYER_CONFLICT, conflict_txt)
         item_name.setData(ROLE_HAS_NOTES, bool(cue.notes))
         item_name.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
         item_name.setData(ROLE_TIMING_BADGE, "⏱" if (cue.pre_delay > 0 or cue.post_delay > 0) else "")
@@ -1083,6 +1101,7 @@ class MainWindow(QMainWindow):
             self._known_file_durations,
             self._live_phase_tags,
             show_break_loop=has_live_inf_sec,
+            layer_conflicts=self._layer_conflicts,
         )
 
     def _update_live_layer_label(self, cue: Cue, preserve_timing: bool = False) -> None:
@@ -1241,6 +1260,7 @@ class MainWindow(QMainWindow):
 
     def _refresh_rows_in_place(self, rows: list[int]) -> None:
         """Update table cell visuals for *rows* in place without altering selection."""
+        self._layer_conflicts = detect_layer_conflicts(self._cues)
         anchor_row, _ = self._anchor_row_and_cue()
         self._updating_cue_list = True
         self._cue_list.blockSignals(True)
@@ -1258,6 +1278,7 @@ class MainWindow(QMainWindow):
     def _refresh_cue_list(self, keep_selection: bool = True,
                           select_row: Optional[int] = None) -> None:
         """Rebuild the 3-column table from the cue list with progressive row numbers."""
+        self._layer_conflicts = detect_layer_conflicts(self._cues)
         prev_selected = self._selected_rows() if (keep_selection and select_row is None) else []
 
         if select_row is not None:
@@ -1491,6 +1512,7 @@ class MainWindow(QMainWindow):
     def _update_inspector(self, cue: Optional[Cue]) -> None:
         if cue is None:
             self._inspector.load_cue(None)
+            self._inspector.set_layer_conflict(None)
             return
         sel_cues = self._selected_cues()
         anchor_row, anchor_cue = self._anchor_row_and_cue()
@@ -1503,6 +1525,7 @@ class MainWindow(QMainWindow):
             if cue.media_type == MediaType.GROUP:
                 children = [c for c in self._cues if c.parent_id == cue.cue_id]
                 self._inspector.load_group_children(children, cue)
+        self._inspector.set_layer_conflict(self._layer_conflicts.get(cue.cue_id))
         if anchor_cue is not None:
             self._update_waveform_markers(anchor_cue)
 
@@ -2103,6 +2126,9 @@ class MainWindow(QMainWindow):
             self._current_index = anchor_row
             self._undo.update_current_index(anchor_row)
             self._refresh_rows_in_place(list(range(len(self._cues))))
+            anchor_row, anchor = self._anchor_row_and_cue()
+            if anchor:
+                self._inspector.set_layer_conflict(self._layer_conflicts.get(anchor.cue_id))
 
             sel_cues = [self._cues[r] for r in sel_rows]
             self._update_crop_reference_for_cue(cue)
@@ -2303,10 +2329,15 @@ class MainWindow(QMainWindow):
                 self._commit_undo_point()
             for cue in sel_cues:
                 cue.layer = layer
-            self._refresh_rows_in_place(sel_rows)
+            self._refresh_rows_in_place(list(range(len(self._cues))))
+            anchor_row, anchor = self._anchor_row_and_cue()
+            if anchor:
+                self._inspector.set_layer_conflict(self._layer_conflicts.get(anchor.cue_id))
             if len(sel_cues) > 1:
                 anchor_row, anchor = self._anchor_row_and_cue()
                 self._inspector.load_selection(sel_cues, anchor_cue=anchor, anchor_row=anchor_row)
+            else:
+                self._inspector.set_layer_conflict(self._layer_conflicts.get(sel_cues[0].cue_id))
             self._commit_undo_point()
             self._mark_modified(True)
             self._auto_save()
@@ -2327,6 +2358,9 @@ class MainWindow(QMainWindow):
             for cue in sel_cues:
                 cue.follow_mode = mode
             self._refresh_rows_in_place(list(range(len(self._cues))))
+            anchor_row, anchor = self._anchor_row_and_cue()
+            if anchor:
+                self._inspector.set_layer_conflict(self._layer_conflicts.get(anchor.cue_id))
             self._sync_live_view()
             self._commit_undo_point()
             self._mark_modified(True)
@@ -2348,6 +2382,9 @@ class MainWindow(QMainWindow):
             for cue in sel_cues:
                 cue.color = clean
             self._refresh_rows_in_place(list(range(len(self._cues))))
+            anchor_row, anchor = self._anchor_row_and_cue()
+            if anchor:
+                self._inspector.set_layer_conflict(self._layer_conflicts.get(anchor.cue_id))
             self._sync_live_view()
             self._commit_undo_point()
             self._mark_modified(True)
@@ -2898,7 +2935,10 @@ class MainWindow(QMainWindow):
         for c in sel_cues:
             c.group_mode = mode
 
-        self._refresh_rows_in_place(self._selected_rows())
+        self._refresh_rows_in_place(list(range(len(self._cues))))
+        anchor_row, cue = self._anchor_row_and_cue()
+        if cue:
+            self._inspector.set_layer_conflict(self._layer_conflicts.get(cue.cue_id))
         self._commit_undo_point()
         self._mark_modified(True)
         self._sync_live_view()

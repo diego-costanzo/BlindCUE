@@ -48,6 +48,7 @@ ROLE_NOTES_TXT = Qt.ItemDataRole.UserRole + 22
 ROLE_IS_LIVE = Qt.ItemDataRole.UserRole + 23
 ROLE_IS_STANDBY = Qt.ItemDataRole.UserRole + 24
 ROLE_PHASE_TXT = Qt.ItemDataRole.UserRole + 25
+ROLE_LAYER_CONFLICT = Qt.ItemDataRole.UserRole + 26
 
 _LINK_RAIL_COLORS = {
     "SIMULTANEOUS": QColor("#f59e0b"),
@@ -327,15 +328,23 @@ class CueTableDelegate(QStyledItemDelegate):
                 painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, status_txt)
                 right_x -= sw + 4
 
+            conflict_reason = str(index.data(ROLE_LAYER_CONFLICT) or "")
+
             if is_group:
                 # Group mode pill on the right
                 if group_mode in _GROUP_MODE_PILLS:
                     gm_txt, gm_bg, gm_fg = _GROUP_MODE_PILLS[group_mode]
+                    gm_border = gm_fg
+                    if conflict_reason:
+                        gm_txt = f"⚠️ {gm_txt}"
+                        gm_bg = QColor("#451a03")
+                        gm_fg = QColor("#fbbf24")
+                        gm_border = QColor("#d97706")
                     painter.setFont(tag_font)
                     fm_gm = painter.fontMetrics()
                     gm_w = fm_gm.horizontalAdvance(gm_txt) + 10
                     gm_rect = QRect(right_x - gm_w, rect.top() + (rect.height() - 16) // 2, gm_w, 16)
-                    painter.setPen(QPen(gm_fg, 1))
+                    painter.setPen(QPen(gm_border, 1))
                     painter.setBrush(gm_bg)
                     painter.drawRoundedRect(gm_rect, 3, 3)
                     painter.setPen(gm_fg)
@@ -355,17 +364,31 @@ class CueTableDelegate(QStyledItemDelegate):
                     painter.drawText(cc_rect, Qt.AlignmentFlag.AlignCenter, cc_txt)
                     right_x -= cc_w + 4
             else:
-                layer_str = f"L{layer}"
-                painter.setFont(tag_font)
-                lw, lh = 22, 16
-                ly = rect.top() + (rect.height() - lh) // 2
-                l_rect = QRect(right_x - lw, ly, lw, lh)
-                painter.setPen(QPen(QColor("#283548"), 1))
-                painter.setBrush(QColor("#1a2332"))
-                painter.drawRoundedRect(l_rect, 3, 3)
-                painter.setPen(QColor("#94a3b8"))
-                painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
-                right_x -= lw + 4
+                if conflict_reason:
+                    layer_str = f"⚠️ L{layer}"
+                    painter.setFont(tag_font)
+                    lw = painter.fontMetrics().horizontalAdvance(layer_str) + 8
+                    lh = 16
+                    ly = rect.top() + (rect.height() - lh) // 2
+                    l_rect = QRect(right_x - lw, ly, lw, lh)
+                    painter.setPen(QPen(QColor("#d97706"), 1))
+                    painter.setBrush(QColor("#451a03"))
+                    painter.drawRoundedRect(l_rect, 3, 3)
+                    painter.setPen(QColor("#fbbf24"))
+                    painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
+                    right_x -= lw + 4
+                else:
+                    layer_str = f"L{layer}"
+                    painter.setFont(tag_font)
+                    lw, lh = 22, 16
+                    ly = rect.top() + (rect.height() - lh) // 2
+                    l_rect = QRect(right_x - lw, ly, lw, lh)
+                    painter.setPen(QPen(QColor("#283548"), 1))
+                    painter.setBrush(QColor("#1a2332"))
+                    painter.drawRoundedRect(l_rect, 3, 3)
+                    painter.setPen(QColor("#94a3b8"))
+                    painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
+                    right_x -= lw + 4
 
                 if follow_mode == "AUTO_FOLLOW":
                     fw = 46
