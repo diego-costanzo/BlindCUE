@@ -168,6 +168,11 @@ class Cue:
     opacity_points: list[list[float]] = field(default_factory=list)  # [[time_sec, opacity 0..1], ...]
     image_timeline_sec: float = 10.0  # Virtual timeline horizon (s) for infinite-hold images
     sections: list[CueSection] = field(default_factory=list)         # Contiguous virtual playback sections
+    normalize_audio: bool = False  # EBU R128 (-16 LUFS) normalization active for this cue
+    loudness_lufs: Optional[float] = None  # Measured integrated loudness (LUFS)
+    true_peak_dbfs: Optional[float] = None  # Measured true peak (dBFS)
+    auto_gain_db: float = 0.0  # Computed gain adjustment in dB to reach target (-16 LUFS)
+    original_file_path: Optional[str] = None  # Backup of original path if dynamics-optimized copy is used
 
     # ── Validation ────────────────────────────────────────────────────
     def validate(self) -> list[str]:
@@ -279,6 +284,11 @@ class Cue:
             "opacity_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.opacity_points],
             "image_timeline_sec": self.image_timeline_sec,
             "sections": [sec.to_dict() for sec in self.sections],
+            "normalize_audio": self.normalize_audio,
+            "loudness_lufs": self.loudness_lufs,
+            "true_peak_dbfs": self.true_peak_dbfs,
+            "auto_gain_db": round(float(self.auto_gain_db), 2),
+            "original_file_path": self.original_file_path,
         }
 
     @classmethod
@@ -348,6 +358,11 @@ class Cue:
                 for raw in (data.get("sections") or [])
                 if isinstance(raw, dict)
             ],
+            normalize_audio=bool(data.get("normalize_audio", False)),
+            loudness_lufs=float(data["loudness_lufs"]) if data.get("loudness_lufs") is not None else None,
+            true_peak_dbfs=float(data["true_peak_dbfs"]) if data.get("true_peak_dbfs") is not None else None,
+            auto_gain_db=float(data.get("auto_gain_db", 0.0) or 0.0),
+            original_file_path=data.get("original_file_path"),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)

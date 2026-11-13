@@ -173,6 +173,10 @@ class CueInspectorPanel(QGroupBox):
     ungroup_requested = Signal()
     remove_child_requested = Signal(int)
     extract_child_requested = Signal()
+    scan_loudness_requested = Signal()
+    normalize_cue_toggled = Signal(bool)
+    optimize_dynamics_requested = Signal()
+    restore_original_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
@@ -801,6 +805,90 @@ class CueInspectorPanel(QGroupBox):
         loop_options_row.addWidget(self.spin_loop_count)
         loop_card_layout.addLayout(loop_options_row)
         lay.addWidget(self.loop_card)
+
+        # Card 5: Livellamento & Loudness EBU R128
+        c5, l5 = self._make_card(
+            "5 · LIVELLAMENTO & LOUDNESS (EBU R128)",
+            "Calcola il volume percepito (LUFS) per livellare tracce troppo basse o troppo alte senza distorsione.",
+        )
+        self.card_loudness = c5
+
+        loud_status_row = QHBoxLayout()
+        loud_status_row.setSpacing(6)
+        self.lbl_loudness_info = QLabel("📊 Loudness: Non analizzato")
+        self.lbl_loudness_info.setWordWrap(True)
+        self.lbl_loudness_info.setStyleSheet(
+            "background-color: #0b111a; color: #94a3b8; border: 1px solid #1e293b; "
+            "border-radius: 4px; font-family: monospace; font-size: 10px; padding: 4px 6px;"
+        )
+        loud_status_row.addWidget(self.lbl_loudness_info, stretch=1)
+
+        self.btn_scan_loudness = QPushButton("🔍 Analizza")
+        self.btn_scan_loudness.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_scan_loudness.setToolTip("Analizza il volume percepito EBU R128 in background con FFmpeg")
+        self.btn_scan_loudness.setStyleSheet(
+            "QPushButton { background-color: #16202e; color: #38bdf8; border: 1px solid #2d3e56; "
+            "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 3px 8px; } "
+            "QPushButton:hover { background-color: #1e334d; border-color: #38bdf8; color: #ffffff; }"
+        )
+        self.btn_scan_loudness.clicked.connect(self.scan_loudness_requested)
+        loud_status_row.addWidget(self.btn_scan_loudness)
+        l5.addLayout(loud_status_row)
+
+        self.chk_normalize_cue = QCheckBox("🎚 Applica Guadagno EBU R128 (-16 LUFS) per questo file")
+        self.chk_normalize_cue.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_normalize_cue.setToolTip("Applica l'offset di guadagno non distruttivo sul player per pareggiare il volume con le altre cue.")
+        self.chk_normalize_cue.setStyleSheet("""
+            QCheckBox {
+                font-weight: bold;
+                font-size: 11px;
+                color: #38bdf8;
+                spacing: 6px;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                border-radius: 3px;
+                border: 1px solid #38bdf8;
+                background-color: #09111b;
+            }
+            QCheckBox::indicator:checked { background-color: #0284c7; }
+            QCheckBox::indicator:hover { border-color: #7dd3fc; }
+        """)
+        self.chk_normalize_cue.toggled.connect(self.normalize_cue_toggled)
+        l5.addWidget(self.chk_normalize_cue)
+
+        dyn_row = QHBoxLayout()
+        dyn_row.setSpacing(6)
+        self.btn_optimize_dynamics = QPushButton("🛠 Ottimizza Dinamica (Compressore / Limiter)")
+        self.btn_optimize_dynamics.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_optimize_dynamics.setToolTip(
+            "Per file complessi o registrati male: applica il compressore broadcast EBU R128 "
+            "a due passate con True-Peak Limiter per appiattire gli sbalzi e proteggere l'impianto."
+        )
+        self.btn_optimize_dynamics.setStyleSheet(
+            "QPushButton { background-color: #1e293b; color: #fbbf24; border: 1px solid #d97706; "
+            "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 4px 8px; } "
+            "QPushButton:hover { background-color: #451a03; border-color: #f59e0b; color: #ffffff; }"
+        )
+        self.btn_optimize_dynamics.clicked.connect(self.optimize_dynamics_requested)
+        dyn_row.addWidget(self.btn_optimize_dynamics, stretch=1)
+
+        self.btn_restore_original = QPushButton("↺ Ripristina Originale")
+        self.btn_restore_original.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_restore_original.setToolTip("Annulla l'ottimizzazione e torna al file media originale")
+        self.btn_restore_original.setStyleSheet(
+            "QPushButton { background-color: #1e2024; color: #94a3b8; border: 1px solid #334155; "
+            "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 4px 8px; } "
+            "QPushButton:hover { background-color: #2b3038; border-color: #64748b; color: #ffffff; }"
+        )
+        self.btn_restore_original.setVisible(False)
+        self.btn_restore_original.clicked.connect(self.restore_original_requested)
+        dyn_row.addWidget(self.btn_restore_original)
+        l5.addLayout(dyn_row)
+
+        lay.addWidget(c5)
         lay.addStretch()
 
         self.tab_audio_cuts = self._wrap_tab_scroll(page)
@@ -1245,6 +1333,17 @@ class CueInspectorPanel(QGroupBox):
             self.lbl_group_layer_conflict.setText("")
             self.lbl_group_layer_conflict.setVisible(False)
 
+    def set_loudness_result(self, lufs: float, peak: float, gain_db: float) -> None:
+        """Update loudness readout card with analyzed EBU R128 values."""
+        sign = "+" if gain_db > 0 else ""
+        self.lbl_loudness_info.setText(
+            f"📊 {lufs:.1f} LUFS | Picco: {peak:.1f} dBFS | Auto-Gain: {sign}{gain_db:.1f} dB"
+        )
+        self.lbl_loudness_info.setStyleSheet(
+            "background-color: #0c2017; color: #34d399; border: 1px solid #059669; "
+            "border-radius: 4px; font-family: monospace; font-size: 10px; padding: 4px 6px;"
+        )
+
     def set_color_silent(self, color_hex: Optional[str]) -> None:
         clean = _sanitize_hex_color(color_hex) if color_hex is not None else "__MIXED__"
         for hv, btn in self._color_buttons.items():
@@ -1387,6 +1486,8 @@ class CueInspectorPanel(QGroupBox):
             self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
             self.spin_in, self.spin_out, self.btn_io_reset, self.spin_hold_time,
             self.spin_pre_delay, self.spin_post_delay,
+            self.card_loudness, self.btn_scan_loudness, self.chk_normalize_cue,
+            self.btn_optimize_dynamics, self.btn_restore_original,
         )
 
         if not enabled or media_type is None:
@@ -1430,6 +1531,7 @@ class CueInspectorPanel(QGroupBox):
         time_controls = (
             self.slider_volume, self.btn_volume_reset,
             self.loop_card, self.chk_loop, self.spin_in, self.spin_out, self.btn_io_reset,
+            self.card_loudness, self.btn_scan_loudness, self.chk_normalize_cue, self.btn_optimize_dynamics,
         )
 
         is_visual = media_type in (MediaType.VIDEO, MediaType.IMAGE)
@@ -1439,6 +1541,7 @@ class CueInspectorPanel(QGroupBox):
             w.setEnabled(is_visual)
         for w in time_controls:
             w.setEnabled(is_timed)
+        self.card_loudness.setVisible(is_timed)
 
         self.spin_hold_time.setEnabled(media_type == MediaType.IMAGE)
         self.combo_loop_mode.setEnabled(is_timed and self.chk_loop.isChecked())
@@ -1536,6 +1639,30 @@ class CueInspectorPanel(QGroupBox):
                 aspect_idx = idx
                 break
         self.combo_aspect.setCurrentIndex(aspect_idx)
+
+        # Loudness & EBU R128 Normalization
+        if cue.loudness_lufs is not None:
+            sign = "+" if cue.auto_gain_db > 0 else ""
+            self.lbl_loudness_info.setText(
+                f"📊 {cue.loudness_lufs:.1f} LUFS | Picco: {cue.true_peak_dbfs or 0.0:.1f} dBFS | Auto-Gain: {sign}{cue.auto_gain_db:.1f} dB"
+            )
+            self.lbl_loudness_info.setStyleSheet(
+                "background-color: #0c2017; color: #34d399; border: 1px solid #059669; "
+                "border-radius: 4px; font-family: monospace; font-size: 10px; padding: 4px 6px;"
+            )
+        else:
+            self.lbl_loudness_info.setText("📊 Loudness: Non analizzato")
+            self.lbl_loudness_info.setStyleSheet(
+                "background-color: #0b111a; color: #94a3b8; border: 1px solid #1e293b; "
+                "border-radius: 4px; font-family: monospace; font-size: 10px; padding: 4px 6px;"
+            )
+
+        self.chk_normalize_cue.blockSignals(True)
+        self.chk_normalize_cue.setChecked(bool(getattr(cue, "normalize_audio", False)))
+        self.chk_normalize_cue.blockSignals(False)
+
+        has_orig = bool(getattr(cue, "original_file_path", None))
+        self.btn_restore_original.setVisible(has_orig)
 
     def load_cue(self, cue: Optional[Cue], row: int = -1) -> None:
         """Load a single cue into the inspector, or disable when *cue* is None."""
@@ -1698,6 +1825,7 @@ class CueInspectorPanel(QGroupBox):
         cue.pre_delay = self.spin_pre_delay.value()
         cue.post_delay = self.spin_post_delay.value()
         cue.volume = self.slider_volume.value() / 100.0
+        cue.normalize_audio = self.chk_normalize_cue.isChecked()
 
         self._apply_loop_to_cue(cue)
 

@@ -173,8 +173,14 @@ def main() -> int:
     paused_layers_by_global: set[int] = set()
 
     def _apply_cue_automation(player, cue: Cue, *, hot: bool = False) -> None:
+        effective_vol = cue.volume
+        is_jam = getattr(main_win, "_jam_mode_active", False)
+        if (getattr(cue, "normalize_audio", False) or is_jam) and getattr(cue, "auto_gain_db", 0.0) != 0.0:
+            gain_factor = 10.0 ** (cue.auto_gain_db / 20.0)
+            effective_vol = max(0.0, min(1.0, cue.volume * gain_factor))
+
         kwargs = dict(
-            base_volume=cue.volume,
+            base_volume=effective_vol,
             base_opacity=cue.opacity,
             fade_in=cue.fade_in,
             fade_out=cue.fade_out,
@@ -664,14 +670,19 @@ def main() -> int:
         selected = main_win._selected_cue()
         if not selected:
             return
+        effective_vol_int = vol
+        is_jam = getattr(main_win, "_jam_mode_active", False)
+        if (getattr(selected, "normalize_audio", False) or is_jam) and getattr(selected, "auto_gain_db", 0.0) != 0.0:
+            gain_factor = 10.0 ** (selected.auto_gain_db / 20.0)
+            effective_vol_int = int(round(max(0, min(100, vol * gain_factor))))
         for layer, c in active_live_cues.items():
             if c.cue_id == selected.cue_id and layer in live_players:
-                live_players[layer].set_volume(vol)
+                live_players[layer].set_volume(effective_vol_int)
                 selected.volume = vol / 100.0
-                logger.debug("[MAIN] Live L%d volume adjusted to %d%% for cue '%s'", layer, vol, selected.name)
+                logger.debug("[MAIN] Live L%d volume adjusted to %d%% (eff %d%%) for cue '%s'", layer, vol, effective_vol_int, selected.name)
                 return
         if getattr(main_win, "_live_mirror_active", False) and selected.layer in live_players:
-            live_players[selected.layer].set_volume(vol)
+            live_players[selected.layer].set_volume(effective_vol_int)
 
     main_win.live_volume_changed.connect(_on_live_volume_changed)
 

@@ -10,8 +10,12 @@ importing a heavy file never blocks the GUI or the live output.
 
 from __future__ import annotations
 
+import hashlib
 import logging
+import os
+import re
 import subprocess
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -154,4 +158,173 @@ class WaveformAnalyzer(QRunnable):
                 self.signals.error.emit(self.file_path, str(exc))
             except RuntimeError:
                 pass
+
+
+# ── EBU R128 Loudness Scanner & Dynamics Normalizer ──────────────────
+
+def scan_file_loudness(
+    file_path: str,
+    target_lufs: float = -16.0,
+    peak_ceiling_db: float = -1.0,
+    timeout_sec: float = 25.0,
+) -> Optional[tuple[float, float, float]]:
+    """Scan file loudness using ffmpeg ebur128 (ITU-R BS.1770-4).
+
+    Returns (integrated_lufs, true_peak_dbfs, auto_gain_db) or None if analysis fails.
+    """
+    if not os.path.isfile(file_path):
+        return None
+
+    try:
+        cmd = [
+            "ffmpeg", "-nostats", "-i", file_path,
+            "-filter_complex", "ebur128=peak=true",
+            "-f", "null", "-",
+        ]
+        proc = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout_sec
+        )
+        stderr = proc.stderr
+
+        m_i = re.search(r"Integrated loudness:\s+I:\s+([-\d.]+)\s+LUFS", stderr)
+        m_p = re.search(r"True peak:\s+Peak:\s+([-\d.]+)\s+dBFS", stderr)
+        if not m_i or not m_p:
+            return None
+
+        lufs = float(m_i.group(1))
+        peak = float(m_p.group(1))
+
+        # If silence / near-silence, do not boost noise floor
+        if lufs <= -70.0:
+            return (lufs, peak, 0.0)
+
+        raw_gain = target_lufs - lufs
+        # Ceiling limiter protection against clipping
+        max_safe_gain = peak_ceiling_db - peak
+        gain = min(raw_gain, max_safe_gain)
+        return (round(lufs, 1), round(peak, 1), round(gain, 2))
+
+    except Exception as exc:
+        logger.warning("[LOUDNESS] Failed to scan %s: %s", file_path, exc)
+        return None
+
+
+class _LoudnessSignals(QObject):
+    finished = Signal(str, float, float, float)  # (file_path, lufs, peak_dbfs, gain_db)
+    error = Signal(str, str)                    # (file_path, err_msg)
+
+
+class LoudnessScanner(QRunnable):
+    """Asynchronous EBU R128 loudness scanner running on QThreadPool."""
+
+    def __init__(self, file_path: str, target_lufs: float = -16.0) -> None:
+        super().__init__()
+        self.file_path = file_path
+        self.target_lufs = target_lufs
+        self.signals = _LoudnessSignals()
+        self.setAutoDelete(True)
+
+    @Slot()
+    def run(self) -> None:
+        res = scan_file_loudness(self.file_path, self.target_lufs)
+        if res is not None:
+            lufs, peak, gain = res
+            try:
+                self.signals.finished.emit(self.file_path, lufs, peak, gain)
+            except RuntimeError:
+                pass
+        else:
+            try:
+                self.signals.error.emit(self.file_path, "Loudness scan failed or file has no audio.")
+            except RuntimeError:
+                pass
+
+
+def render_normalized_media(
+    file_path: str,
+    target_lufs: float = -16.0,
+    peak_ceiling_db: float = -1.5,
+    lra_target: float = 11.0,
+    timeout_sec: float = 120.0,
+) -> Optional[str]:
+    """Render a dynamic-range compressed / normalized media copy using ffmpeg loudnorm.
+
+    For video files: video stream is copied lossless (-c:v copy), audio is compressed.
+    For audio files: audio is rendered to lossless 16-bit PCM WAV.
+    Returns path to output file in cache directory, or None on failure.
+    """
+    if not os.path.isfile(file_path):
+        return None
+
+    cache_dir = os.path.expanduser("~/.cache/blindcue/audio")
+    os.makedirs(cache_dir, exist_ok=True)
+
+    stem = Path(file_path).stem
+    ext = Path(file_path).suffix.lower()
+    h = hashlib.md5(f"{file_path}_{os.path.getmtime(file_path)}".encode()).hexdigest()[:8]
+
+    video_exts = {".mp4", ".mkv", ".mov", ".webm", ".avi"}
+    is_video = ext in video_exts
+    out_ext = ext if is_video else ".wav"
+    out_path = os.path.join(cache_dir, f"{stem}_ebur128_{h}{out_ext}")
+
+    if os.path.isfile(out_path) and os.path.getsize(out_path) > 1000:
+        return out_path
+
+    filter_str = f"loudnorm=I={target_lufs}:TP={peak_ceiling_db}:LRA={lra_target}"
+
+    if is_video:
+        cmd = [
+            "ffmpeg", "-y", "-nostats", "-i", file_path,
+            "-c:v", "copy",
+            "-af", filter_str,
+            "-c:a", "aac", "-b:a", "256k",
+            out_path,
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-y", "-nostats", "-i", file_path,
+            "-af", filter_str,
+            "-c:a", "pcm_s16le",
+            out_path,
+        ]
+
+    try:
+        subprocess.run(cmd, capture_output=True, check=True, timeout=timeout_sec)
+        if os.path.isfile(out_path):
+            return out_path
+    except Exception as exc:
+        logger.error("[LOUDNORM] Rendering failed for %s: %s", file_path, exc)
+    return None
+
+
+class _DynamicsSignals(QObject):
+    finished = Signal(str, str)  # (orig_path, optimized_path)
+    error = Signal(str, str)     # (orig_path, err_msg)
+
+
+class DynamicsOptimizer(QRunnable):
+    """Asynchronous loudnorm dynamics compressor running on QThreadPool."""
+
+    def __init__(self, file_path: str, target_lufs: float = -16.0) -> None:
+        super().__init__()
+        self.file_path = file_path
+        self.target_lufs = target_lufs
+        self.signals = _DynamicsSignals()
+        self.setAutoDelete(True)
+
+    @Slot()
+    def run(self) -> None:
+        out_path = render_normalized_media(self.file_path, self.target_lufs)
+        if out_path is not None:
+            try:
+                self.signals.finished.emit(self.file_path, out_path)
+            except RuntimeError:
+                pass
+        else:
+            try:
+                self.signals.error.emit(self.file_path, "Ottimizzazione dinamica fallita.")
+            except RuntimeError:
+                pass
+
 
