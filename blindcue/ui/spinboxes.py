@@ -21,6 +21,9 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
         self.setLocale(QLocale.c())
         self.setKeyboardTracking(False)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        le = self.lineEdit()
+        if le is not None:
+            le.setTextMargins(8, 0, 2, 0)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
         sh = super().minimumSizeHint()

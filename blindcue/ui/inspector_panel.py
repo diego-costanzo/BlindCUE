@@ -509,14 +509,14 @@ class CueInspectorPanel(QGroupBox):
         lay.setSpacing(7)
 
         self.lbl_visual_guide = QLabel(
-            "💡 Suggerimento: puoi anche trascinare il riquadro o gli 8 bordi direttamente sull'Anteprima Pre-Viz 16:9."
+            "Suggerimento: puoi anche trascinare il riquadro o gli 8 bordi direttamente sull'Anteprima Pre-Viz 16:9."
         )
         self.lbl_visual_guide.setWordWrap(True)
         self.lbl_visual_guide.setMinimumWidth(0)
         self.lbl_visual_guide.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
         self.lbl_visual_guide.setStyleSheet(
             "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; "
-            "border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+            "border-radius: 5px; font-size: 11px; padding: 6px 10px;"
         )
         lay.addWidget(self.lbl_visual_guide)
 
@@ -655,14 +655,14 @@ class CueInspectorPanel(QGroupBox):
         lay.setSpacing(6)
 
         self.lbl_audio_guide = QLabel(
-            "💡 Dissolvenze (Fade In/Out) attive anche sulle Immagini; inviluppi avanzati e Sezioni A/B/C nella Forma d'Onda."
+            "Suggerimento: Dissolvenze (Fade In/Out) attive anche sulle Immagini; inviluppi avanzati e Sezioni A/B/C nella Forma d'Onda."
         )
         self.lbl_audio_guide.setWordWrap(True)
         self.lbl_audio_guide.setMinimumWidth(0)
         self.lbl_audio_guide.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
         self.lbl_audio_guide.setStyleSheet(
             "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; "
-            "border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+            "border-radius: 5px; font-size: 11px; padding: 6px 10px;"
         )
         lay.addWidget(self.lbl_audio_guide)
 
@@ -1413,35 +1413,44 @@ class CueInspectorPanel(QGroupBox):
         if media_type == MediaType.IMAGE:
             self.lbl_hold_hint.setText("0 s = Infinita in Live")
             self.lbl_visual_guide.setText(
-                "💡 Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9."
+                "Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9."
             )
             self.lbl_visual_guide.setStyleSheet(
-                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
             self.lbl_audio_guide.setText(
-                "ℹ Cue Immagine: puoi impostare Fade In/Out (e l'inviluppo Opacità in basso). Volume, Tagli e Loop valgono per Audio/Video."
+                "Nota: Cue Immagine — Fade In/Out e inviluppo Opacità attivi. Volume, Tagli e Loop valgono per Audio/Video."
+            )
+            self.lbl_audio_guide.setStyleSheet(
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
         elif media_type == MediaType.AUDIO:
             self.lbl_hold_hint.setText("Usa IN / OUT o Forma d'Onda")
             self.lbl_visual_guide.setText(
-                "ℹ Cue Audio selezionata: Posizione, Zoom, Opacità e Ritaglio valgono solo per Video e Immagini."
+                "Nota: Cue Audio selezionata — Posizione, Zoom, Opacità e Ritaglio sono attivi solo per Video e Immagini."
             )
             self.lbl_visual_guide.setStyleSheet(
-                "background-color: #2b1d07; color: #fcd34d; border: 1px solid #b45309; border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+                "background-color: #261b05; color: #fef08a; border: 1px solid #d97706; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
             self.lbl_audio_guide.setText(
-                "💡 Regola Volume, Fade, punti IN/OUT o Loop; usa la Forma d'Onda sotto per curve e Sezioni A/B/C."
+                "Regola Volume, Fade, punti IN/OUT o Loop; usa la Forma d'Onda sotto per curve e Sezioni A/B/C."
+            )
+            self.lbl_audio_guide.setStyleSheet(
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
         else:
             self.lbl_hold_hint.setText("Usa IN / OUT del video")
             self.lbl_visual_guide.setText(
-                "💡 Video selezionato: trascina posizione/crop sull'Anteprima Pre-Viz e attiva MIRROR LIVE per allineare sul proiettore."
+                "Video selezionato: trascina posizione/crop sull'Anteprima Pre-Viz e attiva MIRROR LIVE per calibrare sul proiettore."
             )
             self.lbl_visual_guide.setStyleSheet(
-                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 10px; padding: 5px 7px;"
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
             self.lbl_audio_guide.setText(
-                "💡 Regola Volume traccia video, Fade In/Out, punti IN/OUT e Loop (o Sezioni nella Timeline)."
+                "Regola Volume traccia video, Fade In/Out, punti IN/OUT e Loop (o Sezioni nella Timeline)."
+            )
+            self.lbl_audio_guide.setStyleSheet(
+                "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
 
     def _populate_media_fields(self, cue: Cue) -> None:

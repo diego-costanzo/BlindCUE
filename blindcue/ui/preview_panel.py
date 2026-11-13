@@ -66,19 +66,6 @@ class PreviewControlPanel(QGroupBox):
         lbl_test.setFixedHeight(22)
         preview_header.addWidget(lbl_test)
 
-        self.btn_live_mirror = QPushButton("🔗 MIRROR LIVE: OFF")
-        self.btn_live_mirror.setCheckable(True)
-        self.btn_live_mirror.setChecked(False)
-        self.btn_live_mirror.setFixedHeight(22)
-        self.btn_live_mirror.setToolTip(
-            "Modalità Progettazione: se ATTIVO, le modifiche a Crop, Scala e Posizione vengono "
-            "proiettate in tempo reale sullo schermo LIVE per calibrare il videoproiettore/schermo.\n"
-            "In Spettacolo dal vivo: lasciare DISATTIVATO per isolare completamente l'anteprima."
-        )
-        self.set_live_mirror_style(False)
-        self.btn_live_mirror.toggled.connect(self.live_mirror_toggled)
-        preview_header.addWidget(self.btn_live_mirror)
-
         self.lbl_info = QLabel("— Nessun file selezionato —")
         self.lbl_info.setFixedHeight(22)
         self.lbl_info.setMinimumWidth(0)
@@ -178,6 +165,20 @@ class PreviewControlPanel(QGroupBox):
         self.btn_mute.toggled.connect(self.preview_mute_toggled)
         transport.addWidget(self.btn_mute)
 
+        self.btn_live_mirror = QPushButton("🔗 MIRROR LIVE: OFF")
+        self.btn_live_mirror.setCheckable(True)
+        self.btn_live_mirror.setChecked(False)
+        self.btn_live_mirror.setFixedHeight(26)
+        self.btn_live_mirror.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_live_mirror.setToolTip(
+            "Modalità Progettazione: se ATTIVO, le modifiche a Crop, Scala e Posizione vengono "
+            "proiettate in tempo reale sullo schermo LIVE per calibrare il videoproiettore/schermo.\n"
+            "In Spettacolo dal vivo: lasciare DISATTIVATO per isolare completamente l'anteprima."
+        )
+        self.set_live_mirror_style(False)
+        self.btn_live_mirror.toggled.connect(self.live_mirror_toggled)
+        transport.addWidget(self.btn_live_mirror)
+
         preview_layout.addWidget(transport_frame, stretch=0)
 
     def set_live_mirror_style(self, active: bool) -> None:
@@ -191,23 +192,25 @@ class PreviewControlPanel(QGroupBox):
                     border-radius: 3px;
                     font-weight: bold;
                     font-size: 10px;
-                    padding: 1px 8px;
+                    padding: 2px 10px;
+                    height: 24px;
                 }
-                QPushButton:hover { background-color: #7a2020; }
+                QPushButton:hover { background-color: #7a2020; color: #ffffff; }
             """)
         else:
             self.btn_live_mirror.setText("🔗 MIRROR LIVE: OFF")
             self.btn_live_mirror.setStyleSheet("""
                 QPushButton {
-                    background-color: #2b2b2b;
-                    color: #888888;
-                    border: 1px solid #555555;
+                    background-color: #242b38;
+                    color: #94a3b8;
+                    border: 1px solid #3c4d66;
                     border-radius: 3px;
                     font-weight: bold;
                     font-size: 10px;
-                    padding: 1px 8px;
+                    padding: 2px 10px;
+                    height: 24px;
                 }
-                QPushButton:hover { background-color: #383838; color: #ccc; }
+                QPushButton:hover { background-color: #313b4d; color: #ffffff; border-color: #38bdf8; }
             """)
 
     def update_mute_style(self) -> None:

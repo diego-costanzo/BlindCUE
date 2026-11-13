@@ -83,7 +83,7 @@ DARK_STYLESHEET = f"""
         background-color: #080d14;
         border: 1px solid #354761;
         border-radius: 5px;
-        padding: 3px 7px;
+        padding: 3px 8px;
         color: #f8fafc;
         font-size: 11px;
         min-height: 24px;
@@ -92,7 +92,12 @@ DARK_STYLESHEET = f"""
     QSpinBox, QDoubleSpinBox {{
         min-height: 26px;
         max-height: 26px;
-        padding: 2px 24px 2px 7px;
+        padding: 2px 24px 2px 8px;
+    }}
+    QSpinBox QLineEdit, QDoubleSpinBox QLineEdit {{
+        background: transparent;
+        border: none;
+        padding-left: 4px;
     }}
     QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
         border: 1.5px solid {CLR_ACCENT};

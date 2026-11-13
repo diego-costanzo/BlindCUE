@@ -697,9 +697,15 @@ class MainWindow(QMainWindow):
         self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
         sb.addWidget(self._lbl_hw_info)
 
-        self._btn_device_settings = QPushButton("⚙️ Dispositivi · Uscite")
-        self._btn_device_settings.setFixedHeight(20)
+        self._btn_device_settings = QPushButton("⚙ Dispositivi · Uscite")
+        self._btn_device_settings.setFixedHeight(22)
+        self._btn_device_settings.setMinimumWidth(152)
         self._btn_device_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_device_settings.setStyleSheet(
+            "QPushButton { background-color: #16202e; color: #cbd5e1; border: 1px solid #2d3e56; "
+            "border-radius: 4px; font-size: 11px; font-weight: bold; padding: 2px 10px; } "
+            "QPushButton:hover { background-color: #24354c; color: #ffffff; border-color: #38bdf8; }"
+        )
         self._btn_device_settings.setToolTip(
             "Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro)."
         )
@@ -709,8 +715,15 @@ class MainWindow(QMainWindow):
         self._btn_lock_layout = QPushButton("🔒 Layout: Bloccato")
         self._btn_lock_layout.setCheckable(True)
         self._btn_lock_layout.setChecked(True)
-        self._btn_lock_layout.setFixedHeight(20)
+        self._btn_lock_layout.setFixedHeight(22)
+        self._btn_lock_layout.setMinimumWidth(142)
         self._btn_lock_layout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_lock_layout.setStyleSheet(
+            "QPushButton { background-color: #16202e; color: #cbd5e1; border: 1px solid #2d3e56; "
+            "border-radius: 4px; font-size: 11px; font-weight: bold; padding: 2px 10px; } "
+            "QPushButton:hover { background-color: #24354c; color: #ffffff; border-color: #38bdf8; } "
+            "QPushButton:checked { background-color: #1e293b; color: #94a3b8; }"
+        )
         self._btn_lock_layout.setToolTip(
             "Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\n"
             "Di default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere."
