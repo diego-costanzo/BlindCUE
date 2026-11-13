@@ -228,7 +228,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 )
                 painter.setPen(pen_clr)
                 painter.drawText(
-                    opt.rect.adjusted(18, 0, -2, 0),
+                    opt.rect.adjusted(20, 0, -2, 0),
                     Qt.AlignmentFlag.AlignCenter,
                     raw_num,
                 )
@@ -390,7 +390,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.setFont(name_font)
 
             if is_group:
-                disp_name = "📁 " + (name_text[2:].strip() if name_text.startswith("📁") else name_text)
+                disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
                 name_clr = QColor("#c084fc")
             elif is_live:
                 disp_name = name_text
@@ -497,40 +497,40 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.drawRoundedRect(fm_rect, 3, 3)
             painter.setPen(fm_fg)
             painter.drawText(fm_rect, Qt.AlignmentFlag.AlignCenter, fm_txt)
-            right_x -= fm_w + 6
 
-            left_x = rect.left()
-
+            # Left slot: Pre-Delay pill (if configured)
             if pre_delay > 0:
                 pre_txt = f"Pre +{pre_delay:.1f}s"
                 painter.setFont(tag_font)
-                pw = painter.fontMetrics().horizontalAdvance(pre_txt) + 8
-                p_rect = QRect(left_x, rect.top() + (rect.height() - 18) // 2, pw, 18)
+                pw = min(56, painter.fontMetrics().horizontalAdvance(pre_txt) + 8)
+                p_rect = QRect(rect.left(), rect.top() + (rect.height() - 18) // 2, pw, 18)
                 painter.setPen(QPen(QColor("#d97706"), 1))
                 painter.setBrush(QColor("#332006"))
                 painter.drawRoundedRect(p_rect, 3, 3)
                 painter.setPen(QColor("#fbbf24"))
                 painter.drawText(p_rect, Qt.AlignmentFlag.AlignCenter, pre_txt)
-                left_x += pw + 6
 
+            # Anchored duration slot (stable horizontal column across all rows)
+            dur_x = rect.left() + 58
+            dur_w = 54
+            dur_rect = QRect(dur_x, rect.top(), dur_w, rect.height())
+            dur_font = QFont("monospace", 10, QFont.Weight.Bold)
+            painter.setFont(dur_font)
+            painter.setPen(QColor("#e2e8f0"))
+            painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
+
+            # Middle-right slot: Post-Delay pill (if configured)
             if post_delay > 0:
                 post_txt = f"Post +{post_delay:.1f}s"
                 painter.setFont(tag_font)
-                post_w = painter.fontMetrics().horizontalAdvance(post_txt) + 8
-                post_rect = QRect(right_x - post_w, rect.top() + (rect.height() - 18) // 2, post_w, 18)
+                post_w = min(60, painter.fontMetrics().horizontalAdvance(post_txt) + 8)
+                post_x = dur_x + dur_w + 6
+                post_rect = QRect(post_x, rect.top() + (rect.height() - 18) // 2, post_w, 18)
                 painter.setPen(QPen(QColor("#7c3aed"), 1))
                 painter.setBrush(QColor("#2e1065"))
                 painter.drawRoundedRect(post_rect, 3, 3)
                 painter.setPen(QColor("#c084fc"))
                 painter.drawText(post_rect, Qt.AlignmentFlag.AlignCenter, post_txt)
-                right_x -= post_w + 6
-
-            center_w = max(20, right_x - left_x)
-            dur_rect = QRect(left_x, rect.top(), center_w, rect.height())
-            dur_font = QFont("monospace", 10, QFont.Weight.Bold)
-            painter.setFont(dur_font)
-            painter.setPen(QColor("#e2e8f0"))
-            painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
 
             painter.restore()
             return
@@ -668,6 +668,7 @@ class LiveShowPanel(QWidget):
         left_layout = QHBoxLayout(left_box)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.setSpacing(10)
+        left_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
 
         self.btn_back_project = QPushButton("← 🛠 Torna a Progetto  [F5]")
         self.btn_back_project.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -682,7 +683,7 @@ class LiveShowPanel(QWidget):
         left_layout.addWidget(self.btn_back_project)
 
         self.lbl_show_badge = QLabel("● MODALITÀ LIVE (SHOW MODE)")
-        self.lbl_show_badge.setFixedHeight(28)
+        self.lbl_show_badge.setFixedHeight(30)
         self.lbl_show_badge.setStyleSheet(
             "QLabel { background-color: #064e3b; color: #69f0ae; border: 1px solid #10b981; "
             "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
@@ -703,6 +704,7 @@ class LiveShowPanel(QWidget):
         right_layout = QHBoxLayout(right_box)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.setSpacing(6)
+        right_layout.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         right_layout.addStretch(1)
 
         # Show duration stopwatch
@@ -731,7 +733,7 @@ class LiveShowPanel(QWidget):
         # Far away from bottom GO trigger: Crimson PANIC Stop button
         self.btn_panic = QPushButton("🚨  PANIC  —  STOP TOTALE   [ ESC ]")
         self.btn_panic.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_panic.setFixedHeight(36)
+        self.btn_panic.setFixedHeight(34)
         self.btn_panic.setMinimumWidth(252)
         self.btn_panic.setToolTip(
             "EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. "
@@ -780,8 +782,8 @@ class LiveShowPanel(QWidget):
         hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
         self.live_table.setColumnWidth(0, 60)
         self.live_table.setColumnWidth(1, 76)
-        self.live_table.setColumnWidth(3, 270)
-        self.live_table.setColumnWidth(4, 260)
+        self.live_table.setColumnWidth(3, 260)
+        self.live_table.setColumnWidth(4, 280)
         self.live_table.setColumnWidth(5, 160)
         self.live_table.setItemDelegate(LiveCueRowDelegate(self.live_table))
 
@@ -1132,7 +1134,13 @@ class LiveShowPanel(QWidget):
 
                 q_badge = f"[{sb_cue.q_label.strip()}] " if (sb_cue.q_label and sb_cue.q_label.strip()) else ""
                 layer_badge = f"[L{sb_cue.layer}]" if sb_cue.media_type != MediaType.GROUP else "[SCENA]"
-                type_tag = sb_cue.media_type.value[:3]
+                type_map = {
+                    MediaType.VIDEO: "VID",
+                    MediaType.AUDIO: "AUD",
+                    MediaType.IMAGE: "IMG",
+                    MediaType.GROUP: "GRP",
+                }
+                type_tag = type_map.get(sb_cue.media_type, sb_cue.media_type.value[:3])
 
                 extra_tags: list[str] = []
                 if sb_cue.pre_delay > 0:

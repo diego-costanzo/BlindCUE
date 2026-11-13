@@ -511,6 +511,105 @@ class _LiveLayerBar(QWidget):
         p.end()
 
 
+class _LayerRoundIconButton(QPushButton):
+    """Custom-painted anti-aliased circular button with crisp vector icons (no OS emoji glyph glitch)."""
+
+    def __init__(self, mode: str, parent: Optional[QWidget] = None) -> None:
+        super().__init__("", parent)
+        self._mode = mode  # "JUMP_BACK", "PAUSE", "PLAY"
+        self._hover = False
+        self._pressed = False
+        self.setFixedSize(26, 26)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
+
+    def set_mode(self, mode: str) -> None:
+        if self._mode != mode:
+            self._mode = mode
+            self.update()
+
+    def enterEvent(self, event) -> None:  # noqa: N802
+        self._hover = True
+        self.update()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        self._hover = False
+        self.update()
+        super().leaveEvent(event)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._pressed = True
+            self.update()
+        super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._pressed = False
+            self.update()
+        super().mouseReleaseEvent(event)
+
+    def paintEvent(self, _event) -> None:  # noqa: N802
+        p = QPainter(self)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        w, h = float(self.width()), float(self.height())
+        cx, cy = w / 2.0, h / 2.0
+        r = (min(w, h) - 2.0) / 2.0
+
+        if self._mode == "JUMP_BACK":
+            bg = QColor("#1e3a5f" if self._hover else "#0f2038")
+            border = QColor("#60a5fa" if self._hover else "#2563eb")
+            fg = QColor("#ffffff" if self._hover else "#93c5fd")
+        elif self._mode == "PLAY":
+            bg = QColor("#3f2806" if self._hover else "#241604")
+            border = QColor("#fbbf24" if self._hover else "#f59e0b")
+            fg = QColor("#ffffff" if self._hover else "#fbbf24")
+        else:  # PAUSE
+            bg = QColor("#14432a" if self._hover else "#0c2818")
+            border = QColor("#00e676" if self._hover else "#16a34a")
+            fg = QColor("#ffffff" if self._hover else "#86efac")
+
+        if self._pressed:
+            bg = bg.lighter(130)
+
+        # Anti-aliased circular disk
+        p.setBrush(bg)
+        p.setPen(QPen(border, 1.2))
+        p.drawEllipse(QPointF(cx, cy), r, r)
+
+        # Draw vector icon geometry
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(fg)
+
+        if self._mode == "JUMP_BACK":
+            # Two crisp left-pointing isosceles triangles, perfectly centered
+            poly1 = QPolygonF([QPointF(7.5, cy), QPointF(12.5, cy - 4.5), QPointF(12.5, cy + 4.5)])
+            poly2 = QPolygonF([QPointF(13.5, cy), QPointF(18.5, cy - 4.5), QPointF(18.5, cy + 4.5)])
+            p.drawPolygon(poly1)
+            p.drawPolygon(poly2)
+
+        elif self._mode == "PAUSE":
+            # Two vertical rounded pill bars, 10px high, 2.8px wide, centered vertically (y = cy - 5 to cy + 5)
+            # Ample 8px margin from top and bottom - never touches or clips the top edge!
+            bar_w = 2.8
+            bar_h = 10.0
+            bar_y = cy - (bar_h / 2.0)
+            p.drawRoundedRect(QRectF(cx - 4.6, bar_y, bar_w, bar_h), 1.0, 1.0)
+            p.drawRoundedRect(QRectF(cx + 1.8, bar_y, bar_w, bar_h), 1.0, 1.0)
+
+        elif self._mode == "PLAY":
+            # Right-pointing triangle, optically centered with a slight right bias (+0.75px)
+            play_poly = QPolygonF([
+                QPointF(cx - 3.5, cy - 5.0),
+                QPointF(cx - 3.5, cy + 5.0),
+                QPointF(cx + 5.2, cy),
+            ])
+            p.drawPolygon(play_poly)
+
+        p.end()
+
+
 class LiveStatusPanel(QGroupBox):
     """Real-time monitor and Play/Pause, Cut, Blackout controls for Layers 1-3 plus Layer 0."""
 
@@ -530,8 +629,8 @@ class LiveStatusPanel(QGroupBox):
         )
         self._compact_live_mode = compact_live_mode
         self._layer_labels: dict[int, _LiveLayerBar] = {}
-        self._play_pause_buttons: dict[int, QPushButton] = {}
-        self._jump_back_buttons: dict[int, QPushButton] = {}
+        self._play_pause_buttons: dict[int, _LayerRoundIconButton] = {}
+        self._jump_back_buttons: dict[int, _LayerRoundIconButton] = {}
         self._clear_buttons: dict[int, QPushButton] = {}
         self._build_ui()
 
@@ -545,40 +644,33 @@ class LiveStatusPanel(QGroupBox):
         layout.addWidget(lbl_sub)
 
         cut_style = (
-            "QPushButton { background-color: #5c1d1d; color: #ff8080; border: 1px solid #ff4444; "
-            "border-radius: 3px; font-weight: bold; padding: 4px 10px; } "
-            "QPushButton:hover { background-color: #7a2727; }"
+            "QPushButton { background-color: #2b1111; color: #ff8888; border: 1px solid #772222; "
+            "border-radius: 4px; font-weight: bold; font-size: 10px; padding: 0px 8px; } "
+            "QPushButton:hover { background-color: #4a1a1a; color: #ffffff; border-color: #ef4444; }"
         )
 
         # Display Layers top-to-bottom in visual Z-order (Overlay L3 on top -> Sfondo L1 on bottom)
         for layer in (3, 2, 1):
             row = QHBoxLayout()
-            row.setSpacing(5)
+            row.setContentsMargins(0, 0, 0, 0)
+            row.setSpacing(6)
+            row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
             bar = _LiveLayerBar(layer)
             bar.seek_requested.connect(self.layer_seek_requested.emit)
             bar.play_pause_requested.connect(self.layer_play_pause_clicked.emit)
 
-            btn_back10 = QPushButton("⏪")
-            btn_back10.setFixedSize(24, 24)
-            btn_back10.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_back10 = _LayerRoundIconButton("JUMP_BACK")
             btn_back10.setVisible(False)
             btn_back10.setToolTip(f"Salta indietro di 10s su Layer {layer} (utile nelle prove per ripetere la battuta)")
-            btn_back10.setStyleSheet(
-                "QPushButton { background-color: #122030; color: #93c5fd; border: 1px solid #2563eb; "
-                "border-radius: 12px; font-size: 10px; font-weight: bold; padding: 0; } "
-                "QPushButton:hover { background-color: #1d3557; color: #ffffff; border-color: #60a5fa; }"
-            )
             btn_back10.clicked.connect(lambda _=False, idx=layer: self._on_quick_jump_backward(idx, 10.0))
 
-            btn_pp = QPushButton("⏸")
-            btn_pp.setFixedSize(24, 24)
-            btn_pp.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn_pp = _LayerRoundIconButton("PAUSE")
             btn_pp.setVisible(False)
-            btn_pp.setToolTip(f"Pausa / Riprendi Layer {layer} (utile durante le prove)")
-            self._style_play_pause_btn(btn_pp, paused=False)
+            btn_pp.setToolTip(f"Metti in Pausa Layer {layer} (utile durante le prove)")
             btn_pp.clicked.connect(lambda _=False, idx=layer: self.layer_play_pause_clicked.emit(idx))
 
             btn = QPushButton(f"✕ Cut L{layer}")
+            btn.setFixedHeight(26)
             btn.setToolTip(f"Rimuovi / arresta immediatamente il contenuto su Layer {layer}")
             btn.setStyleSheet(cut_style)
             btn.clicked.connect(lambda _=False, idx=layer: self.clear_layer_clicked.emit(idx))
@@ -607,28 +699,32 @@ class LiveStatusPanel(QGroupBox):
         layout.addWidget(self.btn_clear_all)
 
         row_tappo = QHBoxLayout()
+        row_tappo.setContentsMargins(0, 2, 0, 0)
+        row_tappo.setSpacing(8)
         self.lbl_tappo_info = QLabel("Tappo (L0): Logo BlindCue (Predefinito)")
         self.lbl_tappo_info.setMinimumWidth(0)
         self.lbl_tappo_info.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
-        self.lbl_tappo_info.setStyleSheet("color: #aaa; font-size: 11px; padding: 2px;")
+        self.lbl_tappo_info.setStyleSheet("color: #94a3b8; font-size: 11px; padding: 2px;")
 
         self.btn_choose_tappo = QPushButton("📁 Cambia Tappo…")
+        self.btn_choose_tappo.setFixedHeight(24)
         self.btn_choose_tappo.setToolTip(
             "Seleziona un'immagine personalizzata per il Layer 0 (locandina festival, logo evento, nero)"
         )
         self.btn_choose_tappo.setStyleSheet(
-            f"QPushButton {{ background-color: #333; color: {CLR_PREVIZ}; border: 1px solid {CLR_PREVIZ}; "
-            f"border-radius: 3px; font-weight: bold; padding: 3px 8px; font-size: 11px; }} "
-            f"QPushButton:hover {{ background-color: #4d3800; }}"
+            f"QPushButton {{ background-color: #1e293b; color: {CLR_PREVIZ}; border: 1px solid {CLR_PREVIZ}; "
+            f"border-radius: 4px; font-weight: bold; padding: 0px 10px; font-size: 11px; }} "
+            f"QPushButton:hover {{ background-color: #334155; color: #ffffff; }}"
         )
         self.btn_choose_tappo.clicked.connect(self.choose_layer0_clicked)
 
         self.btn_reset_tappo = QPushButton("🔄 Reset")
+        self.btn_reset_tappo.setFixedHeight(24)
         self.btn_reset_tappo.setToolTip("Ripristina il logo predefinito di BlindCue come Layer 0")
         self.btn_reset_tappo.setStyleSheet(
-            "QPushButton { background-color: #2b2b2b; color: #888; border: 1px solid #555; "
-            "border-radius: 3px; padding: 3px 6px; font-size: 11px; } "
-            "QPushButton:hover { background-color: #3a3a3a; }"
+            "QPushButton { background-color: #1e293b; color: #94a3b8; border: 1px solid #334155; "
+            "border-radius: 4px; padding: 0px 8px; font-size: 11px; font-weight: bold; } "
+            "QPushButton:hover { background-color: #334155; color: #f8fafc; border-color: #64748b; }"
         )
         self.btn_reset_tappo.clicked.connect(self.reset_layer0_clicked)
 
@@ -641,21 +737,13 @@ class LiveStatusPanel(QGroupBox):
         layout.addStretch()
 
     @staticmethod
-    def _style_play_pause_btn(btn: QPushButton, *, paused: bool) -> None:
-        if paused:
-            btn.setText("▶")
-            btn.setStyleSheet(
-                "QPushButton { background-color: #3b2806; color: #fbbf24; border: 1px solid #f59e0b; "
-                "border-radius: 12px; font-size: 10px; font-weight: bold; padding: 0; } "
-                "QPushButton:hover { background-color: #543a0a; color: #ffffff; }"
-            )
-        else:
-            btn.setText("⏸")
-            btn.setStyleSheet(
-                "QPushButton { background-color: #12291c; color: #86efac; border: 1px solid #16a34a; "
-                "border-radius: 12px; font-size: 10px; font-weight: bold; padding: 0; } "
-                "QPushButton:hover { background-color: #1a3d29; color: #ffffff; border-color: #00e676; }"
-            )
+    def _style_play_pause_btn(btn: _LayerRoundIconButton, *, paused: bool) -> None:
+        btn.set_mode("PLAY" if paused else "PAUSE")
+        btn.setToolTip(
+            "Riprendi riproduzione (Layer attualmente in Pausa)"
+            if paused
+            else "Metti in Pausa (utile durante le prove)"
+        )
 
     def _on_quick_jump_backward(self, layer: int, delta_sec: float = 10.0) -> None:
         bar = self._layer_labels.get(layer)
