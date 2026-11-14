@@ -949,6 +949,16 @@ class OutputWindow(QWidget):
         self.set_calibration_guides_visible(new_state)
         return new_state
 
+    def get_output_resolution(self) -> tuple[int, int]:
+        """Return the effective resolution (w, h) in pixels of the projector output."""
+        if self.width() > 100 and self.height() > 100:
+            return self.width(), self.height()
+        scr = self.current_target_screen()
+        if scr:
+            geo = scr.geometry()
+            return geo.width(), geo.height()
+        return 1920, 1080
+
     def span_all_screens(self) -> bool:
         """Span output window seamlessly across all connected external monitors/projectors."""
         from PySide6.QtWidgets import QApplication

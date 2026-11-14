@@ -5,6 +5,7 @@ Provides theatre technicians and live operators with:
 - Direct mouse dragging of bounding boxes and 4-corner perspective handles (keystone / corner-pinning).
 - Real-time on-projector alignment guides and test pattern toggle (F7).
 - Micro-nudge directional controls for precision calibration onto physical objects/architectures.
+- Dual unit support: native Pixels (px) and normalized Percentages (%).
 """
 
 from __future__ import annotations
@@ -68,7 +69,8 @@ logger = logging.getLogger(__name__)
 class SurfaceCanvasWidget(QWidget):
     """Interactive visual representation of the stage projector canvas.
 
-    Allows operators to drag entire surfaces or individual corner pins in real-time.
+    Allows operators to drag entire surfaces or individual corner pins in real-time
+    with live coordinate HUD overlays, hover highlights, and precision snapping.
     """
 
     surface_modified = Signal(SurfaceDefinition)
@@ -85,8 +87,15 @@ class SurfaceCanvasWidget(QWidget):
         self._active_surface_id: str = DEFAULT_SURFACE_ID
         self._active_corner: int = 0  # 0: TL, 1: TR, 2: BR, 3: BL
 
+        # Hover & visual feedback state
+        self._hovered_corner: Optional[int] = None
+        self._hovered_surface: bool = False
+        self._output_res: tuple[int, int] = (1920, 1080)
+        self._unit_mode: str = "px"  # "px" or "percent"
+        self._last_mouse_pos = QPointF()
+
         # Interaction drag state
-        self._drag_mode: Optional[str] = None  # None, "corner_0".."corner_3", "move_rect"
+        self._drag_mode: Optional[str] = None  # None, "corner_0".."corner_3", "move_surface"
         self._drag_start_mouse = QPointF()
         self._drag_start_surface: Optional[SurfaceDefinition] = None
         self._aspect_ratio: float = 16.0 / 9.0
@@ -100,8 +109,17 @@ class SurfaceCanvasWidget(QWidget):
             self._aspect_ratio = ratio
             self.update()
 
+    def set_output_resolution(self, w: int, h: int) -> None:
+        self._output_res = (max(1, w), max(1, h))
+        self.set_canvas_aspect_ratio(self._output_res[0] / self._output_res[1])
+        self.update()
+
+    def set_unit_mode(self, mode: str) -> None:
+        self._unit_mode = mode
+        self.update()
+
     def set_surfaces(self, surfaces: list[SurfaceDefinition], active_id: str) -> None:
-        self._surfaces = [s.clone() for s in surfaces]
+        self._surfaces = surfaces
         self._active_surface_id = active_id
         self.update()
 
@@ -167,12 +185,13 @@ class SurfaceCanvasWidget(QWidget):
             return
 
         mpos = event.position()
+        self._last_mouse_pos = mpos
         active_surf = self.get_active_surface()
         if not active_surf:
             return
 
-        # Check corner handles first (highest priority)
-        handle_radius = 12.0
+        # Check corner handles first with generous hit radius (18 px)
+        handle_radius = 18.0
         for i in range(4):
             cpt = self._norm_to_canvas(active_surf.corners[i][0], active_surf.corners[i][1])
             dist = math.hypot(mpos.x() - cpt.x(), mpos.y() - cpt.y())
@@ -181,6 +200,7 @@ class SurfaceCanvasWidget(QWidget):
                 self._active_corner = i
                 self._drag_start_mouse = mpos
                 self._drag_start_surface = active_surf.clone()
+                self.setCursor(QCursor(Qt.CursorShape.CrossCursor))
                 self.active_corner_changed.emit(i)
                 self.update()
                 return
@@ -193,6 +213,7 @@ class SurfaceCanvasWidget(QWidget):
             self._drag_mode = "move_surface"
             self._drag_start_mouse = mpos
             self._drag_start_surface = active_surf.clone()
+            self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
             self.update()
             return
 
@@ -213,6 +234,7 @@ class SurfaceCanvasWidget(QWidget):
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         mpos = event.position()
+        self._last_mouse_pos = mpos
         active_surf = self.get_active_surface()
 
         if self._drag_mode and self._drag_start_surface and active_surf:
@@ -238,23 +260,23 @@ class SurfaceCanvasWidget(QWidget):
                     if c_idx == 0:  # TL
                         r = cur_rect_x + cur_rect_w
                         b = cur_rect_y + cur_rect_h
-                        active_surf.x = min(r - 0.05, new_x)
-                        active_surf.y = min(b - 0.05, new_y)
+                        active_surf.x = min(r - 0.02, new_x)
+                        active_surf.y = min(b - 0.02, new_y)
                         active_surf.w = r - active_surf.x
                         active_surf.h = b - active_surf.y
                     elif c_idx == 1:  # TR
                         b = cur_rect_y + cur_rect_h
-                        active_surf.y = min(b - 0.05, new_y)
-                        active_surf.w = max(0.05, new_x - active_surf.x)
+                        active_surf.y = min(b - 0.02, new_y)
+                        active_surf.w = max(0.02, new_x - active_surf.x)
                         active_surf.h = b - active_surf.y
                     elif c_idx == 2:  # BR
-                        active_surf.w = max(0.05, new_x - active_surf.x)
-                        active_surf.h = max(0.05, new_y - active_surf.y)
+                        active_surf.w = max(0.02, new_x - active_surf.x)
+                        active_surf.h = max(0.02, new_y - active_surf.y)
                     elif c_idx == 3:  # BL
                         r = cur_rect_x + cur_rect_w
-                        active_surf.x = min(r - 0.05, new_x)
+                        active_surf.x = min(r - 0.02, new_x)
                         active_surf.w = r - active_surf.x
-                        active_surf.h = max(0.05, new_y - active_surf.y)
+                        active_surf.h = max(0.02, new_y - active_surf.y)
 
                     active_surf.sync_quad_from_rect()
 
@@ -285,29 +307,45 @@ class SurfaceCanvasWidget(QWidget):
                 self.update()
                 return
 
-        # Update hover cursor
+        # Hover detection when not dragging
+        prev_hover_c = self._hovered_corner
+        prev_hover_s = self._hovered_surface
+        self._hovered_corner = None
+        self._hovered_surface = False
+
         if active_surf:
-            handle_radius = 12.0
+            handle_radius = 18.0
             for i in range(4):
                 cpt = self._norm_to_canvas(active_surf.corners[i][0], active_surf.corners[i][1])
                 if math.hypot(mpos.x() - cpt.x(), mpos.y() - cpt.y()) <= handle_radius:
+                    self._hovered_corner = i
                     self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+                    if self._hovered_corner != prev_hover_c:
+                        self.update()
                     return
 
             poly = QPolygonF([
                 self._norm_to_canvas(pt[0], pt[1]) for pt in active_surf.corners
             ])
             if poly.containsPoint(mpos, Qt.FillRule.OddEvenFill):
+                self._hovered_surface = True
                 self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+                if not prev_hover_s:
+                    self.update()
                 return
 
         self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
+        if prev_hover_c is not None or prev_hover_s:
+            self.update()
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if self._drag_mode:
             self._drag_mode = None
             self._drag_start_surface = None
+            active_surf = self.get_active_surface()
+            if active_surf:
+                self.surface_modified.emit(active_surf)
             self.update()
         super().mouseReleaseEvent(event)
 
@@ -317,24 +355,42 @@ class SurfaceCanvasWidget(QWidget):
             super().keyPressEvent(event)
             return
 
-        step = 0.002 if (event.modifiers() & Qt.KeyboardModifier.ShiftModifier) else 0.01
-        dx, dy = 0.0, 0.0
+        # Number keys 1..4 switch corner directly
+        if event.key() in (Qt.Key.Key_1, Qt.Key.Key_2, Qt.Key.Key_3, Qt.Key.Key_4):
+            idx = event.key() - Qt.Key.Key_1
+            self._active_corner = idx
+            self.active_corner_changed.emit(idx)
+            self.update()
+            event.accept()
+            return
+
+        w, h = self._output_res
+        if self._unit_mode == "px":
+            step_px = 10.0 if (event.modifiers() & Qt.KeyboardModifier.ShiftModifier) else 1.0
+            dx = step_px / max(1.0, float(w))
+            dy = step_px / max(1.0, float(h))
+        else:
+            step_pct = 0.01 if (event.modifiers() & Qt.KeyboardModifier.ShiftModifier) else 0.002
+            dx = step_pct
+            dy = step_pct
+
+        step_x, step_y = 0.0, 0.0
         if event.key() == Qt.Key.Key_Left:
-            dx = -step
+            step_x = -dx
         elif event.key() == Qt.Key.Key_Right:
-            dx = step
+            step_x = dx
         elif event.key() == Qt.Key.Key_Up:
-            dy = -step
+            step_y = -dy
         elif event.key() == Qt.Key.Key_Down:
-            dy = step
+            step_y = dy
         else:
             super().keyPressEvent(event)
             return
 
         if active_surf.mode == SurfaceMode.QUAD.value:
-            active_surf.nudge_corner(self._active_corner, dx, dy)
+            active_surf.nudge_corner(self._active_corner, step_x, step_y)
         else:
-            active_surf.nudge_rect(dx, dy)
+            active_surf.nudge_rect(step_x, step_y)
 
         self.surface_modified.emit(active_surf)
         self.update()
@@ -432,8 +488,18 @@ class SurfaceCanvasWidget(QWidget):
                 painter.setFont(font_corner)
                 for idx, pt in enumerate(poly_pts):
                     is_selected_corner = (idx == self._active_corner)
-                    h_rad = 7 if not is_selected_corner else 9
+                    is_hovered = (idx == self._hovered_corner)
+                    is_dragging_this = (self._drag_mode == f"corner_{idx}")
+
+                    h_rad = 10 if (is_selected_corner or is_hovered or is_dragging_this) else 8
                     handle_col = QColor("#f59e0b" if not is_mono else "#ffffff") if is_selected_corner else col
+
+                    # Glowing dashed ring on hover or active dragging
+                    if is_hovered or is_dragging_this:
+                        ring_pen = QPen(QColor("#38bdf8" if not is_mono else "#ffffff"), 2, Qt.PenStyle.DashLine)
+                        painter.setPen(ring_pen)
+                        painter.setBrush(Qt.BrushStyle.NoBrush)
+                        painter.drawEllipse(pt, h_rad + 6, h_rad + 6)
 
                     painter.setBrush(QBrush(handle_col))
                     painter.setPen(QPen(QColor("#000000"), 2))
@@ -441,12 +507,45 @@ class SurfaceCanvasWidget(QWidget):
 
                     # Label
                     c_lbl = f"C{idx+1} {corner_names[idx]}"
-                    ox = 10 if idx in (0, 3) else -38
-                    oy = -10 if idx in (0, 1) else 16
+                    ox = 12 if idx in (0, 3) else -42
+                    oy = -12 if idx in (0, 1) else 18
                     painter.setPen(QColor("#000000"))
                     painter.drawText(int(pt.x() + ox + 1), int(pt.y() + oy + 1), c_lbl)
                     painter.setPen(handle_col)
                     painter.drawText(int(pt.x() + ox), int(pt.y() + oy), c_lbl)
+
+        # Draw live floating HUD tooltip when dragging
+        active_surf = self.get_active_surface()
+        if self._drag_mode and active_surf:
+            mpt = self._last_mouse_pos
+            painter.setFont(QFont("sans-serif", 9, QFont.Weight.Bold))
+            if self._drag_mode.startswith("corner_"):
+                c_idx = int(self._drag_mode.split("_")[1])
+                c_norm = active_surf.corners[c_idx]
+                px_x = int(round(c_norm[0] * self._output_res[0]))
+                px_y = int(round(c_norm[1] * self._output_res[1]))
+                pct_x = c_norm[0] * 100.0
+                pct_y = c_norm[1] * 100.0
+                hud_text = f"C{c_idx+1} ({corner_names[c_idx]}): {px_x} px, {px_y} px  ({pct_x:.1f}%, {pct_y:.1f}%)"
+            else:
+                px_x = int(round(active_surf.x * self._output_res[0]))
+                px_y = int(round(active_surf.y * self._output_res[1]))
+                px_w = int(round(active_surf.w * self._output_res[0]))
+                px_h = int(round(active_surf.h * self._output_res[1]))
+                hud_text = f"Pos: {px_x}, {px_y} px · Dim: {px_w} × {px_h} px"
+
+            fm = painter.fontMetrics()
+            tw = fm.horizontalAdvance(hud_text) + 20
+            th = 26
+            hx = min(float(self.width() - tw - 12), max(12.0, float(mpt.x() + 15)))
+            hy = min(float(self.height() - th - 12), max(12.0, float(mpt.y() - 36)))
+            hud_rect = QRectF(hx, hy, float(tw), float(th))
+
+            painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
+            painter.setPen(QPen(QColor("#38bdf8" if not is_mono else "#ffffff"), 1.5))
+            painter.drawRoundedRect(hud_rect, 5, 5)
+            painter.setPen(QColor("#ffffff"))
+            painter.drawText(hud_rect, Qt.AlignmentFlag.AlignCenter, hud_text)
 
 
 # ── Visual Surface Mapping Studio Dialog ──────────────────────────────────────
@@ -472,31 +571,32 @@ class SurfaceMappingDialog(QDialog):
 
         self._active_id: str = self._surfaces[0].surface_id
         self._active_corner: int = 0
+        self._unit_mode: str = "px"  # "px" or "percent"
+
+        w_out, h_out = self._output.get_output_resolution() if hasattr(self._output, "get_output_resolution") else (1920, 1080)
+        self._output_res = (w_out, h_out)
         self._updating_ui: bool = False
 
         self.setWindowTitle("BlindCue – Studio Superfici di Proiezione & Video Mapping")
-        self.setMinimumSize(1020, 680)
-        self.resize(1120, 720)
-
-        theme = get_active_theme()
-        is_mono = theme.is_monochrome
-        bg_col = "#131722" if not is_mono else "#1a1a1e"
-        self.setStyleSheet(f"background-color: {bg_col}; color: #e2e8f0;")
+        self.setMinimumSize(1040, 700)
+        self.resize(1140, 740)
 
         self._build_ui()
         self._refresh_surface_list()
         self._load_active_surface_to_controls()
 
-        # Connect canvas signals
+        # Canvas signals
+        self.canvas.set_output_resolution(w_out, h_out)
+        self.canvas.set_unit_mode(self._unit_mode)
         self.canvas.surface_modified.connect(self._on_canvas_surface_modified)
         self.canvas.active_corner_changed.connect(self._on_canvas_corner_selected)
 
     def _build_ui(self) -> None:
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(16, 14, 16, 14)
+        main_layout.setContentsMargins(16, 16, 16, 16)
         main_layout.setSpacing(12)
 
-        # ── Header Bar ────────────────────────────────────────────────
+        # ── Header ────────────────────────────────────────────────────
         header = QHBoxLayout()
         header.setSpacing(12)
 
@@ -551,9 +651,9 @@ class SurfaceMappingDialog(QDialog):
         body = QHBoxLayout()
         body.setSpacing(14)
 
-        # Left Column: Configuration Controls (width ~360px)
+        # Left Column: Configuration Controls (width ~370px)
         left_panel = QFrame()
-        left_panel.setFixedWidth(360)
+        left_panel.setFixedWidth(370)
         left_panel.setStyleSheet("background: #0f172a; border: 1px solid #334155; border-radius: 8px;")
         left_lay = QVBoxLayout(left_panel)
         left_lay.setContentsMargins(12, 12, 12, 12)
@@ -565,7 +665,7 @@ class SurfaceMappingDialog(QDialog):
         left_lay.addWidget(lbl_surfs)
 
         self.list_surfaces = QListWidget()
-        self.list_surfaces.setFixedHeight(120)
+        self.list_surfaces.setFixedHeight(115)
         self.list_surfaces.setStyleSheet("""
             QListWidget {
                 background: #1e293b;
@@ -680,10 +780,54 @@ class SurfaceMappingDialog(QDialog):
         preset_row.addWidget(self.combo_preset)
         left_lay.addLayout(preset_row)
 
-        # Group 3: Fine Adjustment & Micro-Nudge
-        lbl_fine = QLabel("REGOLAZIONE FINE & MICRO-NUDGE")
+        # Group 3: Fine Adjustment & Unit Switch (Pixel vs Percentage)
+        fine_header = QHBoxLayout()
+        lbl_fine = QLabel("REGOLAZIONE FINE & UNITA'")
         lbl_fine.setStyleSheet("font-size: 10px; font-weight: bold; color: #94a3b8; letter-spacing: 1px; margin-top: 4px;")
-        left_lay.addWidget(lbl_fine)
+        fine_header.addWidget(lbl_fine)
+        fine_header.addStretch()
+
+        self.lbl_res_badge = QLabel(f"🖥 {self._output_res[0]}×{self._output_res[1]} px")
+        self.lbl_res_badge.setStyleSheet("font-size: 10px; color: #38bdf8; font-weight: bold; padding: 2px 6px; background: #1e293b; border: 1px solid #334155; border-radius: 4px;")
+        fine_header.addWidget(self.lbl_res_badge)
+        left_lay.addLayout(fine_header)
+
+        # Unit Selector Toggle: Pixel vs Percentage
+        unit_row = QHBoxLayout()
+        unit_row.setSpacing(6)
+        self.btn_unit_px = QPushButton("📐 Pixel (px)")
+        self.btn_unit_px.setCheckable(True)
+        self.btn_unit_px.setChecked(True)
+        self.btn_unit_px.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_unit_px.clicked.connect(lambda: self._set_unit_mode("px"))
+
+        self.btn_unit_pct = QPushButton("％ Percentuale (%)")
+        self.btn_unit_pct.setCheckable(True)
+        self.btn_unit_pct.setChecked(False)
+        self.btn_unit_pct.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_unit_pct.clicked.connect(lambda: self._set_unit_mode("percent"))
+
+        unit_btn_style = """
+            QPushButton {
+                background: #1e293b;
+                color: #cbd5e1;
+                border: 1px solid #475569;
+                border-radius: 4px;
+                padding: 4px;
+                font-size: 11px;
+            }
+            QPushButton:checked {
+                background: #0284c7;
+                color: #ffffff;
+                font-weight: bold;
+                border: 1px solid #38bdf8;
+            }
+        """
+        self.btn_unit_px.setStyleSheet(unit_btn_style)
+        self.btn_unit_pct.setStyleSheet(unit_btn_style)
+        unit_row.addWidget(self.btn_unit_px)
+        unit_row.addWidget(self.btn_unit_pct)
+        left_lay.addLayout(unit_row)
 
         # Directional D-Pad for micro-nudge
         dpad_box = QHBoxLayout()
@@ -694,10 +838,10 @@ class SurfaceMappingDialog(QDialog):
         self.btn_nudge_r = QPushButton("▶")
 
         for b, (dx, dy) in (
-            (self.btn_nudge_l, (-0.002, 0.0)),
-            (self.btn_nudge_u, (0.0, -0.002)),
-            (self.btn_nudge_d, (0.0, 0.002)),
-            (self.btn_nudge_r, (0.002, 0.0)),
+            (self.btn_nudge_l, (-1, 0)),
+            (self.btn_nudge_u, (0, -1)),
+            (self.btn_nudge_d, (0, 1)),
+            (self.btn_nudge_r, (1, 0)),
         ):
             b.setFixedSize(36, 30)
             b.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -724,10 +868,6 @@ class SurfaceMappingDialog(QDialog):
         self.spin_rw = SmartDoubleSpinBox()
         self.spin_rh = SmartDoubleSpinBox()
         for s in (self.spin_rx, self.spin_ry, self.spin_rw, self.spin_rh):
-            s.setRange(0.0, 100.0)
-            s.setDecimals(1)
-            s.setSuffix(" %")
-            s.setSingleStep(0.5)
             s.setStyleSheet("background: #1e293b; color: #ffffff; border: 1px solid #475569; border-radius: 4px;")
             s.valueChanged.connect(self._on_rect_spins_changed)
 
@@ -741,13 +881,10 @@ class SurfaceMappingDialog(QDialog):
         self.spin_cx = SmartDoubleSpinBox()
         self.spin_cy = SmartDoubleSpinBox()
         for s in (self.spin_cx, self.spin_cy):
-            s.setRange(0.0, 100.0)
-            s.setDecimals(1)
-            s.setSuffix(" %")
-            s.setSingleStep(0.5)
             s.setStyleSheet("background: #1e293b; color: #ffffff; border: 1px solid #475569; border-radius: 4px;")
             s.valueChanged.connect(self._on_quad_spins_changed)
 
+        self._configure_spinboxes_for_unit()
         left_lay.addWidget(self.coord_stack)
 
         # Group 4: Multi-Monitor Spanning Helper
@@ -783,7 +920,7 @@ class SurfaceMappingDialog(QDialog):
         self.canvas = SurfaceCanvasWidget()
         right_panel.addWidget(self.canvas)
 
-        hint_lbl = QLabel("💡 Trascina la superficie per spostarla, trascina i 4 angoli per mappare la prospettiva sull'oggetto scenico. Usa i tasti freccia per precisione al millimetro.")
+        hint_lbl = QLabel("💡 Mouse: trascina i vertici C1..C4 o il riquadro direttamente sul canvas. Con i pulsanti o le frecce usi il micro-nudge. Passa tra Pixel e Percentuale in qualsiasi momento.")
         hint_lbl.setStyleSheet("font-size: 11px; color: #94a3b8; font-style: italic;")
         right_panel.addWidget(hint_lbl)
 
@@ -819,9 +956,80 @@ class SurfaceMappingDialog(QDialog):
         self.btn_close.clicked.connect(self.accept)
         footer.addWidget(self.btn_close)
 
-        main_layout.addLayout(footer)
+    # ── Unit Mode Conversion Helpers ──────────────────────────────────
 
-    # ── State Synchronization ─────────────────────────────────────────
+    def _to_display_x(self, norm_x: float) -> float:
+        if self._unit_mode == "px":
+            return float(round(norm_x * self._output_res[0]))
+        return round(norm_x * 100.0, 1)
+
+    def _to_display_y(self, norm_y: float) -> float:
+        if self._unit_mode == "px":
+            return float(round(norm_y * self._output_res[1]))
+        return round(norm_y * 100.0, 1)
+
+    def _from_display_x(self, val: float) -> float:
+        if self._unit_mode == "px":
+            return max(0.0, min(1.0, val / max(1.0, float(self._output_res[0]))))
+        return max(0.0, min(1.0, val / 100.0))
+
+    def _from_display_y(self, val: float) -> float:
+        if self._unit_mode == "px":
+            return max(0.0, min(1.0, val / max(1.0, float(self._output_res[1]))))
+        return max(0.0, min(1.0, val / 100.0))
+
+    def _set_unit_mode(self, mode: str) -> None:
+        if self._unit_mode == mode:
+            return
+        self._unit_mode = mode
+        self.btn_unit_px.setChecked(mode == "px")
+        self.btn_unit_pct.setChecked(mode == "percent")
+        self.canvas.set_unit_mode(mode)
+        self._configure_spinboxes_for_unit()
+        self._load_active_surface_to_controls()
+
+    def _configure_spinboxes_for_unit(self) -> None:
+        self._updating_ui = True
+        w, h = self._output_res
+        if self._unit_mode == "px":
+            self.spin_rx.setRange(0, w)
+            self.spin_rx.setDecimals(0)
+            self.spin_rx.setSuffix(" px")
+            self.spin_rx.setSingleStep(1)
+
+            self.spin_ry.setRange(0, h)
+            self.spin_ry.setDecimals(0)
+            self.spin_ry.setSuffix(" px")
+            self.spin_ry.setSingleStep(1)
+
+            self.spin_rw.setRange(1, w)
+            self.spin_rw.setDecimals(0)
+            self.spin_rw.setSuffix(" px")
+            self.spin_rw.setSingleStep(1)
+
+            self.spin_rh.setRange(1, h)
+            self.spin_rh.setDecimals(0)
+            self.spin_rh.setSuffix(" px")
+            self.spin_rh.setSingleStep(1)
+
+            self.spin_cx.setRange(0, w)
+            self.spin_cx.setDecimals(0)
+            self.spin_cx.setSuffix(" px")
+            self.spin_cx.setSingleStep(1)
+
+            self.spin_cy.setRange(0, h)
+            self.spin_cy.setDecimals(0)
+            self.spin_cy.setSuffix(" px")
+            self.spin_cy.setSingleStep(1)
+        else:
+            for s in (self.spin_rx, self.spin_ry, self.spin_rw, self.spin_rh, self.spin_cx, self.spin_cy):
+                s.setRange(0.0, 100.0)
+                s.setDecimals(1)
+                s.setSuffix(" %")
+                s.setSingleStep(0.5)
+        self._updating_ui = False
+
+    # ── Internal State Helpers ────────────────────────────────────────
 
     def _get_active_surface(self) -> SurfaceDefinition:
         for s in self._surfaces:
@@ -844,6 +1052,20 @@ class SurfaceMappingDialog(QDialog):
         # Disable delete for default surface
         self.btn_del.setEnabled(self._active_id != DEFAULT_SURFACE_ID)
 
+    def _sync_controls_from_surface(self, s: SurfaceDefinition) -> None:
+        """Update spinboxes from surface without touching layout or resetting canvas."""
+        self._updating_ui = True
+        if s.mode == SurfaceMode.RECTANGLE.value:
+            self.spin_rx.setValue(self._to_display_x(s.x))
+            self.spin_ry.setValue(self._to_display_y(s.y))
+            self.spin_rw.setValue(self._to_display_x(s.w))
+            self.spin_rh.setValue(self._to_display_y(s.h))
+        else:
+            c_pt = s.corners[self._active_corner]
+            self.spin_cx.setValue(self._to_display_x(c_pt[0]))
+            self.spin_cy.setValue(self._to_display_y(c_pt[1]))
+        self._updating_ui = False
+
     def _load_active_surface_to_controls(self) -> None:
         self._updating_ui = True
         s = self._get_active_surface()
@@ -861,19 +1083,19 @@ class SurfaceMappingDialog(QDialog):
 
         if is_rect:
             self.coord_lay.addWidget(QLabel("Pos X:"), 0, 0)
-            self.spin_rx.setValue(s.x * 100.0)
+            self.spin_rx.setValue(self._to_display_x(s.x))
             self.coord_lay.addWidget(self.spin_rx, 0, 1)
 
             self.coord_lay.addWidget(QLabel("Pos Y:"), 0, 2)
-            self.spin_ry.setValue(s.y * 100.0)
+            self.spin_ry.setValue(self._to_display_y(s.y))
             self.coord_lay.addWidget(self.spin_ry, 0, 3)
 
             self.coord_lay.addWidget(QLabel("Larghezza:"), 1, 0)
-            self.spin_rw.setValue(s.w * 100.0)
+            self.spin_rw.setValue(self._to_display_x(s.w))
             self.coord_lay.addWidget(self.spin_rw, 1, 1)
 
             self.coord_lay.addWidget(QLabel("Altezza:"), 1, 2)
-            self.spin_rh.setValue(s.h * 100.0)
+            self.spin_rh.setValue(self._to_display_y(s.h))
             self.coord_lay.addWidget(self.spin_rh, 1, 3)
         else:
             self.coord_lay.addWidget(QLabel("Angolo Attivo:"), 0, 0)
@@ -882,11 +1104,11 @@ class SurfaceMappingDialog(QDialog):
 
             c_pt = s.corners[self._active_corner]
             self.coord_lay.addWidget(QLabel("Corner X:"), 1, 0)
-            self.spin_cx.setValue(c_pt[0] * 100.0)
+            self.spin_cx.setValue(self._to_display_x(c_pt[0]))
             self.coord_lay.addWidget(self.spin_cx, 1, 1)
 
             self.coord_lay.addWidget(QLabel("Corner Y:"), 1, 2)
-            self.spin_cy.setValue(c_pt[1] * 100.0)
+            self.spin_cy.setValue(self._to_display_y(c_pt[1]))
             self.coord_lay.addWidget(self.spin_cy, 1, 3)
 
         self.canvas.set_surfaces(self._surfaces, self._active_id)
@@ -953,10 +1175,10 @@ class SurfaceMappingDialog(QDialog):
         if self._updating_ui:
             return
         s = self._get_active_surface()
-        s.x = round(self.spin_rx.value() / 100.0, 4)
-        s.y = round(self.spin_ry.value() / 100.0, 4)
-        s.w = round(self.spin_rw.value() / 100.0, 4)
-        s.h = round(self.spin_rh.value() / 100.0, 4)
+        s.x = self._from_display_x(self.spin_rx.value())
+        s.y = self._from_display_y(self.spin_ry.value())
+        s.w = self._from_display_x(self.spin_rw.value())
+        s.h = self._from_display_y(self.spin_rh.value())
         s.sync_quad_from_rect()
         self.canvas.update()
         self._sync_to_output()
@@ -968,8 +1190,8 @@ class SurfaceMappingDialog(QDialog):
         s = self._get_active_surface()
         c_pt = s.corners[index]
         self._updating_ui = True
-        self.spin_cx.setValue(c_pt[0] * 100.0)
-        self.spin_cy.setValue(c_pt[1] * 100.0)
+        self.spin_cx.setValue(self._to_display_x(c_pt[0]))
+        self.spin_cy.setValue(self._to_display_y(c_pt[1]))
         self._updating_ui = False
 
     @Slot()
@@ -977,23 +1199,35 @@ class SurfaceMappingDialog(QDialog):
         if self._updating_ui:
             return
         s = self._get_active_surface()
-        nx = round(self.spin_cx.value() / 100.0, 4)
-        ny = round(self.spin_cy.value() / 100.0, 4)
+        nx = self._from_display_x(self.spin_cx.value())
+        ny = self._from_display_y(self.spin_cy.value())
         s.set_corner(self._active_corner, nx, ny)
         self.canvas.update()
         self._sync_to_output()
 
-    def _nudge_active(self, dx: float, dy: float) -> None:
+    def _nudge_active(self, dx_step: int, dy_step: int) -> None:
+        """Nudge active element by discrete steps (1px or 0.2%)."""
         s = self._get_active_surface()
-        if s.mode == SurfaceMode.QUAD.value:
-            s.nudge_corner(self._active_corner, dx, dy)
+        w, h = self._output_res
+        if self._unit_mode == "px":
+            dx_norm = dx_step / max(1.0, float(w))
+            dy_norm = dy_step / max(1.0, float(h))
         else:
-            s.nudge_rect(dx, dy)
-        self._load_active_surface_to_controls()
+            dx_norm = dx_step * 0.002
+            dy_norm = dy_step * 0.002
+
+        if s.mode == SurfaceMode.QUAD.value:
+            s.nudge_corner(self._active_corner, dx_norm, dy_norm)
+        else:
+            s.nudge_rect(dx_norm, dy_norm)
+        self._sync_controls_from_surface(s)
+        self.canvas.update()
+        self._sync_to_output()
 
     @Slot(SurfaceDefinition)
     def _on_canvas_surface_modified(self, modified_surface: SurfaceDefinition) -> None:
-        self._load_active_surface_to_controls()
+        self._sync_controls_from_surface(modified_surface)
+        self._sync_to_output()
 
     @Slot(int)
     def _on_canvas_corner_selected(self, corner_idx: int) -> None:
@@ -1003,8 +1237,8 @@ class SurfaceMappingDialog(QDialog):
             self._updating_ui = True
             self.combo_corner.setCurrentIndex(corner_idx)
             c_pt = s.corners[corner_idx]
-            self.spin_cx.setValue(c_pt[0] * 100.0)
-            self.spin_cy.setValue(c_pt[1] * 100.0)
+            self.spin_cx.setValue(self._to_display_x(c_pt[0]))
+            self.spin_cy.setValue(self._to_display_y(c_pt[1]))
             self._updating_ui = False
 
     @Slot()
@@ -1026,11 +1260,12 @@ class SurfaceMappingDialog(QDialog):
     @Slot()
     def _duplicate_surface(self) -> None:
         src = self._get_active_surface()
-        new_idx = len(self._surfaces) + 1
-        col = SURFACE_COLORS[(new_idx - 1) % len(SURFACE_COLORS)]
-        dup = src.clone(new_id=f"surface_{new_idx}", new_name=f"{src.name} (Copia)")
-        dup.color = col
-        dup.nudge_rect(0.05, 0.05)
+        dup = src.clone()
+        dup.surface_id = f"{src.surface_id}_copy_{len(self._surfaces)}"
+        dup.name = f"{src.name} (Copia)"
+        dup.x = min(0.9, dup.x + 0.05)
+        dup.y = min(0.9, dup.y + 0.05)
+        dup.sync_quad_from_rect()
         self._surfaces.append(dup)
         self._active_id = dup.surface_id
         self._refresh_surface_list()
@@ -1038,13 +1273,9 @@ class SurfaceMappingDialog(QDialog):
 
     @Slot()
     def _delete_surface(self) -> None:
-        if self._active_id == DEFAULT_SURFACE_ID:
-            QMessageBox.information(self, "Superficie Protetta", "La superficie predefinita a schermo intero non può essere eliminata.")
+        if self._active_id == DEFAULT_SURFACE_ID or len(self._surfaces) <= 1:
             return
-
         self._surfaces = [s for s in self._surfaces if s.surface_id != self._active_id]
-        if not self._surfaces:
-            self._surfaces = [create_default_surface()]
         self._active_id = self._surfaces[0].surface_id
         self._refresh_surface_list()
         self._load_active_surface_to_controls()
@@ -1058,13 +1289,16 @@ class SurfaceMappingDialog(QDialog):
     def _span_displays(self) -> None:
         success = self._output.span_all_screens()
         if success:
-            crect = self._output.geometry()
-            ratio = float(crect.width()) / float(max(1, crect.height()))
-            self.canvas.set_canvas_aspect_ratio(ratio)
+            w, h = self._output.get_output_resolution()
+            self._output_res = (w, h)
+            self.lbl_res_badge.setText(f"🖥 {w}×{h} px (Span)")
+            self.canvas.set_output_resolution(w, h)
+            self._configure_spinboxes_for_unit()
+            self._load_active_surface_to_controls()
             QMessageBox.information(
                 self,
                 "Multi-Monitor Esteso",
-                f"La finestra di uscita è stata estesa su tutti i monitor ({crect.width()}×{crect.height()} px).\n"
+                f"La finestra di uscita è stata estesa su tutti i monitor ({w}×{h} px).\n"
                 "I preset 'Doppio Proiettore' mapperanno automaticamente ciascuna metà dello schermo!",
             )
         else:
