@@ -77,15 +77,15 @@ class RemoteManager(QObject):
     def __init__(self, parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
 
-        self._web_enabled: bool = True
+        self._web_enabled: bool = False
         self._web_port: int = 8080
-        self._osc_enabled: bool = True
+        self._osc_enabled: bool = False
         self._osc_port: int = 53000
 
-        # Security PIN & Anti-Burlone Controls
+        # Security PIN & Anti-Burlone Controls (6-digit random PIN)
         import random
         self._pin_enabled: bool = True
-        self._pin: str = f"{random.randint(1000, 9999)}"
+        self._pin: str = f"{random.randint(100000, 999999)}"
         self._qr_includes_pin: bool = True
         self._osc_pin_required: bool = False
         self._osc_allowed_ips: list[str] = []
@@ -160,7 +160,7 @@ class RemoteManager(QObject):
 
     def generate_new_pin(self) -> str:
         import random
-        self._pin = f"{random.randint(1000, 9999)}"
+        self._pin = f"{random.randint(100000, 999999)}"
         self.web_server.set_pin_protection(self._pin_enabled, self._pin)
         self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
         self.revoke_all_sessions()
@@ -199,6 +199,19 @@ class RemoteManager(QObject):
         """Return the URL to be encoded in the QR code (includes PIN if enabled for 1-tap camera scan)."""
         return self.get_primary_web_url(include_pin=self._qr_includes_pin)
 
+    def get_monitor_url(self, include_pin: bool = False) -> str:
+        """Return the dedicated read-only Director Monitor URL (no interactive controls)."""
+        ips = get_local_lan_ips()
+        ip = ips[0] if ips else "127.0.0.1"
+        base = f"http://{ip}:{self._web_port}/monitor"
+        if include_pin and self._pin_enabled:
+            return f"{base}?pin={self._pin}"
+        return base
+
+    def get_monitor_qr_url(self) -> str:
+        """Return the URL for the Director Monitor QR code (with PIN if enabled for 1-tap scan)."""
+        return self.get_monitor_url(include_pin=self._qr_includes_pin)
+
     def get_all_web_urls(self) -> list[str]:
         ips = get_local_lan_ips()
         return [f"http://{ip}:{self._web_port}" for ip in ips]
@@ -212,19 +225,19 @@ class RemoteManager(QObject):
         """Start both Web and OSC servers with the given ports."""
         self._web_port = web_port
         self._osc_port = osc_port
+        self._web_enabled = True
+        self._osc_enabled = True
 
-        web_ok = True
-        if self._web_enabled:
-            web_ok = self.web_server.start(self._web_port)
-
-        osc_ok = True
-        if self._osc_enabled:
-            osc_ok = self.osc_server.start(self._osc_port)
+        web_ok = self.web_server.start(self._web_port)
+        osc_ok = self.osc_server.start(self._osc_port)
 
         self.activity_updated.emit()
         return web_ok, osc_ok
 
     def stop_all(self) -> None:
+        """Stop both Web and OSC servers."""
+        self._web_enabled = False
+        self._osc_enabled = False
         self.web_server.stop()
         self.osc_server.stop()
         self.activity_updated.emit()

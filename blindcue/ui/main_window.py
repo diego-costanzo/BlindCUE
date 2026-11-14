@@ -984,9 +984,10 @@ class MainWindow(QMainWindow):
         self._btn_jam_mode.toggled_state.connect(self._set_jam_mode)
         sb.addWidget(self._btn_jam_mode)
 
-        self._btn_remote_status = QPushButton("📡 Web Remote: OFF")
+        self._btn_remote_status = QPushButton("📡 Remoto: OFF")
         self._btn_remote_status.setFixedHeight(22)
         self._btn_remote_status.setMinimumWidth(168)
+        self._btn_remote_status.setStyleSheet("color: #64748b;")
         self._btn_remote_status.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_remote_status.setToolTip(
             "Controllo Remoto LAN per Smartphone/Tablet (Web) e OSC.\n"
@@ -1370,23 +1371,53 @@ class MainWindow(QMainWindow):
                 self._btn_remote_status.setStyleSheet("color: #64748b;")
 
     def get_remote_state(self) -> dict[str, Any]:
-        """Provide a complete real-time JSON snapshot for web remotes and OSC clients."""
+        """Provide a complete real-time JSON snapshot for web remotes, Director Monitor, and OSC clients."""
         row, standby_cue = self._anchor_row_and_cue()
         active_cues_data = []
+        layers_data: dict[str, Any] = {}
+
+        # Default empty layer state for all 3 layers
+        for l_idx in (1, 2, 3):
+            layers_data[str(l_idx)] = {
+                "layer": l_idx,
+                "is_live": False,
+                "title": "— Inattivo / Nero —",
+                "q_label": "",
+                "cue_id": -1,
+                "pos_sec": 0.0,
+                "end_sec": 0.0,
+                "start_sec": 0.0,
+                "is_paused": False,
+                "phase": "IDLE",
+            }
+
         if hasattr(self, "_live_status") and hasattr(self._live_status, "_layer_labels"):
-            for bar in self._live_status._layer_labels.values():
+            for l_idx, bar in self._live_status._layer_labels.items():
                 if bar._is_live:
-                    active_cues_data.append({
+                    cue_entry = {
                         "layer": bar._layer_idx,
                         "cue_id": bar._cue_id,
-                        "title": bar._title,
+                        "title": bar._title or f"Media L{bar._layer_idx}",
                         "q_label": bar._q_label,
                         "pos_sec": round(bar._pos_sec, 2),
                         "end_sec": round(bar._end_sec, 2),
                         "start_sec": round(bar._start_sec, 2),
                         "is_paused": bar._is_paused,
-                        "phase": bar._phase,
-                    })
+                        "phase": bar._phase or "ON AIR",
+                    }
+                    active_cues_data.append(cue_entry)
+                    layers_data[str(bar._layer_idx)] = {
+                        "layer": bar._layer_idx,
+                        "is_live": True,
+                        "title": bar._title or f"Media L{bar._layer_idx}",
+                        "q_label": bar._q_label,
+                        "cue_id": bar._cue_id,
+                        "pos_sec": round(bar._pos_sec, 2),
+                        "end_sec": round(bar._end_sec, 2),
+                        "start_sec": round(bar._start_sec, 2),
+                        "is_paused": bar._is_paused,
+                        "phase": bar._phase or "ON AIR",
+                    }
 
         cues_data = []
         for idx, c in enumerate(self._cues):
@@ -1400,6 +1431,11 @@ class MainWindow(QMainWindow):
                 "layer": c.layer,
                 "status": c.status.value,
                 "duration": round(float(c_dur), 2),
+                "fade_in": round(float(getattr(c, "fade_in", 0.0) or 0.0), 1),
+                "fade_out": round(float(getattr(c, "fade_out", 0.0) or 0.0), 1),
+                "follow_mode": getattr(c, "follow_mode", "MANUAL"),
+                "notes": getattr(c, "notes", ""),
+                "surface_id": getattr(c, "surface_id", "default"),
                 "is_standby": (idx == row),
             })
 
@@ -1419,8 +1455,12 @@ class MainWindow(QMainWindow):
                 "type": standby_cue.media_type.value,
                 "layer": standby_cue.layer,
                 "duration": round(float(sb_dur), 2),
+                "fade_in": round(float(getattr(standby_cue, "fade_in", 0.0) or 0.0), 1),
+                "fade_out": round(float(getattr(standby_cue, "fade_out", 0.0) or 0.0), 1),
+                "notes": getattr(standby_cue, "notes", ""),
             } if standby_cue else None,
             "active_cues": active_cues_data,
+            "layers": layers_data,
             "cues": cues_data,
         }
 

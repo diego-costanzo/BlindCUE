@@ -635,9 +635,11 @@ _HTML_PAGE = """<!DOCTYPE html>
     <div class="pin-card">
       <div class="pin-lock-icon">🔒</div>
       <div class="pin-title">REGIA PROTETTA</div>
-      <div class="pin-desc">Inserisci il PIN a 4 cifre per sbloccare i comandi live sul palco.</div>
+      <div class="pin-desc">Inserisci il PIN a 6 cifre per sbloccare i comandi live sul palco.</div>
 
       <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
         <div class="pin-dot"></div>
@@ -885,7 +887,7 @@ _HTML_PAGE = """<!DOCTYPE html>
         enteredBuffer += digit;
         renderDots();
         document.getElementById('pinErr').textContent = "";
-        if (enteredBuffer.length === 4) {
+        if (enteredBuffer.length === 6) {
           submitPin();
         }
       }
@@ -932,6 +934,924 @@ _HTML_PAGE = """<!DOCTYPE html>
           showLockScreen();
         } else {
           updateUI(data);
+          setOnline(true);
+          initSSE();
+        }
+      })
+      .catch(() => {
+        setOnline(false);
+        showLockScreen();
+      });
+  </script>
+</body>
+</html>
+"""
+
+# ── Embedded Director Monitor (Read-Only Live Dashboard for Tablets & Desks) ──
+_HTML_MONITOR_PAGE = """<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>BlindCUE · Monitor Regia</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#09090b">
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+      cursor: default;
+    }
+    body {
+      background-color: #09090b;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background: #141417;
+      border-bottom: 1px solid #27272a;
+      flex-shrink: 0;
+      gap: 12px;
+    }
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .brand-logo {
+      font-size: 19px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-readonly {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #3b2a59;
+      color: #c084fc;
+      border: 1px solid #7c3aed66;
+      text-transform: uppercase;
+    }
+    .show-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #cbd5e1;
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #182218;
+      color: #4ade80;
+      border: 1px solid #22c55e44;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    .conn-badge.offline {
+      background: #2a1515;
+      color: #f87171;
+      border-color: #ef444444;
+    }
+    .conn-badge.offline .conn-dot {
+      background: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+      animation: none;
+    }
+
+    /* ── Main Layout ── */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px 18px;
+      gap: 12px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── 3 Layers Multi-track Live Section ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .layers-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+      .layers-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    .layer-card {
+      background: #141417;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .layer-card.is-live {
+      border-color: #22c55e;
+      background: #0d1e17;
+      box-shadow: 0 0 16px rgba(34, 197, 94, 0.15);
+    }
+    .layer-card.is-paused {
+      border-color: #f59e0b;
+      background: #1e190f;
+    }
+    .layer-hdr {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .layer-badge {
+      font-size: 11px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 0.5px;
+    }
+    .layer-status {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #27272a;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+    .layer-card.is-live .layer-status {
+      background: #166534;
+      color: #86efac;
+    }
+    .layer-card.is-paused .layer-status {
+      background: #854d0e;
+      color: #fde047;
+    }
+    .layer-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f4f4f5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 18px;
+    }
+    .layer-progress-bg {
+      height: 6px;
+      background: #27272a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .layer-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #22c55e;
+      border-radius: 3px;
+      transition: width 0.1s linear;
+    }
+    .layer-card.is-paused .layer-progress-bar {
+      background: #f59e0b;
+    }
+    .layer-time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 700;
+      font-family: ui-monospace, monospace;
+      color: #94a3b8;
+    }
+
+    /* ── Standby Banner ── */
+    .standby-banner {
+      background: #0f1c2e;
+      border: 1px solid #0284c7;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .standby-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .standby-tag {
+      font-size: 10px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .standby-cue-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .standby-meta {
+      font-size: 11px;
+      color: #94a3b8;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .standby-meta-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* ── Cue List Table (Scaletta Regia) ── */
+    .table-container {
+      flex: 1;
+      background: #141417;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 200px;
+    }
+    .table-header-bar {
+      padding: 8px 14px;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.6px;
+      flex-shrink: 0;
+    }
+    .table-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 12px;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #18181b;
+      color: #94a3b8;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 8px 12px;
+      border-bottom: 1px solid #27272a;
+      z-index: 2;
+    }
+    tbody tr {
+      border-bottom: 1px solid #1e1e24;
+      transition: background 0.15s ease;
+    }
+    tbody tr.is-live {
+      background: rgba(34, 197, 94, 0.12);
+      border-left: 3px solid #22c55e;
+    }
+    tbody tr.is-standby {
+      background: rgba(56, 189, 248, 0.10);
+      border-left: 3px solid #38bdf8;
+    }
+    tbody td {
+      padding: 8px 12px;
+      vertical-align: middle;
+      color: #cbd5e1;
+    }
+    .cue-col-ref {
+      font-weight: 800;
+      font-family: ui-monospace, monospace;
+      color: #f4f4f5;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .cue-col-name {
+      font-weight: 600;
+      color: #ffffff;
+    }
+    .cue-notes {
+      font-size: 10px;
+      color: #71717a;
+      margin-top: 2px;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #27272a;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .status-badge.live {
+      background: #166534;
+      color: #86efac;
+      border: 1px solid #22c55e66;
+    }
+    .status-badge.standby {
+      background: #0369a1;
+      color: #bae6fd;
+      border: 1px solid #38bdf866;
+    }
+    .type-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: #27272a;
+      color: #cbd5e1;
+    }
+    .type-badge.video { background: #3b2a59; color: #c084fc; }
+    .type-badge.audio { background: #133929; color: #34d399; }
+    .type-badge.image { background: #3d2f13; color: #fbbf24; }
+    .type-badge.group { background: #1e2d4d; color: #60a5fa; }
+
+    /* Footer notice */
+    footer {
+      padding: 6px 16px;
+      text-align: center;
+      font-size: 10px;
+      color: #64748b;
+      border-top: 1px solid #1e1e24;
+      flex-shrink: 0;
+    }
+
+    /* ── PIN Lock Screen Overlay ── */
+    .pin-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(9, 9, 11, 0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .pin-card {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+    .pin-lock-icon {
+      font-size: 42px;
+      margin-bottom: 2px;
+    }
+    .pin-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+    .pin-desc {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+    .pin-dots {
+      display: flex;
+      gap: 12px;
+      margin: 12px 0;
+    }
+    .pin-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #475569;
+      background: transparent;
+      transition: all 0.15s ease;
+    }
+    .pin-dot.filled {
+      background: #38bdf8;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+    }
+    .pin-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 270px;
+    }
+    .pin-btn {
+      height: 60px;
+      border-radius: 50%;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #f4f4f5;
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .pin-btn:active {
+      transform: scale(0.92);
+      background: #38bdf8;
+      color: #000000;
+    }
+    .pin-btn.pin-action {
+      font-size: 16px;
+      background: #27272a;
+      color: #94a3b8;
+    }
+    .pin-btn.pin-submit {
+      background: #166534;
+      border-color: #22c55e;
+      color: #ffffff;
+      font-weight: 800;
+    }
+    .pin-err {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ef4444;
+      min-height: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-logo">
+        <span>👁️ BlindCUE</span>
+      </div>
+      <span class="badge-readonly">Monitor Regia · Sola Lettura</span>
+      <span class="show-title" id="showTitle">Spettacolo</span>
+    </div>
+    <div class="header-right">
+      <div class="conn-badge" id="connBadge">
+        <div class="conn-dot"></div>
+        <span id="connText">LIVE SYNC</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main>
+    <!-- Section: 3-Layer Multitrack Compositing View -->
+    <div class="section-title">
+      <span>● Livelli di Emissione in Tempo Reale (3 Layer)</span>
+    </div>
+    <div class="layers-grid">
+      <!-- Layer 1 -->
+      <div class="layer-card" id="layerCard1">
+        <div class="layer-hdr">
+          <span class="layer-badge">LAYER 1 (FONDO)</span>
+          <span class="layer-status" id="layerStatus1">IDLE</span>
+        </div>
+        <div class="layer-title" id="layerTitle1">— Inattivo / Nero —</div>
+        <div class="layer-progress-bg">
+          <div class="layer-progress-bar" id="layerBar1"></div>
+        </div>
+        <div class="layer-time-row">
+          <span id="layerElap1">00:00</span>
+          <span id="layerRem1">--:--</span>
+        </div>
+      </div>
+
+      <!-- Layer 2 -->
+      <div class="layer-card" id="layerCard2">
+        <div class="layer-hdr">
+          <span class="layer-badge">LAYER 2 (MEDIO)</span>
+          <span class="layer-status" id="layerStatus2">IDLE</span>
+        </div>
+        <div class="layer-title" id="layerTitle2">— Inattivo / Nero —</div>
+        <div class="layer-progress-bg">
+          <div class="layer-progress-bar" id="layerBar2"></div>
+        </div>
+        <div class="layer-time-row">
+          <span id="layerElap2">00:00</span>
+          <span id="layerRem2">--:--</span>
+        </div>
+      </div>
+
+      <!-- Layer 3 -->
+      <div class="layer-card" id="layerCard3">
+        <div class="layer-hdr">
+          <span class="layer-badge">LAYER 3 (OVERLAY)</span>
+          <span class="layer-status" id="layerStatus3">IDLE</span>
+        </div>
+        <div class="layer-title" id="layerTitle3">— Inattivo / Nero —</div>
+        <div class="layer-progress-bg">
+          <div class="layer-progress-bar" id="layerBar3"></div>
+        </div>
+        <div class="layer-time-row">
+          <span id="layerElap3">00:00</span>
+          <span id="layerRem3">--:--</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Standby Cue Banner -->
+    <div class="standby-banner" id="standbyBanner">
+      <div class="standby-left">
+        <div class="standby-tag">PROSSIMA CUE IN STANDBY (PROSSIMO LANCIO)</div>
+        <div class="standby-cue-name" id="standbyCueName">— Nessuna cue in standby —</div>
+        <div class="standby-meta" id="standbyMeta"></div>
+      </div>
+    </div>
+
+    <!-- Section: Scaletta Spettacolo Completa -->
+    <div class="table-container">
+      <div class="table-header-bar">
+        <span>SCALETTA COMPLETA DELLO SPETTACOLO</span>
+        <span id="cuesCountBadge">0 CUE</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 105px;">STATO</th>
+              <th style="width: 70px;">Q #</th>
+              <th>TITOLO CUE & NOTE</th>
+              <th style="width: 95px;">TIPO</th>
+              <th style="width: 65px;">LAYER</th>
+              <th style="width: 75px;">DURATA</th>
+              <th style="width: 95px;">FADE IN/OUT</th>
+              <th style="width: 95px;">AVANZAMENTO</th>
+            </tr>
+          </thead>
+          <tbody id="cuesTableBody">
+            <!-- Dynamically rendered rows -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Notice -->
+  <footer>
+    🔒 Interfaccia passiva di monitoraggio per la Direzione Artistica e di Scena · Nessun comando attivo abilitato · BlindCUE Native
+  </footer>
+
+  <!-- PIN Lock Screen Overlay -->
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-card">
+      <div class="pin-lock-icon">🔒</div>
+      <div class="pin-title">REGIA PROTETTA</div>
+      <div class="pin-desc">Inserisci il PIN a 6 cifre per accedere alla visualizzazione del Monitor Regia.</div>
+
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+      </div>
+
+      <div class="pin-keypad">
+        <button class="pin-btn" onclick="pressPin('1')">1</button>
+        <button class="pin-btn" onclick="pressPin('2')">2</button>
+        <button class="pin-btn" onclick="pressPin('3')">3</button>
+        <button class="pin-btn" onclick="pressPin('4')">4</button>
+        <button class="pin-btn" onclick="pressPin('5')">5</button>
+        <button class="pin-btn" onclick="pressPin('6')">6</button>
+        <button class="pin-btn" onclick="pressPin('7')">7</button>
+        <button class="pin-btn" onclick="pressPin('8')">8</button>
+        <button class="pin-btn" onclick="pressPin('9')">9</button>
+        <button class="pin-btn pin-action" onclick="clearPin()">C</button>
+        <button class="pin-btn" onclick="pressPin('0')">0</button>
+        <button class="pin-btn pin-action pin-submit" onclick="submitPin()">OK</button>
+      </div>
+
+      <div class="pin-err" id="pinErr"></div>
+    </div>
+  </div>
+
+  <script>
+    let evtSource = null;
+    let lastState = null;
+    let currentPin = sessionStorage.getItem('blindcue_pin') || "";
+    let enteredBuffer = "";
+
+    // Read ?pin=... from URL (auto-unlock when scanning QR code)
+    const urlParams = new URLSearchParams(window.location.search);
+    const pinFromUrl = urlParams.get('pin');
+    if (pinFromUrl) {
+      currentPin = pinFromUrl;
+      sessionStorage.setItem('blindcue_pin', currentPin);
+    }
+
+    function formatTime(sec) {
+      if (sec === undefined || sec === null || isNaN(sec) || sec < 0) return "00:00";
+      const s = Math.round(sec);
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    }
+
+    function updateMonitorUI(state) {
+      if (!state) return;
+      lastState = state;
+
+      if (state.authenticated === false) {
+        showLockScreen(state.error || "");
+        return;
+      } else {
+        hideLockScreen();
+      }
+
+      // Show Title
+      document.getElementById('showTitle').textContent = state.show_title || "Spettacolo";
+
+      // 3 Layers Deck
+      const layers = state.layers || {};
+      [1, 2, 3].forEach(lIdx => {
+        const lData = layers[String(lIdx)] || { is_live: false, title: "— Inattivo / Nero —", phase: "IDLE", pos_sec: 0, end_sec: 0, start_sec: 0 };
+        const card = document.getElementById(`layerCard${lIdx}`);
+        const stat = document.getElementById(`layerStatus${lIdx}`);
+        const title = document.getElementById(`layerTitle${lIdx}`);
+        const bar = document.getElementById(`layerBar${lIdx}`);
+        const elap = document.getElementById(`layerElap${lIdx}`);
+        const rem = document.getElementById(`layerRem${lIdx}`);
+
+        if (lData.is_live) {
+          card.classList.add('is-live');
+          if (lData.is_paused || state.is_paused) {
+            card.classList.add('is-paused');
+            stat.textContent = "IN PAUSA";
+          } else {
+            card.classList.remove('is-paused');
+            stat.textContent = lData.phase || "ON AIR";
+          }
+          title.textContent = `${lData.q_label ? lData.q_label + ' · ' : ''}${lData.title}`;
+
+          const dur = Math.max(0.1, lData.end_sec - lData.start_sec);
+          const pos = Math.max(0.0, lData.pos_sec - lData.start_sec);
+          const rSec = Math.max(0.0, lData.end_sec - lData.pos_sec);
+          const pct = Math.min(100, Math.max(0, (pos / dur) * 100));
+
+          bar.style.width = `${pct.toFixed(1)}%`;
+          elap.textContent = formatTime(pos);
+          rem.textContent = `-${formatTime(rSec)}`;
+        } else {
+          card.classList.remove('is-live', 'is-paused');
+          stat.textContent = "IDLE";
+          title.textContent = "— Inattivo / Nero —";
+          bar.style.width = "0%";
+          elap.textContent = "00:00";
+          rem.textContent = "--:--";
+        }
+      });
+
+      // Standby Banner
+      const sbName = document.getElementById('standbyCueName');
+      const sbMeta = document.getElementById('standbyMeta');
+      if (state.standby_cue) {
+        sbName.textContent = `${state.standby_cue.ref} · ${state.standby_cue.name}`;
+        sbMeta.innerHTML = `
+          <span class="standby-meta-item"><b>Layer:</b> L${state.standby_cue.layer}</span>
+          <span class="standby-meta-item"><b>Durata:</b> ${formatTime(state.standby_cue.duration)}</span>
+          <span class="standby-meta-item"><b>Fade:</b> ${state.standby_cue.fade_in || 0}s IN / ${state.standby_cue.fade_out || 0}s OUT</span>
+          ${state.standby_cue.notes ? `<span class="standby-meta-item"><b>Note:</b> ${state.standby_cue.notes}</span>` : ''}
+        `;
+      } else {
+        sbName.textContent = "— Fine Scaletta —";
+        sbMeta.innerHTML = `<span class="standby-meta-item">Tutte le cue eseguite</span>`;
+      }
+
+      // Scaletta Table
+      const tb = document.getElementById('cuesTableBody');
+      const cues = state.cues || [];
+      document.getElementById('cuesCountBadge').textContent = `${cues.length} CUE`;
+
+      let html = "";
+      cues.forEach(c => {
+        const isLive = (c.status === "live");
+        const isSb = Boolean(c.is_standby);
+        const rowClass = `${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
+
+        let stBadge = `<span class="status-badge">○ PRONTA</span>`;
+        if (isLive) {
+          stBadge = `<span class="status-badge live">● IN ONDA</span>`;
+        } else if (isSb) {
+          stBadge = `<span class="status-badge standby">▶ STANDBY</span>`;
+        } else if (c.status === "offline" && !isSb) {
+          stBadge = `<span class="status-badge">✓ ESEGUITA</span>`;
+        }
+
+        const typeClass = `type-badge ${c.type || 'video'}`;
+        let icon = "🎬";
+        if (c.type === "audio") icon = "🎵";
+        else if (c.type === "image") icon = "🖼";
+        else if (c.type === "group") icon = "📁";
+
+        html += `
+          <tr class="${rowClass}">
+            <td>${stBadge}</td>
+            <td class="cue-col-ref">${c.ref || ('#' + c.id)}</td>
+            <td>
+              <div class="cue-col-name">${c.name}</div>
+              ${c.notes ? `<div class="cue-notes">${c.notes}</div>` : ''}
+            </td>
+            <td><span class="${typeClass}">${icon} ${(c.type || 'VIDEO').toUpperCase()}</span></td>
+            <td><span style="font-weight:700; color:#38bdf8;">L${c.layer}</span></td>
+            <td style="font-family:ui-monospace, monospace;">${formatTime(c.duration)}</td>
+            <td style="font-family:ui-monospace, monospace; color:#94a3b8;">${c.fade_in || 0}s / ${c.fade_out || 0}s</td>
+            <td style="font-size:11px; color:#a1a1aa;">${c.follow_mode === 'AUTO_FOLLOW' ? 'Auto-follow' : 'Manuale'}</td>
+          </tr>
+        `;
+      });
+      tb.innerHTML = html;
+    }
+
+    function setOnline(online) {
+      const b = document.getElementById('connBadge');
+      const t = document.getElementById('connText');
+      if (online) {
+        b.classList.remove('offline');
+        t.textContent = "LIVE SYNC";
+      } else {
+        b.classList.add('offline');
+        t.textContent = "DISCONNESSO";
+      }
+    }
+
+    function initSSE() {
+      if (evtSource) {
+        evtSource.close();
+      }
+      const sseUrl = currentPin ? `/api/events?pin=${encodeURIComponent(currentPin)}` : '/api/events';
+      evtSource = new EventSource(sseUrl);
+      evtSource.onopen = () => setOnline(true);
+      evtSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          updateMonitorUI(data);
+        } catch (err) {
+          console.error("SSE parse error:", err);
+        }
+      };
+      evtSource.onerror = () => {
+        setOnline(false);
+        evtSource.close();
+        setTimeout(initSSE, 2500);
+      };
+    }
+
+    // PIN lock controls for monitor
+    function showLockScreen(errMsg = "") {
+      document.getElementById('pinOverlay').style.display = 'flex';
+      if (errMsg) document.getElementById('pinErr').textContent = errMsg;
+    }
+
+    function hideLockScreen() {
+      document.getElementById('pinOverlay').style.display = 'none';
+      document.getElementById('pinErr').textContent = "";
+    }
+
+    function renderDots() {
+      const dots = document.querySelectorAll('#pinDots .pin-dot');
+      dots.forEach((d, idx) => {
+        if (idx < enteredBuffer.length) d.classList.add('filled');
+        else d.classList.remove('filled');
+      });
+    }
+
+    function pressPin(digit) {
+      if (enteredBuffer.length < 6) {
+        enteredBuffer += digit;
+        renderDots();
+        document.getElementById('pinErr').textContent = "";
+        if (enteredBuffer.length === 6) {
+          submitPin();
+        }
+      }
+    }
+
+    function clearPin() {
+      enteredBuffer = "";
+      renderDots();
+      document.getElementById('pinErr').textContent = "";
+    }
+
+    function submitPin() {
+      if (!enteredBuffer) return;
+      const testPin = enteredBuffer;
+      fetch(`/api/status?pin=${encodeURIComponent(testPin)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.authenticated) {
+            currentPin = testPin;
+            sessionStorage.setItem('blindcue_pin', currentPin);
+            hideLockScreen();
+            updateMonitorUI(data);
+            initSSE();
+          } else {
+            enteredBuffer = "";
+            renderDots();
+            document.getElementById('pinErr').textContent = data.error || "PIN errato";
+          }
+        })
+        .catch(() => {
+          document.getElementById('pinErr').textContent = "Errore di connessione alla regia";
+        });
+    }
+
+    // Initial load check
+    const statusUrl = currentPin ? `/api/status?pin=${encodeURIComponent(currentPin)}` : '/api/status';
+    fetch(statusUrl)
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated === false && data.pin_required) {
+          showLockScreen();
+        } else {
+          updateMonitorUI(data);
           setOnline(true);
           initSSE();
         }
@@ -1002,6 +1922,8 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         path = self.path.split("?")[0].rstrip("/")
         if path in ("", "/"):
             self._serve_html()
+        elif path in ("/monitor", "/regia", "/director", "/view"):
+            self._serve_monitor_html()
         elif path == "/api/status":
             self._serve_status()
         elif path == "/api/events":
@@ -1018,6 +1940,15 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def _serve_html(self) -> None:
         content = _HTML_PAGE.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.end_headers()
+        self.wfile.write(content)
+
+    def _serve_monitor_html(self) -> None:
+        content = _HTML_MONITOR_PAGE.encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))

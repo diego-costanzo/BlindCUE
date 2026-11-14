@@ -156,10 +156,10 @@ def main() -> int:
     main_win.set_device_manager(device_mgr)
 
     # ── LAN Remote Control (Web Server & OSC UDP Automation) ──────────
+    # Disabled by default for maximum theatre network safety; activated manually when needed
     from services.remote_manager import RemoteManager
     remote_mgr = RemoteManager(main_win)
     main_win.set_remote_manager(remote_mgr)
-    remote_mgr.start_all(web_port=8080, osc_port=53000)
 
     # ── Wire per-layer video deck swap + real-time opacity callbacks ──
     for layer, lp in live_players.items():
