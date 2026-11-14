@@ -49,6 +49,20 @@ class OscServer(QObject):
         self._last_sender_ip: str = ""
         self._last_command: str = ""
         self._packet_count: int = 0
+        self._pin_required: bool = False
+        self._pin: str = "4821"
+        self._allowed_ips: set[str] = set()
+        self._authenticated_ips: set[str] = set()
+
+    def set_security(self, pin_required: bool = False, pin: str = "4821", allowed_ips: Optional[list[str]] = None) -> None:
+        """Configure OSC authentication and optional IP whitelist."""
+        self._pin_required = bool(pin_required)
+        self._pin = str(pin).strip()
+        self._allowed_ips = {ip.strip() for ip in allowed_ips} if allowed_ips else set()
+
+    def clear_authenticated_clients(self) -> None:
+        """Revoke all active client sessions."""
+        self._authenticated_ips.clear()
 
     def is_running(self) -> bool:
         return self._is_running
@@ -115,11 +129,37 @@ class OscServer(QObject):
             logger.debug("[OSC] Received '%s' %s from %s", address, args, sender_addr)
 
             self.command_received.emit(address, args, sender_addr)
-            self._dispatch_command(address, args)
+            self._dispatch_command(address, args, sender_addr)
 
-    def _dispatch_command(self, address: str, args: list[Any]) -> None:
+    def _dispatch_command(self, address: str, args: list[Any], sender_addr: str = "") -> None:
         """Route OSC address patterns to the corresponding playback action."""
         addr = address.lower().strip()
+
+        # 0. Check IP Whitelist
+        if self._allowed_ips and sender_addr and sender_addr not in self._allowed_ips:
+            logger.warning("[OSC] Dropped packet from non-whitelisted IP: %s", sender_addr)
+            return
+
+        # Check authentication handshake (/auth <pin>)
+        if addr in ("/auth", "/login", "/blindcue/auth") and args:
+            if str(args[0]).strip() == self._pin:
+                self._authenticated_ips.add(sender_addr)
+                logger.info("[OSC] Host %s authenticated successfully with PIN", sender_addr)
+            else:
+                logger.warning("[OSC] Authentication failed for host %s", sender_addr)
+            return
+
+        # Check PIN requirement
+        if self._pin_required and sender_addr not in self._authenticated_ips:
+            pin_prefix = f"/{self._pin}/"
+            blindcue_pin_prefix = f"/blindcue/{self._pin}/"
+            if addr.startswith(pin_prefix):
+                addr = "/" + addr[len(pin_prefix):]
+            elif addr.startswith(blindcue_pin_prefix):
+                addr = "/blindcue/" + addr[len(blindcue_pin_prefix):]
+            else:
+                logger.warning("[OSC] Dropped unauthorized command '%s' from %s (PIN required)", address, sender_addr)
+                return
 
         # 1. Transport GO
         if addr in ("/go", "/cue/go", "/blindcue/go"):
@@ -195,3 +235,4 @@ class OscServer(QObject):
         except Exception as exc:
             logger.error("[OSC] Error sending feedback to %s:%d: %s", ip, port, exc)
             return False
+

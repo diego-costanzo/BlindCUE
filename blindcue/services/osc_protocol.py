@@ -135,3 +135,4 @@ def parse_osc_message(data: bytes) -> tuple[str, list[Any]]:
             args.append(None)
 
     return address, args
+

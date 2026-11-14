@@ -1,4 +1,4 @@
-"""Dialog displaying Web Remote pairing (QR code, LAN IPs, ports) and OSC server status."""
+"""Dialog displaying Web Remote pairing (QR code, LAN IPs, ports), OSC status, and PIN security controls."""
 
 from __future__ import annotations
 
@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QPushButton,
     QSpinBox,
     QVBoxLayout,
@@ -28,14 +29,14 @@ logger = logging.getLogger("blindcue.remote_ui")
 
 
 class RemoteControlDialog(QDialog):
-    """Setup and Live Monitor dialog for LAN Web Remote (Smartphones/Tablets) and OSC automation."""
+    """Setup, PIN Security, and Live Monitor dialog for LAN Web Remote and OSC automation."""
 
     def __init__(self, remote_mgr: RemoteManager, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._remote_mgr = remote_mgr
         self.setWindowTitle("📡 Controllo Remoto LAN (Web & OSC) — BlindCUE")
-        self.resize(760, 560)
-        self.setMinimumSize(680, 500)
+        self.resize(800, 640)
+        self.setMinimumSize(720, 560)
 
         self._build_ui()
         self._update_display()
@@ -83,7 +84,7 @@ class RemoteControlDialog(QDialog):
             QPushButton:pressed {
                 background-color: #0284c7;
             }
-            QSpinBox {
+            QLineEdit, QSpinBox {
                 background-color: #0f172a;
                 color: #ffffff;
                 border: 1px solid #475569;
@@ -124,22 +125,25 @@ class RemoteControlDialog(QDialog):
         body_lay = QHBoxLayout()
         body_lay.setSpacing(14)
 
-        # ── LEFT: Smartphone QR Code & Web Access ──
+        # ── LEFT: Smartphone QR Code & Security ──
+        left_vlay = QVBoxLayout()
+        left_vlay.setSpacing(10)
+
         grp_qr = QGroupBox("📱 ACCESSO SMARTPHONE & TABLET (WEB REMOTE)")
         qr_vlay = QVBoxLayout(grp_qr)
-        qr_vlay.setSpacing(10)
+        qr_vlay.setSpacing(8)
         qr_vlay.setAlignment(Qt.AlignmentFlag.AlignTop)
 
         # QR Code Display
         self.qr_frame = QFrame()
-        self.qr_frame.setFixedSize(190, 190)
+        self.qr_frame.setFixedSize(180, 180)
         self.qr_frame.setStyleSheet("background: #ffffff; border-radius: 10px; border: 2px solid #38bdf8;")
         qr_box_lay = QVBoxLayout(self.qr_frame)
         qr_box_lay.setContentsMargins(4, 4, 4, 4)
 
         self.lbl_qr_img = QLabel()
         self.lbl_qr_img.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lbl_qr_img.setFixedSize(180, 180)
+        self.lbl_qr_img.setFixedSize(170, 170)
         qr_box_lay.addWidget(self.lbl_qr_img)
 
         qr_center_row = QHBoxLayout()
@@ -148,10 +152,10 @@ class RemoteControlDialog(QDialog):
         qr_center_row.addStretch()
         qr_vlay.addLayout(qr_center_row)
 
-        lbl_scan = QLabel("Inquadra il codice QR con lo smartphone\nper aprire istantaneamente il pannello LIVE.")
-        lbl_scan.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_scan.setStyleSheet("font-size: 11px; color: #cbd5e1; font-weight: bold;")
-        qr_vlay.addWidget(lbl_scan)
+        self.lbl_scan_info = QLabel("Inquadra il codice QR con lo smartphone\nper aprire istantaneamente il pannello LIVE.")
+        self.lbl_scan_info.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_scan_info.setStyleSheet("font-size: 11px; color: #cbd5e1; font-weight: bold;")
+        qr_vlay.addWidget(self.lbl_scan_info)
 
         # URL Box
         url_box = QFrame()
@@ -166,7 +170,7 @@ class RemoteControlDialog(QDialog):
 
         self.lbl_url_val = QLabel("http://192.168.1.x:8080")
         self.lbl_url_val.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        self.lbl_url_val.setStyleSheet("font-size: 13px; font-weight: 800; color: #38bdf8; font-family: monospace;")
+        self.lbl_url_val.setStyleSheet("font-size: 12px; font-weight: 800; color: #38bdf8; font-family: monospace;")
         url_lay.addWidget(self.lbl_url_val)
 
         btn_row = QHBoxLayout()
@@ -180,7 +184,57 @@ class RemoteControlDialog(QDialog):
         url_lay.addLayout(btn_row)
 
         qr_vlay.addWidget(url_box)
-        body_lay.addWidget(grp_qr, 1)
+        left_vlay.addWidget(grp_qr)
+
+        # ── Group: Sicurezza & Protezione Accessi (Anti-Burlone) ──
+        grp_sec = QGroupBox("🛡️ SICUREZZA REGIA & PROTEZIONE ACCESSI (ANTI-BURLONE)")
+        sec_lay = QVBoxLayout(grp_sec)
+        sec_lay.setSpacing(8)
+
+        self.chk_pin = QCheckBox("Proteggi Web Remote con Codice PIN di Regia")
+        self.chk_pin.setChecked(self._remote_mgr.is_pin_enabled())
+        self.chk_pin.toggled.connect(self._on_pin_settings_changed)
+        sec_lay.addWidget(self.chk_pin)
+
+        pin_row = QHBoxLayout()
+        pin_row.setSpacing(6)
+        pin_row.addWidget(QLabel("PIN Attuale:"))
+        self.txt_pin = QLineEdit(self._remote_mgr.get_pin())
+        self.txt_pin.setMaxLength(6)
+        self.txt_pin.setFixedWidth(70)
+        self.txt_pin.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.txt_pin.setStyleSheet("font-weight: 900; font-size: 14px; letter-spacing: 2px; color: #38bdf8;")
+        self.txt_pin.textChanged.connect(self._on_pin_settings_changed)
+        pin_row.addWidget(self.txt_pin)
+
+        self.btn_new_pin = QPushButton("🎲 Nuovo PIN")
+        self.btn_new_pin.setToolTip("Genera un nuovo codice PIN casuale a 4 cifre")
+        self.btn_new_pin.clicked.connect(self._generate_new_pin)
+        pin_row.addWidget(self.btn_new_pin)
+
+        self.btn_kick_all = QPushButton("⛔ Disconnetti Tutti")
+        self.btn_kick_all.setStyleSheet("background-color: #450a0a; color: #f87171; border-color: #991b1b;")
+        self.btn_kick_all.setToolTip("Sbatte fuori all'istante tutti i telefoni e client remoti connessi")
+        self.btn_kick_all.clicked.connect(self._kick_all_clients)
+        pin_row.addWidget(self.btn_kick_all)
+        sec_lay.addLayout(pin_row)
+
+        self.chk_qr_pin = QCheckBox("Includi PIN nel codice QR (Accesso immediato con fotocamera)")
+        self.chk_qr_pin.setChecked(self._remote_mgr.is_qr_pin_included())
+        self.chk_qr_pin.toggled.connect(self._on_pin_settings_changed)
+        sec_lay.addWidget(self.chk_qr_pin)
+
+        lbl_sec_tip = QLabel(
+            "💡 <b>Protezione Wi-Fi Teatro:</b> Chi inquadra il monitor fisico della regia con lo smartphone "
+            "entra all'istante senza digitare nulla. Chi invece è connesso al Wi-Fi e prova ad aprire l'indirizzo "
+            "viene bloccato dal tastierino numerico PIN con blocco anti-forzatura."
+        )
+        lbl_sec_tip.setWordWrap(True)
+        lbl_sec_tip.setStyleSheet("font-size: 10px; color: #94a3b8; line-height: 1.3;")
+        sec_lay.addWidget(lbl_sec_tip)
+
+        left_vlay.addWidget(grp_sec)
+        body_lay.addLayout(left_vlay, 1)
 
         # ── RIGHT: Config & OSC Automation ──
         right_vlay = QVBoxLayout()
@@ -233,7 +287,7 @@ class RemoteControlDialog(QDialog):
 • <b style='color:#fbbf24;'>/pause</b> oppure <b>/resume</b> &nbsp;→&nbsp; Mette in pausa o riprende l'emissione<br>
 • <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>
 • <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>
-• <b style='color:#a855f7;'>/volume &lt;0.0..1.0&gt;</b> &nbsp;→&nbsp; Regola il volume master generale
+• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti
         """
         lbl_cheat = QLabel(cheat_text)
         lbl_cheat.setTextFormat(Qt.TextFormat.RichText)
@@ -277,21 +331,29 @@ class RemoteControlDialog(QDialog):
         osc_ok = self._remote_mgr.is_osc_active()
 
         if web_ok or osc_ok:
-            self.lbl_global_status.setText("● SERVER ATTIVO")
+            pin_badge = f" [🔒 PIN {self._remote_mgr.get_pin()}]" if self._remote_mgr.is_pin_enabled() else ""
+            self.lbl_global_status.setText(f"● SERVER ATTIVO{pin_badge}")
             self.lbl_global_status.setStyleSheet("font-size: 11px; font-weight: 800; color: #22c55e; background: #064e3b; border: 1px solid #059669; border-radius: 999px; padding: 4px 12px;")
         else:
             self.lbl_global_status.setText("○ SERVER DISATTIVATO")
             self.lbl_global_status.setStyleSheet("font-size: 11px; font-weight: 800; color: #ef4444; background: #450a0a; border: 1px solid #991b1b; border-radius: 999px; padding: 4px 12px;")
 
-        url = self._remote_mgr.get_primary_web_url()
+        # Base URL for human display
+        url = self._remote_mgr.get_primary_web_url(include_pin=False)
         self.lbl_url_val.setText(url)
 
-        # Generate QR Code
-        pix = self._remote_mgr.generate_qr_pixmap(url, size=180)
+        # QR URL (includes PIN if enabled for 1-tap scan)
+        qr_url = self._remote_mgr.get_qr_url()
+        pix = self._remote_mgr.generate_qr_pixmap(qr_url, size=170)
         if pix:
             self.lbl_qr_img.setPixmap(pix)
         else:
             self.lbl_qr_img.setText("QR Code\nNon disponibile")
+
+        if self._remote_mgr.is_pin_enabled() and self._remote_mgr.is_qr_pin_included():
+            self.lbl_scan_info.setText("Inquadra con la fotocamera per aprire e sbloccare\nautomaticamente la regia con PIN protetto.")
+        else:
+            self.lbl_scan_info.setText("Inquadra il codice QR con lo smartphone\nper aprire il pannello di controllo LIVE.")
 
         # Update activity readouts
         c_count = self._remote_mgr.web_server.get_connected_clients_count()
@@ -300,6 +362,24 @@ class RemoteControlDialog(QDialog):
         last_web = self._remote_mgr.web_server.get_last_action_info()
         last_osc = self._remote_mgr.osc_server.get_last_command_info()
         self.lbl_last_cmd.setText(f"Web: {last_web} | OSC: {last_osc}")
+
+    def _on_pin_settings_changed(self) -> None:
+        p_en = self.chk_pin.isChecked()
+        pin = self.txt_pin.text().strip() or "0000"
+        qr_pin = self.chk_qr_pin.isChecked()
+        self._remote_mgr.set_pin_security(p_en, pin, qr_pin)
+        self._update_display()
+
+    def _generate_new_pin(self) -> None:
+        new_pin = self._remote_mgr.generate_new_pin()
+        self.txt_pin.setText(new_pin)
+        self._update_display()
+
+    def _kick_all_clients(self) -> None:
+        self._remote_mgr.revoke_all_sessions()
+        self.btn_kick_all.setText("✓ Disconnessi!")
+        from PySide6.QtCore import QTimer
+        QTimer.singleShot(1500, lambda: self.btn_kick_all.setText("⛔ Disconnetti Tutti"))
 
     def _apply_ports(self) -> None:
         w_port = self.spin_web_port.value()
@@ -310,10 +390,12 @@ class RemoteControlDialog(QDialog):
     def _copy_url(self) -> None:
         clipboard = QApplication.clipboard()
         if clipboard:
-            clipboard.setText(self.lbl_url_val.text())
+            # Copy QR URL with PIN if checked
+            url_to_copy = self._remote_mgr.get_qr_url()
+            clipboard.setText(url_to_copy)
             self.btn_copy_url.setText("✓ Copiato!")
             from PySide6.QtCore import QTimer
             QTimer.singleShot(1500, lambda: self.btn_copy_url.setText("📋 Copia Link"))
 
     def _open_in_browser(self) -> None:
-        QDesktopServices.openUrl(QUrl(self.lbl_url_val.text()))
+        QDesktopServices.openUrl(QUrl(self._remote_mgr.get_qr_url()))

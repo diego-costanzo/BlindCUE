@@ -1,4 +1,4 @@
-"""Embedded Mobile-First Web Remote Server for BlindCUE.
+"""Embedded Mobile-First Web Remote Server for BlindCUE with PIN Security.
 
 Serves a native-feeling touch-optimized web controller for smartphones and tablets:
   - Giant tactile GO button with haptic feedback
@@ -7,6 +7,8 @@ Serves a native-feeling touch-optimized web controller for smartphones and table
   - Transport buttons: Pause/Resume, Prev/Next, Blackout, Panic
   - Scrollable cue list with instant single-tap [ ▶ GO ] buttons
   - Real-time zero-latency sync via Server-Sent Events (SSE)
+  - PIN Security Lock Screen protecting against unauthorized LAN access (Anti-Burlone)
+  - Instant camera scan unlock via QR-embedded PIN tokens
   - 100% offline, zero external dependencies or CDNs
 """
 
@@ -447,6 +449,109 @@ _HTML_PAGE = """<!DOCTYPE html>
       border-color: #22c55e;
       color: #ffffff;
     }
+
+    /* ── PIN Lock Screen Overlay ── */
+    .pin-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(9, 9, 11, 0.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .pin-card {
+      width: 100%;
+      max-width: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      text-align: center;
+    }
+    .pin-lock-icon {
+      font-size: 42px;
+      margin-bottom: 2px;
+    }
+    .pin-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: 0.5px;
+    }
+    .pin-desc {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.4;
+    }
+    .pin-dots {
+      display: flex;
+      gap: 14px;
+      margin: 12px 0;
+    }
+    .pin-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid #475569;
+      background: transparent;
+      transition: all 0.15s ease;
+    }
+    .pin-dot.filled {
+      background: #38bdf8;
+      border-color: #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.6);
+    }
+    .pin-keypad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 270px;
+    }
+    .pin-btn {
+      height: 64px;
+      border-radius: 50%;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #f4f4f5;
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+    .pin-btn:active {
+      transform: scale(0.92);
+      background: #38bdf8;
+      color: #000000;
+    }
+    .pin-btn.pin-action {
+      font-size: 16px;
+      background: #27272a;
+      color: #94a3b8;
+    }
+    .pin-btn.pin-submit {
+      background: #166534;
+      border-color: #22c55e;
+      color: #ffffff;
+      font-weight: 800;
+    }
+    .pin-err {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ef4444;
+      min-height: 18px;
+    }
   </style>
 </head>
 <body>
@@ -525,9 +630,52 @@ _HTML_PAGE = """<!DOCTYPE html>
     </div>
   </main>
 
+  <!-- PIN Lock Screen Overlay (Anti-Burlone) -->
+  <div class="pin-overlay" id="pinOverlay">
+    <div class="pin-card">
+      <div class="pin-lock-icon">🔒</div>
+      <div class="pin-title">REGIA PROTETTA</div>
+      <div class="pin-desc">Inserisci il PIN a 4 cifre per sbloccare i comandi live sul palco.</div>
+
+      <div class="pin-dots" id="pinDots">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+      </div>
+
+      <div class="pin-keypad">
+        <button class="pin-btn" onclick="pressPin('1')">1</button>
+        <button class="pin-btn" onclick="pressPin('2')">2</button>
+        <button class="pin-btn" onclick="pressPin('3')">3</button>
+        <button class="pin-btn" onclick="pressPin('4')">4</button>
+        <button class="pin-btn" onclick="pressPin('5')">5</button>
+        <button class="pin-btn" onclick="pressPin('6')">6</button>
+        <button class="pin-btn" onclick="pressPin('7')">7</button>
+        <button class="pin-btn" onclick="pressPin('8')">8</button>
+        <button class="pin-btn" onclick="pressPin('9')">9</button>
+        <button class="pin-btn pin-action" onclick="clearPin()">C</button>
+        <button class="pin-btn" onclick="pressPin('0')">0</button>
+        <button class="pin-btn pin-action pin-submit" onclick="submitPin()">OK</button>
+      </div>
+
+      <div class="pin-err" id="pinErr"></div>
+    </div>
+  </div>
+
   <script>
     let evtSource = null;
     let lastState = null;
+    let currentPin = sessionStorage.getItem('blindcue_pin') || "";
+    let enteredBuffer = "";
+
+    // Check if PIN was embedded in URL (e.g. from camera QR code scan!)
+    const urlParams = new URLSearchParams(window.location.search);
+    const pinFromUrl = urlParams.get('pin');
+    if (pinFromUrl) {
+      currentPin = pinFromUrl;
+      sessionStorage.setItem('blindcue_pin', currentPin);
+    }
 
     function vibrate(ms = 40) {
       if (window.navigator && window.navigator.vibrate) {
@@ -548,16 +696,35 @@ _HTML_PAGE = """<!DOCTYPE html>
       const payload = { action: actionName };
       if (cueId !== null) payload.cue_id = cueId;
 
+      const headers = { 'Content-Type': 'application/json' };
+      if (currentPin) {
+        headers['X-BlindCue-PIN'] = currentPin;
+      }
+
       fetch('/api/action', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(payload)
-      }).catch(err => console.error("Action error:", err));
+      })
+      .then(res => {
+        if (res.status === 401) {
+          showLockScreen("Sessione scaduta o non autorizzata");
+        }
+      })
+      .catch(err => console.error("Action error:", err));
     }
 
     function updateUI(state) {
       if (!state) return;
       lastState = state;
+
+      // Check PIN lock
+      if (state.authenticated === false) {
+        showLockScreen(state.error || "");
+        return;
+      } else {
+        hideLockScreen();
+      }
 
       // 1. Show Title & Connection
       document.getElementById('showTitle').textContent = state.show_title || "Spettacolo";
@@ -666,7 +833,8 @@ _HTML_PAGE = """<!DOCTYPE html>
       if (evtSource) {
         evtSource.close();
       }
-      evtSource = new EventSource('/api/events');
+      const sseUrl = currentPin ? `/api/events?pin=${encodeURIComponent(currentPin)}` : '/api/events';
+      evtSource = new EventSource(sseUrl);
 
       evtSource.onopen = () => {
         setOnline(true);
@@ -684,16 +852,94 @@ _HTML_PAGE = """<!DOCTYPE html>
       evtSource.onerror = () => {
         setOnline(false);
         evtSource.close();
-        setTimeout(initSSE, 2000);
+        setTimeout(initSSE, 2500);
       };
     }
 
-    // Initial fetch + start SSE
-    fetch('/api/status')
+    // ── PIN Pad Interaction & Security ──
+
+    function showLockScreen(errMsg = "") {
+      document.getElementById('pinOverlay').style.display = 'flex';
+      if (errMsg) document.getElementById('pinErr').textContent = errMsg;
+    }
+
+    function hideLockScreen() {
+      document.getElementById('pinOverlay').style.display = 'none';
+      document.getElementById('pinErr').textContent = "";
+    }
+
+    function renderDots() {
+      const dots = document.querySelectorAll('#pinDots .pin-dot');
+      dots.forEach((d, idx) => {
+        if (idx < enteredBuffer.length) {
+          d.classList.add('filled');
+        } else {
+          d.classList.remove('filled');
+        }
+      });
+    }
+
+    function pressPin(digit) {
+      vibrate(25);
+      if (enteredBuffer.length < 6) {
+        enteredBuffer += digit;
+        renderDots();
+        document.getElementById('pinErr').textContent = "";
+        if (enteredBuffer.length === 4) {
+          submitPin();
+        }
+      }
+    }
+
+    function clearPin() {
+      vibrate(20);
+      enteredBuffer = "";
+      renderDots();
+      document.getElementById('pinErr').textContent = "";
+    }
+
+    function submitPin() {
+      if (!enteredBuffer) return;
+      vibrate(40);
+      const testPin = enteredBuffer;
+      fetch(`/api/status?pin=${encodeURIComponent(testPin)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.authenticated) {
+            currentPin = testPin;
+            sessionStorage.setItem('blindcue_pin', currentPin);
+            hideLockScreen();
+            updateUI(data);
+            initSSE();
+          } else {
+            enteredBuffer = "";
+            renderDots();
+            document.getElementById('pinErr').textContent = data.error || "PIN errato";
+            vibrate(80);
+          }
+        })
+        .catch(() => {
+          document.getElementById('pinErr').textContent = "Errore di connessione alla regia";
+        });
+    }
+
+    // Initial check
+    const statusUrl = currentPin ? `/api/status?pin=${encodeURIComponent(currentPin)}` : '/api/status';
+    fetch(statusUrl)
       .then(res => res.json())
-      .then(data => { updateUI(data); setOnline(true); })
-      .catch(() => setOnline(false))
-      .finally(() => initSSE());
+      .then(data => {
+        if (data.authenticated === false && data.pin_required) {
+          showLockScreen();
+        } else {
+          updateUI(data);
+          setOnline(true);
+          initSSE();
+        }
+      })
+      .catch(() => {
+        setOnline(false);
+        showLockScreen();
+      });
   </script>
 </body>
 </html>
@@ -732,6 +978,26 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         # Keep console clean; log only at debug level
         logger.debug("[WEB] " + (format % args))
 
+    def _is_authenticated(self) -> tuple[bool, str]:
+        if not self.controller.is_pin_required():
+            return True, ""
+        client_ip = self.client_address[0]
+
+        # 1. Check Header X-BlindCue-PIN
+        hdr_pin = self.headers.get("X-BlindCue-PIN", "").strip()
+        if hdr_pin:
+            return self.controller.check_pin(hdr_pin, client_ip)
+
+        # 2. Check query parameter ?pin=
+        if "?" in self.path:
+            query = self.path.split("?")[1]
+            for param in query.split("&"):
+                if param.startswith("pin="):
+                    cand = param.split("=")[1].strip()
+                    return self.controller.check_pin(cand, client_ip)
+
+        return False, "PIN di regia richiesto"
+
     def do_GET(self) -> None:  # noqa: N802
         path = self.path.split("?")[0].rstrip("/")
         if path in ("", "/"):
@@ -760,8 +1026,22 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(content)
 
     def _serve_status(self) -> None:
-        state = self.controller.get_state_snapshot()
-        data = json.dumps(state).encode("utf-8")
+        is_auth, err_msg = self._is_authenticated()
+        if not is_auth:
+            # Send locked status payload
+            resp_data = {
+                "authenticated": False,
+                "pin_required": True,
+                "error": err_msg,
+                "show_title": "BlindCUE (Protetto)",
+                "cues": [],
+            }
+        else:
+            resp_data = self.controller.get_state_snapshot()
+            resp_data["authenticated"] = True
+            resp_data["pin_required"] = self.controller.is_pin_required()
+
+        data = json.dumps(resp_data).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(data)))
@@ -772,6 +1052,11 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
 
     def _serve_sse(self) -> None:
         """Stream real-time updates to mobile clients via Server-Sent Events."""
+        is_auth, _ = self._is_authenticated()
+        if not is_auth:
+            self.send_error(401, "Unauthorized - PIN Required")
+            return
+
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
@@ -785,6 +1070,8 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         # Send initial full state immediately
         try:
             init_state = self.controller.get_state_snapshot()
+            init_state["authenticated"] = True
+            init_state["pin_required"] = self.controller.is_pin_required()
             msg = f"data: {json.dumps(init_state)}\n\n".encode("utf-8")
             self.wfile.write(msg)
             self.wfile.flush()
@@ -809,6 +1096,17 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             self.controller.unregister_sse_client(client_queue)
 
     def _handle_action(self) -> None:
+        is_auth, err_msg = self._is_authenticated()
+        if not is_auth:
+            resp_err = json.dumps({"ok": False, "error": "unauthorized", "message": err_msg}).encode("utf-8")
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(resp_err)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(resp_err)
+            return
+
         try:
             length = int(self.headers.get("Content-Length", 0))
             raw_body = self.rfile.read(length)
@@ -856,15 +1154,57 @@ class WebRemoteServer:
     def __init__(self, port: int = 8080) -> None:
         self.port = port
         self.bridge = WebRemoteBridge()
-        self._httpd: Optional[http.server.ThreadingHTTPServer] = None
+        self._httpd: Optional[_ThreadingHttpServer] = None
         self._thread: Optional[threading.Thread] = None
         self._running = False
         self._state_provider: Optional[Callable[[], dict[str, Any]]] = None
         self._sse_clients: set[queue.Queue] = set()
         self._clients_lock = threading.Lock()
 
+        # Security PIN protection (Anti-Burlone)
+        self._pin_required: bool = True
+        self._pin: str = "4821"
+        self._failed_attempts: dict[str, tuple[int, float]] = {}  # ip -> (fails, lockout_until)
+        self._auth_lock = threading.Lock()
+
         self._last_action: str = ""
         self._last_client_ip: str = ""
+
+    def set_pin_protection(self, enabled: bool, pin: str = "4821") -> None:
+        self._pin_required = bool(enabled)
+        self._pin = str(pin).strip()
+
+    def is_pin_required(self) -> bool:
+        return self._pin_required
+
+    def get_pin(self) -> str:
+        return self._pin
+
+    def check_pin(self, candidate: str, client_ip: str) -> tuple[bool, str]:
+        if not self._pin_required:
+            return True, ""
+        now = time.time()
+        with self._auth_lock:
+            fails, lockout = self._failed_attempts.get(client_ip, (0, 0.0))
+            if fails >= 5 and now < lockout:
+                rem = max(1, int(lockout - now))
+                return False, f"Troppi tentativi errati. Blocco temporaneo per {rem}s."
+
+            if str(candidate).strip() == self._pin:
+                self._failed_attempts.pop(client_ip, None)
+                return True, ""
+            else:
+                fails += 1
+                lock = now + 30.0 if fails >= 5 else 0.0
+                self._failed_attempts[client_ip] = (fails, lock)
+                return False, "PIN errato."
+
+    def revoke_all_sessions(self) -> None:
+        """Clear failed attempts and drop active SSE streams to force re-authentication."""
+        with self._auth_lock:
+            self._failed_attempts.clear()
+        with self._clients_lock:
+            self._sse_clients.clear()
 
     def set_state_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
         self._state_provider = provider
@@ -895,6 +1235,9 @@ class WebRemoteServer:
         """Push real-time state update to all currently connected mobile phones and tablets."""
         if state is None:
             state = self.get_state_snapshot()
+        state["authenticated"] = True
+        state["pin_required"] = self._pin_required
+
         with self._clients_lock:
             dead: list[queue.Queue] = []
             for q in self._sse_clients:
@@ -931,7 +1274,7 @@ class WebRemoteServer:
 
             self._thread = threading.Thread(target=self._run_server, daemon=True, name="BlindCue-WebServer")
             self._thread.start()
-            logger.info("[WEB] Remote Web Server running at http://0.0.0.0:%d", self.port)
+            logger.info("[WEB] Remote Web Server running at http://0.0.0.0:%d (PIN Protected: %s)", self.port, self._pin_required)
             return True
         except Exception as exc:
             logger.error("[WEB] Could not start HTTP server on port %d: %s", self.port, exc)

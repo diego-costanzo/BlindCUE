@@ -82,8 +82,18 @@ class RemoteManager(QObject):
         self._osc_enabled: bool = True
         self._osc_port: int = 53000
 
+        # Security PIN & Anti-Burlone Controls
+        import random
+        self._pin_enabled: bool = True
+        self._pin: str = f"{random.randint(1000, 9999)}"
+        self._qr_includes_pin: bool = True
+        self._osc_pin_required: bool = False
+        self._osc_allowed_ips: list[str] = []
+
         self.web_server = WebRemoteServer(port=self._web_port)
+        self.web_server.set_pin_protection(self._pin_enabled, self._pin)
         self.osc_server = OscServer(self)
+        self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
 
         self._wire_bridges()
 
@@ -133,10 +143,61 @@ class RemoteManager(QObject):
     def get_osc_port(self) -> int:
         return self._osc_port
 
-    def get_primary_web_url(self) -> str:
+    def is_pin_enabled(self) -> bool:
+        return self._pin_enabled
+
+    def get_pin(self) -> str:
+        return self._pin
+
+    def is_qr_pin_included(self) -> bool:
+        return self._qr_includes_pin
+
+    def is_osc_pin_required(self) -> bool:
+        return self._osc_pin_required
+
+    def get_osc_allowed_ips(self) -> list[str]:
+        return list(self._osc_allowed_ips)
+
+    def generate_new_pin(self) -> str:
+        import random
+        self._pin = f"{random.randint(1000, 9999)}"
+        self.web_server.set_pin_protection(self._pin_enabled, self._pin)
+        self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
+        self.revoke_all_sessions()
+        self.activity_updated.emit()
+        return self._pin
+
+    def set_pin_security(self, enabled: bool, pin: str, qr_includes_pin: bool = True) -> None:
+        self._pin_enabled = bool(enabled)
+        self._pin = str(pin).strip()
+        self._qr_includes_pin = bool(qr_includes_pin)
+        self.web_server.set_pin_protection(self._pin_enabled, self._pin)
+        self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
+        self.activity_updated.emit()
+
+    def set_osc_security(self, pin_required: bool, allowed_ips: Optional[list[str]] = None) -> None:
+        self._osc_pin_required = bool(pin_required)
+        self._osc_allowed_ips = [ip.strip() for ip in allowed_ips] if allowed_ips else []
+        self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
+        self.activity_updated.emit()
+
+    def revoke_all_sessions(self) -> None:
+        """Drop all active sessions and force re-authentication (Anti-Burlone emergency reset)."""
+        self.web_server.revoke_all_sessions()
+        self.osc_server.clear_authenticated_clients()
+        self.activity_updated.emit()
+
+    def get_primary_web_url(self, include_pin: bool = False) -> str:
         ips = get_local_lan_ips()
         ip = ips[0] if ips else "127.0.0.1"
-        return f"http://{ip}:{self._web_port}"
+        base = f"http://{ip}:{self._web_port}"
+        if include_pin and self._pin_enabled:
+            return f"{base}/?pin={self._pin}"
+        return base
+
+    def get_qr_url(self) -> str:
+        """Return the URL to be encoded in the QR code (includes PIN if enabled for 1-tap camera scan)."""
+        return self.get_primary_web_url(include_pin=self._qr_includes_pin)
 
     def get_all_web_urls(self) -> list[str]:
         ips = get_local_lan_ips()
@@ -197,7 +258,7 @@ class RemoteManager(QObject):
 
     def generate_qr_pixmap(self, url: Optional[str] = None, size: int = 220) -> Optional[QPixmap]:
         """Generate high-contrast QR code QPixmap for scanning with smartphones."""
-        target_url = url or self.get_primary_web_url()
+        target_url = url or self.get_qr_url()
         try:
             # Call system qrencode
             proc = subprocess.run(
@@ -219,3 +280,4 @@ class RemoteManager(QObject):
             logger.warning("[REMOTE] qrencode failed or not available: %s", exc)
 
         return None
+
