@@ -6,11 +6,11 @@ import gc
 import logging
 import os
 import platform
-import shutil
 import subprocess
 import sys
 
 from PySide6.QtCore import QThreadPool
+from PySide6.QtGui import QGuiApplication, QOffscreenSurface, QOpenGLContext
 from PySide6.QtWidgets import QMessageBox, QWidget
 
 logger = logging.getLogger(__name__)
@@ -83,54 +83,73 @@ def get_memory_details() -> dict:
 
 
 def get_hardware_details() -> dict:
-    """Inspect CPU, GPU, memory, and display server across Linux, macOS, and Windows."""
+    """Inspect CPU, GPU, screens, memory, and display server across Linux, macOS, and Windows."""
     cpu_cores = os.cpu_count() or 1
-    cpu_model = platform.processor() or "Multi-core CPU"
-
-    # CPU Model detection
-    if sys.platform.startswith("linux"):
-        try:
-            with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
-                for line in f:
-                    if "model name" in line:
-                        cpu_model = line.split(":", 1)[1].strip()
-                        break
-        except Exception:
-            pass
-    elif sys.platform == "darwin":
-        try:
-            res = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=2)
-            brand = res.stdout.strip()
-            if brand:
-                cpu_model = brand
-        except Exception:
-            cpu_model = f"Apple Silicon ({platform.machine()})"
-    elif sys.platform.startswith("win"):
-        cpu_model = os.environ.get("PROCESSOR_IDENTIFIER", cpu_model)
-
-    # GPU Description & Hardware Acceleration
-    gpu_desc = "Scheda Grafica Integrata / Discreta"
-    has_hw_accel = False
-
-    if sys.platform.startswith("linux"):
-        if shutil.which("lspci"):
+    cpu_model = platform.processor() or ""
+    if not cpu_model.strip() or "x86" in cpu_model or "AMD64" in cpu_model:
+        if sys.platform.startswith("linux"):
             try:
-                res = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
-                lines = [line for line in res.stdout.splitlines() if any(k in line for k in ("VGA", "3D", "Display"))]
-                if lines:
-                    parts = lines[0].split(":", 2)
-                    gpu_desc = parts[-1].strip() if len(parts) >= 3 else lines[0]
+                with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+                    for line in f:
+                        if "model name" in line:
+                            cpu_model = line.split(":", 1)[1].strip()
+                            break
             except Exception:
                 pass
-        elif os.path.exists("/dev/dri/renderD128"):
-            gpu_desc = "Mesa Direct Rendering (DRI/DRM)"
-        has_hw_accel = os.path.exists("/dev/dri/renderD128")
+        elif sys.platform.startswith("win"):
+            cpu_model = os.environ.get("PROCESSOR_IDENTIFIER", cpu_model)
+    if not cpu_model.strip():
+        cpu_model = f"{platform.machine()} ({platform.system()})"
+
+    # Screens detection via PySide6 QGuiApplication
+    screens: list[str] = []
+    app = QGuiApplication.instance()
+    if app is not None:
+        try:
+            for s in QGuiApplication.screens():
+                geom = s.geometry()
+                screens.append(f"{s.name()} ({geom.width()}x{geom.height()})")
+        except Exception as exc:
+            logger.debug("[HW-INFO] Screen detection failed: %s", exc)
+
+    # GPU & Renderer detection via PySide6 OpenGL context (100% cross-platform)
+    gpu_vendor = ""
+    gpu_renderer = ""
+    has_hw_accel = False
+
+    try:
+        if app is not None:
+            ctx = QOpenGLContext()
+            if ctx.create():
+                surface = QOffscreenSurface()
+                surface.create()
+                if ctx.makeCurrent(surface):
+                    funcs = ctx.functions()
+                    # 0x1F00 = GL_VENDOR, 0x1F01 = GL_RENDERER
+                    raw_vendor = funcs.glGetString(0x1F00)
+                    raw_renderer = funcs.glGetString(0x1F01)
+                    if raw_vendor:
+                        gpu_vendor = raw_vendor.strip()
+                    if raw_renderer:
+                        gpu_renderer = raw_renderer.strip()
+                    has_hw_accel = True
+                    ctx.doneCurrent()
+                surface.destroy()
+    except Exception as exc:
+        logger.debug("[HW-INFO] OpenGL hardware query failed: %s", exc)
+
+    if gpu_vendor and gpu_renderer:
+        gpu_desc = gpu_renderer if gpu_vendor in gpu_renderer else f"{gpu_vendor} {gpu_renderer}"
+    elif gpu_renderer:
+        gpu_desc = gpu_renderer
     elif sys.platform == "darwin":
-        gpu_desc = f"Apple Metal Graphics ({platform.machine()})"
+        gpu_desc = f"Apple Metal / GPU ({platform.machine()})"
         has_hw_accel = True
     elif sys.platform.startswith("win"):
-        gpu_desc = "Direct3D / DXVA2 Hardware Adapter"
+        gpu_desc = "Direct3D / OpenGL Hardware Adapter"
         has_hw_accel = True
+    else:
+        gpu_desc = "Standard GPU Adapter"
 
     wayland_session = os.environ.get("WAYLAND_DISPLAY", "")
     mem = get_memory_details()
@@ -141,6 +160,8 @@ def get_hardware_details() -> dict:
         "gpu_desc": gpu_desc,
         "has_vaapi": has_hw_accel,
         "has_hw_accel": has_hw_accel,
+        "screens": screens,
+        "screen_count": len(screens),
         "wayland_session": wayland_session,
         "os_name": platform.system(),
         "total_gb": mem["total_gb"],
@@ -178,6 +199,8 @@ def evaluate_hardware_profile(custom_preference: str = PROFILE_AUTO) -> dict:
         "cpu_model": hw["cpu_model"],
         "gpu_desc": hw["gpu_desc"],
         "has_vaapi": hw["has_vaapi"],
+        "screens": hw.get("screens", []),
+        "screen_count": hw.get("screen_count", 0),
         "total_gb": hw["total_gb"],
         "avail_gb": hw["avail_gb"],
         "total_mb": hw["total_mb"],
@@ -270,8 +293,9 @@ def show_hardware_info_dialog(parent: QWidget, custom_profile: str = PROFILE_AUT
         f"• Totale: <b>{prof['total_gb']} GB</b> ({prof['total_mb']} MB)<br/>"
         f"• Disponibile: <b>{prof['avail_gb']} GB</b> ({prof['avail_mb']} MB)</p>"
         f"<p><b>Scheda Video (GPU):</b> {prof['gpu_desc']}<br/>"
-        f"• Accelerazione Hardware DRI/DRM (/dev/dri): <b>{'Attiva (VA-API / EGL)' if prof['has_vaapi'] else 'Mesa Software'}</b><br/>"
-        f"• Sessione Grafica: <b>Native Wayland</b></p>"
+        f"• Accelerazione Hardware: <b>{'Attiva (OpenGL / Hardware Accelerated)' if prof['has_vaapi'] else 'Software Renderer'}</b><br/>"
+        f"• Schermi Rilevati: <b>{', '.join(prof.get('screens', [])) or 'Display Principale'}</b><br/>"
+        f"• Piattaforma: <b>{platform.system()} ({platform.machine()})</b></p>"
         f"<hr/>"
         f"<h4>Ottimizzazioni per la Massima Stabilità Live:</h4>"
         f"<ul>"

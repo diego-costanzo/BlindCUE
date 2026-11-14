@@ -257,9 +257,8 @@ def render_normalized_media(
         return None
 
     # Cross-platform standard cache path (Linux ~/.cache, macOS ~/Library/Caches, Windows %LOCALAPPDATA%)
-    base_cache = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation)
-    cache_dir = os.path.join(base_cache or os.path.expanduser("~/.cache"), "blindcue", "audio")
-    os.makedirs(cache_dir, exist_ok=True)
+    cache_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation)) / "audio"
+    cache_dir.mkdir(parents=True, exist_ok=True)
 
     stem = Path(file_path).stem
     ext = Path(file_path).suffix.lower()
@@ -268,7 +267,7 @@ def render_normalized_media(
     video_exts = {".mp4", ".mkv", ".mov", ".webm", ".avi"}
     is_video = ext in video_exts
     out_ext = ext if is_video else ".wav"
-    out_path = os.path.join(cache_dir, f"{stem}_ebur128_{h}{out_ext}")
+    out_path = str(cache_dir / f"{stem}_ebur128_{h}{out_ext}")
 
     if os.path.isfile(out_path) and os.path.getsize(out_path) > 1000:
         return out_path

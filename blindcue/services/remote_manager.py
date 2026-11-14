@@ -10,11 +10,10 @@ Provides a single high-level interface to:
 
 from __future__ import annotations
 
+import io
 import logging
 import secrets
-import shutil
 import socket
-import subprocess
 from typing import Any, Callable, Optional
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
@@ -289,34 +288,42 @@ class RemoteManager(QObject):
         """Generate high-contrast QR code QPixmap for scanning with smartphones (100% cross-platform)."""
         target_url = url or self.get_qr_url()
 
-        # 1. Primary: Native 100% pure-Python QR Generator (Zero external dependencies on Linux, macOS, Windows)
+        # 1. Pure-Python QR generation (qrcode library SVG -> QPixmap)
+        try:
+            import qrcode
+            import qrcode.image.svg
+            from PySide6.QtCore import QByteArray
+            from PySide6.QtGui import QPainter
+            from PySide6.QtSvg import QSvgRenderer
+
+            qr = qrcode.QRCode(box_size=10, border=2)
+            qr.add_data(target_url)
+            qr.make(fit=True)
+
+            img_svg = qr.make_image(image_factory=qrcode.image.svg.SvgPathImage)
+            stream = io.BytesIO()
+            img_svg.save(stream)
+            svg_data = stream.getvalue()
+
+            renderer = QSvgRenderer(QByteArray(svg_data))
+            pixmap = QPixmap(size, size)
+            pixmap.fill(Qt.GlobalColor.white)
+            painter = QPainter(pixmap)
+            renderer.render(painter)
+            painter.end()
+
+            if not pixmap.isNull():
+                return pixmap
+        except Exception as exc:
+            logger.debug("[REMOTE] qrcode SVG generation failed: %s", exc)
+
+        # 2. Native pure-Python QR fallback (zero-dependency matrix)
         try:
             pix = native_qr_generate(target_url, size=size)
             if pix is not None and not pix.isNull():
                 return pix
         except Exception as exc:
-            logger.debug("[REMOTE] Native QR generator fallback: %s", exc)
-
-        # 2. Secondary Fallback: System qrencode if available
-        if shutil.which("qrencode"):
-            try:
-                proc = subprocess.run(
-                    ["qrencode", "-s", "6", "-m", "2", "-o", "-", target_url],
-                    capture_output=True,
-                    check=False,
-                )
-                if proc.returncode == 0 and proc.stdout:
-                    img = QImage()
-                    if img.loadFromData(proc.stdout):
-                        pix = QPixmap.fromImage(img)
-                        return pix.scaled(
-                            size,
-                            size,
-                            Qt.AspectRatioMode.KeepAspectRatio,
-                            Qt.TransformationMode.SmoothTransformation,
-                        )
-            except Exception as exc:
-                logger.warning("[REMOTE] qrencode failed: %s", exc)
+            logger.debug("[REMOTE] Native QR fallback failed: %s", exc)
 
         return None
 
