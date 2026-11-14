@@ -1,12 +1,12 @@
-# 🎬 BlindCue — Live Multimedia Cue Player per Linux
+# 🎬 BlindCue — Live Multimedia Cue Player (Linux · macOS · Windows)
 
 <p align="center">
   <img src="immagini di progetto/BlindCue-logo.jpeg" alt="BlindCue Logo" width="170"/>
 </p>
 
 <p align="center">
-  <b>Regia Video, Audio e Immagini a bassa latenza per teatro, eventi live e broadcast su Linux.</b><br/>
-  <i>100% Wayland Nativo (PySide6 QtMultimedia + FFmpeg) • 3 Layer Compositing + Layer 0 Calibrazione • Modalità Progetto & Modalità LIVE • Pre/Post-Delay & Sezioni Virtuali</i>
+  <b>Regia Video, Audio e Immagini a bassa latenza per teatro, eventi live e broadcast.</b><br/>
+  <i>100% Cross-Platform (Linux Wayland/X11 • macOS Apple Silicon/Intel • Windows 10/11) • PySide6 QtMultimedia + FFmpeg • 3 Layer Compositing + Layer 0 Calibrazione • Controllo Remoto LAN (Smartphone/Tablet Web & OSC)</i>
 </p>
 
 > [!NOTE]
@@ -137,14 +137,11 @@ Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L
 
 <a id="installazione"></a>
 
-## 🚀 Installazione e Avvio Rapido
+## 🚀 Installazione e Avvio Rapido (100% Cross-Platform)
 
-### Requisiti
-- **OS**: Linux (Arch / EndeavourOS / Manjaro, Debian 12+, Ubuntu 22.04+, Fedora 39+)
-- **Sessione**: Wayland nativo (compatibile anche con X11/Xwayland)
-- **Dipendenze**: Python `>= 3.10`, `ffmpeg`, `ffprobe`, librerie Python in `blindcue/requirements.txt` (`PySide6>=6.5`, `numpy>=1.24`)
+BlindCue funziona nativamente su tutti i sistemi operativi moderni senza dipendenze binarie proprietarie o librerie C obsolete.
 
-### Setup & Avvio
+### 🐧 Linux (Arch, Debian, Ubuntu, Fedora)
 ```bash
 git clone https://github.com/diego-costanzo/BlinCUE.git
 cd BlinCUE
@@ -153,7 +150,24 @@ chmod +x install.sh run.sh
 ./run.sh
 ```
 
-> All'avvio `run.sh` attiva `.venv`, forza `LC_NUMERIC=C` per evitare errori sui separatori decimali e lancia `blindcue/main.py`.
+### 🍎 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
+```bash
+git clone https://github.com/diego-costanzo/BlinCUE.git
+cd BlinCUE
+chmod +x install_mac.sh run.sh
+./install_mac.sh
+./run.sh
+```
+> *(Consigliato: avere Homebrew installato per scaricare automaticamente FFmpeg).*
+
+### 🪟 Windows (10 / 11)
+1. Scarica o clona il repository:
+   ```cmd
+   git clone https://github.com/diego-costanzo/BlinCUE.git
+   cd BlinCUE
+   ```
+2. Fai doppio clic su **`install.bat`** (crea l'ambiente `.venv` e scarica `PySide6` e `numpy`).
+3. Per avviare il programma fai doppio clic su **`run.bat`**!
 
 ---
 
@@ -182,8 +196,12 @@ chmod +x install.sh run.sh
 
 ```text
 BlindCUE/
-├── install.sh                          # Installer multi-distro (Arch, Debian/Ubuntu, Fedora + venv)
-├── run.sh                              # Launcher applicazione (.venv + LC_NUMERIC=C)
+├── requirements.txt                    # Dipendenze Python native (PySide6, numpy)
+├── install.sh                          # Installer per Linux (Debian/Ubuntu, Arch, Fedora)
+├── install_mac.sh                      # Setup automatico per macOS (Homebrew + venv)
+├── install.bat                         # Setup automatico con doppio clic per Windows
+├── run.sh                              # Launcher per Linux e macOS
+├── run.bat                             # Launcher rapido per Windows
 ├── README.md                           # Panoramica del progetto
 ├── docs/
 │   ├── GUIDA_IMPLEMENTAZIONE_LINUX.md  # Manuale Operativo Interattivo per tecnici e registi

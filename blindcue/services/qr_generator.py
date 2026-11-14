@@ -293,3 +293,4 @@ def generate_qr_pixmap(text: str, size: int = 200, quiet_zone: int = 2) -> QPixm
 
     painter.end()
     return QPixmap.fromImage(image).scaled(size, size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+
