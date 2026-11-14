@@ -17,7 +17,6 @@ class ThemeDefinition:
     name: str
     description: str
     is_high_contrast: bool
-    is_light: bool
 
     # Core canvas & surfaces
     bg: str
@@ -60,10 +59,9 @@ class ThemeDefinition:
 # ── Theme 1: Obsidian Slate (Pro Broadcast · Default Dark) ───────────
 THEME_OBSIDIAN_SLATE = ThemeDefinition(
     theme_id="obsidian_slate",
-    name="Obsidian Slate (Regia Pro · Scuro)",
+    name="Obsidian Slate (Regia Pro · Predefinito)",
     description="Tema scuro broadcast calibrato per ambienti di regia con luce soffusa. Morbido e riposante.",
     is_high_contrast=False,
-    is_light=False,
     bg="#0c1017",
     panel="#151b26",
     panel_elevated="#1e2838",
@@ -93,85 +91,49 @@ THEME_OBSIDIAN_SLATE = ThemeDefinition(
     slider_subpage="#0284c7",
 )
 
-# ── Theme 2: Daylight Studio (High Contrast Light · WCAG AAA) ────────
-THEME_DAYLIGHT_STUDIO = ThemeDefinition(
-    theme_id="daylight_studio",
-    name="Daylight Studio (Chiaro · Massimo Contrasto WCAG AAA)",
-    description="Sfondo chiaro tipo carta/spartito: massima acuità visiva per ipovedenti, astigmatismo e ambienti illuminati.",
+# ── Theme 2: Carbon Monocromo (Grayscale & Luminous Accent · WCAG AAA) ──
+# Pro neutral gray-scale architecture inspired by DaVinci Resolve & Ableton:
+# Eliminates chromatic noise, uses stepped neutral carbon tones with high-luminance accents.
+THEME_CARBON_MONO = ThemeDefinition(
+    theme_id="carbon_mono",
+    name="Carbon Monocromo (Scala di Grigi & Accento Luminoso)",
+    description="Architettura in scala di grigi carbonio ad alta leggibilità: elimina il rumore cromatico per daltonici e ipovedenti, guidando lo sguardo con accenti luminosi.",
     is_high_contrast=True,
-    is_light=True,
-    bg="#f1f5f9",
-    panel="#ffffff",
-    panel_elevated="#e2e8f0",
-    input_bg="#ffffff",
-    input_focus_bg="#f8fafc",
-    header_bg="#e2e8f0",
-    status_bg="#e2e8f0",
-    menu_bg="#ffffff",
-    text="#0f172a",          # Ultra-high contrast 16.6:1 against white
-    text_muted="#475569",    # Crisp 7.8:1 contrast
-    selection_bg="#2563eb",  # Royal Blue
+    bg="#111215",              # Neutral deep carbon backdrop
+    panel="#1a1b1f",           # Solid tactile graphite panel
+    panel_elevated="#26272e",  # Stepped elevated carbon surface
+    input_bg="#0d0e10",        # Sunken dark input
+    input_focus_bg="#1e1f25",  # Clear focus lift
+    header_bg="#16171b",       # Defined header
+    status_bg="#0c0c0e",       # Bottom bar
+    menu_bg="#1a1b1f",
+    text="#f4f4f6",            # Soft white silk (15.7:1 contrast, no halation or glare)
+    text_muted="#a1a1aa",      # Crisp silver secondary text
+    selection_bg="#3f3f46",    # Neutral silver-charcoal highlight
     selection_fg="#ffffff",
-    border="#94a3b8",
-    border_subtle="#cbd5e1",
+    border="#3f3f46",          # Refined 1.5px border
+    border_subtle="#27272a",
     border_width="1.5px",
-    table_grid="#e2e8f0",
-    accent="#2563eb",
-    accent_hover="#1d4ed8",
-    accent_muted="#3b82f6",
-    live="#16a34a",
-    previz="#d97706",
-    go="#16a34a",
-    button_bg="#e2e8f0",
-    button_border="#94a3b8",
-    button_hover_bg="#cbd5e1",
-    slider_groove="#cbd5e1",
-    slider_subpage="#2563eb",
-)
-
-# ── Theme 3: High Contrast Gold (Stark Dark & Gold · WCAG AAA) ───────
-THEME_HIGH_CONTRAST_GOLD = ThemeDefinition(
-    theme_id="high_contrast_gold",
-    name="Alto Contrasto Notturno (Nero & Oro · WCAG AAA)",
-    description="Nero profondo, blocchi solidi e accenti oro vivido ad altissima visibilità per ipovisione notturna.",
-    is_high_contrast=True,
-    is_light=False,
-    bg="#000000",
-    panel="#141414",
-    panel_elevated="#282828",
-    input_bg="#0a0a0a",
-    input_focus_bg="#222222",
-    header_bg="#1f1f1f",
-    status_bg="#000000",
-    menu_bg="#141414",
-    text="#ffffff",          # Pure white 21.0:1 contrast
-    text_muted="#facc15",    # Vivid gold 13.7:1 contrast
-    selection_bg="#facc15",  # Total inversion: gold selection with black text
-    selection_fg="#000000",
-    border="#facc15",
-    border_subtle="#ffffff",
-    border_width="2px",
-    table_grid="#374151",
-    accent="#facc15",
-    accent_hover="#fef08a",
-    accent_muted="#ca8a04",
-    live="#4ade80",
-    previz="#facc15",
+    table_grid="#27272a",
+    accent="#38bdf8",          # High-luminance electric sky cyan accent
+    accent_hover="#7dd3fc",
+    accent_muted="#0284c7",
+    live="#4ade80",            # High-luminance lime green
+    previz="#fbbf24",          # High-luminance warm amber
     go="#4ade80",
-    button_bg="#242424",
-    button_border="#facc15",
-    button_hover_bg="#3b3b3b",
-    slider_groove="#333333",
-    slider_subpage="#facc15",
+    button_bg="#26272e",       # Solid stepped carbon button
+    button_border="#3f3f46",
+    button_hover_bg="#33343d",
+    slider_groove="#27272a",
+    slider_subpage="#38bdf8",
 )
 
-# ── Theme 4: Deep Indigo & Warm Amber (Night Studio) ─────────────────
+# ── Theme 3: Deep Indigo & Warm Amber (Night Studio) ─────────────────
 THEME_DEEP_INDIGO_AMBER = ThemeDefinition(
     theme_id="deep_indigo_amber",
     name="Deep Indigo & Warm Amber (Studio Notturno)",
     description="Tonalità rilassanti blu notte profondo e accenti caldi ambra/rame per sessioni prolungate senza affaticamento.",
     is_high_contrast=False,
-    is_light=False,
     bg="#090d16",
     panel="#111827",
     panel_elevated="#1e293b",
@@ -203,11 +165,12 @@ THEME_DEEP_INDIGO_AMBER = ThemeDefinition(
 
 THEMES: Mapping[str, ThemeDefinition] = {
     THEME_OBSIDIAN_SLATE.theme_id: THEME_OBSIDIAN_SLATE,
-    THEME_DAYLIGHT_STUDIO.theme_id: THEME_DAYLIGHT_STUDIO,
-    THEME_HIGH_CONTRAST_GOLD.theme_id: THEME_HIGH_CONTRAST_GOLD,
+    THEME_CARBON_MONO.theme_id: THEME_CARBON_MONO,
     THEME_DEEP_INDIGO_AMBER.theme_id: THEME_DEEP_INDIGO_AMBER,
-    # Backward compatibility alias
-    "high_contrast_mono": THEME_HIGH_CONTRAST_GOLD,
+    # Backward compatibility aliases
+    "high_contrast_mono": THEME_CARBON_MONO,
+    "high_contrast_gold": THEME_CARBON_MONO,
+    "daylight_studio": THEME_CARBON_MONO,
 }
 
 # ── Dynamic active theme tracking ────────────────────────────────────
@@ -412,7 +375,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     }}
     QHeaderView::section {{
         background-color: {t.header_bg};
-        color: {t.text if t.is_light else t.accent};
+        color: {t.accent};
         border: none;
         border-bottom: {t.border_width} solid {t.border};
         border-right: 1px solid {t.border_subtle};
@@ -435,7 +398,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     QPushButton:hover {{
         background-color: {t.button_hover_bg};
         border-color: {t.accent};
-        color: {t.selection_fg if not t.is_light else t.text};
+        color: {t.selection_fg};
     }}
     QPushButton:pressed {{
         background-color: {t.input_bg};
@@ -444,7 +407,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     QPushButton:checked {{
         background-color: {t.panel_elevated};
         border-color: {t.live};
-        color: {t.live if t.is_light else t.selection_fg};
+        color: {t.selection_fg};
     }}
     QPushButton:disabled {{
         background-color: {t.panel};
@@ -512,7 +475,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     }}
     QTabBar::tab:selected {{
         background-color: {t.panel};
-        color: {t.accent if t.is_light else t.selection_fg};
+        color: {t.selection_fg};
         border-color: {t.accent};
         border-top: 2.5px solid {t.accent};
     }}
