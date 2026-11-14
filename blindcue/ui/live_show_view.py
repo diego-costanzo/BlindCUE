@@ -52,6 +52,7 @@ from ui.cue_table import (
     ROLE_SECTION_COUNT,
     ROLE_STATUS_CLR,
     ROLE_STATUS_TXT,
+    ROLE_TIMELINE_COMPOSED,
     _GROUP_MODE_PILLS,
     _LINK_RAIL_COLORS,
     format_cue_ref,
@@ -1129,6 +1130,7 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_CHILD_COUNT, child_count)
                     it.setData(ROLE_GROUP_MODE, getattr(cue, "group_mode", "STEP"))
                     it.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
+                    it.setData(ROLE_TIMELINE_COMPOSED, bool(getattr(cue, "timeline_composed", False)))
                     it.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
                     it.setData(ROLE_LAYER, cue.layer)
                     it.setData(ROLE_HAS_NOTES, bool(cue.notes))

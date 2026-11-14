@@ -173,6 +173,7 @@ class Cue:
     true_peak_dbfs: Optional[float] = None  # Measured true peak (dBFS)
     auto_gain_db: float = 0.0  # Computed gain adjustment in dB to reach target (-16 LUFS)
     original_file_path: Optional[str] = None  # Backup of original path if dynamics-optimized copy is used
+    timeline_composed: bool = False  # GROUP cue configured/synced via multi-track studio timeline
 
     # ── Validation ────────────────────────────────────────────────────
     def validate(self) -> list[str]:
@@ -289,6 +290,7 @@ class Cue:
             "true_peak_dbfs": self.true_peak_dbfs,
             "auto_gain_db": round(float(self.auto_gain_db), 2),
             "original_file_path": self.original_file_path,
+            "timeline_composed": self.timeline_composed,
         }
 
     @classmethod
@@ -363,6 +365,7 @@ class Cue:
             true_peak_dbfs=float(data["true_peak_dbfs"]) if data.get("true_peak_dbfs") is not None else None,
             auto_gain_db=float(data.get("auto_gain_db", 0.0) or 0.0),
             original_file_path=data.get("original_file_path"),
+            timeline_composed=bool(data.get("timeline_composed", False)),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)

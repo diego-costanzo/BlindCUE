@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QAbstractSpinBox,
     QApplication,
     QComboBox,
+    QDialog,
     QFileDialog,
     QGroupBox,
     QLabel,
@@ -78,12 +79,14 @@ from ui.cue_table import (
     ROLE_PREV_COLOR,
     ROLE_STATUS_CLR,
     ROLE_STATUS_TXT,
+    ROLE_TIMELINE_COMPOSED,
     ROLE_TIMING_BADGE,
     CueSequenceTable,
     CueTableDelegate,
     format_cue_ref,
 )
 from ui.drop_zone import DropZone
+from ui.group_timeline_editor import GroupTimelineStudioDialog
 from ui.hardware_info import (
     ShowRuntimeGuard,
     detect_hardware_brief,
@@ -533,6 +536,7 @@ class MainWindow(QMainWindow):
         self._cue_list_panel.add_group_requested.connect(self._on_add_group)
         self._cue_list_panel.ungroup_requested.connect(self._ungroup_selected)
         self._cue_list_panel.extract_child_requested.connect(self._extract_selected_from_group)
+        self._cue_list.open_timeline_requested.connect(self._on_open_group_timeline)
         self._cue_list.group_collapse_toggled.connect(self._toggle_group_collapsed)
         self._cue_list_panel.move_up_requested.connect(self._on_move_up)
         self._cue_list_panel.move_down_requested.connect(self._on_move_down)
@@ -597,6 +601,7 @@ class MainWindow(QMainWindow):
         self._inspector.ungroup_requested.connect(self._ungroup_selected)
         self._inspector.remove_child_requested.connect(self._on_remove_child_from_group)
         self._inspector.extract_child_requested.connect(self._extract_selected_from_group)
+        self._inspector.open_group_timeline_requested.connect(self._on_open_group_timeline)
         self._inspector.scan_loudness_requested.connect(self._on_scan_loudness_requested)
         self._inspector.normalize_cue_toggled.connect(self._on_normalize_cue_toggled)
         self._inspector.optimize_dynamics_requested.connect(self._on_optimize_dynamics_requested)
@@ -1025,6 +1030,7 @@ class MainWindow(QMainWindow):
         item_name.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
         item_name.setData(ROLE_CHILD_COUNT, child_count)
         item_name.setData(ROLE_IS_LAST_CHILD, is_last_child)
+        item_name.setData(ROLE_TIMELINE_COMPOSED, bool(getattr(cue, "timeline_composed", False)))
         item_name.setToolTip(tooltip)
 
         for cell in (item_num, item_q, item_name):
@@ -2986,6 +2992,42 @@ class MainWindow(QMainWindow):
         self._mark_modified(True)
         self._sync_live_view()
         self._status_label.setText(f"Modalità Gruppo impostata a: {mode}")
+
+    @Slot()
+    def _on_open_group_timeline(self) -> None:
+        """Open the dedicated 3-layer Studio Timeline Arranger Dialog for the selected group."""
+        if self._live_mode:
+            return
+        anchor_row, cue = self._anchor_row_and_cue()
+        if not cue:
+            return
+        group_cue = (
+            cue if cue.media_type == MediaType.GROUP
+            else next((c for c in self._cues if c.cue_id == cue.parent_id), None)
+        )
+        if not group_cue or group_cue.media_type != MediaType.GROUP:
+            return
+
+        child_cues = [c for c in self._cues if c.parent_id == group_cue.cue_id]
+        if not child_cues:
+            QMessageBox.information(
+                self,
+                "Studio Timeline Gruppo",
+                f"Il gruppo '{group_cue.name}' non contiene ancora file multimediali.\n\n"
+                "Aggiungi prima delle tracce audio, video o immagini al gruppo nella scaletta principale\n"
+                "per poterle allineare e sincronizzare sulla timeline a 3 layer.",
+            )
+            return
+
+        dialog = GroupTimelineStudioDialog(group_cue, child_cues, parent=self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self._commit_undo_point()
+            self._mark_modified(True)
+            self._refresh_cue_list(keep_selection=True)
+            self._update_inspector(group_cue)
+            self._status_label.setText(
+                f"Studio Timeline: Gruppo '{group_cue.name}' sincronizzato con successo ({len(child_cues)} file allineati sui layer)"
+            )
 
     # ── EBU R128 Loudness Normalization & Jam / Contest Mode ──────────
 

@@ -173,6 +173,7 @@ class CueInspectorPanel(QGroupBox):
     ungroup_requested = Signal()
     remove_child_requested = Signal(int)
     extract_child_requested = Signal()
+    open_group_timeline_requested = Signal()
     scan_loudness_requested = Signal()
     normalize_cue_toggled = Signal(bool)
     optimize_dynamics_requested = Signal()
@@ -1062,6 +1063,33 @@ class CueInspectorPanel(QGroupBox):
         grp_actions_row.addWidget(self.btn_group_ungroup)
 
         l3.addLayout(grp_actions_row)
+
+        self.btn_open_timeline_studio = QPushButton("🎬  APRI STUDIO TIMELINE DEL GRUPPO (3 LAYER)")
+        self.btn_open_timeline_studio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_open_timeline_studio.setFixedHeight(34)
+        self.btn_open_timeline_studio.setToolTip(
+            "Apre la finestra extra Studio Timeline per sincronizzare visivamente i file del gruppo\n"
+            "sulle 3 tracce layer (L1, L2, L3) con righello millisecondi, tagli e anteprima multi-canale."
+        )
+        self.btn_open_timeline_studio.setStyleSheet("""
+            QPushButton {
+                background-color: #1e1b4b;
+                color: #a5b4fc;
+                border: 1.5px solid #6366f1;
+                border-radius: 5px;
+                font-weight: bold;
+                font-size: 11px;
+                padding: 4px 12px;
+                margin-top: 4px;
+            }
+            QPushButton:hover {
+                background-color: #312e81;
+                border-color: #818cf8;
+                color: #ffffff;
+            }
+        """)
+        self.btn_open_timeline_studio.clicked.connect(self.open_group_timeline_requested)
+        l3.addWidget(self.btn_open_timeline_studio)
         lay.addWidget(c3)
         lay.addStretch()
 

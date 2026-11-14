@@ -49,6 +49,7 @@ ROLE_IS_LIVE = Qt.ItemDataRole.UserRole + 23
 ROLE_IS_STANDBY = Qt.ItemDataRole.UserRole + 24
 ROLE_PHASE_TXT = Qt.ItemDataRole.UserRole + 25
 ROLE_LAYER_CONFLICT = Qt.ItemDataRole.UserRole + 26
+ROLE_TIMELINE_COMPOSED = Qt.ItemDataRole.UserRole + 27
 
 _LINK_RAIL_COLORS = {
     "SIMULTANEOUS": QColor("#f59e0b"),
@@ -351,6 +352,19 @@ class CueTableDelegate(QStyledItemDelegate):
                     painter.drawText(gm_rect, Qt.AlignmentFlag.AlignCenter, gm_txt)
                     right_x -= gm_w + 4
 
+                if bool(index.data(ROLE_TIMELINE_COMPOSED)):
+                    tc_txt = "🎬 MULTI-TRACK"
+                    painter.setFont(tag_font)
+                    fm_tc = painter.fontMetrics()
+                    tc_w = fm_tc.horizontalAdvance(tc_txt) + 10
+                    tc_rect = QRect(right_x - tc_w, rect.top() + (rect.height() - 16) // 2, tc_w, 16)
+                    painter.setPen(QPen(QColor("#6366f1"), 1))
+                    painter.setBrush(QColor("#1e1b4b"))
+                    painter.drawRoundedRect(tc_rect, 3, 3)
+                    painter.setPen(QColor("#a5b4fc"))
+                    painter.drawText(tc_rect, Qt.AlignmentFlag.AlignCenter, tc_txt)
+                    right_x -= tc_w + 4
+
                 if child_count > 0:
                     cc_txt = f"{child_count} Cue"
                     painter.setFont(tag_font)
@@ -479,6 +493,7 @@ class CueSequenceTable(QTableWidget):
     group_requested = Signal()
     ungroup_requested = Signal()
     extract_child_requested = Signal()
+    open_timeline_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(0, 3, parent)
@@ -612,6 +627,8 @@ class CueSequenceTable(QTableWidget):
                 act_grp.triggered.connect(self.group_requested)
 
             if is_grp:
+                act_timeline = menu.addAction("🎬 Apri Studio Timeline Gruppo…")
+                act_timeline.triggered.connect(self.open_timeline_requested)
                 act_toggle = menu.addAction("▶ / ▼ Espandi o Collassa Gruppo")
                 act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(rows[0]))
                 act_ungrp = menu.addAction("🔓 Sciogli Gruppo (Ctrl+Shift+G)")
