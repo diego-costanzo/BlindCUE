@@ -677,11 +677,14 @@ class LiveStatusPanel(QGroupBox):
             btn_back10 = _LayerRoundIconButton("JUMP_BACK")
             btn_back10.setVisible(False)
             btn_back10.setToolTip(f"Salta indietro di 10s su Layer {layer} (utile nelle prove per ripetere la battuta)")
+            btn_back10.setAccessibleName(f"Riavvolgi 10 secondi Layer {layer}")
+            btn_back10.setAccessibleDescription(f"Sposta indietro di 10 secondi la testina del Layer {layer}.")
             btn_back10.clicked.connect(lambda _=False, idx=layer: self._on_quick_jump_backward(idx, 10.0))
 
             btn_pp = _LayerRoundIconButton("PAUSE")
             btn_pp.setVisible(False)
             btn_pp.setToolTip(f"Metti in Pausa Layer {layer} (utile durante le prove)")
+            btn_pp.setAccessibleName(f"Pausa o Riprendi Layer {layer}")
             btn_pp.clicked.connect(lambda _=False, idx=layer: self.layer_play_pause_clicked.emit(idx))
 
             if self._compact_live_mode:
@@ -701,11 +704,14 @@ class LiveStatusPanel(QGroupBox):
                     f"Rimuovi / arresta immediatamente il contenuto su Layer {layer}.\n"
                     "PROTEZIONE LIVE: Tieni premuto per 1.5 secondi per confermare il taglio ed evitare click involontari."
                 )
+                btn.setAccessibleName(f"Taglio Immediato Layer {layer}")
+                btn.setAccessibleDescription(f"Interrompe bruscamente il contenuto sul Layer {layer}. Richiede 1.5 secondi di pressione.")
                 btn.hold_completed.connect(lambda idx=layer: self.clear_layer_clicked.emit(idx))
             else:
                 btn = QPushButton(f"✕ Cut L{layer}")
                 btn.setFixedHeight(26)
                 btn.setToolTip(f"Rimuovi / arresta immediatamente il contenuto su Layer {layer}")
+                btn.setAccessibleName(f"Taglio Immediato Layer {layer}")
                 btn.setStyleSheet(cut_style)
                 btn.clicked.connect(lambda _=False, idx=layer: self.clear_layer_clicked.emit(idx))
 
@@ -723,6 +729,8 @@ class LiveStatusPanel(QGroupBox):
         self.btn_clear_all.setToolTip(
             "Arresta tutto l'output e mostra Layer 0 (Tappo) — Scorciatoia di sicurezza: Ctrl+B"
         )
+        self.btn_clear_all.setAccessibleName("Master Blackout")
+        self.btn_clear_all.setAccessibleDescription("Arresta immediatamente l'output di tutti i layer e torna allo sfondo tappo. Scorciatoia: Ctrl+B.")
         self.btn_clear_all.setStyleSheet(
             "QPushButton { background-color: #3a1111; color: #ff9999; border: 1px solid #882222; "
             "border-radius: 4px; font-weight: bold; padding: 6px; } "

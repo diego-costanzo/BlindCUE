@@ -50,7 +50,7 @@ from PySide6.QtWidgets import (
 
 from models.cue import Cue, MediaType
 from ui.spinboxes import SmartDoubleSpinBox
-from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ, CLR_TEXT
+from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ, CLR_TEXT, build_stylesheet, get_active_theme
 
 
 def _fmt_timecode(sec: float) -> str:
@@ -495,27 +495,7 @@ class GroupTimelineStudioDialog(QDialog):
         self.setWindowTitle(f"🎬 Studio Timeline Compositore Gruppo — '{group_cue.name}'")
         self.resize(1300, 780)
         self.setMinimumSize(1050, 650)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #080c14;
-                color: #e2e8f0;
-            }
-            QGroupBox {
-                font-weight: bold;
-                font-size: 11px;
-                border: 1px solid #1e293b;
-                border-radius: 6px;
-                margin-top: 8px;
-                padding-top: 10px;
-                background-color: #0b111a;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 4px;
-                color: #38bdf8;
-            }
-        """)
+        self.setStyleSheet(build_stylesheet())
 
         self._group_cue = group_cue
         self._child_cues = list(child_cues)
@@ -595,6 +575,8 @@ class GroupTimelineStudioDialog(QDialog):
         btn_cancel = QPushButton("↺ Annulla")
         btn_cancel.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_cancel.setFixedHeight(30)
+        btn_cancel.setAccessibleName("Annulla Modifiche Timeline")
+        btn_cancel.setAccessibleDescription("Chiude lo studio senza salvare le modifiche apportate alla timeline.")
         btn_cancel.setStyleSheet("""
             QPushButton { background-color: #1e293b; color: #94a3b8; border: 1px solid #334155; border-radius: 4px; padding: 0 12px; font-weight: bold; }
             QPushButton:hover { background-color: #334155; color: #f8fafc; }
@@ -605,6 +587,8 @@ class GroupTimelineStudioDialog(QDialog):
         btn_save = QPushButton("✓ Salva e Sincronizza nel Gruppo")
         btn_save.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_save.setFixedHeight(30)
+        btn_save.setAccessibleName("Salva e Sincronizza nel Gruppo")
+        btn_save.setAccessibleDescription("Salva ritardi, layer, tagli e dissolvenze all'interno delle cue del gruppo.")
         btn_save.setStyleSheet("""
             QPushButton { background-color: #065f46; color: #34d399; border: 1px solid #10b981; border-radius: 4px; padding: 0 14px; font-weight: bold; font-size: 11px; }
             QPushButton:hover { background-color: #047857; color: #ffffff; }
@@ -625,6 +609,8 @@ class GroupTimelineStudioDialog(QDialog):
         left_lay.setSpacing(6)
 
         self.list_items = QListWidget()
+        self.list_items.setAccessibleName("Lista File del Gruppo")
+        self.list_items.setAccessibleDescription("Elenco dei file assegnati al gruppo. Clicca per selezionare una clip.")
         self.list_items.setStyleSheet("""
             QListWidget { background-color: #0a0f18; border: 1px solid #1e293b; border-radius: 4px; }
             QListWidget::item { padding: 6px 8px; border-bottom: 1px solid #16202e; }
@@ -667,6 +653,8 @@ class GroupTimelineStudioDialog(QDialog):
         self.btn_rewind = QPushButton("⏮ Inizio")
         self.btn_rewind.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_rewind.setFixedHeight(28)
+        self.btn_rewind.setAccessibleName("Riavvolgi all'Inizio")
+        self.btn_rewind.setAccessibleDescription("Porta la testina di riproduzione al secondo zero.")
         self.btn_rewind.setStyleSheet("background-color: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 4px;")
         self.btn_rewind.clicked.connect(self._on_rewind)
         tr_row.addWidget(self.btn_rewind)
@@ -674,6 +662,8 @@ class GroupTimelineStudioDialog(QDialog):
         self.btn_play_pause = QPushButton("▶  Play")
         self.btn_play_pause.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_play_pause.setFixedHeight(28)
+        self.btn_play_pause.setAccessibleName("Play o Pausa Anteprima Gruppo")
+        self.btn_play_pause.setAccessibleDescription("Avvia o mette in pausa la riproduzione sincronizzata multi-canale.")
         self.btn_play_pause.setStyleSheet(f"background-color: {CLR_GO}; color: #04130a; border: none; border-radius: 4px; font-weight: bold;")
         self.btn_play_pause.clicked.connect(self._toggle_playback)
         tr_row.addWidget(self.btn_play_pause)
@@ -821,6 +811,8 @@ class GroupTimelineStudioDialog(QDialog):
         self.scroll_tl.setStyleSheet("QScrollArea { border: 1px solid #16202e; background-color: #070b12; }")
 
         self.canvas = GroupTimelineCanvas()
+        self.canvas.setAccessibleName("Canvas Timeline a 3 Layer")
+        self.canvas.setAccessibleDescription("Compositore visivo a 3 layer per allineare temporalmente i file del gruppo.")
         self.canvas.clips = self._clips
         self.canvas.clip_selected.connect(self._on_canvas_clip_selected)
         self.canvas.clip_moved.connect(self._on_canvas_clip_moved)

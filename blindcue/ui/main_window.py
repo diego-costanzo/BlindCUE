@@ -13,8 +13,8 @@ from pathlib import Path
 from typing import Any, Optional
 
 import numpy as np
-from PySide6.QtCore import QEvent, Qt, QThreadPool, QTimer, Signal, Slot
-from PySide6.QtGui import QAction, QColor, QFont, QIcon, QImageReader, QKeySequence, QShortcut
+from PySide6.QtCore import QEvent, QSettings, Qt, QThreadPool, QTimer, Signal, Slot
+from PySide6.QtGui import QAction, QActionGroup, QColor, QFont, QIcon, QImageReader, QKeySequence, QShortcut
 from PySide6.QtMultimedia import QVideoSink
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -111,7 +111,10 @@ from ui.theme import (
     DARK_STYLESHEET,
     DEFAULT_LOGO_PATH,
     IMAGE_EXT,
+    THEMES,
     VIDEO_EXT,
+    get_active_theme,
+    set_active_theme,
 )
 from ui.undo_manager import UndoManager
 from ui.waveform_widget import WaveformPanel, WaveformWidget
@@ -221,12 +224,46 @@ class MainWindow(QMainWindow):
         self._update_window_title()
         self.setMinimumSize(1100, 680)
         self.resize(1400, 850)
-        self.setStyleSheet(DARK_STYLESHEET)
+
+        # Load persisted theme or default to Obsidian Slate
+        settings = QSettings("BlindCue", "BlindCue")
+        saved_theme = str(settings.value("ui/theme", "obsidian_slate"))
+        self.apply_theme(saved_theme, save_pref=False)
 
         if DEFAULT_LOGO_PATH.is_file():
             self.setWindowIcon(QIcon(str(DEFAULT_LOGO_PATH)))
 
         self.bind_to_primary_screen()
+
+    def apply_theme(self, theme_id: str, save_pref: bool = True) -> None:
+        """Apply visual theme globally across application, windows, dialogs and custom canvas views."""
+        if theme_id not in THEMES:
+            theme_id = "obsidian_slate"
+
+        stylesheet = set_active_theme(theme_id)
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(stylesheet)
+        self.setStyleSheet(stylesheet)
+
+        if save_pref:
+            settings = QSettings("BlindCue", "BlindCue")
+            settings.setValue("ui/theme", theme_id)
+
+        if hasattr(self, "_theme_actions") and theme_id in self._theme_actions:
+            self._theme_actions[theme_id].setChecked(True)
+
+        # Repaint custom-painted components
+        if hasattr(self, "_cue_list") and self._cue_list is not None:
+            self._cue_list.viewport().update()
+        if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+            self._live_show_panel.update()
+            if hasattr(self._live_show_panel, "live_table"):
+                self._live_show_panel.live_table.viewport().update()
+        if hasattr(self, "_waveform_panel") and self._waveform_panel is not None:
+            self._waveform_panel.update()
+        if hasattr(self, "_live_status_panel") and self._live_status_panel is not None:
+            self._live_status_panel.update()
 
     def bind_to_primary_screen(self, screen=None) -> None:
         """Bind MainWindow and its native handle to the primary monitor and fit inside it."""
@@ -493,6 +530,25 @@ class MainWindow(QMainWindow):
         self._act_live_mode.toggled.connect(self.set_live_mode)
         view_menu.addAction(self._act_live_mode)
         view_menu.addSeparator()
+
+        # Theme Submenu
+        theme_menu = view_menu.addMenu("🎨 &Tema Interfaccia")
+        self._theme_action_group = QActionGroup(self)
+        self._theme_action_group.setExclusive(True)
+        self._theme_actions: dict[str, QAction] = {}
+        for tid, t_def in THEMES.items():
+            act = QAction(t_def.name, self, checkable=True)
+            act.setToolTip(t_def.description)
+            act.triggered.connect(lambda checked=False, theme_key=tid: self.apply_theme(theme_key))
+            self._theme_action_group.addAction(act)
+            theme_menu.addAction(act)
+            self._theme_actions[tid] = act
+
+        active_tid = get_active_theme().theme_id
+        if active_tid in self._theme_actions:
+            self._theme_actions[active_tid].setChecked(True)
+
+        view_menu.addSeparator()
         self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
         self._act_lock_layout.setChecked(True)
         self._act_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
@@ -740,6 +796,8 @@ class MainWindow(QMainWindow):
         self._btn_device_settings.setToolTip(
             "Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro)."
         )
+        self._btn_device_settings.setAccessibleName("Dispositivi e Uscite Hardware")
+        self._btn_device_settings.setAccessibleDescription("Apre il pannello di configurazione delle uscite audio sala, monitor cuffia, schermo video live e profili prestazionali.")
         self._btn_device_settings.clicked.connect(self.open_device_settings_dialog)
         sb.addWidget(self._btn_device_settings)
 
@@ -759,6 +817,8 @@ class MainWindow(QMainWindow):
             "Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\n"
             "Di default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere."
         )
+        self._btn_lock_layout.setAccessibleName("Blocca Larghezza Pannelli")
+        self._btn_lock_layout.setAccessibleDescription("Attiva o disattiva il blocco delle larghezze dei pannelli di regia per prevenire spostamenti accidentali.")
         self._btn_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
         sb.addWidget(self._btn_lock_layout)
 
@@ -787,6 +847,8 @@ class MainWindow(QMainWindow):
             "su tutti i media per evitare salti improvvisi di volume durante contest o jam session.\n"
             "Per disattivare: tieni premuto 1.5 secondi."
         )
+        self._btn_jam_mode.setAccessibleName("Modalità Jam e Contest Livellamento Audio")
+        self._btn_jam_mode.setAccessibleDescription("Attiva o disattiva il livellamento automatico EBU R128 a -16 LUFS. Richiede una pressione continua di 5 secondi per attivare.")
         self._btn_jam_mode.toggled_state.connect(self._set_jam_mode)
         sb.addWidget(self._btn_jam_mode)
 

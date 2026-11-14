@@ -121,6 +121,8 @@ class LiveCueTable(QTableWidget):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(0, 6, parent)
+        self.setAccessibleName("Scaletta Regia LIVE Show")
+        self.setAccessibleDescription("Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.")
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         key = event.key()
@@ -871,6 +873,8 @@ class LiveShowPanel(QWidget):
             "Per sbloccare scrub, riavvolgimento e pausa dei singoli layer: tieni premuto per 3 secondi.\n"
             "Quando sbloccato, un singolo click istantaneo riattiva subito il blocco."
         )
+        self.btn_layer_lock.setAccessibleName("Blocco di Sicurezza Layer")
+        self.btn_layer_lock.setAccessibleDescription("Protezione controlli layer Live. Tieni premuto 3 secondi per sbloccare, tocca per ribloccare.")
         self.btn_layer_lock.toggled_state.connect(lambda active: self.live_status.set_locked(not active))
         dock.addWidget(self.btn_layer_lock, stretch=0)
 
@@ -889,6 +893,8 @@ class LiveShowPanel(QWidget):
             "Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) "
             "per ripartire poi dallo stesso istante"
         )
+        self.btn_pause_all.setAccessibleName("Pausa o Riprendi Tutto")
+        self.btn_pause_all.setAccessibleDescription("Congela o riprende tutti i layer multimediali attivi.")
         self.btn_pause_all.clicked.connect(self.pause_all_toggled)
         self._apply_pause_btn_style(paused=False)
         tr_layout.addWidget(self.btn_pause_all)
@@ -897,6 +903,8 @@ class LiveShowPanel(QWidget):
         self.btn_go.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_go.setMinimumHeight(64)
         self.btn_go.setFont(QFont("sans-serif", 17, QFont.Weight.Bold))
+        self.btn_go.setAccessibleName("GO - Avvia Cue in Standby")
+        self.btn_go.setAccessibleDescription("Manda in esecuzione la cue pronta in standby. Tasto di scelta rapida: Spazio.")
         self.btn_go.setStyleSheet(
             f"QPushButton {{ background-color: {CLR_GO}; color: #04130a; border: none; "
             f"border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; }} "
