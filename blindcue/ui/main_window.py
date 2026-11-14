@@ -204,6 +204,7 @@ class MainWindow(QMainWindow):
         self._panels_locked: bool = True
         self._top_ratios: tuple[float, float, float] = _DEFAULT_TOP_RATIOS
         self._applying_splitter_layout: bool = False
+        self._remote_mgr: Optional[Any] = None
 
         self._undo = UndoManager(self)
         self._undo.commit_requested.connect(self._commit_undo_point)
@@ -645,6 +646,9 @@ class MainWindow(QMainWindow):
         show_menu.addAction(
             QAction("⚙️ &Dispositivi & Hardware (Audio / Video / Profilo)…", self, triggered=self.open_device_settings_dialog)
         )
+        show_menu.addAction(
+            QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
+        )
 
         view_menu = mb.addMenu("&View")
         self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)
@@ -980,6 +984,19 @@ class MainWindow(QMainWindow):
         self._btn_jam_mode.toggled_state.connect(self._set_jam_mode)
         sb.addWidget(self._btn_jam_mode)
 
+        self._btn_remote_status = QPushButton("📡 Web Remote: OFF")
+        self._btn_remote_status.setFixedHeight(22)
+        self._btn_remote_status.setMinimumWidth(168)
+        self._btn_remote_status.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_remote_status.setToolTip(
+            "Controllo Remoto LAN per Smartphone/Tablet (Web) e OSC.\n"
+            "Clicca per mostrare il QR Code, l'indirizzo IP e le opzioni di comando."
+        )
+        self._btn_remote_status.setAccessibleName("Controllo Remoto LAN Web e OSC")
+        self._btn_remote_status.setAccessibleDescription("Mostra il codice QR per smartphone e la configurazione del server web e OSC.")
+        self._btn_remote_status.clicked.connect(self.open_remote_control_dialog)
+        sb.addWidget(self._btn_remote_status)
+
         self._status_label = QLabel("Ready — No show loaded")
         self._status_label.setMinimumWidth(0)
         self._status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -1305,6 +1322,232 @@ class MainWindow(QMainWindow):
         """Open detailed hardware information dialog."""
         pref = self._device_mgr.get_profile_preference() if self._device_mgr else "auto"
         show_hardware_info_dialog(self, pref)
+
+    # ── Remote Control & LAN Automation (Web & OSC) ───────────────────
+
+    def set_remote_manager(self, mgr: Any) -> None:
+        """Register the central RemoteManager and wire its triggers to MainWindow."""
+        self._remote_mgr = mgr
+        if mgr is not None:
+            mgr.set_state_provider(self.get_remote_state)
+            mgr.go_requested.connect(self._on_remote_go)
+            mgr.panic_requested.connect(self._on_remote_panic)
+            mgr.blackout_requested.connect(self._on_remote_blackout)
+            mgr.pause_toggle_requested.connect(self._on_remote_pause_toggle)
+            mgr.next_cue_requested.connect(self._on_remote_next_cue)
+            mgr.prev_cue_requested.connect(self._on_remote_prev_cue)
+            mgr.cue_go_requested.connect(self._on_remote_cue_go)
+            mgr.cue_select_requested.connect(self._on_remote_cue_select)
+            mgr.volume_change_requested.connect(self._on_remote_volume_change)
+            mgr.activity_updated.connect(self._update_remote_status_bar)
+            self._update_remote_status_bar()
+
+    def open_remote_control_dialog(self) -> None:
+        """Open the Remote Control & Smartphone QR Code setup dialog."""
+        if self._remote_mgr is None:
+            return
+        from ui.remote_control_dialog import RemoteControlDialog
+        dlg = RemoteControlDialog(self._remote_mgr, self)
+        dlg.exec()
+        self._update_remote_status_bar()
+
+    def _update_remote_status_bar(self) -> None:
+        """Update discrete remote control button in status bar."""
+        if hasattr(self, "_btn_remote_status") and self._remote_mgr:
+            if self._remote_mgr.is_web_active():
+                url = self._remote_mgr.get_primary_web_url()
+                display_url = url.replace("http://", "")
+                c_cnt = self._remote_mgr.web_server.get_connected_clients_count()
+                suffix = f" ({c_cnt} 📱)" if c_cnt > 0 else ""
+                self._btn_remote_status.setText(f"📡 Web: {display_url}{suffix}")
+                self._btn_remote_status.setStyleSheet("color: #38bdf8; font-weight: bold;")
+            elif self._remote_mgr.is_osc_active():
+                port = self._remote_mgr.get_osc_port()
+                self._btn_remote_status.setText(f"📡 OSC: UDP {port}")
+                self._btn_remote_status.setStyleSheet("color: #a855f7; font-weight: bold;")
+            else:
+                self._btn_remote_status.setText("📡 Remoto: OFF")
+                self._btn_remote_status.setStyleSheet("color: #64748b;")
+
+    def get_remote_state(self) -> dict[str, Any]:
+        """Provide a complete real-time JSON snapshot for web remotes and OSC clients."""
+        row, standby_cue = self._anchor_row_and_cue()
+        active_cues_data = []
+        if hasattr(self, "_live_status") and hasattr(self._live_status, "_layer_labels"):
+            for bar in self._live_status._layer_labels.values():
+                if bar._is_live:
+                    active_cues_data.append({
+                        "layer": bar._layer_idx,
+                        "cue_id": bar._cue_id,
+                        "title": bar._title,
+                        "q_label": bar._q_label,
+                        "pos_sec": round(bar._pos_sec, 2),
+                        "end_sec": round(bar._end_sec, 2),
+                        "start_sec": round(bar._start_sec, 2),
+                        "is_paused": bar._is_paused,
+                        "phase": bar._phase,
+                    })
+
+        cues_data = []
+        for idx, c in enumerate(self._cues):
+            c_dur = c.out_point or c.hold_time or self._known_file_durations.get(c.file_path, 0.0) or getattr(c, "target_duration", 0.0) or 0.0
+            cues_data.append({
+                "index": idx,
+                "id": c.cue_id,
+                "name": c.name,
+                "ref": format_cue_ref(idx, c),
+                "type": c.media_type.value,
+                "layer": c.layer,
+                "status": c.status.value,
+                "duration": round(float(c_dur), 2),
+                "is_standby": (idx == row),
+            })
+
+        sb_dur = 0.0
+        if standby_cue:
+            sb_dur = standby_cue.out_point or standby_cue.hold_time or self._known_file_durations.get(standby_cue.file_path, 0.0) or getattr(standby_cue, "target_duration", 0.0) or 0.0
+
+        return {
+            "show_title": Path(self._current_project_path).stem if self._current_project_path else "Nuovo Spettacolo",
+            "is_live_mode": self.is_live_mode(),
+            "is_paused": getattr(self, "_is_global_paused", False),
+            "current_index": row,
+            "standby_cue": {
+                "id": standby_cue.cue_id,
+                "name": standby_cue.name,
+                "ref": format_cue_ref(row, standby_cue),
+                "type": standby_cue.media_type.value,
+                "layer": standby_cue.layer,
+                "duration": round(float(sb_dur), 2),
+            } if standby_cue else None,
+            "active_cues": active_cues_data,
+            "cues": cues_data,
+        }
+
+    @Slot()
+    def _on_remote_go(self) -> None:
+        logger.info("[REMOTE] Triggering GO from Remote")
+        if not self._cues:
+            return
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_go()
+        self._apply_inspector_to_cue()
+        row, _ = self._anchor_row_and_cue()
+        if 0 <= row < len(self._cues):
+            target_idx = row
+        elif 0 <= self._current_index < len(self._cues):
+            target_idx = self._current_index
+        else:
+            target_idx = 0
+        self._fire_cue_chain(target_idx)
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
+    def _on_remote_panic(self) -> None:
+        logger.info("[REMOTE] Triggering PANIC from Remote")
+        self._on_panic()
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
+    def _on_remote_blackout(self) -> None:
+        logger.info("[REMOTE] Triggering BLACKOUT from Remote")
+        self._on_blackout()
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
+    def _on_remote_pause_toggle(self) -> None:
+        logger.info("[REMOTE] Toggling Pause from Remote")
+        self.pause_all_toggled.emit()
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
+    def _on_remote_next_cue(self) -> None:
+        if not self._cues:
+            return
+        cur = self._cue_list.currentRow()
+        nxt = min(len(self._cues) - 1, (cur + 1) if cur >= 0 else 0)
+        self._cue_list.setCurrentRow(nxt)
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
+    def _on_remote_prev_cue(self) -> None:
+        if not self._cues:
+            return
+        cur = self._cue_list.currentRow()
+        prv = max(0, (cur - 1) if cur > 0 else 0)
+        self._cue_list.setCurrentRow(prv)
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot(object)
+    def _on_remote_cue_go(self, target: Any) -> None:
+        """Jump to and immediately execute specific cue by id or index."""
+        if not self._cues:
+            return
+        found_idx: Optional[int] = None
+        if isinstance(target, int):
+            for idx, c in enumerate(self._cues):
+                if c.cue_id == target:
+                    found_idx = idx
+                    break
+            if found_idx is None:
+                if 0 <= target < len(self._cues):
+                    found_idx = target
+                elif 1 <= target <= len(self._cues):
+                    found_idx = target - 1
+        elif isinstance(target, str):
+            target_clean = target.strip().lower()
+            for idx, c in enumerate(self._cues):
+                if str(c.cue_id) == target_clean or c.name.lower() == target_clean:
+                    found_idx = idx
+                    break
+
+        if found_idx is not None and 0 <= found_idx < len(self._cues):
+            logger.info("[REMOTE] Jump and fire cue at index %d (#%d)", found_idx, self._cues[found_idx].cue_id)
+            self._cue_list.setCurrentRow(found_idx)
+            self._fire_cue_chain(found_idx)
+            if self._remote_mgr:
+                self._remote_mgr.trigger_state_broadcast()
+
+    @Slot(object)
+    def _on_remote_cue_select(self, target: Any) -> None:
+        """Set standby selection to specific cue without executing."""
+        if not self._cues:
+            return
+        found_idx: Optional[int] = None
+        if isinstance(target, int):
+            for idx, c in enumerate(self._cues):
+                if c.cue_id == target:
+                    found_idx = idx
+                    break
+            if found_idx is None and 0 <= target < len(self._cues):
+                found_idx = target
+        elif isinstance(target, str):
+            target_clean = target.strip().lower()
+            for idx, c in enumerate(self._cues):
+                if str(c.cue_id) == target_clean or c.name.lower() == target_clean:
+                    found_idx = idx
+                    break
+
+        if found_idx is not None and 0 <= found_idx < len(self._cues):
+            self._cue_list.setCurrentRow(found_idx)
+            if self._remote_mgr:
+                self._remote_mgr.trigger_state_broadcast()
+
+    @Slot(float)
+    def _on_remote_volume_change(self, vol: float) -> None:
+        """Adjust volume from OSC or Web remote."""
+        cue = self._selected_cue()
+        if cue:
+            cue.volume = max(0.0, min(1.0, vol))
+            self._inspector.spin_volume.setValue(int(cue.volume * 100))
+            if self._remote_mgr:
+                self._remote_mgr.trigger_state_broadcast()
 
     @Slot()
     def _open_surface_mapping_dialog(self) -> None:

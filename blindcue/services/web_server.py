@@ -1,0 +1,962 @@
+"""Embedded Mobile-First Web Remote Server for BlindCUE.
+
+Serves a native-feeling touch-optimized web controller for smartphones and tablets:
+  - Giant tactile GO button with haptic feedback
+  - Live Playing Cue monitor with real-time countdown progress bar
+  - Next Standby Cue indicator
+  - Transport buttons: Pause/Resume, Prev/Next, Blackout, Panic
+  - Scrollable cue list with instant single-tap [ ▶ GO ] buttons
+  - Real-time zero-latency sync via Server-Sent Events (SSE)
+  - 100% offline, zero external dependencies or CDNs
+"""
+
+from __future__ import annotations
+
+import http.server
+import json
+import logging
+import queue
+import threading
+import time
+from typing import Any, Callable, Optional
+
+from PySide6.QtCore import QObject, Signal
+
+logger = logging.getLogger("blindcue.web")
+
+# ── Embedded Mobile Web App (HTML5 + CSS3 + Vanilla ES6) ─────────────
+_HTML_PAGE = """<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>BlindCUE · Live Remote</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#09090b">
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background-color: #09090b;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      touch-action: manipulation;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      height: 100dvh;
+      overflow: hidden;
+      padding-top: max(8px, env(safe-area-inset-top));
+      padding-bottom: max(10px, env(safe-area-inset-bottom));
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      background: #141417;
+      border-bottom: 1px solid #27272a;
+      flex-shrink: 0;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .brand-logo {
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: #38bdf8;
+    }
+    .brand-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #a1a1aa;
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .conn-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #182218;
+      color: #4ade80;
+      border: 1px solid #22c55e44;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .conn-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 8px #22c55e;
+      animation: pulse 2s infinite ease-in-out;
+    }
+    .conn-badge.offline {
+      background: #2a1515;
+      color: #f87171;
+      border-color: #ef444444;
+    }
+    .conn-badge.offline .conn-dot {
+      background: #ef4444;
+      box-shadow: none;
+      animation: none;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* ── Main Content Container ── */
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 10px 12px;
+      gap: 10px;
+    }
+
+    /* ── In Onda (Live Hero Card) ── */
+    .hero-card {
+      background: #14171f;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      position: relative;
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: all 0.25s ease;
+    }
+    .hero-card.is-live {
+      background: linear-gradient(145deg, #0e1e17, #13271d);
+      border-color: #166534;
+      box-shadow: 0 4px 16px rgba(34, 197, 94, 0.12);
+    }
+    .hero-card.is-paused {
+      background: linear-gradient(145deg, #241c10, #312513);
+      border-color: #854d0e;
+    }
+    .hero-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .hero-phase-tag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 4px;
+      background: #27272a;
+      color: #94a3b8;
+      letter-spacing: 0.8px;
+    }
+    .hero-card.is-live .hero-phase-tag {
+      background: #16a34a;
+      color: #ffffff;
+    }
+    .hero-card.is-paused .hero-phase-tag {
+      background: #f59e0b;
+      color: #000000;
+    }
+    .hero-layer-tag {
+      font-size: 10px;
+      font-weight: 700;
+      color: #38bdf8;
+      background: #0f2744;
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid #0284c7;
+    }
+    .hero-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 2px;
+    }
+    .hero-progress-bg {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 4px;
+      position: relative;
+    }
+    .hero-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, #22c55e);
+      border-radius: 999px;
+      transition: width 0.15s linear;
+    }
+    .hero-card.is-paused .hero-progress-bar {
+      background: #f59e0b;
+    }
+    .hero-time-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #cbd5e1;
+      margin-top: 2px;
+    }
+    .hero-time-countdown {
+      color: #e2e8f0;
+      font-weight: 800;
+    }
+
+    /* ── Standby Card ── */
+    .standby-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-left: 4px solid #38bdf8;
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      flex-shrink: 0;
+    }
+    .standby-label {
+      font-size: 9px;
+      font-weight: 800;
+      color: #38bdf8;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+    }
+    .standby-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* ── Transport Controller (Tactile GO + Action Grid) ── */
+    .controls-deck {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    /* Big GO Button */
+    .btn-go {
+      width: 100%;
+      height: 76px;
+      background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+      border: none;
+      border-radius: 14px;
+      color: #ffffff;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(34, 197, 94, 0.35);
+      transition: transform 0.08s ease, filter 0.08s ease;
+    }
+    .btn-go:active {
+      transform: scale(0.97);
+      filter: brightness(1.2);
+    }
+
+    /* Secondary Action Buttons Grid */
+    .sub-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+    .btn-sub {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      color: #cbd5e1;
+      padding: 10px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      transition: background 0.1s ease, transform 0.08s ease;
+    }
+    .btn-sub:active {
+      transform: scale(0.95);
+      background: #27272a;
+    }
+    .btn-sub.pause-active {
+      background: #854d0e;
+      color: #ffffff;
+      border-color: #f59e0b;
+    }
+    .btn-sub.panic {
+      background: #261111;
+      color: #f87171;
+      border-color: #7f1d1d;
+    }
+    .btn-sub.panic:active {
+      background: #ef4444;
+      color: #ffffff;
+    }
+
+    /* ── Scrollable Scaletta (Live Cue List) ── */
+    .cuelist-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #111114;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 120px;
+    }
+    .cuelist-header {
+      padding: 6px 12px;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      font-size: 10px;
+      font-weight: 800;
+      color: #94a3b8;
+      letter-spacing: 0.8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .cuelist-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cue-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      gap: 8px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .cue-row:active {
+      background: #27272a;
+    }
+    .cue-row.is-standby {
+      border-color: #38bdf8;
+      background: #0f1c2e;
+    }
+    .cue-row.is-live {
+      border-color: #22c55e;
+      background: #0d2317;
+    }
+    .cue-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .cue-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .cue-badge {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #27272a;
+      color: #94a3b8;
+    }
+    .cue-badge.video { background: #3b2a59; color: #c084fc; }
+    .cue-badge.audio { background: #133929; color: #34d399; }
+    .cue-badge.image { background: #3d2f13; color: #fbbf24; }
+    .cue-badge.group { background: #1e2d4d; color: #60a5fa; }
+
+    .cue-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #f4f4f5;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cue-meta {
+      font-size: 10px;
+      color: #71717a;
+      font-family: ui-monospace, monospace;
+    }
+    .btn-cue-go {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.1s ease;
+    }
+    .btn-cue-go:active {
+      background: #0284c7;
+      color: #ffffff;
+      transform: scale(0.94);
+    }
+    .cue-row.is-live .btn-cue-go {
+      background: #166534;
+      border-color: #22c55e;
+      color: #ffffff;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header>
+    <div class="brand">
+      <span class="brand-logo">BlindCUE</span>
+      <span class="brand-title" id="showTitle">Spettacolo</span>
+    </div>
+    <div class="conn-badge" id="connBadge">
+      <div class="conn-dot"></div>
+      <span id="connText">ONLINE</span>
+    </div>
+  </header>
+
+  <!-- Main Viewport -->
+  <main>
+    <!-- In Onda (Live Hero Card) -->
+    <div class="hero-card" id="heroCard">
+      <div class="hero-top-row">
+        <span class="hero-phase-tag" id="heroPhase">STANDBY</span>
+        <span class="hero-layer-tag" id="heroLayer">LAYER 1</span>
+      </div>
+      <div class="hero-title" id="heroTitle">Nessun media in onda</div>
+      <div class="hero-progress-bg">
+        <div class="hero-progress-bar" id="heroProgressBar"></div>
+      </div>
+      <div class="hero-time-row">
+        <span id="heroTimeElapsed">00:00</span>
+        <span class="hero-time-countdown" id="heroTimeRemaining">--:--</span>
+      </div>
+    </div>
+
+    <!-- Next Standby Cue -->
+    <div class="standby-card" id="standbyCard">
+      <div class="standby-label">PROSSIMO IN STANDBY</div>
+      <div class="standby-title" id="standbyTitle">— Nessuna cue —</div>
+    </div>
+
+    <!-- Tactile Controls Deck -->
+    <div class="controls-deck">
+      <button class="btn-go" id="btnGo" onclick="doAction('go')">
+        <span>▶ GO</span>
+      </button>
+
+      <div class="sub-grid">
+        <button class="btn-sub" id="btnPause" onclick="doAction('pause_toggle')">
+          <span style="font-size: 14px;">⏸</span>
+          <span id="lblPause">PAUSA</span>
+        </button>
+        <button class="btn-sub" onclick="doAction('prev')">
+          <span style="font-size: 14px;">⏮</span>
+          <span>PREV</span>
+        </button>
+        <button class="btn-sub" onclick="doAction('next')">
+          <span style="font-size: 14px;">⏭</span>
+          <span>NEXT</span>
+        </button>
+        <button class="btn-sub panic" onclick="doAction('panic')">
+          <span style="font-size: 14px;">🚨</span>
+          <span>PANIC</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Scrollable Scaletta (Live Cue List) -->
+    <div class="cuelist-container">
+      <div class="cuelist-header">
+        <span>SCALETTA LIVE</span>
+        <span id="cueCount">0 CUE</span>
+      </div>
+      <div class="cuelist-scroll" id="cueListScroll">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let evtSource = null;
+    let lastState = null;
+
+    function vibrate(ms = 40) {
+      if (window.navigator && window.navigator.vibrate) {
+        try { window.navigator.vibrate(ms); } catch (e) {}
+      }
+    }
+
+    function formatTime(sec) {
+      if (sec === undefined || sec === null || isNaN(sec) || sec < 0) return "00:00";
+      const s = Math.round(sec);
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    }
+
+    function doAction(actionName, cueId = null) {
+      vibrate(actionName === 'panic' ? 80 : 40);
+      const payload = { action: actionName };
+      if (cueId !== null) payload.cue_id = cueId;
+
+      fetch('/api/action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(err => console.error("Action error:", err));
+    }
+
+    function updateUI(state) {
+      if (!state) return;
+      lastState = state;
+
+      // 1. Show Title & Connection
+      document.getElementById('showTitle').textContent = state.show_title || "Spettacolo";
+
+      // 2. In Onda / Live Hero Card
+      const hero = document.getElementById('heroCard');
+      const active = (state.active_cues && state.active_cues.length > 0) ? state.active_cues[0] : null;
+
+      if (active) {
+        hero.classList.add('is-live');
+        if (state.is_paused || active.is_paused) {
+          hero.classList.add('is-paused');
+          document.getElementById('heroPhase').textContent = "IN PAUSA";
+        } else {
+          hero.classList.remove('is-paused');
+          document.getElementById('heroPhase').textContent = active.phase || "IN ONDA";
+        }
+
+        document.getElementById('heroLayer').textContent = `LAYER ${active.layer}`;
+        document.getElementById('heroTitle').textContent = active.title || "Media Live";
+
+        const dur = Math.max(0.1, active.end_sec - active.start_sec);
+        const elap = Math.max(0.0, active.pos_sec - active.start_sec);
+        const rem = Math.max(0.0, active.end_sec - active.pos_sec);
+        const pct = Math.min(100, Math.max(0, (elap / dur) * 100));
+
+        document.getElementById('heroProgressBar').style.width = `${pct.toFixed(1)}%`;
+        document.getElementById('heroTimeElapsed').textContent = formatTime(elap);
+        document.getElementById('heroTimeRemaining').textContent = `-${formatTime(rem)}`;
+      } else {
+        hero.classList.remove('is-live', 'is-paused');
+        document.getElementById('heroPhase').textContent = "STANDBY";
+        document.getElementById('heroLayer').textContent = "LAYER 0";
+        document.getElementById('heroTitle').textContent = "Nessun media in onda";
+        document.getElementById('heroProgressBar').style.width = "0%";
+        document.getElementById('heroTimeElapsed').textContent = "00:00";
+        document.getElementById('heroTimeRemaining').textContent = "--:--";
+      }
+
+      // 3. Standby Card
+      if (state.standby_cue) {
+        document.getElementById('standbyTitle').textContent = `${state.standby_cue.ref} · ${state.standby_cue.name}`;
+      } else {
+        document.getElementById('standbyTitle').textContent = "— Fine Scaletta —";
+      }
+
+      // 4. Pause button status
+      const btnP = document.getElementById('btnPause');
+      const lblP = document.getElementById('lblPause');
+      if (state.is_paused) {
+        btnP.classList.add('pause-active');
+        lblP.textContent = "RIPRENDI";
+      } else {
+        btnP.classList.remove('pause-active');
+        lblP.textContent = "PAUSA";
+      }
+
+      // 5. Scaletta (Cue List)
+      const listEl = document.getElementById('cueListScroll');
+      const cues = state.cues || [];
+      document.getElementById('cueCount').textContent = `${cues.length} CUE`;
+
+      let html = "";
+      cues.forEach(c => {
+        const isLive = (c.status === "live");
+        const isSb = Boolean(c.is_standby);
+        const rowClass = `cue-row ${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
+        const typeClass = `cue-badge ${c.type || 'video'}`;
+
+        let icon = "🎬";
+        if (c.type === "audio") icon = "🎵";
+        else if (c.type === "image") icon = "🖼";
+        else if (c.type === "group") icon = "📁";
+
+        html += `
+          <div class="${rowClass}" onclick="doAction('select', ${c.id})">
+            <div class="cue-info">
+              <div class="cue-title-row">
+                <span class="${typeClass}">${icon} ${c.ref || ('#' + c.id)}</span>
+                <span class="cue-name">${c.name}</span>
+              </div>
+              <div class="cue-meta">L${c.layer} · ${formatTime(c.duration)}</div>
+            </div>
+            <button class="btn-cue-go" onclick="event.stopPropagation(); doAction('cue_go', ${c.id})">
+              ${isLive ? '● LIVE' : '▶ GO'}
+            </button>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+    }
+
+    function setOnline(online) {
+      const b = document.getElementById('connBadge');
+      const t = document.getElementById('connText');
+      if (online) {
+        b.classList.remove('offline');
+        t.textContent = "ONLINE";
+      } else {
+        b.classList.add('offline');
+        t.textContent = "DISCONNESSO";
+      }
+    }
+
+    function initSSE() {
+      if (evtSource) {
+        evtSource.close();
+      }
+      evtSource = new EventSource('/api/events');
+
+      evtSource.onopen = () => {
+        setOnline(true);
+      };
+
+      evtSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          updateUI(data);
+        } catch (err) {
+          console.error("SSE parse error:", err);
+        }
+      };
+
+      evtSource.onerror = () => {
+        setOnline(false);
+        evtSource.close();
+        setTimeout(initSSE, 2000);
+      };
+    }
+
+    // Initial fetch + start SSE
+    fetch('/api/status')
+      .then(res => res.json())
+      .then(data => { updateUI(data); setOnline(true); })
+      .catch(() => setOnline(false))
+      .finally(() => initSSE());
+  </script>
+</body>
+</html>
+"""
+
+
+class WebRemoteBridge(QObject):
+    """Thread-safe signal dispatcher from HTTP worker threads into the Qt main GUI loop."""
+
+    go_requested = Signal()
+    panic_requested = Signal()
+    blackout_requested = Signal()
+    pause_toggle_requested = Signal()
+    next_cue_requested = Signal()
+    prev_cue_requested = Signal()
+    cue_go_requested = Signal(object)           # cue id or index
+    cue_select_requested = Signal(object)       # cue id or index
+
+
+class _ThreadingHttpServer(http.server.ThreadingHTTPServer):
+    daemon_threads = True
+
+    def __init__(self, server_address, RequestHandlerClass, controller: "WebRemoteServer"):
+        super().__init__(server_address, RequestHandlerClass)
+        self.controller = controller
+
+
+class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
+    """Handles HTTP requests, REST actions, and SSE (Server-Sent Events) live streaming."""
+
+    @property
+    def controller(self) -> "WebRemoteServer":
+        return getattr(self.server, "controller")
+
+    def log_message(self, format: str, *args: Any) -> None:
+        # Keep console clean; log only at debug level
+        logger.debug("[WEB] " + (format % args))
+
+    def do_GET(self) -> None:  # noqa: N802
+        path = self.path.split("?")[0].rstrip("/")
+        if path in ("", "/"):
+            self._serve_html()
+        elif path == "/api/status":
+            self._serve_status()
+        elif path == "/api/events":
+            self._serve_sse()
+        else:
+            self.send_error(404, "Not Found")
+
+    def do_POST(self) -> None:  # noqa: N802
+        path = self.path.split("?")[0].rstrip("/")
+        if path == "/api/action":
+            self._handle_action()
+        else:
+            self.send_error(404, "Not Found")
+
+    def _serve_html(self) -> None:
+        content = _HTML_PAGE.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(content)))
+        self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+        self.end_headers()
+        self.wfile.write(content)
+
+    def _serve_status(self) -> None:
+        state = self.controller.get_state_snapshot()
+        data = json.dumps(state).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _serve_sse(self) -> None:
+        """Stream real-time updates to mobile clients via Server-Sent Events."""
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+
+        client_queue: queue.Queue = queue.Queue(maxsize=30)
+        self.controller.register_sse_client(client_queue)
+
+        # Send initial full state immediately
+        try:
+            init_state = self.controller.get_state_snapshot()
+            msg = f"data: {json.dumps(init_state)}\n\n".encode("utf-8")
+            self.wfile.write(msg)
+            self.wfile.flush()
+        except Exception:
+            self.controller.unregister_sse_client(client_queue)
+            return
+
+        try:
+            while self.controller.is_running():
+                try:
+                    payload = client_queue.get(timeout=10.0)
+                    chunk = f"data: {json.dumps(payload)}\n\n".encode("utf-8")
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                except queue.Empty:
+                    # Heartbeat comment to keep connection alive across mobile NAT/Wi-Fi
+                    self.wfile.write(b": heartbeat\n\n")
+                    self.wfile.flush()
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+        finally:
+            self.controller.unregister_sse_client(client_queue)
+
+    def _handle_action(self) -> None:
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            raw_body = self.rfile.read(length)
+            data = json.loads(raw_body.decode("utf-8"))
+        except Exception as exc:
+            self.send_error(400, f"Malformed JSON: {exc}")
+            return
+
+        action = str(data.get("action", "")).lower()
+        cue_id = data.get("cue_id")
+
+        client_ip = self.client_address[0]
+        self.controller.notify_action_received(action, cue_id, client_ip)
+
+        bridge = self.controller.bridge
+        if action == "go":
+            bridge.go_requested.emit()
+        elif action == "panic":
+            bridge.panic_requested.emit()
+        elif action == "blackout":
+            bridge.blackout_requested.emit()
+        elif action in ("pause_toggle", "pause", "resume"):
+            bridge.pause_toggle_requested.emit()
+        elif action == "next":
+            bridge.next_cue_requested.emit()
+        elif action == "prev":
+            bridge.prev_cue_requested.emit()
+        elif action == "cue_go" and cue_id is not None:
+            bridge.cue_go_requested.emit(cue_id)
+        elif action == "select" and cue_id is not None:
+            bridge.cue_select_requested.emit(cue_id)
+
+        resp = json.dumps({"ok": True, "action": action}).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(resp)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(resp)
+
+
+class WebRemoteServer:
+    """Threaded HTTP and SSE server managing the smartphone/tablet live remote."""
+
+    def __init__(self, port: int = 8080) -> None:
+        self.port = port
+        self.bridge = WebRemoteBridge()
+        self._httpd: Optional[http.server.ThreadingHTTPServer] = None
+        self._thread: Optional[threading.Thread] = None
+        self._running = False
+        self._state_provider: Optional[Callable[[], dict[str, Any]]] = None
+        self._sse_clients: set[queue.Queue] = set()
+        self._clients_lock = threading.Lock()
+
+        self._last_action: str = ""
+        self._last_client_ip: str = ""
+
+    def set_state_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
+        self._state_provider = provider
+
+    def is_running(self) -> bool:
+        return self._running
+
+    def get_connected_clients_count(self) -> int:
+        with self._clients_lock:
+            return len(self._sse_clients)
+
+    def get_last_action_info(self) -> str:
+        if not self._last_action:
+            return "Nessuna azione web ricevuta"
+        return f"{self._last_action} da {self._last_client_ip}"
+
+    def register_sse_client(self, client_queue: queue.Queue) -> None:
+        with self._clients_lock:
+            self._sse_clients.add(client_queue)
+        logger.info("[WEB] Mobile client connected (Active: %d)", self.get_connected_clients_count())
+
+    def unregister_sse_client(self, client_queue: queue.Queue) -> None:
+        with self._clients_lock:
+            self._sse_clients.discard(client_queue)
+        logger.info("[WEB] Mobile client disconnected (Active: %d)", self.get_connected_clients_count())
+
+    def broadcast_state(self, state: Optional[dict[str, Any]] = None) -> None:
+        """Push real-time state update to all currently connected mobile phones and tablets."""
+        if state is None:
+            state = self.get_state_snapshot()
+        with self._clients_lock:
+            dead: list[queue.Queue] = []
+            for q in self._sse_clients:
+                try:
+                    q.put_nowait(state)
+                except queue.Full:
+                    dead.append(q)
+            for d in dead:
+                self._sse_clients.discard(d)
+
+    def get_state_snapshot(self) -> dict[str, Any]:
+        if self._state_provider:
+            try:
+                return self._state_provider()
+            except Exception as exc:
+                logger.error("[WEB] Error evaluating state provider: %s", exc)
+        return {"show_title": "BlindCue", "is_live": False, "cues": []}
+
+    def notify_action_received(self, action: str, cue_id: Any, client_ip: str) -> None:
+        self._last_action = f"{action}" + (f" #{cue_id}" if cue_id is not None else "")
+        self._last_client_ip = client_ip
+        logger.info("[WEB] Received action '%s' from %s", self._last_action, client_ip)
+
+    def start(self, port: Optional[int] = None) -> bool:
+        """Start the threaded HTTP server on the specified port."""
+        self.stop()
+        if port is not None:
+            self.port = port
+
+        try:
+            # Bind to 0.0.0.0 (all LAN interfaces)
+            self._httpd = _ThreadingHttpServer(("0.0.0.0", self.port), _BlindCueHttpRequestHandler, controller=self)
+            self._running = True
+
+            self._thread = threading.Thread(target=self._run_server, daemon=True, name="BlindCue-WebServer")
+            self._thread.start()
+            logger.info("[WEB] Remote Web Server running at http://0.0.0.0:%d", self.port)
+            return True
+        except Exception as exc:
+            logger.error("[WEB] Could not start HTTP server on port %d: %s", self.port, exc)
+            self._running = False
+            self._httpd = None
+            return False
+
+    def _run_server(self) -> None:
+        if self._httpd:
+            try:
+                self._httpd.serve_forever()
+            except Exception:
+                pass
+
+    def stop(self) -> None:
+        """Stop HTTP server and unblock all worker threads."""
+        self._running = False
+        if self._httpd:
+            try:
+                self._httpd.shutdown()
+                self._httpd.server_close()
+            except Exception:
+                pass
+            self._httpd = None
+        self._thread = None
+        with self._clients_lock:
+            self._sse_clients.clear()
+        logger.info("[WEB] Remote Web Server stopped")

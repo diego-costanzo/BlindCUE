@@ -155,6 +155,12 @@ def main() -> int:
         device_mgr.set_target_screen(output_screen)
     main_win.set_device_manager(device_mgr)
 
+    # ── LAN Remote Control (Web Server & OSC UDP Automation) ──────────
+    from services.remote_manager import RemoteManager
+    remote_mgr = RemoteManager(main_win)
+    main_win.set_remote_manager(remote_mgr)
+    remote_mgr.start_all(web_port=8080, osc_port=53000)
+
     # ── Wire per-layer video deck swap + real-time opacity callbacks ──
     for layer, lp in live_players.items():
         lp.set_secondary_video_output(output_win.get_secondary_video_item(layer))
@@ -1014,6 +1020,7 @@ def main() -> int:
     # ── Graceful shutdown on SIGINT / SIGTERM ──────────────────────────
     def _shutdown(*_args) -> None:
         logger.info("[MAIN] Shutdown signal received")
+        remote_mgr.stop_all()
         scheduler.cancel_all()
         live_img_timer.stop()
         main_win._force_closing = True
