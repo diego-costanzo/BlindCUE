@@ -17,6 +17,7 @@ class ThemeDefinition:
     name: str
     description: str
     is_high_contrast: bool
+    is_light: bool
 
     # Core canvas & surfaces
     bg: str
@@ -56,12 +57,13 @@ class ThemeDefinition:
     slider_subpage: str
 
 
-# ── Theme 1: Obsidian Slate (Pro Broadcast · Default) ────────────────
+# ── Theme 1: Obsidian Slate (Pro Broadcast · Default Dark) ───────────
 THEME_OBSIDIAN_SLATE = ThemeDefinition(
     theme_id="obsidian_slate",
-    name="Obsidian Slate (Regia Pro · Predefinito)",
-    description="Tema scuro calibrato per ambienti di regia con luce soffusa. Bilanciamento morbido e riposante.",
+    name="Obsidian Slate (Regia Pro · Scuro)",
+    description="Tema scuro broadcast calibrato per ambienti di regia con luce soffusa. Morbido e riposante.",
     is_high_contrast=False,
+    is_light=False,
     bg="#0c1017",
     panel="#151b26",
     panel_elevated="#1e2838",
@@ -91,47 +93,85 @@ THEME_OBSIDIAN_SLATE = ThemeDefinition(
     slider_subpage="#0284c7",
 )
 
-# ── Theme 2: High Contrast Mono (Accessibility · WCAG AAA) ───────────
-THEME_HIGH_CONTRAST_MONO = ThemeDefinition(
-    theme_id="high_contrast_mono",
-    name="Alto Contrasto Monocromo (Accessibilità Visiva)",
-    description="Massimo contrasto WCAG AAA in scala di grigi e giallo vivido per ipovisione e ambienti molto illuminati.",
+# ── Theme 2: Daylight Studio (High Contrast Light · WCAG AAA) ────────
+THEME_DAYLIGHT_STUDIO = ThemeDefinition(
+    theme_id="daylight_studio",
+    name="Daylight Studio (Chiaro · Massimo Contrasto WCAG AAA)",
+    description="Sfondo chiaro tipo carta/spartito: massima acuità visiva per ipovedenti, astigmatismo e ambienti illuminati.",
     is_high_contrast=True,
-    bg="#000000",
-    panel="#111111",
-    panel_elevated="#222222",
-    input_bg="#000000",
-    input_focus_bg="#1c1c1c",
-    header_bg="#18181b",
-    status_bg="#000000",
-    menu_bg="#111111",
-    text="#ffffff",
-    text_muted="#f3f4f6",
-    selection_bg="#374151",
+    is_light=True,
+    bg="#f1f5f9",
+    panel="#ffffff",
+    panel_elevated="#e2e8f0",
+    input_bg="#ffffff",
+    input_focus_bg="#f8fafc",
+    header_bg="#e2e8f0",
+    status_bg="#e2e8f0",
+    menu_bg="#ffffff",
+    text="#0f172a",          # Ultra-high contrast 16.6:1 against white
+    text_muted="#475569",    # Crisp 7.8:1 contrast
+    selection_bg="#2563eb",  # Royal Blue
     selection_fg="#ffffff",
-    border="#ffffff",
-    border_subtle="#9ca3af",
+    border="#94a3b8",
+    border_subtle="#cbd5e1",
+    border_width="1.5px",
+    table_grid="#e2e8f0",
+    accent="#2563eb",
+    accent_hover="#1d4ed8",
+    accent_muted="#3b82f6",
+    live="#16a34a",
+    previz="#d97706",
+    go="#16a34a",
+    button_bg="#e2e8f0",
+    button_border="#94a3b8",
+    button_hover_bg="#cbd5e1",
+    slider_groove="#cbd5e1",
+    slider_subpage="#2563eb",
+)
+
+# ── Theme 3: High Contrast Gold (Stark Dark & Gold · WCAG AAA) ───────
+THEME_HIGH_CONTRAST_GOLD = ThemeDefinition(
+    theme_id="high_contrast_gold",
+    name="Alto Contrasto Notturno (Nero & Oro · WCAG AAA)",
+    description="Nero profondo, blocchi solidi e accenti oro vivido ad altissima visibilità per ipovisione notturna.",
+    is_high_contrast=True,
+    is_light=False,
+    bg="#000000",
+    panel="#141414",
+    panel_elevated="#282828",
+    input_bg="#0a0a0a",
+    input_focus_bg="#222222",
+    header_bg="#1f1f1f",
+    status_bg="#000000",
+    menu_bg="#141414",
+    text="#ffffff",          # Pure white 21.0:1 contrast
+    text_muted="#facc15",    # Vivid gold 13.7:1 contrast
+    selection_bg="#facc15",  # Total inversion: gold selection with black text
+    selection_fg="#000000",
+    border="#facc15",
+    border_subtle="#ffffff",
     border_width="2px",
-    table_grid="#4b5563",
+    table_grid="#374151",
     accent="#facc15",
     accent_hover="#fef08a",
     accent_muted="#ca8a04",
     live="#4ade80",
     previz="#facc15",
     go="#4ade80",
-    button_bg="#1e222b",
-    button_border="#ffffff",
-    button_hover_bg="#374151",
-    slider_groove="#374151",
-    slider_subpage="#ffffff",
+    button_bg="#242424",
+    button_border="#facc15",
+    button_hover_bg="#3b3b3b",
+    slider_groove="#333333",
+    slider_subpage="#facc15",
 )
 
-# ── Theme 3: Deep Indigo & Warm Amber (Night Studio) ─────────────────
+# ── Theme 4: Deep Indigo & Warm Amber (Night Studio) ─────────────────
 THEME_DEEP_INDIGO_AMBER = ThemeDefinition(
     theme_id="deep_indigo_amber",
     name="Deep Indigo & Warm Amber (Studio Notturno)",
     description="Tonalità rilassanti blu notte profondo e accenti caldi ambra/rame per sessioni prolungate senza affaticamento.",
     is_high_contrast=False,
+    is_light=False,
     bg="#090d16",
     panel="#111827",
     panel_elevated="#1e293b",
@@ -163,8 +203,11 @@ THEME_DEEP_INDIGO_AMBER = ThemeDefinition(
 
 THEMES: Mapping[str, ThemeDefinition] = {
     THEME_OBSIDIAN_SLATE.theme_id: THEME_OBSIDIAN_SLATE,
-    THEME_HIGH_CONTRAST_MONO.theme_id: THEME_HIGH_CONTRAST_MONO,
+    THEME_DAYLIGHT_STUDIO.theme_id: THEME_DAYLIGHT_STUDIO,
+    THEME_HIGH_CONTRAST_GOLD.theme_id: THEME_HIGH_CONTRAST_GOLD,
     THEME_DEEP_INDIGO_AMBER.theme_id: THEME_DEEP_INDIGO_AMBER,
+    # Backward compatibility alias
+    "high_contrast_mono": THEME_HIGH_CONTRAST_GOLD,
 }
 
 # ── Dynamic active theme tracking ────────────────────────────────────
@@ -291,13 +334,14 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
         background: transparent;
         border: none;
         padding-left: 4px;
+        color: {t.text};
     }}
     QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {{
         border: {focus_border_width} solid {t.accent};
         background-color: {t.input_focus_bg};
     }}
     QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled {{
-        background-color: {t.input_bg};
+        background-color: {t.panel_elevated};
         border-color: {t.border_subtle};
         color: {t.text_muted};
     }}
@@ -357,6 +401,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     QListWidget::item, QTableWidget::item {{
         padding: 4px 6px;
         border-bottom: 1px solid {t.table_grid};
+        color: {t.text};
     }}
     QListWidget::item:selected, QTableWidget::item:selected {{
         background-color: {t.selection_bg};
@@ -367,7 +412,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     }}
     QHeaderView::section {{
         background-color: {t.header_bg};
-        color: {t.accent};
+        color: {t.text if t.is_light else t.accent};
         border: none;
         border-bottom: {t.border_width} solid {t.border};
         border-right: 1px solid {t.border_subtle};
@@ -390,7 +435,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     QPushButton:hover {{
         background-color: {t.button_hover_bg};
         border-color: {t.accent};
-        color: {t.selection_fg};
+        color: {t.selection_fg if not t.is_light else t.text};
     }}
     QPushButton:pressed {{
         background-color: {t.input_bg};
@@ -399,7 +444,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     QPushButton:checked {{
         background-color: {t.panel_elevated};
         border-color: {t.live};
-        color: {t.selection_fg};
+        color: {t.live if t.is_light else t.selection_fg};
     }}
     QPushButton:disabled {{
         background-color: {t.panel};
@@ -443,13 +488,13 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
         border-color: {t.border_subtle};
     }}
     QTabWidget::pane {{
-        background-color: {t.header_bg};
+        background-color: {t.panel};
         border: {t.border_width} solid {t.border};
         border-radius: 6px;
         top: -1px;
     }}
     QTabBar::tab {{
-        background-color: {t.panel};
+        background-color: {t.panel_elevated};
         color: {t.text_muted};
         border: {t.border_width} solid {t.border_subtle};
         border-bottom: none;
@@ -461,15 +506,15 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
         font-weight: bold;
     }}
     QTabBar::tab:hover:!selected {{
-        background-color: {t.panel_elevated};
+        background-color: {t.panel};
         color: {t.text};
         border-color: {t.border};
     }}
     QTabBar::tab:selected {{
-        background-color: {t.panel_elevated};
-        color: {t.selection_fg};
+        background-color: {t.panel};
+        color: {t.accent if t.is_light else t.selection_fg};
         border-color: {t.accent};
-        border-top: 2px solid {t.accent};
+        border-top: 2.5px solid {t.accent};
     }}
     QCheckBox {{
         spacing: 6px;
@@ -513,7 +558,7 @@ def build_stylesheet(theme: ThemeDefinition | str | None = None) -> str:
     }}
     QMenu::item:selected {{
         background-color: {t.selection_bg};
-        color: {t.accent};
+        color: {t.selection_fg};
     }}
     QScrollBar:vertical {{
         background: {t.panel};

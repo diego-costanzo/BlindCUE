@@ -120,37 +120,25 @@ class CueListPanel(QGroupBox):
         self.btn_add_video.setToolTip("Aggiungi file video alla scaletta")
         self.btn_add_video.setAccessibleName("Aggiungi Video")
         self.btn_add_video.setAccessibleDescription("Apre la finestra di selezione per aggiungere un file video alla scaletta.")
-        self.btn_add_video.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; } "
-            "QPushButton:hover { border-color: #42a5f5; color: #42a5f5; }"
-        )
+        self.btn_add_video.setFixedHeight(26)
 
         self.btn_add_audio = QPushButton("+ Audio")
         self.btn_add_audio.setToolTip("Aggiungi file audio alla scaletta")
         self.btn_add_audio.setAccessibleName("Aggiungi Audio")
         self.btn_add_audio.setAccessibleDescription("Apre la finestra di selezione per aggiungere un file audio alla scaletta.")
-        self.btn_add_audio.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; } "
-            "QPushButton:hover { border-color: #26a69a; color: #26a69a; }"
-        )
+        self.btn_add_audio.setFixedHeight(26)
 
         self.btn_add_image = QPushButton("+ Foto")
         self.btn_add_image.setToolTip("Aggiungi immagine / foto statica (Layer 1-3)")
         self.btn_add_image.setAccessibleName("Aggiungi Foto o Immagine")
         self.btn_add_image.setAccessibleDescription("Apre la finestra di selezione per aggiungere una foto o grafica statica alla scaletta.")
-        self.btn_add_image.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; } "
-            "QPushButton:hover { border-color: #ffa726; color: #ffa726; }"
-        )
+        self.btn_add_image.setFixedHeight(26)
 
         self.btn_add_group = QPushButton("+ Gruppo")
         self.btn_add_group.setToolTip("Crea un gruppo di cue / scena (Ctrl+G)")
         self.btn_add_group.setAccessibleName("Aggiungi Gruppo o Scena")
         self.btn_add_group.setAccessibleDescription("Crea un nuovo contenitore di gruppo o scena sincronizzata.")
-        self.btn_add_group.setStyleSheet(
-            "QPushButton { height: 26px; font-weight: bold; font-size: 11px; padding: 0 4px; border-color: #7c3aed; color: #c084fc; background-color: #1e1533; } "
-            "QPushButton:hover { background-color: #2e1d52; border-color: #a855f7; color: #ffffff; }"
-        )
+        self.btn_add_group.setFixedHeight(26)
 
         self.btn_move_up = QPushButton("▲ Su")
         self.btn_move_up.setToolTip("Sposta la cue in alto (Alt+↑)")

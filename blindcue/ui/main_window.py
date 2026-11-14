@@ -44,6 +44,7 @@ from engine.audio_analyzer import (
     WaveformAnalyzer,
     scan_file_loudness,
 )
+from engine.earcon import EarconManager
 from engine.envelope import (
     evaluate_cue_level,
     merge_section_at,
@@ -202,6 +203,10 @@ class MainWindow(QMainWindow):
         self._undo.commit_requested.connect(self._commit_undo_point)
         self._undo.history_changed.connect(self._on_undo_history_changed)
 
+        self._earcon_mgr = EarconManager()
+        settings = QSettings("BlindCue", "BlindCue")
+        self._earcon_mgr.enabled = bool(settings.value("ui/earcons_enabled", False, type=bool))
+
         self._setup_window()
         self._build_menu_bar()
         self._build_ui()
@@ -264,6 +269,15 @@ class MainWindow(QMainWindow):
             self._waveform_panel.update()
         if hasattr(self, "_live_status_panel") and self._live_status_panel is not None:
             self._live_status_panel.update()
+
+    def _set_earcons_enabled(self, enabled: bool) -> None:
+        """Enable or disable auditory accessibility guidance chimes and persist setting."""
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.enabled = bool(enabled)
+            settings = QSettings("BlindCue", "BlindCue")
+            settings.setValue("ui/earcons_enabled", bool(enabled))
+            if enabled:
+                self._earcon_mgr.play_go()
 
     def bind_to_primary_screen(self, screen=None) -> None:
         """Bind MainWindow and its native handle to the primary monitor and fit inside it."""
@@ -537,6 +551,8 @@ class MainWindow(QMainWindow):
         self._theme_action_group.setExclusive(True)
         self._theme_actions: dict[str, QAction] = {}
         for tid, t_def in THEMES.items():
+            if tid != t_def.theme_id:
+                continue
             act = QAction(t_def.name, self, checkable=True)
             act.setToolTip(t_def.description)
             act.triggered.connect(lambda checked=False, theme_key=tid: self.apply_theme(theme_key))
@@ -547,6 +563,15 @@ class MainWindow(QMainWindow):
         active_tid = get_active_theme().theme_id
         if active_tid in self._theme_actions:
             self._theme_actions[active_tid].setChecked(True)
+
+        self._act_earcons = QAction("🔔 &Segnali Acustici Operatore (Earcons)", self, checkable=True)
+        self._act_earcons.setToolTip(
+            "Accessibilità Regia: Emette un discreto segnale sonoro di conferma ad ogni GO, STOP e PAUSA.\n"
+            "Utile per operatori non vedenti o per chi guarda il palco senza guardare il monitor."
+        )
+        self._act_earcons.setChecked(self._earcon_mgr.enabled)
+        self._act_earcons.toggled.connect(self._set_earcons_enabled)
+        view_menu.addAction(self._act_earcons)
 
         view_menu.addSeparator()
         self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
@@ -788,11 +813,6 @@ class MainWindow(QMainWindow):
         self._btn_device_settings.setFixedHeight(22)
         self._btn_device_settings.setMinimumWidth(152)
         self._btn_device_settings.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_device_settings.setStyleSheet(
-            "QPushButton { background-color: #16202e; color: #cbd5e1; border: 1px solid #2d3e56; "
-            "border-radius: 4px; font-size: 11px; font-weight: bold; padding: 2px 10px; } "
-            "QPushButton:hover { background-color: #24354c; color: #ffffff; border-color: #38bdf8; }"
-        )
         self._btn_device_settings.setToolTip(
             "Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro)."
         )
@@ -807,12 +827,6 @@ class MainWindow(QMainWindow):
         self._btn_lock_layout.setFixedHeight(22)
         self._btn_lock_layout.setMinimumWidth(142)
         self._btn_lock_layout.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_lock_layout.setStyleSheet(
-            "QPushButton { background-color: #16202e; color: #cbd5e1; border: 1px solid #2d3e56; "
-            "border-radius: 4px; font-size: 11px; font-weight: bold; padding: 2px 10px; } "
-            "QPushButton:hover { background-color: #24354c; color: #ffffff; border-color: #38bdf8; } "
-            "QPushButton:checked { background-color: #1e293b; color: #94a3b8; }"
-        )
         self._btn_lock_layout.setToolTip(
             "Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\n"
             "Di default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere."
@@ -1193,6 +1207,8 @@ class MainWindow(QMainWindow):
             self._sync_live_view()
 
     def set_global_paused(self, paused: bool) -> None:
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_pause()
         if hasattr(self, "_live_show_panel"):
             self._live_show_panel.set_global_paused(paused)
 
@@ -2513,6 +2529,9 @@ class MainWindow(QMainWindow):
             self._status_label.setText("Scaletta vuota — Aggiungi prima dei file multimediali")
             return
 
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_go()
+
         self._apply_inspector_to_cue()
 
         row, _ = self._anchor_row_and_cue()
@@ -2682,6 +2701,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def _on_blackout(self) -> None:
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_stop()
         self._live_phase_tags.clear()
         self._output.show_fallback()
         for cue in self._cues:
