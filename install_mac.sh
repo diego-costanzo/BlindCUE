@@ -53,3 +53,4 @@ echo "    [✓] Installazione completata con successo su macOS!"
 echo "    Per avviare il software esegui semplicemente: ./run.sh"
 echo "======================================================================"
 echo -e "${CLR_RESET}"
+

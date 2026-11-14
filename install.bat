@@ -38,3 +38,4 @@ echo    Per avviare BlindCue fai doppio click su: run.bat
 echo ======================================================================
 echo.
 pause
+

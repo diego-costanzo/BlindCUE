@@ -8,3 +8,4 @@ if exist ".venv\Scripts\activate.bat" (
 )
 
 python blindcue\main.py %*
+

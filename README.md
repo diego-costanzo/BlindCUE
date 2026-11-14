@@ -1,147 +1,50 @@
-# 🎬 BlindCue — Live Multimedia Cue Player (Linux · macOS · Windows)
+# BlindCue
 
-<p align="center">
-  <img src="immagini di progetto/BlindCue-logo.jpeg" alt="BlindCue Logo" width="170"/>
-</p>
+[![Licenza: MIT](https://img.shields.io/badge/Licenza-MIT-blue.svg)](LICENSE)
+[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-brightgreen.svg)](https://www.python.org/)
+[![Framework: PySide6](https://img.shields.io/badge/GUI-PySide6%20Qt6-orange.svg)](https://wiki.qt.io/Qt_for_Python)
+[![Piattaforme](https://img.shields.io/badge/Piattaforme-Linux%20%7C%20macOS%20%7C%20Windows-blueviolet.svg)](#requisiti-e-compatibilità)
 
-<p align="center">
-  <b>Regia Video, Audio e Immagini a bassa latenza per teatro, eventi live e broadcast.</b><br/>
-  <i>100% Cross-Platform (Linux Wayland/X11 • macOS Apple Silicon/Intel • Windows 10/11) • PySide6 QtMultimedia + FFmpeg • 3 Layer Compositing + Layer 0 Calibrazione • Controllo Remoto LAN (Smartphone/Tablet Web & OSC)</i>
-</p>
-
-> [!NOTE]
-> **Stato del progetto:** software in sviluppo attivo ma già concreto e operativo end-to-end per prove e spettacoli.
-> 📖 Per imparare tutte le funzioni passo-passo vai al **[Manuale Operativo Interattivo](docs/GUIDA_IMPLEMENTAZIONE_LINUX.md)**.
-> 🧩 Per capire il codice file per file vai all'**[Architettura e Mappa dei Moduli](docs/ARCHITETTURA_E_MODULI.md)**.
+**BlindCue** è un player multimediale e sequencer per spettacoli teatrali, performance dal vivo ed eventi broadcast. Il software separa nettamente l'ambiente di regia (sul monitor dell'operatore) dall'emissione video e audio verso la sala (su proiettore, videowall o display di scena), garantendo stabilità assoluta, zero latenza percettibile e assenza di interruzioni visive per il pubblico.
 
 ---
 
-## 📌 Indice
+## Caratteristiche Principali
 
-- [Cos'è BlindCue e Perché Nasce](#cose-blindcue)
-- [Due Modalità Operative: Progetto & LIVE](#due-modalita)
-- [Funzionalità Implementate](#funzionalita)
-- [Compositing a 3 Livelli + Layer 0 Tappo](#compositing)
-- [Installazione e Avvio Rapido](#installazione)
-- [Scorciatoie da Tastiera](#scorciatoie)
-- [Struttura Reale del Progetto](#struttura)
-- [Documentazione & Licenza](#documentazione)
-
----
-
-<a id="cose-blindcue"></a>
-
-## 🎯 Cos'è BlindCue e Perché Nasce
-
-Negli spettacoli dal vivo, **il software non si può bloccare mai** e il pubblico **non deve mai vedere il desktop del PC**, errori di sistema o stacchi bruschi.
-
-BlindCue separa completamente ciò che vede e sente il tecnico sul **monitor primario (Regia / Sandbox Pre-Viz)** da ciò che esce verso la sala sul **proiettore secondario (Output Window Wayland borderless)**, sfruttando la decodifica C++/GPU nativa di QtMultimedia e FFmpeg orchestrata da un layer di controllo Python snello (< 0.05 ms di latenza comando).
-
----
-
-<a id="due-modalita"></a>
-
-## 🔀 Due Modalità Operative: Progetto & LIVE
-
-Dalla cima della Scaletta (`▶ VAI IN LIVE`) oppure con **`[F5]`** / **`[Ctrl+L]`** puoi commutare istantaneamente tra le due viste **senza interrompere audio, video o immagini in esecuzione**:
-
-1. **🛠 Modalità Progetto (Programmazione & Allestimento)**
-   - Interfaccia a 6 pannelli proporzionati e bloccabili (`🔒 Pannelli Bloccati` / `🔓 Sbloccabili`): **Scaletta Cue**, **Anteprima Pre-Viz 16:9**, **Ispettore Cue** sopra; **Forma d'Onda & Automazioni**, **Live Output Status**, **Drag & Drop** sotto.
-   - Pensata per tagliare, croppare, disegnare inviluppi, creare sezioni e provare in cuffia in totale isolamento.
-2. **🎭 Modalità LIVE (Show Mode — Esecuzione Spettacolo)**
-   - Schermata teatrale ad altissima leggibilità dominata dalla **Scaletta LIVE estesa a 6 colonne** con rendering grafico custom pixel-perfect:
-     - **Colonna `#`**: barra luminosa verticale verde neon (`● LIVE`) o oro ambra (`▶ STANDBY`), nastro con colore personalizzato cue, freccia `▶`/`▼` per gruppi e binari di collegamento a catena (`Auto-GO` e `Simultanee`) con frecce direzionali.
-     - **Colonna `Q`**: richiamo copione in capsula ciano scuro (`#082f49`) ad alto contrasto.
-     - **Colonna `Media / Titolo Cue`**: badge arrotondati dedicati (`VID`, `AUD`, `IMG`, `GRP`), indentazione ad albero con rami gerarchici (`├── `, `└── `), titolo ad alta visibilità, pillole di sezione `[N sez.]`, badge `🔁 LOOP`, e pillole modalità scena (`⇉ SIMULT`, `⤵ CASCATA`, `⏹ PASSO`, `🎲 RND`, `🔁 LOOP`) con conteggio cue interne.
-     - **Colonna `Note di Regia`**: icona taccuino `📝`, testo sempre visibile e avviso in capsula ambra per parole chiave urgenti di regia (`ATTENZIONE`, `BUIO TOTALE`, `EMERGENZA`, `PERICOLO`).
-     - **Colonna `Tempi · Sequenza`**: pillola `Pre +X.Xs` ambra, durata calcolata/stimata in monospace bold, pillola `Post +X.Xs` viola e pillola modalità avanzamento (`⏹ MANUALE`, `⤵ AUTO-GO`, `⇉ SIMULT`).
-     - **Colonna `Layer · Stato`**: capsula layer `L1`/`L2`/`L3`/`GRP` e badge di stato dinamico (`● LIVE` verde smeraldo, `⏳ ATTESA` ciano, `▶ STANDBY` oro ambra, `PRONTO` ardesia).
-     - **Lavaggio a Colori & Divisori di Scena**: l'intero sfondo della riga riceve la tinta della cue con linee divisorie sottili al cambio di colore/capitolo.
-     - **Hero Bar Standby**: prompter panoramico ad alta leggibilità con capsula ambra `▶ STANDBY`, nome cue, layer, tipo media, avviso di pre-delay/auto-follow e note di regia.
-     - **Controllo da Tastiera & Menu Contestuale Pro**: Spazio lancia il GO, Esc attiva il PANIC, frecce Su/Giù scorrono lo Standby, doppio clic esegue la cue istantaneamente, tasto destro apre il menu contestuale per salto rapido (`GO Forzato`, `Imposta Standby`, `Espandi/Collassa`).
-     - **Ora esatta di sistema centrata** e **Cronometro Spettacolo (`⏱`)** in alto a destra (avvio automatico al 1° `GO` o manuale per le filate + reset `↺`).
-     - Blocca le scorciatoie di modifica/cancellazione accidentale ed evidenzia i soli comandi essenziali di regia: **`GO [SPAZIO]`**, **`⏸ PAUSA TUTTO` / `▶ RIPRENDI TUTTO`** e **`🚨 PANIC [ESC]`** in alto a destra lontano da `GO`.
+- **Doppio Ambiente Isolato**:
+  - *Modalità Progetto*: Editing non distruttivo della scaletta, regolazione tempi (Pre-Wait, Play, Post-Wait), ritaglio frame (crop), curve di fade, livelli volume e sezioni virtuali.
+  - *Modalità LIVE*: Interfaccia ad alto contrasto per l'esecuzione dello spettacolo, blocco delle modifiche accidentali, comandi a tasto singolo (`SPAZIO` per GO, `ESC` per Panic) e timer di scena.
+- **Compositing Video a 3 Livelli + Layer 0 di Sicurezza**:
+  - Tre layer video/grafici indipendenti sovrapponibili in tempo reale (`L1` Sfondo, `L2` Principale, `L3` Overlay).
+  - Layer 0 (Failsafe): Reticolo geometrico per la calibrazione ottica del videoproiettore o blackout grafico personalizzabile.
+- **Supporto Virtual Surface Mapping & Warping**:
+  - Correzione prospettica a 4 punti (Quad Corner Pin / Keystone) e mascherature vettoriali (rettangolari, ellittiche, fori o maschere raster).
+- **Automazione e Controllo Remoto di Rete**:
+  - Server OSC UDP nativo per l'integrazione con mixer audio/luci o controller di scena esterni (`/go`, `/panic`, `/pause`, `/cue/<id>/go`, `/volume`).
+  - Web Remote mobile-first reattivo su rete locale (LAN Wi-Fi) per smartphone e tablet (accesso rapido tramite QR Code e protezione con PIN numerico).
+  - Web Monitor passivo in sola lettura per la direzione artistica e di scena.
+- **Motore Audio Professionale**:
+  - Analizzatore di forme d'onda con zoom fino a 32x, rilevazione integrata del volume (EBU R128 LUFS e True Peak) e compressione dinamica.
+  - Routing audio indipendente: uscita Master Sala e monitor PFL (pre-ascolto in cuffia) su interfacce hardware distinte.
+- **Resilienza e Sicurezza**:
+  - Salvataggio atomico su disco in formato JSON aperto (`.blindcue`) e recupero automatico in caso di interruzione anomala della sessione (Crash Recovery).
 
 ---
 
-<a id="funzionalita"></a>
+## Requisiti e Compatibilità
 
-## ⚙️ Funzionalità Implementate
-
-- **Doppio Motore Isolato (Live vs Pre-Viz) & Routing Audio / Video**:
-  - 3 player indipendenti (`L1`, `L2`, `L3`) per l'uscita pubblica e 1 player `TestPlayer` muto di default per collaudare in cuffia (`MUTE ON/OFF`).
-  - **Pannello `⚙️ Dispositivi · Uscite`**: assegna l'uscita **Master Sala (PA)** e il **Monitor Cuffia Tecnico (PFL)** su schede audio diverse, seleziona il monitor/proiettore a caldo e imposta il profilo prestazionale (`Auto`, `🍃 Eco` per portatili datati o `🚀 Performance`).
-  - **Protezione Live GC (`ShowRuntimeGuard`)**: sospende i cicli pesanti del Garbage Collector durante la Modalità LIVE per garantire zero micro-lag sulle Cue.
-- **Pre-Viz 16:9 WYSIWYG + `MIRROR LIVE` Foto & Video**:
-  - Trascinamento diretto posizione, **8 maniglie per ritaglio sul frame**, equalizer audio animato.
-  - Attivando **`MIRROR LIVE`**, le regolazioni su Foto **e Video in Standby** si vedono in tempo reale sul proiettore esterno senza emettere audio in sala.
-- **Gruppi e Scene Teatrali Collassabili (`Ctrl+G` o `+ Gruppo`)**:
-  - Raggruppa più cue eterogenee (Audio, Video, Immagini) in un contenitore di scena con colore personalizzato e albero gerarchico grafico (`├── `, `└── `).
-  - **Espansione / Collasso istantaneo (`▶`/`▼`)** sia in Vista Progetto che nella Scaletta LIVE estesa per mantenere scalette lunghe pulite e leggibili.
-  - **5 Modalità di esecuzione avanzate**:
-    - `⇉ Simultaneo` (Fire All: tutti i media partono insieme sul GO).
-    - `⤵ Sequenziale` (Cascata continua con rispetto dei ritardi Pre/Post).
-    - `⏹ Passo-Passo` (Capitolo teatrale: ogni pressione del GO avanza di un elemento interno alla scena).
-    - `🎲 Random` (Variazioni e scelte casuali anti-ripetizione immediata).
-    - `🔁 Loop Scena` (Ciclo continuo degli elementi interni).
-  - **Scheda dedicata nell'Ispettore (`📁 Gruppo · Scena`)**: riepilogo conteggio elementi, durata totale stimata, regolazione tempi Pre/Post-Wait, lista modificabile con rimozione rapida elemento (`✕`) e scioglimento gruppo (`🔓 Sciogli Gruppo`).
-  - **Estrazione flessibile ed intuitiva di Cue da un Gruppo**:
-    - **Scorciatoia universale `Ctrl+Shift+G`**: scioglie il gruppo se è selezionato il contenitore, oppure estrae la singola cue selezionata posizionandola subito all'esterno della scena.
-    - **Menu Contestuale (Tasto Destro)**: opzione diretta `"⏏ Estrai dal Gruppo (Ctrl+Shift+G)"`.
-    - **Pannello Ispettore (Scheda `🎯 Cue · Tempi`)**: banner informativo con pulsante rapido `"⏏ Estrai dal Gruppo"`.
-    - **Spostamento intelligente (`Alt+▲` / `Alt+▼`)**: muovendo una cue oltre il limite superiore (sopra l'intestazione della scena) o inferiore del gruppo, la cue si sgancia automaticamente tornando a livello radice.
-  - Auto-espansione automatica quando una cue interna diventa Standby o Live, garantendo la visibilità continua all'operatore.
-- **Ispettore Cue a Schede (Linguette) & Modifiche Multi-Selezione**:
-  - **Scheda `🎯 Cue · Tempi`**: richiamo copione `Q`, Nome, Note, **Colori Gruppo/Scena (con divisori visivi e binario sinistro grafico per cue collegate)**, selezione Layer (`L1`, `L2`, `L3`), **`Pre-Delay`**, **`Post-Delay`**, **`Durata Img`** e sequenza (`Blocco / Auto-GO / Simult.`).
-  - **Scheda `🖼 Video · Foto`**: `Pos X/Y` + nudge/Centro, `Scala`, `Opacità`, `Formato`, **Crop in `%` o `px` reali** e guida contestuale.
-  - **Scheda `🎵 Audio · Tagli`**: `Volume`, `Fade In/Out`, `IN/OUT` e `Loop` (`∞` o `N` ripetizioni).
-  - Selezionando più cue dello stesso tipo puoi applicare modifiche batch in un colpo solo (tutto protetto da **Undo / Redo** fino a 40 step).
-- **Forma d'Onda Pro (`Zoom 1.0×–32.0×`) & Editor Automazioni**:
-  - Campionamento ad alta risoluzione in background su `QThreadPool` (FFmpeg PCM + NumPy fino a `3200+` picchi), zoom ancorato al cursore, pan con scrollbar/mouse.
-  - Testina di lettura live, snap **`IN / OUT` a testina** (`[I]`/`[O]`), reset IN/OUT.
-  - Pallini trascinabili di **Fade IN/OUT** con curve (`Log`, `S-Curve`, `Linear`).
-  - **Linea grafica a keyframe per Volume Audio e Opacità** (attiva anche sulle **Immagini a durata infinita** con orizzonte temporale `5s–60s` ed anteprima Play dedicata).
-- **Sezioni Virtuali `A / B / C...` & Doppio Deck Video**:
-  - Taglio virtuale del file in blocchi colorati con tendina ripetizioni indipendente (`x1..x8`, `∞` loop infinito, `Salta`), salto diretto cliccando sul badge lettera e pulsante **`⏭ Esci da Loop`** durante lo spettacolo.
-  - Sui video con loop/salti di sezione, `LivePlayer` utilizza un secondo `QMediaPlayer` secondario in pre-caricamento silenzioso per ridurre al minimo gli scatti visivi.
-- **Tempi di Incastro & 3 Modalità di Avanzamento per Cue**:
-  - Ogni cue gestisce **`Pre-Delay → Durata/Play → Post-Delay`** (trattiene l'uscita dopo la fine del file o del timer prima di liberare il layer).
-  - Barra a 3 stati in Scaletta con suggerimenti a comparsa e tooltip: **`⏹ Blocco`** (default), **`⤵ Auto-GO`** (avvia la successiva alla fine di Pre+Durata+Post) e **`⇉ Simultanea`** (lancia insieme anche la successiva al proprio `Pre-Delay`).
-- **Monitor Live Output Intuitivo (`L3 → L2 → L1`)**:
-  - Stack verticale coerente con la sovrapposizione video (`L3` sopra `L2` sopra `L1`), barre con riempimento progressivo, **trascorso a sinistra**, **nome centrato**, **countdown a destra** (ambra `<12s`, rosso `<5s`, `∞` per loop), stati `⏳ PRE` / `⏱ POST`, tasto circolare `⏸/▶` di prova per singolo layer e `✕ Cut`.
-- **Emergenza & Stabilità Assoluta**:
-  - **Salvataggio `.blindcue` JSON atomico** in memoria (`tempfile` + `fsync` + `os.replace`), autosave ogni `30s` e **Crash Recovery** all'avvio.
-  - **`Blackout [Ctrl+B]`** con micro-fade `0.2s` anti-pop verso Layer 0; **`PANIC [ESC]`** in Modalità LIVE a taglio istantaneo `0ms` su Nero puro `#000000` (se Layer 0 è la griglia tecnica) o sul Tappo personalizzato.
+- **Python**: `>= 3.10`
+- **Motore Multimediale**: FFmpeg e librerie multimediali native di sistema (gestite tramite backend QtMultimedia).
+- **Sistemi Operativi**:
+  - **Linux**: Wayland nativo e X11 (Debian, Ubuntu, Arch Linux, Fedora e derivate).
+  - **macOS**: Apple Silicon (M1/M2/M3/M4) e Intel (macOS 12+).
+  - **Windows**: Windows 10 e Windows 11 (64-bit).
 
 ---
 
-<a id="compositing"></a>
+## Installazione Rapida
 
-## 🖼️ Compositing a 3 Livelli + Layer 0 Tappo
-
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│                    COMPOSIZIONE LIVE SU SCHERMO ESTERNO                 │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Layer 3 (In alto)   │ Overlay, titoli, lower-third, sovrimpressioni    │
-│  Layer 2 (Centro)    │ Contenuto principale secondario o foto in-frame  │
-│  Layer 1 (In basso)  │ Sfondo scena, video base o traccia audio base    │
-├─────────────────────────────────────────────────────────────────────────┤
-│  Layer 0 (Failsafe)  │ Tappo predefinito con RETICOLO DI CALIBRAZIONE   │
-│                      │ PROIETTORE (bordo 0px, angoli, cerchi keystone)  │
-│                      │ oppure immagine personalizzata ("Cambia Tappo")  │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
----
-
-<a id="installazione"></a>
-
-## 🚀 Installazione e Avvio Rapido (100% Cross-Platform)
-
-BlindCue funziona nativamente su tutti i sistemi operativi moderni senza dipendenze binarie proprietarie o librerie C obsolete.
-
-### 🐧 Linux (Arch, Debian, Ubuntu, Fedora)
+### 🐧 Linux
 ```bash
 git clone https://github.com/diego-costanzo/BlinCUE.git
 cd BlinCUE
@@ -150,7 +53,7 @@ chmod +x install.sh run.sh
 ./run.sh
 ```
 
-### 🍎 macOS (Apple Silicon M1/M2/M3/M4 & Intel)
+### 🍎 macOS
 ```bash
 git clone https://github.com/diego-costanzo/BlinCUE.git
 cd BlinCUE
@@ -158,96 +61,35 @@ chmod +x install_mac.sh run.sh
 ./install_mac.sh
 ./run.sh
 ```
-> *(Consigliato: avere Homebrew installato per scaricare automaticamente FFmpeg).*
 
-### 🪟 Windows (10 / 11)
-1. Scarica o clona il repository:
+### 🪟 Windows
+1. Clona o scarica il repository:
    ```cmd
    git clone https://github.com/diego-costanzo/BlinCUE.git
    cd BlinCUE
    ```
-2. Fai doppio clic su **`install.bat`** (crea l'ambiente `.venv` e scarica `PySide6` e `numpy`).
-3. Per avviare il programma fai doppio clic su **`run.bat`**!
+2. Esegui **`install.bat`** per preparare l'ambiente virtuale e le dipendenze.
+3. Avvia il software con **`run.bat`**.
 
 ---
 
-<a id="scorciatoie"></a>
+## Stack Tecnologico
 
-## ⌨️ Scorciatoie da Tastiera
-
-| Tasto | Modalità Progetto | Modalità LIVE |
-|-------|-------------------|---------------|
-| <kbd>F5</kbd> / <kbd>Ctrl</kbd>+<kbd>L</kbd> | Passa a **Modalità LIVE** | Torna a **Modalità Progetto** |
-| <kbd>Spazio</kbd> | **GO** *(bloccato mentre scrivi in caselle testo)* | **GO** (Avvia cue in Standby / catena Simultanea) |
-| <kbd>Esc</kbd> | Ferma ascolto/anteprima **Pre-Viz** | **🚨 PANIC STOP TOTALE (0ms)** |
-| <kbd>Ctrl</kbd> + <kbd>G</kbd> | **Crea Gruppo / Scena** (raggruppa selezione) | *(Disabilitato per sicurezza)* |
-| <kbd>Ctrl</kbd> + <kbd>B</kbd> | **Blackout** con micro-fade `0.2s` verso Layer 0 | **Blackout** con micro-fade `0.2s` verso Layer 0 |
-| <kbd>I</kbd> / <kbd>O</kbd> | Imposta `IN` / `OUT` alla testina nella waveform | *(Disabilitato per sicurezza)* |
-| <kbd>F2</kbd> | Modifica inline `Q` / `Nome` | *(Disabilitato — sola lettura)* |
-| <kbd>Canc</kbd> / <kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd> | Elimina o sposta cue selezionata | *(Disabilitato per sicurezza)* |
-| <kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Ctrl</kbd> + <kbd>Y</kbd> | Undo / Redo (fino a 40 step) | *(Disabilitato in diretta)* |
-| <kbd>Ctrl</kbd> + <kbd>N</kbd> / <kbd>O</kbd> / <kbd>S</kbd> | Nuovo / Apri / Salva show `.blindcue` | Nuovo / Apri / Salva show `.blindcue` |
+- **Linguaggio**: Python 3.12+ (Type Hinting moderno PEP 585/604).
+- **Interfaccia Grafica**: PySide6 (Qt 6 Framework).
+- **Elaborazione Audio/Dati**: NumPy.
+- **Networking**: `QUdpSocket` (OSC 1.0 binario), `http.server` multi-thread con Server-Sent Events (SSE).
+- **Generatore Grafico**: Generatore di codici QR integrato in puro Python (ISO/IEC 18004).
 
 ---
 
-<a id="struttura"></a>
+## Documentazione Dettagliata
 
-## 📂 Struttura Reale del Progetto
-
-```text
-BlindCUE/
-├── requirements.txt                    # Dipendenze Python native (PySide6, numpy)
-├── install.sh                          # Installer per Linux (Debian/Ubuntu, Arch, Fedora)
-├── install_mac.sh                      # Setup automatico per macOS (Homebrew + venv)
-├── install.bat                         # Setup automatico con doppio clic per Windows
-├── run.sh                              # Launcher per Linux e macOS
-├── run.bat                             # Launcher rapido per Windows
-├── README.md                           # Panoramica del progetto
-├── docs/
-│   ├── GUIDA_IMPLEMENTAZIONE_LINUX.md  # Manuale Operativo Interattivo per tecnici e registi
-│   └── ARCHITETTURA_E_MODULI.md        # Spiegazione dettagliata file per file dell'intero codice
-├── immagini di progetto/
-│   └── BlindCue-logo.jpeg              # Logo ufficiale (base per icona app e Tappo Layer 0)
-└── blindcue/
-    ├── main.py                         # Entry point, bus segnali, routing monitor, runtime live
-    ├── requirements.txt                # Dipendenze Python (PySide6>=6.5, numpy>=1.24)
-    ├── models/
-    │   ├── cue.py                      # Dataclass Cue, CueSection, FollowMode, serializzazione JSON
-    │   └── project_manager.py          # Salvataggio atomico .blindcue, autosave 30s e crash recovery
-    ├── engine/
-    │   ├── player_live.py              # LivePlayer L1-L3 (QtMultimedia, dual-deck video, fade/inviluppi)
-    │   ├── player_test.py              # TestPlayer Pre-Viz muto di default
-    │   ├── audio_analyzer.py           # WaveformAnalyzer asincrono (ffprobe + ffmpeg + NumPy)
-    │   ├── envelope.py                 # Matematica curve fade, keyframe & SectionSequencer (A/B/C...)
-    │   └── show_scheduler.py           # ShowScheduler per Pre-Delay, Post-Delay e Pausa Tutto globale
-    └── ui/
-        ├── main_window.py              # Orchestratore principale (QStackedWidget Progetto ↔ LIVE)
-        ├── output_window.py            # Finestra output Wayland (Layer 0 + L1-L3 + PANIC)
-        ├── live_show_view.py           # Schermata dedicata Modalità LIVE (Scaletta estesa, GO, Pausa, PANIC)
-        ├── live_status_panel.py        # Barre live progressive L3→L1, Pausa layer, PRE/POST, Cut, Tappo
-        ├── cue_list_panel.py           # Pannello Scaletta Progetto, tasto VAI IN LIVE e selettore 3 modalità
-        ├── cue_table.py                # Tabella cue (#, Q, Nome/Media) e delegate badge/note/link
-        ├── inspector_panel.py          # Ispettore Cue (batch multi-selezione, crop %/px, Pre/Post-Delay)
-        ├── preview_panel.py            # Intestazione e comandi trasporto Pre-Viz + toggle Mirror/Mute
-        ├── preview_monitor.py          # Monitor 16:9 WYSIWYG (drag posizione, 8 maniglie crop, video mirror)
-        ├── waveform_widget.py          # Timeline forma d'onda zoomabile, testina, fade e punti inviluppo
-        ├── section_bar.py              # Barra sezioni virtuali (A, B, C...) sincronizzata con zoom/pan
-        ├── tappo_pattern.py            # Generatore vettoriale griglia calibrazione proiettore su Layer 0
-        ├── layout_math.py              # Matematica condivisa frame, aspect ratio e crop ancorato ai bordi
-        ├── undo_manager.py             # Cronologia Undo/Redo leggera a snapshot (40 livelli)
-        ├── spinboxes.py                # Spinbox decimali con +/- vettoriali e step intelligenti
-        ├── drop_zone.py                # Area importazione rapida Drag & Drop
-        ├── hardware_info.py            # Diagnostica CPU / GPU / VA-API / Wayland
-        └── theme.py                    # Palette colori Pro Broadcast, stylesheet e formati media
-```
+- [Paper Tecnico e Architettura Modulare](docs/ARCHITECTURE.md)
+- [Manuale Utente Operativo](docs/MANUAL.md)
 
 ---
 
-<a id="documentazione"></a>
+## Licenza
 
-## 📄 Documentazione & Licenza
-
-- **[Manuale Operativo Interattivo (`docs/GUIDA_IMPLEMENTAZIONE_LINUX.md`)](docs/GUIDA_IMPLEMENTAZIONE_LINUX.md)** — guida all'uso completa di tutte le funzionalità, trucchi di regia e ottimizzazioni Linux.
-- **[Architettura e Spiegazione dei File (`docs/ARCHITETTURA_E_MODULI.md`)](docs/ARCHITETTURA_E_MODULI.md)** — mappa completa di ogni file Python e di come dialogano tra loro.
-
-Progetto open source progettato per offrire massima velocità, semplicità operativa e solidità in scena.
+Questo progetto è rilasciato sotto licenza open-source [MIT](LICENSE).
