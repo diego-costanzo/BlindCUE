@@ -21,6 +21,14 @@ class SurfaceMode(str, Enum):
     QUAD = "QUAD"
 
 
+class MaskType(str, Enum):
+    """Surface clipping and cutout mask type."""
+    NONE = "none"
+    ELLIPSE = "ellipse"          # Circular / Elliptical cutout
+    HOLE = "hole"                # Inner rectangular hole / cutout
+    IMAGE = "image"              # Custom PNG mask file
+
+
 DEFAULT_SURFACE_ID = "default"
 DEFAULT_SURFACE_NAME = "Schermo Intero (Default)"
 
@@ -74,6 +82,16 @@ class SurfaceDefinition:
     color: str = "#00f0ff"
     blend_left: float = 0.0   # Soft edge blend (0.0 - 0.5) for multi-projector overlap
     blend_right: float = 0.0  # Soft edge blend (0.0 - 0.5) for multi-projector overlap
+
+    # Masking & Cutout properties
+    mask_type: str = MaskType.NONE.value        # "none", "ellipse", "hole", "image"
+    mask_invert: bool = False                   # Invert mask (e.g. punch hole instead of circle)
+    mask_feather: int = 0                       # Edge feather/blur in pixels (0..50 px)
+    hole_x: float = 0.25                        # Inner hole X relative to surface (0.0..1.0)
+    hole_y: float = 0.25                        # Inner hole Y relative to surface (0.0..1.0)
+    hole_w: float = 0.50                        # Inner hole W relative to surface (0.0..1.0)
+    hole_h: float = 0.50                        # Inner hole H relative to surface (0.0..1.0)
+    mask_image_path: Optional[str] = None       # File path to custom PNG mask
 
     def __post_init__(self) -> None:
         if self.mode not in (SurfaceMode.RECTANGLE.value, SurfaceMode.QUAD.value):
@@ -152,6 +170,14 @@ class SurfaceDefinition:
             "color": self.color,
             "blend_left": round(float(self.blend_left), 4),
             "blend_right": round(float(self.blend_right), 4),
+            "mask_type": str(self.mask_type),
+            "mask_invert": bool(self.mask_invert),
+            "mask_feather": int(self.mask_feather),
+            "hole_x": round(float(self.hole_x), 6),
+            "hole_y": round(float(self.hole_y), 6),
+            "hole_w": round(float(self.hole_w), 6),
+            "hole_h": round(float(self.hole_h), 6),
+            "mask_image_path": self.mask_image_path,
         }
 
     @classmethod
@@ -187,6 +213,14 @@ class SurfaceDefinition:
             color=str(data.get("color", "#00f0ff")),
             blend_left=max(0.0, min(0.5, float(data.get("blend_left", 0.0)))),
             blend_right=max(0.0, min(0.5, float(data.get("blend_right", 0.0)))),
+            mask_type=str(data.get("mask_type", MaskType.NONE.value)),
+            mask_invert=bool(data.get("mask_invert", False)),
+            mask_feather=int(data.get("mask_feather", 0)),
+            hole_x=max(0.0, min(1.0, float(data.get("hole_x", 0.25)))),
+            hole_y=max(0.0, min(1.0, float(data.get("hole_y", 0.25)))),
+            hole_w=max(0.01, min(1.0, float(data.get("hole_w", 0.50)))),
+            hole_h=max(0.01, min(1.0, float(data.get("hole_h", 0.50)))),
+            mask_image_path=data.get("mask_image_path"),
         )
 
     def clone(self, new_id: Optional[str] = None, new_name: Optional[str] = None) -> SurfaceDefinition:

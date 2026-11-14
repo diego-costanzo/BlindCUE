@@ -3,6 +3,7 @@ from models.cue import Cue, CueSection, CueStatus, FollowMode, GroupMode, MediaT
 from models.surface import (
     DEFAULT_SURFACE_ID,
     DEFAULT_SURFACE_NAME,
+    MaskType,
     SurfaceDefinition,
     SurfaceMode,
     create_default_surface,
@@ -15,6 +16,7 @@ __all__ = [
     "FollowMode",
     "GroupMode",
     "MediaType",
+    "MaskType",
     "SurfaceDefinition",
     "SurfaceMode",
     "DEFAULT_SURFACE_ID",

@@ -29,6 +29,7 @@ from PySide6.QtGui import (
     QImage,
     QKeyEvent,
     QPainter,
+    QPainterPath,
     QPen,
     QPixmap,
     QPolygonF,
@@ -37,7 +38,10 @@ from PySide6.QtGui import (
 )
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
+    QGraphicsBlurEffect,
     QGraphicsItem,
+    QGraphicsOpacityEffect,
+    QGraphicsPathItem,
     QGraphicsPixmapItem,
     QGraphicsRectItem,
     QGraphicsScene,
@@ -49,6 +53,7 @@ from PySide6.QtWidgets import (
 from models.surface import (
     DEFAULT_SURFACE_ID,
     DEFAULT_SURFACE_NAME,
+    MaskType,
     SurfaceDefinition,
     SurfaceMode,
     create_default_surface,
@@ -197,6 +202,38 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
                 scx, scy = rect.center().x(), rect.center().y()
                 sw_px, sh_px = int(rw), int(rh)
 
+            # Draw mask overlay guides if mask is active
+            if s.mask_type == MaskType.ELLIPSE.value:
+                mask_pen = QPen(QColor("#f59e0b" if not is_active else "#ffffff"), 2, Qt.PenStyle.DashDotLine)
+                painter.setPen(mask_pen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                if s.mode == SurfaceMode.QUAD:
+                    epath = QPainterPath()
+                    epath.addEllipse(QRectF(0, 0, 1, 1))
+                    src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
+                    dst_p = QPolygonF([p0, p1, p2, p3])
+                    m_xf = QTransform()
+                    if QTransform.quadToQuad(src_p, dst_p, m_xf):
+                        painter.drawPath(m_xf.map(epath))
+                else:
+                    painter.drawEllipse(rect)
+            elif s.mask_type == MaskType.HOLE.value:
+                mask_pen = QPen(QColor("#f43f5e"), 2, Qt.PenStyle.DashDotLine)
+                painter.setPen(mask_pen)
+                h_brush = QBrush(QColor(244, 63, 94, 50), Qt.BrushStyle.DiagCrossPattern)
+                painter.setBrush(h_brush)
+                if s.mode == SurfaceMode.QUAD:
+                    hpath = QPainterPath()
+                    hpath.addRect(QRectF(s.hole_x, s.hole_y, s.hole_w, s.hole_h))
+                    src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
+                    dst_p = QPolygonF([p0, p1, p2, p3])
+                    m_xf = QTransform()
+                    if QTransform.quadToQuad(src_p, dst_p, m_xf):
+                        painter.drawPath(m_xf.map(hpath))
+                else:
+                    h_rect = QRectF(rx + rw * s.hole_x, ry + rh * s.hole_y, rw * s.hole_w, rh * s.hole_h)
+                    painter.drawRect(h_rect)
+
             # Draw corner reticles
             painter.setFont(font_corner)
             for idx, cpt in enumerate(corners):
@@ -225,7 +262,14 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
             painter.drawLine(QPointF(scx, scy - 16), QPointF(scx, scy + 16))
 
             # Surface Name badge
-            badge_text = f"{s.name} [{sw_px}×{sh_px} px]"
+            mask_tag = ""
+            if s.mask_type == MaskType.ELLIPSE.value:
+                mask_tag = " · ⭕ Ellisse"
+            elif s.mask_type == MaskType.HOLE.value:
+                mask_tag = " · 🔲 Buco"
+            elif s.mask_type == MaskType.IMAGE.value:
+                mask_tag = " · 🖼 PNG"
+            badge_text = f"{s.name}{mask_tag} [{sw_px}×{sh_px} px]"
             painter.setFont(font_label)
             bw = max(180, int(painter.fontMetrics().horizontalAdvance(badge_text) + 24))
             bh = 28
@@ -310,8 +354,8 @@ class OutputWindow(QWidget):
 
         # ── Layers 1-3: Independent Video & Image Compositing ─────────
         self._layer_pixmaps: dict[int, QGraphicsPixmapItem] = {}
-        self._video_containers: dict[int, QGraphicsRectItem] = {}
-        self._image_containers: dict[int, QGraphicsRectItem] = {}
+        self._video_containers: dict[int, QGraphicsPathItem] = {}
+        self._image_containers: dict[int, QGraphicsPathItem] = {}
         self._video_items: dict[int, QGraphicsVideoItem] = {}
         self._secondary_video_items: dict[int, QGraphicsVideoItem] = {}
         self._active_video_deck: dict[int, int] = {1: 0, 2: 0, 3: 0}
@@ -321,7 +365,7 @@ class OutputWindow(QWidget):
 
         for layer in (1, 2, 3):
             # Video container (clips child video items)
-            container = QGraphicsRectItem()
+            container = QGraphicsPathItem()
             container.setPen(Qt.PenStyle.NoPen)
             container.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsChildrenToShape, True)
             container.setZValue(layer * 10)
@@ -337,7 +381,7 @@ class OutputWindow(QWidget):
             self._video_items[layer] = v_item
 
             # Image container (clips child pixmap items for rectangular & quad mapping)
-            img_container = QGraphicsRectItem()
+            img_container = QGraphicsPathItem()
             img_container.setPen(Qt.PenStyle.NoPen)
             img_container.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsChildrenToShape, True)
             img_container.setZValue(layer * 10 + 1)
@@ -490,9 +534,87 @@ class OutputWindow(QWidget):
 
     # ── Layers 1-3 (Images & Overlays) ────────────────────────────────
 
+    def _build_surface_clip_path(self, surf: SurfaceDefinition, w: float, h: float) -> QPainterPath:
+        """Construct clipping QPainterPath for rectangular bounds, cutouts, or ellipses."""
+        path = QPainterPath()
+        if surf.mask_type == MaskType.ELLIPSE.value:
+            if surf.mask_invert:
+                path.addRect(0.0, 0.0, w, h)
+                sub = QPainterPath()
+                sub.addEllipse(0.0, 0.0, w, h)
+                path = path.subtracted(sub)
+            else:
+                path.addEllipse(0.0, 0.0, w, h)
+        elif surf.mask_type == MaskType.HOLE.value:
+            hx = w * surf.hole_x
+            hy = h * surf.hole_y
+            hw = max(1.0, w * surf.hole_w)
+            hh = max(1.0, h * surf.hole_h)
+            hole_path = QPainterPath()
+            hole_path.addRect(hx, hy, hw, hh)
+            if surf.mask_invert:
+                path = hole_path
+            else:
+                path.addRect(0.0, 0.0, w, h)
+                path = path.subtracted(hole_path)
+        else:
+            path.addRect(0.0, 0.0, w, h)
+        return path
+
+    def _apply_mask_effect_if_needed(
+        self,
+        container: QGraphicsPathItem,
+        surf: SurfaceDefinition,
+        clip_path: QPainterPath,
+        w: float,
+        h: float,
+    ) -> None:
+        """Apply custom PNG opacity mask or edge feathering effect."""
+        if surf.mask_type == MaskType.IMAGE.value and surf.mask_image_path:
+            img_path = Path(surf.mask_image_path)
+            if img_path.is_file():
+                mask_img = QImage(str(img_path))
+                if not mask_img.isNull():
+                    scaled = mask_img.scaled(
+                        max(1, int(w)),
+                        max(1, int(h)),
+                        Qt.AspectRatioMode.IgnoreAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                    if surf.mask_invert:
+                        scaled.invertPixels(QImage.InvertMode.InvertRgba)
+                    effect = QGraphicsOpacityEffect(container)
+                    effect.setOpacityMask(QBrush(scaled))
+                    container.setGraphicsEffect(effect)
+                    return
+
+        if surf.mask_feather > 0 and w > 2 and h > 2:
+            iw, ih = max(1, int(w)), max(1, int(h))
+            scene = QGraphicsScene(0, 0, iw, ih)
+            item = QGraphicsPathItem(clip_path)
+            item.setBrush(QColor(255, 255, 255, 255))
+            item.setPen(Qt.PenStyle.NoPen)
+            blur = QGraphicsBlurEffect()
+            blur.setBlurRadius(min(50.0, float(surf.mask_feather)))
+            item.setGraphicsEffect(blur)
+            scene.addItem(item)
+
+            feather_img = QImage(iw, ih, QImage.Format_ARGB32_Premultiplied)
+            feather_img.fill(0)
+            p = QPainter(feather_img)
+            scene.render(p)
+            p.end()
+
+            effect = QGraphicsOpacityEffect(container)
+            effect.setOpacityMask(QBrush(feather_img))
+            container.setGraphicsEffect(effect)
+            return
+
+        container.setGraphicsEffect(None)
+
     def _apply_surface_transform(
         self,
-        container: QGraphicsRectItem,
+        container: QGraphicsPathItem,
         surf: SurfaceDefinition,
         nat_w: float,
         nat_h: float,
@@ -532,8 +654,11 @@ class OutputWindow(QWidget):
             if not ok:
                 xf = QTransform()
 
+            clip_path = self._build_surface_clip_path(surf, geom.vis_w, geom.vis_h)
+            container.setPath(clip_path)
+            self._apply_mask_effect_if_needed(container, surf, clip_path, geom.vis_w, geom.vis_h)
+
             container.setTransform(xf)
-            container.setRect(0.0, 0.0, geom.vis_w, geom.vis_h)
             container.setPos(0.0, 0.0)
             return geom, xf
 
@@ -548,8 +673,11 @@ class OutputWindow(QWidget):
                 scale=scale, pos_x=pos_x, pos_y=pos_y, crop=crop, aspect_ratio=aspect_ratio,
             )
 
+            clip_path = self._build_surface_clip_path(surf, geom.vis_w, geom.vis_h)
+            container.setPath(clip_path)
+            self._apply_mask_effect_if_needed(container, surf, clip_path, geom.vis_w, geom.vis_h)
+
             container.setTransform(QTransform())
-            container.setRect(0.0, 0.0, geom.vis_w, geom.vis_h)
             container.setPos(st_x + geom.vis_x, st_y + geom.vis_y)
             return geom, QTransform()
 

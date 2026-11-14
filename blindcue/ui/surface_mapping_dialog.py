@@ -6,12 +6,14 @@ Provides theatre technicians and live operators with:
 - Real-time on-projector alignment guides and test pattern toggle (F7).
 - Micro-nudge directional controls for precision calibration onto physical objects/architectures.
 - Dual unit support: native Pixels (px) and normalized Percentages (%).
+- Masking & Cutouts: Ellipse/Circle cutout, Inner Rectangular Hole cutout, and Custom PNG Image Mask.
 """
 
 from __future__ import annotations
 
 import logging
 import math
+from pathlib import Path
 from typing import Any, List, Optional
 
 from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal, Slot
@@ -23,14 +25,18 @@ from PySide6.QtGui import (
     QKeyEvent,
     QMouseEvent,
     QPainter,
+    QPainterPath,
     QPen,
     QPolygonF,
+    QTransform,
 )
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QComboBox,
     QDialog,
     QDoubleSpinBox,
+    QFileDialog,
     QFrame,
     QGridLayout,
     QGroupBox,
@@ -42,6 +48,7 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QSizePolicy,
     QSplitter,
     QVBoxLayout,
@@ -53,6 +60,7 @@ from models.surface import (
     DEFAULT_SURFACE_NAME,
     PRESET_DEFINITIONS,
     SURFACE_COLORS,
+    MaskType,
     SurfaceDefinition,
     SurfaceMode,
     create_default_surface,
@@ -70,7 +78,7 @@ class SurfaceCanvasWidget(QWidget):
     """Interactive visual representation of the stage projector canvas.
 
     Allows operators to drag entire surfaces or individual corner pins in real-time
-    with live coordinate HUD overlays, hover highlights, and precision snapping.
+    with live coordinate HUD overlays, hover highlights, mask footprints, and precision snapping.
     """
 
     surface_modified = Signal(SurfaceDefinition)
@@ -469,10 +477,45 @@ class SurfaceCanvasWidget(QWidget):
             painter.drawLine(poly_pts[0], poly_pts[2])
             painter.drawLine(poly_pts[1], poly_pts[3])
 
+            # Draw mask overlay guides on canvas
+            if s.mask_type == MaskType.ELLIPSE.value:
+                mask_pen = QPen(QColor("#f59e0b" if not is_mono else "#ffffff"), 2, Qt.PenStyle.DashDotLine)
+                painter.setPen(mask_pen)
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                epath = QPainterPath()
+                epath.addEllipse(QRectF(0, 0, 1, 1))
+                src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
+                dst_p = QPolygonF(poly_pts)
+                m_xf = QTransform()
+                if QTransform.quadToQuad(src_p, dst_p, m_xf):
+                    painter.drawPath(m_xf.map(epath))
+
+            elif s.mask_type == MaskType.HOLE.value:
+                mask_pen = QPen(QColor("#f43f5e" if not is_mono else "#ffffff"), 2, Qt.PenStyle.DashDotLine)
+                painter.setPen(mask_pen)
+                h_brush = QBrush(QColor(244, 63, 94, 50 if not is_mono else 60), Qt.BrushStyle.DiagCrossPattern)
+                painter.setBrush(h_brush)
+                hpath = QPainterPath()
+                hpath.addRect(QRectF(s.hole_x, s.hole_y, s.hole_w, s.hole_h))
+                src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
+                dst_p = QPolygonF(poly_pts)
+                m_xf = QTransform()
+                if QTransform.quadToQuad(src_p, dst_p, m_xf):
+                    painter.drawPath(m_xf.map(hpath))
+
             # Surface centroid badge
             scx = sum(p.x() for p in poly_pts) / 4.0
             scy = sum(p.y() for p in poly_pts) / 4.0
-            badge_text = s.name
+
+            mask_icon = ""
+            if s.mask_type == MaskType.ELLIPSE.value:
+                mask_icon = " · ⭕"
+            elif s.mask_type == MaskType.HOLE.value:
+                mask_icon = " · 🔲"
+            elif s.mask_type == MaskType.IMAGE.value:
+                mask_icon = " · 🖼"
+
+            badge_text = f"{s.name}{mask_icon}"
             painter.setFont(font_badge)
             bw = painter.fontMetrics().horizontalAdvance(badge_text) + 14
             bh = 20
@@ -551,7 +594,7 @@ class SurfaceCanvasWidget(QWidget):
 # ── Visual Surface Mapping Studio Dialog ──────────────────────────────────────
 
 class SurfaceMappingDialog(QDialog):
-    """Full-featured Studio Dialog for Managing Virtual Screens & Projection Mapping."""
+    """Full-featured Studio Dialog for Managing Virtual Screens, Mapping & Cutout Masks."""
 
     surfaces_changed = Signal(list)  # emits list[SurfaceDefinition]
 
@@ -577,9 +620,9 @@ class SurfaceMappingDialog(QDialog):
         self._output_res = (w_out, h_out)
         self._updating_ui: bool = False
 
-        self.setWindowTitle("BlindCue – Studio Superfici di Proiezione & Video Mapping")
-        self.setMinimumSize(1040, 700)
-        self.resize(1140, 740)
+        self.setWindowTitle("BlindCue – Studio Superfici di Proiezione, Mapping & Maschere")
+        self.setMinimumSize(1080, 720)
+        self.resize(1180, 760)
 
         self._build_ui()
         self._refresh_surface_list()
@@ -606,9 +649,9 @@ class SurfaceMappingDialog(QDialog):
 
         title_box = QVBoxLayout()
         title_box.setSpacing(2)
-        lbl_title = QLabel("Studio Superfici di Proiezione & Video Mapping")
+        lbl_title = QLabel("Studio Superfici di Proiezione, Mapping & Maschere")
         lbl_title.setStyleSheet("font-size: 17px; font-weight: bold; color: #ffffff;")
-        lbl_sub = QLabel("Crea schermi virtuali, keystone a 4 angoli per elementi scenografici e proiezioni su monitor affiancati")
+        lbl_sub = QLabel("Schermi virtuali, keystone 4 angoli, maschere circolari, forature sagomate e mascherature PNG")
         lbl_sub.setStyleSheet("font-size: 11px; color: #94a3b8;")
         title_box.addWidget(lbl_title)
         title_box.addWidget(lbl_sub)
@@ -651,12 +694,10 @@ class SurfaceMappingDialog(QDialog):
         body = QHBoxLayout()
         body.setSpacing(14)
 
-        # Left Column: Configuration Controls (width ~370px)
+        # Left Column: Configuration Controls wrapped in clean ScrollArea
         left_panel = QFrame()
-        left_panel.setFixedWidth(370)
-        left_panel.setStyleSheet("background: #0f172a; border: 1px solid #334155; border-radius: 8px;")
         left_lay = QVBoxLayout(left_panel)
-        left_lay.setContentsMargins(12, 12, 12, 12)
+        left_lay.setContentsMargins(10, 10, 10, 10)
         left_lay.setSpacing(10)
 
         # Group 1: Surfaces List
@@ -665,7 +706,7 @@ class SurfaceMappingDialog(QDialog):
         left_lay.addWidget(lbl_surfs)
 
         self.list_surfaces = QListWidget()
-        self.list_surfaces.setFixedHeight(115)
+        self.list_surfaces.setFixedHeight(110)
         self.list_surfaces.setStyleSheet("""
             QListWidget {
                 background: #1e293b;
@@ -887,8 +928,112 @@ class SurfaceMappingDialog(QDialog):
         self._configure_spinboxes_for_unit()
         left_lay.addWidget(self.coord_stack)
 
-        # Group 4: Multi-Monitor Spanning Helper
-        left_lay.addStretch()
+        # Group 4: Masking & Cutouts (Maschera & Ritaglio)
+        mask_frame = QFrame()
+        mask_frame.setStyleSheet("background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
+        mask_lay = QVBoxLayout(mask_frame)
+        mask_lay.setContentsMargins(8, 8, 8, 8)
+        mask_lay.setSpacing(6)
+
+        lbl_mask_title = QLabel("🎭 MASCHERA & RITAGLIO (MASK)")
+        lbl_mask_title.setStyleSheet("font-size: 10px; font-weight: bold; color: #38bdf8; letter-spacing: 1px;")
+        mask_lay.addWidget(lbl_mask_title)
+
+        mask_type_row = QHBoxLayout()
+        mask_type_row.setSpacing(6)
+        mask_type_row.addWidget(QLabel("Tipo:"))
+        self.combo_mask_type = QComboBox()
+        self.combo_mask_type.setStyleSheet("background: #0f172a; color: #ffffff; border: 1px solid #475569; border-radius: 4px; padding: 4px;")
+        self.combo_mask_type.addItem("Nessuna (Piena)", MaskType.NONE.value)
+        self.combo_mask_type.addItem("⭕ Ellisse / Cerchio", MaskType.ELLIPSE.value)
+        self.combo_mask_type.addItem("🔲 Buco / Cutout Interno", MaskType.HOLE.value)
+        self.combo_mask_type.addItem("🖼 Maschera Immagine PNG", MaskType.IMAGE.value)
+        self.combo_mask_type.currentIndexChanged.connect(self._on_mask_type_changed)
+        mask_type_row.addWidget(self.combo_mask_type)
+        mask_lay.addLayout(mask_type_row)
+
+        self.mask_detail_stack = QFrame()
+        self.mask_detail_lay = QVBoxLayout(self.mask_detail_stack)
+        self.mask_detail_lay.setContentsMargins(0, 0, 0, 0)
+        self.mask_detail_lay.setSpacing(6)
+
+        # Invert Checkbox
+        self.chk_mask_invert = QCheckBox("Inverti Maschera")
+        self.chk_mask_invert.setStyleSheet("color: #cbd5e1; font-size: 11px;")
+        self.chk_mask_invert.toggled.connect(self._on_mask_invert_changed)
+        self.mask_detail_lay.addWidget(self.chk_mask_invert)
+
+        # Feather (Sfumatura Bordi)
+        self.feather_box = QFrame()
+        feather_lay = QHBoxLayout(self.feather_box)
+        feather_lay.setContentsMargins(0, 0, 0, 0)
+        feather_lay.setSpacing(6)
+        feather_lay.addWidget(QLabel("Sfumatura (Feather):"))
+        self.spin_mask_feather = SmartDoubleSpinBox()
+        self.spin_mask_feather.setRange(0, 50)
+        self.spin_mask_feather.setDecimals(0)
+        self.spin_mask_feather.setSuffix(" px")
+        self.spin_mask_feather.setSingleStep(1)
+        self.spin_mask_feather.setStyleSheet("background: #0f172a; color: #ffffff; border: 1px solid #475569; border-radius: 4px;")
+        self.spin_mask_feather.valueChanged.connect(self._on_mask_feather_changed)
+        feather_lay.addWidget(self.spin_mask_feather)
+        self.mask_detail_lay.addWidget(self.feather_box)
+
+        # Hole coordinates grid
+        self.hole_grid = QFrame()
+        self.hole_grid_lay = QGridLayout(self.hole_grid)
+        self.hole_grid_lay.setContentsMargins(0, 0, 0, 0)
+        self.hole_grid_lay.setSpacing(4)
+
+        self.spin_hx = SmartDoubleSpinBox()
+        self.spin_hy = SmartDoubleSpinBox()
+        self.spin_hw = SmartDoubleSpinBox()
+        self.spin_hh = SmartDoubleSpinBox()
+        for s in (self.spin_hx, self.spin_hy, self.spin_hw, self.spin_hh):
+            s.setStyleSheet("background: #0f172a; color: #ffffff; border: 1px solid #475569; border-radius: 4px;")
+            s.valueChanged.connect(self._on_hole_spins_changed)
+
+        self.hole_grid_lay.addWidget(QLabel("Buco X:"), 0, 0)
+        self.hole_grid_lay.addWidget(self.spin_hx, 0, 1)
+        self.hole_grid_lay.addWidget(QLabel("Buco Y:"), 0, 2)
+        self.hole_grid_lay.addWidget(self.spin_hy, 0, 3)
+        self.hole_grid_lay.addWidget(QLabel("Buco W:"), 1, 0)
+        self.hole_grid_lay.addWidget(self.spin_hw, 1, 1)
+        self.hole_grid_lay.addWidget(QLabel("Buco H:"), 1, 2)
+        self.hole_grid_lay.addWidget(self.spin_hh, 1, 3)
+        self.mask_detail_lay.addWidget(self.hole_grid)
+
+        # Image Mask Picker Box
+        self.image_mask_box = QFrame()
+        img_lay = QVBoxLayout(self.image_mask_box)
+        img_lay.setContentsMargins(0, 0, 0, 0)
+        img_lay.setSpacing(4)
+
+        btn_img_row = QHBoxLayout()
+        btn_img_row.setSpacing(6)
+        self.btn_pick_mask_img = QPushButton("📁 Scegli Immagine PNG...")
+        self.btn_pick_mask_img.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_pick_mask_img.setStyleSheet("background: #334155; color: #ffffff; padding: 4px 8px; border-radius: 4px; font-size: 11px;")
+        self.btn_pick_mask_img.clicked.connect(self._pick_mask_image)
+        btn_img_row.addWidget(self.btn_pick_mask_img)
+
+        self.btn_clear_mask_img = QPushButton("✕ Rimuovi")
+        self.btn_clear_mask_img.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_clear_mask_img.setStyleSheet("background: #334155; color: #f87171; padding: 4px 8px; border-radius: 4px; font-size: 11px;")
+        self.btn_clear_mask_img.clicked.connect(self._clear_mask_image)
+        btn_img_row.addWidget(self.btn_clear_mask_img)
+        img_lay.addLayout(btn_img_row)
+
+        self.lbl_mask_path = QLabel("Nessun file selezionato")
+        self.lbl_mask_path.setStyleSheet("font-size: 10px; color: #94a3b8; font-style: italic;")
+        self.lbl_mask_path.setWordWrap(True)
+        img_lay.addWidget(self.lbl_mask_path)
+        self.mask_detail_lay.addWidget(self.image_mask_box)
+
+        mask_lay.addWidget(self.mask_detail_stack)
+        left_lay.addWidget(mask_frame)
+
+        # Group 5: Multi-Monitor Spanning Helper
         span_frame = QFrame()
         span_frame.setStyleSheet("background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
         span_lay = QVBoxLayout(span_frame)
@@ -911,7 +1056,16 @@ class SurfaceMappingDialog(QDialog):
         span_lay.addWidget(self.btn_span)
 
         left_lay.addWidget(span_frame)
-        body.addWidget(left_panel)
+
+        # Wrap left panel in resilient ScrollArea
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setFixedWidth(380)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setFrameShape(QFrame.Shape.NoFrame)
+        scroll_area.setStyleSheet("QScrollArea { background: #0f172a; border: 1px solid #334155; border-radius: 8px; }")
+        scroll_area.setWidget(left_panel)
+        body.addWidget(scroll_area)
 
         # Right Column: Visual Stage Canvas
         right_panel = QVBoxLayout()
@@ -920,7 +1074,7 @@ class SurfaceMappingDialog(QDialog):
         self.canvas = SurfaceCanvasWidget()
         right_panel.addWidget(self.canvas)
 
-        hint_lbl = QLabel("💡 Mouse: trascina i vertici C1..C4 o il riquadro direttamente sul canvas. Con i pulsanti o le frecce usi il micro-nudge. Passa tra Pixel e Percentuale in qualsiasi momento.")
+        hint_lbl = QLabel("💡 Mouse: trascina i vertici C1..C4 o il riquadro. Frecce per micro-nudge. Maschere: ritaglia in cerchio, crea forature interne o applica un file PNG.")
         hint_lbl.setStyleSheet("font-size: 11px; color: #94a3b8; font-style: italic;")
         right_panel.addWidget(hint_lbl)
 
@@ -992,41 +1146,22 @@ class SurfaceMappingDialog(QDialog):
         self._updating_ui = True
         w, h = self._output_res
         if self._unit_mode == "px":
-            self.spin_rx.setRange(0, w)
-            self.spin_rx.setDecimals(0)
-            self.spin_rx.setSuffix(" px")
-            self.spin_rx.setSingleStep(1)
-
-            self.spin_ry.setRange(0, h)
-            self.spin_ry.setDecimals(0)
-            self.spin_ry.setSuffix(" px")
-            self.spin_ry.setSingleStep(1)
-
+            for sp, limit in (
+                (self.spin_rx, w), (self.spin_rw, w), (self.spin_cx, w),
+                (self.spin_ry, h), (self.spin_rh, h), (self.spin_cy, h),
+            ):
+                sp.setRange(0, limit)
+                sp.setDecimals(0)
+                sp.setSuffix(" px")
+                sp.setSingleStep(1)
             self.spin_rw.setRange(1, w)
-            self.spin_rw.setDecimals(0)
-            self.spin_rw.setSuffix(" px")
-            self.spin_rw.setSingleStep(1)
-
             self.spin_rh.setRange(1, h)
-            self.spin_rh.setDecimals(0)
-            self.spin_rh.setSuffix(" px")
-            self.spin_rh.setSingleStep(1)
-
-            self.spin_cx.setRange(0, w)
-            self.spin_cx.setDecimals(0)
-            self.spin_cx.setSuffix(" px")
-            self.spin_cx.setSingleStep(1)
-
-            self.spin_cy.setRange(0, h)
-            self.spin_cy.setDecimals(0)
-            self.spin_cy.setSuffix(" px")
-            self.spin_cy.setSingleStep(1)
         else:
-            for s in (self.spin_rx, self.spin_ry, self.spin_rw, self.spin_rh, self.spin_cx, self.spin_cy):
-                s.setRange(0.0, 100.0)
-                s.setDecimals(1)
-                s.setSuffix(" %")
-                s.setSingleStep(0.5)
+            for sp in (self.spin_rx, self.spin_ry, self.spin_rw, self.spin_rh, self.spin_cx, self.spin_cy):
+                sp.setRange(0.0, 100.0)
+                sp.setDecimals(1)
+                sp.setSuffix(" %")
+                sp.setSingleStep(0.5)
         self._updating_ui = False
 
     # ── Internal State Helpers ────────────────────────────────────────
@@ -1042,7 +1177,15 @@ class SurfaceMappingDialog(QDialog):
         self.list_surfaces.clear()
         for idx, s in enumerate(self._surfaces):
             icon_str = "⬛" if s.mode == SurfaceMode.RECTANGLE.value else "⬡"
-            item = QListWidgetItem(f"{icon_str}  {s.name}")
+            mask_tag = ""
+            if s.mask_type == MaskType.ELLIPSE.value:
+                mask_tag = " [⭕]"
+            elif s.mask_type == MaskType.HOLE.value:
+                mask_tag = " [🔲]"
+            elif s.mask_type == MaskType.IMAGE.value:
+                mask_tag = " [🖼]"
+
+            item = QListWidgetItem(f"{icon_str}  {s.name}{mask_tag}")
             item.setData(Qt.ItemDataRole.UserRole, s.surface_id)
             self.list_surfaces.addItem(item)
             if s.surface_id == self._active_id:
@@ -1111,10 +1254,68 @@ class SurfaceMappingDialog(QDialog):
             self.spin_cy.setValue(self._to_display_y(c_pt[1]))
             self.coord_lay.addWidget(self.spin_cy, 1, 3)
 
+        # Update Mask Controls
+        idx = self.combo_mask_type.findData(s.mask_type)
+        if idx >= 0:
+            self.combo_mask_type.setCurrentIndex(idx)
+        else:
+            self.combo_mask_type.setCurrentIndex(0)
+
+        self.chk_mask_invert.setChecked(s.mask_invert)
+        self.spin_mask_feather.setValue(s.mask_feather)
+
+        # Update hole spins based on unit mode
+        if self._unit_mode == "px":
+            sw_px = max(1.0, float(self._output_res[0]) * s.w)
+            sh_px = max(1.0, float(self._output_res[1]) * s.h)
+            for sp, lim in ((self.spin_hx, sw_px), (self.spin_hw, sw_px), (self.spin_hy, sh_px), (self.spin_hh, sh_px)):
+                sp.setRange(0, lim)
+                sp.setSuffix(" px")
+                sp.setDecimals(0)
+            self.spin_hx.setValue(round(s.hole_x * sw_px))
+            self.spin_hy.setValue(round(s.hole_y * sh_px))
+            self.spin_hw.setValue(round(s.hole_w * sw_px))
+            self.spin_hh.setValue(round(s.hole_h * sh_px))
+        else:
+            for sp in (self.spin_hx, self.spin_hy, self.spin_hw, self.spin_hh):
+                sp.setRange(0.0, 100.0)
+                sp.setSuffix(" %")
+                sp.setDecimals(1)
+            self.spin_hx.setValue(round(s.hole_x * 100.0, 1))
+            self.spin_hy.setValue(round(s.hole_y * 100.0, 1))
+            self.spin_hw.setValue(round(s.hole_w * 100.0, 1))
+            self.spin_hh.setValue(round(s.hole_h * 100.0, 1))
+
+        if s.mask_image_path:
+            self.lbl_mask_path.setText(Path(s.mask_image_path).name)
+        else:
+            self.lbl_mask_path.setText("Nessun file selezionato")
+
+        self._refresh_mask_ui_visibility(s.mask_type)
+
         self.canvas.set_surfaces(self._surfaces, self._active_id)
         self.canvas.set_active_corner(self._active_corner)
         self._sync_to_output()
         self._updating_ui = False
+
+    def _refresh_mask_ui_visibility(self, mask_type: str) -> None:
+        is_none = (mask_type == MaskType.NONE.value)
+        is_ellipse = (mask_type == MaskType.ELLIPSE.value)
+        is_hole = (mask_type == MaskType.HOLE.value)
+        is_img = (mask_type == MaskType.IMAGE.value)
+
+        self.mask_detail_stack.setVisible(not is_none)
+        self.chk_mask_invert.setVisible(not is_none)
+        self.feather_box.setVisible(is_ellipse or is_hole)
+        self.hole_grid.setVisible(is_hole)
+        self.image_mask_box.setVisible(is_img)
+
+        if is_ellipse:
+            self.chk_mask_invert.setText("Inverti (Buca l'ellisse al centro)")
+        elif is_hole:
+            self.chk_mask_invert.setText("Inverti (Proietta solo nel buco)")
+        elif is_img:
+            self.chk_mask_invert.setText("Inverti Maschera PNG")
 
     def _sync_to_output(self) -> None:
         """Propagate current surface state live to the live OutputWindow."""
@@ -1166,6 +1367,7 @@ class SurfaceMappingDialog(QDialog):
         s.y = preset.get("y", 0.0)
         s.w = preset.get("w", 1.0)
         s.h = preset.get("h", 1.0)
+        s.mask_type = preset.get("mask_type", MaskType.NONE.value)
         s.sync_quad_from_rect()
         self._refresh_surface_list()
         self._load_active_surface_to_controls()
@@ -1202,6 +1404,82 @@ class SurfaceMappingDialog(QDialog):
         nx = self._from_display_x(self.spin_cx.value())
         ny = self._from_display_y(self.spin_cy.value())
         s.set_corner(self._active_corner, nx, ny)
+        self.canvas.update()
+        self._sync_to_output()
+
+    # Mask Slots
+    @Slot(int)
+    def _on_mask_type_changed(self, index: int) -> None:
+        if self._updating_ui:
+            return
+        m_type = self.combo_mask_type.currentData()
+        s = self._get_active_surface()
+        s.mask_type = m_type
+        self._refresh_mask_ui_visibility(m_type)
+        self._refresh_surface_list()
+        self.canvas.update()
+        self._sync_to_output()
+
+    @Slot(bool)
+    def _on_mask_invert_changed(self, checked: bool) -> None:
+        if self._updating_ui:
+            return
+        s = self._get_active_surface()
+        s.mask_invert = checked
+        self.canvas.update()
+        self._sync_to_output()
+
+    @Slot(float)
+    def _on_mask_feather_changed(self, val: float) -> None:
+        if self._updating_ui:
+            return
+        s = self._get_active_surface()
+        s.mask_feather = int(val)
+        self.canvas.update()
+        self._sync_to_output()
+
+    @Slot()
+    def _on_hole_spins_changed(self) -> None:
+        if self._updating_ui:
+            return
+        s = self._get_active_surface()
+        if self._unit_mode == "px":
+            sw_px = max(1.0, float(self._output_res[0]) * s.w)
+            sh_px = max(1.0, float(self._output_res[1]) * s.h)
+            s.hole_x = max(0.0, min(1.0, self.spin_hx.value() / sw_px))
+            s.hole_y = max(0.0, min(1.0, self.spin_hy.value() / sh_px))
+            s.hole_w = max(0.01, min(1.0, self.spin_hw.value() / sw_px))
+            s.hole_h = max(0.01, min(1.0, self.spin_hh.value() / sh_px))
+        else:
+            s.hole_x = max(0.0, min(1.0, self.spin_hx.value() / 100.0))
+            s.hole_y = max(0.0, min(1.0, self.spin_hy.value() / 100.0))
+            s.hole_w = max(0.01, min(1.0, self.spin_hw.value() / 100.0))
+            s.hole_h = max(0.01, min(1.0, self.spin_hh.value() / 100.0))
+        self.canvas.update()
+        self._sync_to_output()
+
+    @Slot()
+    def _pick_mask_image(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Seleziona Immagine Maschera (PNG / Immagine)",
+            "",
+            "Immagini (*.png *.jpg *.jpeg *.bmp *.webp);;Tutti i file (*.*)",
+        )
+        if file_path:
+            s = self._get_active_surface()
+            s.mask_image_path = file_path
+            self.lbl_mask_path.setText(Path(file_path).name)
+            self._refresh_surface_list()
+            self.canvas.update()
+            self._sync_to_output()
+
+    @Slot()
+    def _clear_mask_image(self) -> None:
+        s = self._get_active_surface()
+        s.mask_image_path = None
+        self.lbl_mask_path.setText("Nessun file selezionato")
+        self._refresh_surface_list()
         self.canvas.update()
         self._sync_to_output()
 
