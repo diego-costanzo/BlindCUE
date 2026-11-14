@@ -82,9 +82,8 @@ ui_preview_*.png
 ehthumbs.db
 Thumbs.db
 
-# IDE workspace files (keeps general .vscode/settings.json, ignores local user data)
-.vscode/*
-!.vscode/settings.json
+# IDE workspace files
+.vscode/
 .idea/
 *.sublime-project
 *.sublime-workspace
