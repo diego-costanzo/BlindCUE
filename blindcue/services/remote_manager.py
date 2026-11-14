@@ -102,7 +102,7 @@ class RemoteManager(QObject):
 
         # Security PIN & Anti-Burlone Controls (6-digit cryptographically secure PIN)
         self._pin_enabled: bool = True
-        self._pin: str = f"{secrets.randbelow(900000) + 100000}"
+        self._pin: str = f"{secrets.SystemRandom().randint(100000, 999999)}"
         self._qr_includes_pin: bool = True
         self._osc_pin_required: bool = False
         self._osc_allowed_ips: list[str] = []
@@ -176,7 +176,7 @@ class RemoteManager(QObject):
         return list(self._osc_allowed_ips)
 
     def generate_new_pin(self) -> str:
-        self._pin = f"{secrets.randbelow(900000) + 100000}"
+        self._pin = f"{secrets.SystemRandom().randint(100000, 999999)}"
         self.web_server.set_pin_protection(self._pin_enabled, self._pin)
         self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
         self.revoke_all_sessions()

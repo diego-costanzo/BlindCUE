@@ -27,8 +27,8 @@ from PySide6.QtCore import QObject, Signal
 
 logger = logging.getLogger("blindcue.web")
 
-# Maximum permitted HTTP request payload (64 KB) to protect against DoS
-MAX_HTTP_PAYLOAD_BYTES = 65536
+# Maximum permitted HTTP request payload (1 MB) to protect against DoS
+MAX_BODY_SIZE = 1024 * 1024
 
 # ── Embedded Mobile Web App (HTML5 + CSS3 + Vanilla ES6) ─────────────
 _HTML_PAGE = """<!DOCTYPE html>
@@ -2044,10 +2044,10 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
 
         try:
             length = int(self.headers.get("Content-Length", 0))
-            if length > MAX_HTTP_PAYLOAD_BYTES:
+            if length > MAX_BODY_SIZE:
                 self.send_error(413, "Payload Too Large")
                 return
-            raw_body = self.rfile.read(min(length, MAX_HTTP_PAYLOAD_BYTES))
+            raw_body = self.rfile.read(min(length, MAX_BODY_SIZE))
             data = json.loads(raw_body.decode("utf-8"))
         except Exception as exc:
             self.send_error(400, f"Malformed JSON: {exc}")
