@@ -11,6 +11,7 @@ import logging
 import os
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Any, ClassVar, Dict, Optional, Sequence
 
 logger = logging.getLogger(__name__)
@@ -176,6 +177,35 @@ class Cue:
     timeline_composed: bool = False  # GROUP cue configured/synced via multi-track studio timeline
     surface_id: str = "default"  # Target virtual screen / mapping surface ID ("default" = full screen)
 
+    # ── Path Resolution & Security ────────────────────────────────────
+    def resolve_media_path(self, project_root: str | Path) -> str:
+        """Resolve and validate relative media file_path against project_root.
+
+        Raises:
+            ValueError: If the resolved path escapes project_root (Path Traversal prevention).
+        """
+        root = Path(project_root).resolve()
+        p = Path(self.file_path)
+        if not p.is_absolute():
+            resolved = (root / p).resolve()
+            if not resolved.is_relative_to(root):
+                raise ValueError(
+                    f"Path traversal detected: '{self.file_path}' resolves outside project root '{root}'"
+                )
+            self.file_path = str(resolved)
+
+        if self.original_file_path:
+            orig_p = Path(self.original_file_path)
+            if not orig_p.is_absolute():
+                resolved_orig = (root / orig_p).resolve()
+                if not resolved_orig.is_relative_to(root):
+                    raise ValueError(
+                        f"Path traversal detected: '{self.original_file_path}' resolves outside project root '{root}'"
+                    )
+                self.original_file_path = str(resolved_orig)
+
+        return self.file_path
+
     # ── Validation ────────────────────────────────────────────────────
     def validate(self) -> list[str]:
         """Validate cue data and return a list of error strings (empty = valid).
@@ -296,7 +326,7 @@ class Cue:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Cue:
+    def from_dict(cls, data: Dict[str, Any], project_root: str | Path | None = None) -> Cue:
         """Deserialize a cue from a plain dict.
 
         The class-level counter is advanced past the loaded ID so that
@@ -374,6 +404,8 @@ class Cue:
         current_next = next(cls._id_counter)
         if isinstance(cue.cue_id, int) and cue.cue_id >= current_next:
             cls._id_counter = itertools.count(cue.cue_id + 1)
+        if project_root is not None and cue.media_type != MediaType.GROUP:
+            cue.resolve_media_path(project_root)
         return cue
 
     # ── Helpers ───────────────────────────────────────────────────────

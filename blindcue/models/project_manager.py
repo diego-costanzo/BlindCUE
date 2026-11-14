@@ -149,26 +149,24 @@ class ProjectManager:
             proj_dir = path.parent.resolve()
             for item in raw_cues:
                 try:
-                    cue = Cue.from_dict(item)
+                    cue = Cue.from_dict(item, project_root=proj_dir)
                     # Check if file exists at recorded absolute path
                     file_p = Path(cue.file_path)
                     if not file_p.is_file():
-                        # Attempt safe resolution relative to project directory (Anti-Path-Traversal)
-                        try:
-                            rel_candidate = (path.parent / file_p).resolve()
-                            if rel_candidate.is_file() and rel_candidate.is_relative_to(proj_dir):
-                                cue.file_path = str(rel_candidate)
-                            else:
-                                # Also check by base filename in the project folder
-                                base_candidate = (path.parent / file_p.name).resolve()
-                                if base_candidate.is_file() and base_candidate.is_relative_to(proj_dir):
-                                    cue.file_path = str(base_candidate)
-                        except (ValueError, OSError) as path_err:
-                            logger.debug("[PROJECT] Path resolution skipped for %s: %s", cue.file_path, path_err)
+                        # Attempt safe resolution by base filename in project folder
+                        base_candidate = (proj_dir / file_p.name).resolve()
+                        if not base_candidate.is_relative_to(proj_dir):
+                            raise ValueError(
+                                f"Path traversal detected: '{file_p.name}' resolves outside project root '{proj_dir}'"
+                            )
+                        if base_candidate.is_file():
+                            cue.file_path = str(base_candidate)
 
                     # Reset LIVE or PREVIZ runtime status to OFFLINE or LOADED
                     cue.status = CueStatus.LOADED if Path(cue.file_path).is_file() else CueStatus.OFFLINE
                     loaded_cues.append(cue)
+                except ValueError:
+                    raise
                 except Exception as cue_exc:
                     logger.warning("[PROJECT] Skipping invalid cue item: %s (%s)", item, cue_exc)
 
