@@ -62,6 +62,8 @@ from models.cue import (
     detect_layer_conflicts,
 )
 from models.project_manager import ProjectManager
+from models.surface import SurfaceDefinition, create_default_surface
+from ui.surface_mapping_dialog import SurfaceMappingDialog
 from ui.cue_list_panel import CueListPanel
 from ui.cue_table import (
     ROLE_CHILD_COUNT,
@@ -184,6 +186,10 @@ class MainWindow(QMainWindow):
 
         self._project_manager = ProjectManager()
         self._current_project_path: Optional[str] = None
+        if self._output and self._output.get_surfaces():
+            self._surfaces = [s.clone() for s in self._output.get_surfaces()]
+        else:
+            self._surfaces = [create_default_surface()]
         self._layer0_image: Optional[str] = None
         self._is_modified: bool = False
         self._updating_cue_list: bool = False
@@ -417,6 +423,8 @@ class MainWindow(QMainWindow):
         QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
+        QShortcut(QKeySequence(Qt.Key.Key_F7), self, self._open_surface_mapping_dialog)
+        QShortcut(QKeySequence("Shift+F7"), self, lambda: self._toggle_calibration_guides(not self._output.is_calibration_guides_visible()))
 
     def _is_text_input_focused(self) -> bool:
         focus_w = QApplication.focusWidget()
@@ -674,6 +682,20 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._act_earcons)
 
         view_menu.addSeparator()
+        self._act_surface_mapping = QAction("📐 &Studio Superfici di Proiezione & Mapping…", self)
+        self._act_surface_mapping.setShortcut(QKeySequence(Qt.Key.Key_F7))
+        self._act_surface_mapping.setToolTip("Gestisci schermi virtuali, keystone a 4 angoli e configurazioni multi-proiettore")
+        self._act_surface_mapping.triggered.connect(self._open_surface_mapping_dialog)
+        view_menu.addAction(self._act_surface_mapping)
+
+        self._act_calib_guides = QAction("👁 &Mostra Guide sul Proiettore Live", self, checkable=True)
+        self._act_calib_guides.setShortcut(QKeySequence("Shift+F7"))
+        self._act_calib_guides.setToolTip("Proietta mire ottiche, griglia di precisione e contorni delle superfici sul palco")
+        self._act_calib_guides.setChecked(self._output.is_calibration_guides_visible())
+        self._act_calib_guides.toggled.connect(self._toggle_calibration_guides)
+        view_menu.addAction(self._act_calib_guides)
+
+        view_menu.addSeparator()
         self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
         self._act_lock_layout.setChecked(True)
         self._act_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
@@ -777,6 +799,8 @@ class MainWindow(QMainWindow):
         self._inspector.normalize_cue_toggled.connect(self._on_normalize_cue_toggled)
         self._inspector.optimize_dynamics_requested.connect(self._on_optimize_dynamics_requested)
         self._inspector.restore_original_requested.connect(self._on_restore_original_requested)
+        self._inspector.open_surface_mapping_requested.connect(self._open_surface_mapping_dialog)
+        self._inspector.set_available_surfaces(self._surfaces)
         self._bind_inspector_aliases()
         top_splitter.addWidget(self._inspector)
 
@@ -1281,6 +1305,40 @@ class MainWindow(QMainWindow):
         """Open detailed hardware information dialog."""
         pref = self._device_mgr.get_profile_preference() if self._device_mgr else "auto"
         show_hardware_info_dialog(self, pref)
+
+    @Slot()
+    def _open_surface_mapping_dialog(self) -> None:
+        """Open the visual Surface Mapping & Virtual Screen Studio Dialog (F7)."""
+        dlg = SurfaceMappingDialog(self._output, surfaces=self._surfaces, parent=self)
+        dlg.surfaces_changed.connect(self._on_surfaces_updated)
+        if dlg.exec():
+            self._on_surfaces_updated(dlg._surfaces)
+        if hasattr(self, "_act_calib_guides"):
+            self._act_calib_guides.blockSignals(True)
+            self._act_calib_guides.setChecked(self._output.is_calibration_guides_visible())
+            self._act_calib_guides.blockSignals(False)
+
+    def _on_surfaces_updated(self, surfaces: list[SurfaceDefinition]) -> None:
+        """Propagate updated surfaces list to OutputWindow, Inspector, and modified show state."""
+        self._surfaces = [s.clone() for s in surfaces]
+        self._output.set_surfaces(self._surfaces)
+        self._inspector.set_available_surfaces(self._surfaces)
+        self._mark_modified(True)
+        if self._live_mirror_active:
+            self._mirror_active_cue_to_live()
+        else:
+            live_cues = [c for c in self._cues if c.status == CueStatus.LIVE]
+            for c in live_cues:
+                self._push_cue_to_output(c)
+
+    @Slot(bool)
+    def _toggle_calibration_guides(self, enabled: bool) -> None:
+        """Toggle live on-projector calibration overlay (Shift+F7)."""
+        self._output.set_calibration_guides_visible(enabled)
+        if hasattr(self, "_act_calib_guides"):
+            self._act_calib_guides.blockSignals(True)
+            self._act_calib_guides.setChecked(self._output.is_calibration_guides_visible())
+            self._act_calib_guides.blockSignals(False)
 
     def set_known_duration(self, file_path: str, dur_sec: float) -> None:
         if file_path and dur_sec > 0:
@@ -2411,6 +2469,7 @@ class MainWindow(QMainWindow):
 
     def _push_cue_to_output(self, cue: Cue) -> None:
         """Render an IMAGE or VIDEO cue onto its assigned output layer (mirror-safe)."""
+        surf_id = getattr(cue, "surface_id", "default") or "default"
         if cue.media_type == MediaType.IMAGE:
             self._output.show_image(
                 cue.layer,
@@ -2421,6 +2480,7 @@ class MainWindow(QMainWindow):
                 pos_x=cue.position_x,
                 pos_y=cue.position_y,
                 aspect_ratio=cue.aspect_ratio,
+                surface_id=surf_id,
             )
         elif cue.media_type == MediaType.VIDEO:
             if cue.status == CueStatus.LIVE:
@@ -2432,6 +2492,7 @@ class MainWindow(QMainWindow):
                     pos_y=cue.position_y,
                     opacity=cue.opacity,
                     aspect_ratio=cue.aspect_ratio,
+                    surface_id=surf_id,
                 )
             else:
                 frame_img = self._preview_monitor.current_video_frame()
@@ -2451,6 +2512,7 @@ class MainWindow(QMainWindow):
                         pos_x=cue.position_x,
                         pos_y=cue.position_y,
                         aspect_ratio=cue.aspect_ratio,
+                        surface_id=surf_id,
                     )
                 else:
                     # Wait for decoded Pre-Viz frame rather than flashing black video surface
@@ -3442,6 +3504,9 @@ class MainWindow(QMainWindow):
         self._cues.clear()
         self._current_index = -1
         self._current_project_path = None
+        self._surfaces = [create_default_surface()]
+        self._output.set_surfaces(self._surfaces)
+        self._inspector.set_available_surfaces(self._surfaces)
         self._on_reset_layer0()
         self._refresh_cue_list()
         self._reset_idle_preview_ui()
@@ -3479,6 +3544,14 @@ class MainWindow(QMainWindow):
                 self.set_layer0_image(layer0)
             else:
                 self._on_reset_layer0()
+
+            surfaces_raw = settings.get("surfaces") if isinstance(settings, dict) else None
+            if surfaces_raw:
+                self._surfaces = [SurfaceDefinition.from_dict(d) for d in surfaces_raw]
+            else:
+                self._surfaces = [create_default_surface()]
+            self._output.set_surfaces(self._surfaces)
+            self._inspector.set_available_surfaces(self._surfaces)
 
             self._refresh_cue_list(keep_selection=False)
             if 0 <= self._current_index < len(self._cues):
@@ -3518,11 +3591,13 @@ class MainWindow(QMainWindow):
     def _do_save(self, file_path: str) -> bool:
         self._apply_inspector_to_cue()
         settings = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+        settings["surfaces"] = [s.to_dict() for s in self._surfaces]
         success = self._project_manager.save_project(
             file_path,
             self._cues,
             current_index=self._current_index,
             settings=settings,
+            surfaces=self._surfaces,
         )
         if success:
             self._mark_modified(False)

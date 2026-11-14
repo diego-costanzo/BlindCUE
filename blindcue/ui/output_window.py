@@ -20,15 +20,20 @@ import os
 from pathlib import Path
 from typing import Callable, Optional
 
-from PySide6.QtCore import Qt, QRectF, QSizeF, QTimer
+from PySide6.QtCore import QPointF, QRectF, QSizeF, Qt, QTimer
 from PySide6.QtGui import (
     QBrush,
     QColor,
     QCursor,
+    QFont,
     QImage,
     QKeyEvent,
+    QPainter,
+    QPen,
     QPixmap,
+    QPolygonF,
     QScreen,
+    QTransform,
 )
 from PySide6.QtMultimediaWidgets import QGraphicsVideoItem
 from PySide6.QtWidgets import (
@@ -41,7 +46,14 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from ui.layout_math import compute_media_frame_geometry, parse_aspect_ratio
+from models.surface import (
+    DEFAULT_SURFACE_ID,
+    DEFAULT_SURFACE_NAME,
+    SurfaceDefinition,
+    SurfaceMode,
+    create_default_surface,
+)
+from ui.layout_math import MediaFrameGeometry, compute_media_frame_geometry, parse_aspect_ratio
 from ui.tappo_pattern import is_default_tappo_path, render_default_tappo_pixmap
 
 logger = logging.getLogger(__name__)
@@ -49,6 +61,197 @@ logger = logging.getLogger(__name__)
 # Resolve the default logo path relative to project root
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_LOGO = _PROJECT_ROOT / "immagini di progetto" / "BlindCue-logo.jpeg"
+
+
+class SurfaceCalibrationOverlayItem(QGraphicsItem):
+    """High-visibility projector calibration overlay for live on-stage alignment.
+
+    Draws:
+    - 10% crosshatch calibration grid with center target (+)
+    - 50% projector seam guide for dual-projector setups
+    - Real-time footprints of all defined surfaces (rectangles & 4-corner perspective quads)
+    - Corner reticles (C1..C4) with coordinate tags
+    - Centroid surface name badges
+    - Top calibration status banner
+    """
+
+    def __init__(self, output_window: "OutputWindow") -> None:
+        super().__init__()
+        self._output = output_window
+        self._active_surface_id: Optional[str] = None
+        self.setZValue(10000)
+        self.setVisible(False)
+
+    def set_active_surface_id(self, surface_id: Optional[str]) -> None:
+        self._active_surface_id = surface_id
+        self.update()
+
+    def boundingRect(self) -> QRectF:
+        w = max(1.0, float(self._output.width()))
+        h = max(1.0, float(self._output.height()))
+        return QRectF(0.0, 0.0, w, h)
+
+    def paint(self, painter: QPainter, option, widget=None) -> None:
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        w = max(1.0, float(self._output.width()))
+        h = max(1.0, float(self._output.height()))
+
+        # 1. Subtle projector alignment crosshatch grid (every 10%)
+        grid_pen = QPen(QColor(71, 85, 105, 130), 1, Qt.PenStyle.DashLine)
+        painter.setPen(grid_pen)
+        for i in range(1, 10):
+            gx = w * (i / 10.0)
+            gy = h * (i / 10.0)
+            painter.drawLine(QPointF(gx, 0), QPointF(gx, h))
+            painter.drawLine(QPointF(0, gy), QPointF(w, gy))
+
+        # Center optical crosshair (50%, 50%)
+        cx, cy = w * 0.5, h * 0.5
+        center_pen = QPen(QColor(255, 255, 255, 200), 2, Qt.PenStyle.SolidLine)
+        painter.setPen(center_pen)
+        painter.drawLine(QPointF(cx - 30, cy), QPointF(cx + 30, cy))
+        painter.drawLine(QPointF(cx, cy - 30), QPointF(cx, cy + 30))
+        painter.drawEllipse(QPointF(cx, cy), 16, 16)
+
+        # 2. Dual projector / multi-screen seam indicator (if wide aspect ratio >= 2.0)
+        if w / h >= 2.0:
+            seam_pen = QPen(QColor(244, 63, 94, 220), 2, Qt.PenStyle.DashDotLine)
+            painter.setPen(seam_pen)
+            painter.drawLine(QPointF(cx, 0), QPointF(cx, h))
+
+            # Seam banner
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(QBrush(QColor(15, 23, 42, 230)))
+            seam_badge = QRectF(cx - 100, 46, 200, 24)
+            painter.drawRoundedRect(seam_badge, 4, 4)
+            painter.setPen(QPen(QColor(244, 63, 94), 1))
+            painter.drawRoundedRect(seam_badge, 4, 4)
+            painter.setPen(QColor(255, 255, 255))
+            font_seam = QFont("sans-serif", 9)
+            font_seam.setBold(True)
+            painter.setFont(font_seam)
+            painter.drawText(seam_badge, Qt.AlignmentFlag.AlignCenter, "GIUNZIONE 50% (DUAL)")
+
+        # 3. Draw all defined virtual surfaces
+        surfaces = self._output.get_surfaces()
+        corner_names = ["C1 · TL", "C2 · TR", "C3 · BR", "C4 · BL"]
+
+        font_label = QFont("sans-serif", 10)
+        font_label.setBold(True)
+        font_corner = QFont("sans-serif", 9)
+        font_corner.setBold(True)
+
+        for s in surfaces:
+            is_active = (s.surface_id == self._active_surface_id)
+            base_col = QColor(s.color if s.color else "#00f0ff")
+            if is_active:
+                col = QColor(0, 240, 255) if base_col.name() != "#00f0ff" else QColor(245, 158, 11)
+                stroke_pen = QPen(col, 3, Qt.PenStyle.SolidLine)
+                fill_brush = QBrush(QColor(col.red(), col.green(), col.blue(), 45))
+            else:
+                col = base_col
+                stroke_pen = QPen(col, 2, Qt.PenStyle.DashLine)
+                fill_brush = QBrush(QColor(col.red(), col.green(), col.blue(), 15))
+
+            if s.mode == SurfaceMode.QUAD:
+                # 4-corner perspective quad
+                p0 = QPointF(w * s.corners[0][0], h * s.corners[0][1])
+                p1 = QPointF(w * s.corners[1][0], h * s.corners[1][1])
+                p2 = QPointF(w * s.corners[2][0], h * s.corners[2][1])
+                p3 = QPointF(w * s.corners[3][0], h * s.corners[3][1])
+                poly = QPolygonF([p0, p1, p2, p3])
+
+                painter.setPen(stroke_pen)
+                painter.setBrush(fill_brush)
+                painter.drawPolygon(poly)
+
+                # Optical center diagonals
+                diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 160), 1, Qt.PenStyle.DotLine)
+                painter.setPen(diag_pen)
+                painter.drawLine(p0, p2)
+                painter.drawLine(p1, p3)
+
+                corners = [p0, p1, p2, p3]
+                scx = (p0.x() + p1.x() + p2.x() + p3.x()) / 4.0
+                scy = (p0.y() + p1.y() + p2.y() + p3.y()) / 4.0
+                sw_px = int(w * s.w)
+                sh_px = int(h * s.h)
+
+            else:
+                # Rectangle mode
+                rx, ry = w * s.x, h * s.y
+                rw, rh = w * s.w, h * s.h
+                rect = QRectF(rx, ry, rw, rh)
+
+                painter.setPen(stroke_pen)
+                painter.setBrush(fill_brush)
+                painter.drawRect(rect)
+
+                # Diagonals
+                diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 160), 1, Qt.PenStyle.DotLine)
+                painter.setPen(diag_pen)
+                painter.drawLine(rect.topLeft(), rect.bottomRight())
+                painter.drawLine(rect.topRight(), rect.bottomLeft())
+
+                corners = [rect.topLeft(), rect.topRight(), rect.bottomRight(), rect.bottomLeft()]
+                scx, scy = rect.center().x(), rect.center().y()
+                sw_px, sh_px = int(rw), int(rh)
+
+            # Draw corner reticles
+            painter.setFont(font_corner)
+            for idx, cpt in enumerate(corners):
+                painter.setPen(QPen(col, 2, Qt.PenStyle.SolidLine))
+                painter.setBrush(QBrush(QColor(15, 23, 42, 220)))
+                painter.drawEllipse(cpt, 12, 12)
+                painter.drawLine(QPointF(cpt.x() - 18, cpt.y()), QPointF(cpt.x() + 18, cpt.y()))
+                painter.drawLine(QPointF(cpt.x(), cpt.y() - 18), QPointF(cpt.x(), cpt.y() + 18))
+
+                # Corner label
+                c_lbl = corner_names[idx]
+                offset_x = 16 if idx in (0, 3) else -70
+                offset_y = -16 if idx in (0, 1) else 24
+                lbl_rect = QRectF(cpt.x() + offset_x, cpt.y() + offset_y, 60, 20)
+                painter.setBrush(QBrush(QColor(15, 23, 42, 200)))
+                painter.setPen(QPen(col, 1))
+                painter.drawRoundedRect(lbl_rect, 3, 3)
+                painter.setPen(col)
+                painter.drawText(lbl_rect, Qt.AlignmentFlag.AlignCenter, c_lbl)
+
+            # Center optical target
+            painter.setPen(QPen(col, 2, Qt.PenStyle.SolidLine))
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            painter.drawEllipse(QPointF(scx, scy), 10, 10)
+            painter.drawLine(QPointF(scx - 16, scy), QPointF(scx + 16, scy))
+            painter.drawLine(QPointF(scx, scy - 16), QPointF(scx, scy + 16))
+
+            # Surface Name badge
+            badge_text = f"{s.name} [{sw_px}×{sh_px} px]"
+            painter.setFont(font_label)
+            bw = max(180, int(painter.fontMetrics().horizontalAdvance(badge_text) + 24))
+            bh = 28
+            badge_rect = QRectF(scx - bw / 2, scy - bh / 2, bw, bh)
+            painter.setBrush(QBrush(QColor(15, 23, 42, 230)))
+            painter.setPen(QPen(col, 2 if is_active else 1))
+            painter.drawRoundedRect(badge_rect, 5, 5)
+            painter.setPen(QColor(255, 255, 255))
+            painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
+
+        # 4. Top calibration status banner
+        banner_w = 480
+        banner_h = 32
+        banner_rect = QRectF((w - banner_w) / 2, 8, banner_w, banner_h)
+        painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
+        painter.setPen(QPen(QColor(0, 240, 255), 2))
+        painter.drawRoundedRect(banner_rect, 6, 6)
+        painter.setPen(QColor(255, 255, 255))
+        font_banner = QFont("sans-serif", 10)
+        font_banner.setBold(True)
+        painter.setFont(font_banner)
+        painter.drawText(
+            banner_rect,
+            Qt.AlignmentFlag.AlignCenter,
+            "📐 CALIBRAZIONE SUPERFICI LIVE · Premi F7 per Chiudere",
+        )
 
 
 class OutputWindow(QWidget):
@@ -95,16 +298,29 @@ class OutputWindow(QWidget):
         self._panic_black: bool = False
         self._build_layer0()
 
+        # ── Virtual Surfaces & Projection Mapping ────────────────────
+        self._surfaces: dict[str, SurfaceDefinition] = {
+            DEFAULT_SURFACE_ID: create_default_surface()
+        }
+        self._layer_surfaces: dict[int, str] = {
+            1: DEFAULT_SURFACE_ID,
+            2: DEFAULT_SURFACE_ID,
+            3: DEFAULT_SURFACE_ID,
+        }
+
         # ── Layers 1-3: Independent Video & Image Compositing ─────────
         self._layer_pixmaps: dict[int, QGraphicsPixmapItem] = {}
         self._video_containers: dict[int, QGraphicsRectItem] = {}
+        self._image_containers: dict[int, QGraphicsRectItem] = {}
         self._video_items: dict[int, QGraphicsVideoItem] = {}
         self._secondary_video_items: dict[int, QGraphicsVideoItem] = {}
         self._active_video_deck: dict[int, int] = {1: 0, 2: 0, 3: 0}
         self._deck_swap_timers: dict[int, QTimer] = {}
         self._video_layouts: dict[int, dict] = {}
+        self._image_layouts: dict[int, dict] = {}
 
         for layer in (1, 2, 3):
+            # Video container (clips child video items)
             container = QGraphicsRectItem()
             container.setPen(Qt.PenStyle.NoPen)
             container.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsChildrenToShape, True)
@@ -120,9 +336,23 @@ class OutputWindow(QWidget):
             self._video_containers[layer] = container
             self._video_items[layer] = v_item
 
+            # Image container (clips child pixmap items for rectangular & quad mapping)
+            img_container = QGraphicsRectItem()
+            img_container.setPen(Qt.PenStyle.NoPen)
+            img_container.setFlag(QGraphicsItem.GraphicsItemFlag.ItemClipsChildrenToShape, True)
+            img_container.setZValue(layer * 10 + 1)
+            self._scene.addItem(img_container)
+            img_container.hide()
+            self._image_containers[layer] = img_container
+            self._layer_pixmaps[layer] = QGraphicsPixmapItem(img_container)
+
         # Backward-compatibility aliases pointing to Layer 1
         self._video_container = self._video_containers[1]
         self._video_item = self._video_items[1]
+
+        # Live Projector Calibration Overlay (F7)
+        self._calibration_item = SurfaceCalibrationOverlayItem(self)
+        self._scene.addItem(self._calibration_item)
 
         # Per-layer fade timers (leak-proof & race-proof)
         self._video_fade_timers: dict[int, QTimer] = {}
@@ -260,15 +490,77 @@ class OutputWindow(QWidget):
 
     # ── Layers 1-3 (Images & Overlays) ────────────────────────────────
 
+    def _apply_surface_transform(
+        self,
+        container: QGraphicsRectItem,
+        surf: SurfaceDefinition,
+        nat_w: float,
+        nat_h: float,
+        scale: float = 1.0,
+        pos_x: float = 0.0,
+        pos_y: float = 0.0,
+        crop: Optional[dict] = None,
+        aspect_ratio: Optional[str] = None,
+    ) -> tuple[MediaFrameGeometry, QTransform]:
+        """Compute content geometry within surface and apply QTransform to container."""
+        win_w = max(1.0, float(self.width()))
+        win_h = max(1.0, float(self.height()))
+
+        if surf.mode == SurfaceMode.QUAD:
+            p0 = QPointF(win_w * surf.corners[0][0], win_h * surf.corners[0][1])
+            p1 = QPointF(win_w * surf.corners[1][0], win_h * surf.corners[1][1])
+            p2 = QPointF(win_w * surf.corners[2][0], win_h * surf.corners[2][1])
+            p3 = QPointF(win_w * surf.corners[3][0], win_h * surf.corners[3][1])
+
+            st_w = max(1.0, win_w * surf.w)
+            st_h = max(1.0, win_h * surf.h)
+
+            geom = compute_media_frame_geometry(
+                0.0, 0.0, st_w, st_h, nat_w, nat_h,
+                scale=scale, pos_x=pos_x, pos_y=pos_y, crop=crop, aspect_ratio=aspect_ratio,
+            )
+
+            src_poly = QPolygonF([
+                QPointF(0.0, 0.0),
+                QPointF(geom.vis_w, 0.0),
+                QPointF(geom.vis_w, geom.vis_h),
+                QPointF(0.0, geom.vis_h),
+            ])
+            dst_poly = QPolygonF([p0, p1, p2, p3])
+            xf = QTransform()
+            ok = QTransform.quadToQuad(src_poly, dst_poly, xf)
+            if not ok:
+                xf = QTransform()
+
+            container.setTransform(xf)
+            container.setRect(0.0, 0.0, geom.vis_w, geom.vis_h)
+            container.setPos(0.0, 0.0)
+            return geom, xf
+
+        else:
+            st_x = win_w * surf.x
+            st_y = win_h * surf.y
+            st_w = max(1.0, win_w * surf.w)
+            st_h = max(1.0, win_h * surf.h)
+
+            geom = compute_media_frame_geometry(
+                0.0, 0.0, st_w, st_h, nat_w, nat_h,
+                scale=scale, pos_x=pos_x, pos_y=pos_y, crop=crop, aspect_ratio=aspect_ratio,
+            )
+
+            container.setTransform(QTransform())
+            container.setRect(0.0, 0.0, geom.vis_w, geom.vis_h)
+            container.setPos(st_x + geom.vis_x, st_y + geom.vis_y)
+            return geom, QTransform()
+
     def clear_pixmap_layer(self, layer: int) -> None:
         """Remove any static image overlay and pending image fade on *layer*."""
         self._stop_timer_entry(self._layer_fade_timers, layer)
-        item = self._layer_pixmaps.pop(layer, None)
-        if item is not None:
-            try:
-                self._scene.removeItem(item)
-            except Exception:
-                pass
+        if layer in self._image_containers:
+            self._image_containers[layer].hide()
+        if layer in self._layer_pixmaps:
+            self._layer_pixmaps[layer].setPixmap(QPixmap())
+        self._image_layouts.pop(layer, None)
         self._update_tappo_visibility()
 
     def _apply_pixmap_to_layer(
@@ -281,63 +573,72 @@ class OutputWindow(QWidget):
         pos_x: float = 0.0,
         pos_y: float = 0.0,
         aspect_ratio: Optional[str] = None,
+        surface_id: Optional[str] = None,
         *,
         reuse_item: bool = False,
     ) -> None:
-        """Crop, scale, and composite *pix* onto *layer* without duplicating layout math."""
-        w, h = max(1, self.width()), max(1, self.height())
-        geom = compute_media_frame_geometry(
-            0.0, 0.0, w, h,
-            pix.width(), pix.height(),
-            scale=scale,
-            pos_x=pos_x,
-            pos_y=pos_y,
-            crop=crop,
-            aspect_ratio=aspect_ratio,
+        """Crop, scale, and composite *pix* onto *layer* mapped to surface."""
+        target_layer = layer if layer in self._image_containers else 1
+        surf_id = surface_id or self._layer_surfaces.get(target_layer, DEFAULT_SURFACE_ID)
+        self._layer_surfaces[target_layer] = surf_id
+        surf = self.get_surface(surf_id)
+
+        self._image_layouts[target_layer] = {
+            "pixmap": pix,
+            "opacity": opacity,
+            "crop": crop,
+            "scale": scale,
+            "pos_x": pos_x,
+            "pos_y": pos_y,
+            "aspect_ratio": aspect_ratio,
+            "surface_id": surf_id,
+        }
+
+        img_container = self._image_containers[target_layer]
+        geom, _ = self._apply_surface_transform(
+            img_container, surf, pix.width(), pix.height(),
+            scale=scale, pos_x=pos_x, pos_y=pos_y, crop=crop, aspect_ratio=aspect_ratio,
         )
 
+        eff_pix = pix
         if crop and (crop.get("w", 1.0) < 0.9999 or crop.get("h", 1.0) < 0.9999
                      or crop.get("x", 0.0) > 0.0001 or crop.get("y", 0.0) > 0.0001):
             cw = max(1, int(round(pix.width() * crop.get("w", 1.0))))
             ch = max(1, int(round(pix.height() * crop.get("h", 1.0))))
             cx = max(0, min(pix.width() - 1, int(round(pix.width() * crop.get("x", 0.0)))))
             cy = max(0, min(pix.height() - 1, int(round(pix.height() * crop.get("y", 0.0)))))
-            pix = pix.copy(cx, cy, cw, ch)
+            eff_pix = pix.copy(cx, cy, cw, ch)
 
-        scaled = pix.scaled(
+        scaled = eff_pix.scaled(
             max(1, int(round(geom.vis_w))),
             max(1, int(round(geom.vis_h))),
             Qt.AspectRatioMode.IgnoreAspectRatio,
             Qt.TransformationMode.SmoothTransformation,
         )
 
-        self._stop_timer_entry(self._layer_fade_timers, layer)
-        if layer in self._video_containers and self._video_containers[layer].isVisible():
-            self._video_containers[layer].hide()
+        self._stop_timer_entry(self._layer_fade_timers, target_layer)
+        if target_layer in self._video_containers and self._video_containers[target_layer].isVisible():
+            self._video_containers[target_layer].hide()
 
         clamped_op = max(0.0, min(1.0, opacity))
-        existing = self._layer_pixmaps.get(layer) if reuse_item else None
-        if existing is not None:
-            existing.setPixmap(scaled)
-            existing.setOpacity(clamped_op)
-            existing.setZValue(layer * 10)
-            existing.setPos(geom.vis_x, geom.vis_y)
-            existing.show()
-        else:
-            self.clear_pixmap_layer(layer)
-            item = self._scene.addPixmap(scaled)
-            item.setOpacity(clamped_op)
-            item.setZValue(layer * 10)
-            item.setPos(geom.vis_x, geom.vis_y)
-            self._layer_pixmaps[layer] = item
+        item = self._layer_pixmaps.get(target_layer)
+        if item is None:
+            item = QGraphicsPixmapItem(img_container)
+            self._layer_pixmaps[target_layer] = item
+
+        item.setPixmap(scaled)
+        item.setOpacity(clamped_op)
+        item.setPos(0.0, 0.0)
+        img_container.show()
 
         self._update_tappo_visibility()
 
     def show_image(self, layer: int, file_path: str, opacity: float = 1.0,
                    crop: Optional[dict] = None, scale: float = 1.0,
                    pos_x: float = 0.0, pos_y: float = 0.0,
-                   aspect_ratio: Optional[str] = None) -> None:
-        """Display a static image on layer 1, 2, or 3 with transforms."""
+                   aspect_ratio: Optional[str] = None,
+                   surface_id: Optional[str] = None) -> None:
+        """Display a static image on layer 1, 2, or 3 with transforms and surface mapping."""
         try:
             if not os.path.isfile(file_path):
                 logger.warning("[OUTPUT] Image file not found: %s", file_path)
@@ -351,17 +652,19 @@ class OutputWindow(QWidget):
                 layer, pix,
                 opacity=opacity, crop=crop, scale=scale,
                 pos_x=pos_x, pos_y=pos_y, aspect_ratio=aspect_ratio,
+                surface_id=surface_id,
                 reuse_item=False,
             )
-            logger.info("[OUTPUT] Displayed image on Layer %d: %s (pos=%.2f,%.2f, scale=%.2f, op=%.2f, ar=%s)",
-                        layer, file_path, pos_x, pos_y, scale, opacity, aspect_ratio or "Native")
+            logger.info("[OUTPUT] Displayed image on Layer %d: %s (surf=%s, pos=%.2f,%.2f, scale=%.2f, op=%.2f, ar=%s)",
+                        layer, file_path, surface_id or "default", pos_x, pos_y, scale, opacity, aspect_ratio or "Native")
         except Exception as exc:
             logger.error("[OUTPUT] show_image() failed on layer %d: %s", layer, exc)
 
     def show_mirrored_frame(self, layer: int, frame_image: QImage, opacity: float = 1.0,
                             crop: Optional[dict] = None, scale: float = 1.0,
                             pos_x: float = 0.0, pos_y: float = 0.0,
-                            aspect_ratio: Optional[str] = None) -> None:
+                            aspect_ratio: Optional[str] = None,
+                            surface_id: Optional[str] = None) -> None:
         """Mirror a decoded Pre-Viz QImage video frame onto *layer* without blank video black-screen."""
         try:
             if frame_image is None or frame_image.isNull():
@@ -373,6 +676,7 @@ class OutputWindow(QWidget):
                 layer, pix,
                 opacity=opacity, crop=crop, scale=scale,
                 pos_x=pos_x, pos_y=pos_y, aspect_ratio=aspect_ratio,
+                surface_id=surface_id,
                 reuse_item=True,
             )
         except Exception as exc:
@@ -380,13 +684,15 @@ class OutputWindow(QWidget):
 
     def ensure_live_video_visible(self, layer: int, scale: float = 1.0, crop: Optional[dict] = None,
                                   pos_x: float = 0.0, pos_y: float = 0.0,
-                                  opacity: float = 1.0, aspect_ratio: Optional[str] = None) -> None:
+                                  opacity: float = 1.0, aspect_ratio: Optional[str] = None,
+                                  surface_id: Optional[str] = None) -> None:
         """Restore live video visibility on *layer* without disturbing an active loop deck."""
         target_layer = layer if layer in self._video_containers else 1
         self.clear_pixmap_layer(target_layer)
         self.update_video_layout(
             scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
             opacity=opacity, layer=target_layer, aspect_ratio=aspect_ratio,
+            surface_id=surface_id,
         )
         self._video_containers[target_layer].show()
         self._update_tappo_visibility()
@@ -474,9 +780,12 @@ class OutputWindow(QWidget):
     def set_layer_opacity(self, layer: int, opacity: float) -> None:
         """Set live visual opacity (0.0-1.0) on active image or video item on *layer*."""
         op = max(0.0, min(1.0, float(opacity)))
-        img_item = self._layer_pixmaps.get(layer)
-        if img_item is not None:
-            img_item.setOpacity(op)
+        if layer in self._image_containers and self._image_containers[layer].isVisible():
+            if layer in self._image_layouts:
+                self._image_layouts[layer]["opacity"] = op
+            item = self._layer_pixmaps.get(layer)
+            if item is not None:
+                item.setOpacity(op)
         if layer in self._video_containers:
             if layer in self._video_layouts:
                 self._video_layouts[layer]["opacity"] = op
@@ -486,8 +795,9 @@ class OutputWindow(QWidget):
     def show_video_widget(self, scale: float = 1.0, crop: Optional[dict] = None,
                           pos_x: float = 0.0, pos_y: float = 0.0,
                           opacity: float = 1.0, layer: int = 1,
-                          aspect_ratio: Optional[str] = None) -> None:
-        """Show the video item for *layer* with scale, crop, pos, opacity, and aspect ratio."""
+                          aspect_ratio: Optional[str] = None,
+                          surface_id: Optional[str] = None) -> None:
+        """Show the video item for *layer* with scale, crop, pos, opacity, aspect ratio, and surface."""
         target_layer = layer if layer in self._video_containers else 1
         self._stop_timer_entry(self._video_fade_timers, target_layer)
         self._stop_timer_entry(self._deck_swap_timers, target_layer)
@@ -501,6 +811,7 @@ class OutputWindow(QWidget):
         self.update_video_layout(
             scale=scale, crop=crop, pos_x=pos_x, pos_y=pos_y,
             opacity=opacity, layer=target_layer, aspect_ratio=aspect_ratio,
+            surface_id=surface_id,
         )
         self._video_containers[target_layer].show()
         self._update_tappo_visibility()
@@ -508,10 +819,15 @@ class OutputWindow(QWidget):
     def update_video_layout(self, scale: float = 1.0, crop: Optional[dict] = None,
                             pos_x: float = 0.0, pos_y: float = 0.0,
                             opacity: float = 1.0, layer: int = 1,
-                            aspect_ratio: Optional[str] = None) -> None:
-        """Update geometry, scaling, position, opacity, crop mask, and aspect ratio for *layer* video."""
+                            aspect_ratio: Optional[str] = None,
+                            surface_id: Optional[str] = None) -> None:
+        """Update geometry, scaling, position, opacity, crop mask, and aspect ratio for *layer* video mapped to surface."""
         try:
             target_layer = layer if layer in self._video_containers else 1
+            surf_id = surface_id or self._layer_surfaces.get(target_layer, DEFAULT_SURFACE_ID)
+            self._layer_surfaces[target_layer] = surf_id
+            surf = self.get_surface(surf_id)
+
             self._last_scale = scale
             self._last_crop = crop
             self._video_layouts[target_layer] = {
@@ -521,6 +837,7 @@ class OutputWindow(QWidget):
                 "pos_y": pos_y,
                 "opacity": opacity,
                 "aspect_ratio": aspect_ratio,
+                "surface_id": surf_id,
             }
             win_w = max(1, self.width())
             win_h = max(1, self.height())
@@ -534,18 +851,10 @@ class OutputWindow(QWidget):
             nat_w = nat.width() if (nat.isValid() and nat.width() > 0) else float(win_w)
             nat_h = nat.height() if (nat.isValid() and nat.height() > 0) else float(win_h)
 
-            geom = compute_media_frame_geometry(
-                0.0, 0.0, win_w, win_h,
-                nat_w, nat_h,
-                scale=scale,
-                pos_x=pos_x,
-                pos_y=pos_y,
-                crop=crop,
-                aspect_ratio=aspect_ratio,
+            geom, _ = self._apply_surface_transform(
+                container, surf, nat_w, nat_h,
+                scale=scale, pos_x=pos_x, pos_y=pos_y, crop=crop, aspect_ratio=aspect_ratio,
             )
-
-            container.setRect(0, 0, geom.vis_w, geom.vis_h)
-            container.setPos(geom.vis_x, geom.vis_y)
 
             ar_mode = (
                 Qt.AspectRatioMode.KeepAspectRatio
@@ -574,7 +883,100 @@ class OutputWindow(QWidget):
                 opacity=cfg["opacity"],
                 layer=layer,
                 aspect_ratio=cfg.get("aspect_ratio"),
+                surface_id=cfg.get("surface_id"),
             )
+
+    def _reapply_image_layout(self, layer: int) -> None:
+        container = self._image_containers.get(layer)
+        if container is not None and container.isVisible() and layer in self._image_layouts:
+            cfg = self._image_layouts[layer]
+            pix = cfg.get("pixmap")
+            if pix is not None and not pix.isNull():
+                self._apply_pixmap_to_layer(
+                    layer,
+                    pix,
+                    opacity=cfg.get("opacity", 1.0),
+                    crop=cfg.get("crop"),
+                    scale=cfg.get("scale", 1.0),
+                    pos_x=cfg.get("pos_x", 0.0),
+                    pos_y=cfg.get("pos_y", 0.0),
+                    aspect_ratio=cfg.get("aspect_ratio"),
+                    surface_id=cfg.get("surface_id"),
+                    reuse_item=True,
+                )
+
+    # ── Virtual Surfaces & Calibration API ────────────────────────────
+
+    def set_surfaces(self, surfaces: list[SurfaceDefinition]) -> None:
+        """Update active virtual surfaces list and dynamically re-map all live layers."""
+        new_map: dict[str, SurfaceDefinition] = {}
+        for s in surfaces:
+            new_map[s.surface_id] = s.clone()
+        if DEFAULT_SURFACE_ID not in new_map:
+            new_map[DEFAULT_SURFACE_ID] = create_default_surface()
+        self._surfaces = new_map
+
+        for layer in (1, 2, 3):
+            self._reapply_video_layout(layer)
+            self._reapply_image_layout(layer)
+
+        if self._calibration_item.isVisible():
+            self._calibration_item.update()
+
+    def get_surfaces(self) -> list[SurfaceDefinition]:
+        """Return list of all configured surfaces."""
+        return list(self._surfaces.values())
+
+    def get_surface(self, surface_id: Optional[str]) -> SurfaceDefinition:
+        """Retrieve surface by ID with fallback to default full screen."""
+        if not surface_id:
+            surface_id = DEFAULT_SURFACE_ID
+        return self._surfaces.get(surface_id) or self._surfaces.get(DEFAULT_SURFACE_ID) or create_default_surface()
+
+    def set_calibration_guides_visible(self, visible: bool, active_surface_id: Optional[str] = None) -> None:
+        """Show or hide the high-visibility projector calibration overlay."""
+        self._calibration_item.set_active_surface_id(active_surface_id)
+        self._calibration_item.setVisible(visible)
+        self._calibration_item.update()
+
+    def is_calibration_guides_visible(self) -> bool:
+        """Return True if on-projector calibration overlay is active."""
+        return self._calibration_item.isVisible()
+
+    def toggle_calibration_guides(self) -> bool:
+        """Toggle live calibration overlay on the projector output."""
+        new_state = not self._calibration_item.isVisible()
+        self.set_calibration_guides_visible(new_state)
+        return new_state
+
+    def span_all_screens(self) -> bool:
+        """Span output window seamlessly across all connected external monitors/projectors."""
+        from PySide6.QtWidgets import QApplication
+        screens = QApplication.screens()
+        if len(screens) <= 1:
+            logger.info("[OUTPUT] Only 1 screen detected; cannot span multi-monitor.")
+            return False
+
+        primary = QApplication.primaryScreen()
+        external_screens = [s for s in screens if s != primary]
+        target_screens = external_screens if external_screens else screens
+
+        combined_geo = target_screens[0].geometry()
+        for s in target_screens[1:]:
+            combined_geo = combined_geo.united(s.geometry())
+
+        self._is_external = True
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Window
+        )
+        self.setGeometry(combined_geo)
+        self.setCursor(QCursor(Qt.CursorShape.BlankCursor))
+        self.show()
+        self._fit_layer0()
+        logger.info("[OUTPUT] Spanned across %d displays: %s", len(target_screens), combined_geo)
+        return True
 
     def hide_video_widget(self, layer: int = 1) -> None:
         """Hide the video item on *layer* and check if Layer 0 should reappear."""
@@ -876,6 +1278,9 @@ class OutputWindow(QWidget):
         self._fit_layer0()
         for layer in (1, 2, 3):
             self._reapply_video_layout(layer)
+            self._reapply_image_layout(layer)
+        if self._calibration_item.isVisible():
+            self._calibration_item.update()
 
     def closeEvent(self, event) -> None:  # noqa: N802
         if self._force_close_allowed or not self._is_external:
@@ -885,6 +1290,10 @@ class OutputWindow(QWidget):
             event.ignore()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
+        if event.key() == Qt.Key.Key_F7:
+            self.toggle_calibration_guides()
+            event.accept()
+            return
         if event.key() == Qt.Key.Key_Escape:
             if not self._is_external:
                 event.accept()

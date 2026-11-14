@@ -174,6 +174,7 @@ class Cue:
     auto_gain_db: float = 0.0  # Computed gain adjustment in dB to reach target (-16 LUFS)
     original_file_path: Optional[str] = None  # Backup of original path if dynamics-optimized copy is used
     timeline_composed: bool = False  # GROUP cue configured/synced via multi-track studio timeline
+    surface_id: str = "default"  # Target virtual screen / mapping surface ID ("default" = full screen)
 
     # ── Validation ────────────────────────────────────────────────────
     def validate(self) -> list[str]:
@@ -291,6 +292,7 @@ class Cue:
             "auto_gain_db": round(float(self.auto_gain_db), 2),
             "original_file_path": self.original_file_path,
             "timeline_composed": self.timeline_composed,
+            "surface_id": self.surface_id,
         }
 
     @classmethod
@@ -366,6 +368,7 @@ class Cue:
             auto_gain_db=float(data.get("auto_gain_db", 0.0) or 0.0),
             original_file_path=data.get("original_file_path"),
             timeline_composed=bool(data.get("timeline_composed", False)),
+            surface_id=str(data.get("surface_id", "default") or "default"),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)

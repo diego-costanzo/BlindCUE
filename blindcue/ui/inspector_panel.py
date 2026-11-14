@@ -195,6 +195,7 @@ class CueInspectorPanel(QGroupBox):
     normalize_cue_toggled = Signal(bool)
     optimize_dynamics_requested = Signal()
     restore_original_requested = Signal()
+    open_surface_mapping_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
@@ -571,6 +572,22 @@ class CueInspectorPanel(QGroupBox):
         lay.addWidget(self.lbl_visual_guide)
 
         c1, l1 = self._make_card("1 · POSIZIONAMENTO, ZOOM & TRASPARENZA")
+
+        surf_row = QHBoxLayout()
+        surf_row.setSpacing(8)
+        lbl_surf = self._make_field_label("Superficie:")
+        lbl_surf.setFixedWidth(64)
+        surf_row.addWidget(lbl_surf)
+        self.combo_surface = QComboBox()
+        self.combo_surface.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.combo_surface.setToolTip("Assegna la cue a uno schermo virtuale o superficie di proiezione/mapping")
+        self.combo_surface.currentIndexChanged.connect(lambda: self._on_field_edited("surface_id"))
+        surf_row.addWidget(self.combo_surface, stretch=1)
+        self.btn_manage_surfaces = self._make_nudge_btn("📐 Gestisci...", "Apri lo Studio Superfici di Proiezione & Video Mapping (F7)")
+        self.btn_manage_surfaces.clicked.connect(self.open_surface_mapping_requested.emit)
+        surf_row.addWidget(self.btn_manage_surfaces)
+        l1.addLayout(surf_row)
+
         pos_grid = QGridLayout()
         pos_grid.setHorizontalSpacing(8)
         pos_grid.addWidget(self._make_field_label("Pos X:"), 0, 0)
@@ -1660,6 +1677,25 @@ class CueInspectorPanel(QGroupBox):
             self.spin_fade_out.setValue(max(0.0, float(fade_out)))
             self.spin_fade_out.blockSignals(False)
 
+    def set_available_surfaces(self, surfaces: list[Any]) -> None:
+        """Populate the surface selection combo box with available virtual surfaces."""
+        cur_id = self.combo_surface.currentData()
+        self.combo_surface.blockSignals(True)
+        self.combo_surface.clear()
+        for s in surfaces:
+            s_id = getattr(s, "surface_id", None) or (s.get("surface_id", "default") if isinstance(s, dict) else "default")
+            s_name = getattr(s, "name", None) or (s.get("name", "Schermo") if isinstance(s, dict) else "Schermo")
+            s_mode = getattr(s, "mode", None) or (s.get("mode", "RECTANGLE") if isinstance(s, dict) else "RECTANGLE")
+            icon = "⬛" if s_mode == "RECTANGLE" else "⬡"
+            self.combo_surface.addItem(f"{icon} {s_name}", s_id)
+
+        idx = self.combo_surface.findData(cur_id)
+        if idx >= 0:
+            self.combo_surface.setCurrentIndex(idx)
+        elif self.combo_surface.count() > 0:
+            self.combo_surface.setCurrentIndex(0)
+        self.combo_surface.blockSignals(False)
+
     def sync_header_and_text(self, row: int, cue: Cue) -> None:
         ref = format_cue_ref(row, cue)
         self._updating = True
@@ -1729,6 +1765,7 @@ class CueInspectorPanel(QGroupBox):
         self.edit_cue_notes.setEnabled(identity_enabled)
 
         all_media_controls = (
+            self.combo_surface, self.btn_manage_surfaces,
             self.spin_pos_x, self.spin_pos_y,
             self.btn_nudge_left, self.btn_nudge_up, self.btn_nudge_down,
             self.btn_nudge_right, self.btn_pos_center,
@@ -1774,6 +1811,7 @@ class CueInspectorPanel(QGroupBox):
         self.spin_post_delay.setEnabled(True)
 
         visual_controls = (
+            self.combo_surface, self.btn_manage_surfaces,
             self.spin_pos_x, self.spin_pos_y,
             self.btn_nudge_left, self.btn_nudge_up, self.btn_nudge_down,
             self.btn_nudge_right, self.btn_pos_center,
@@ -1846,6 +1884,14 @@ class CueInspectorPanel(QGroupBox):
             )
 
     def _populate_media_fields(self, cue: Cue) -> None:
+        surf_idx = self.combo_surface.findData(getattr(cue, "surface_id", "default") or "default")
+        self.combo_surface.blockSignals(True)
+        if surf_idx >= 0:
+            self.combo_surface.setCurrentIndex(surf_idx)
+        elif self.combo_surface.count() > 0:
+            self.combo_surface.setCurrentIndex(0)
+        self.combo_surface.blockSignals(False)
+
         self.spin_pos_x.setValue(cue.position_x)
         self.spin_pos_y.setValue(cue.position_y)
         self.slider_scale.setValue(int(cue.scale * 100))
@@ -2094,6 +2140,10 @@ class CueInspectorPanel(QGroupBox):
         ar_data = self.combo_aspect.currentData()
         cue.aspect_ratio = ar_data if ar_data is not None else None
 
+        surf_data = self.combo_surface.currentData()
+        if surf_data:
+            cue.surface_id = str(surf_data)
+
     def _apply_loop_to_cue(self, cue: Cue) -> None:
         cue.loop = self.chk_loop.isChecked()
         if cue.loop:
@@ -2185,6 +2235,9 @@ class CueInspectorPanel(QGroupBox):
             elif field_key == "aspect_ratio":
                 ar_data = self.combo_aspect.currentData()
                 cue.aspect_ratio = ar_data if ar_data is not None else None
+            elif field_key == "surface_id":
+                s_id = self.combo_surface.currentData() or "default"
+                cue.surface_id = str(s_id)
             elif field_key == "group_q":
                 cue.q_label = self.edit_group_q.text().strip()
             elif field_key == "group_name":

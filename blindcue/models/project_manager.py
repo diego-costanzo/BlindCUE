@@ -82,13 +82,20 @@ class ProjectManager:
         cues: List[Cue],
         current_index: int = -1,
         settings: Optional[Dict[str, Any]] = None,
+        surfaces: Optional[List[Any]] = None,
     ) -> bool:
-        """Save show cues and project state to a .blindcue JSON file.
+        """Save show cues, project state, and virtual surfaces to a .blindcue JSON file.
 
         Returns True on success, False on error.
         """
         path = Path(file_path)
         try:
+            eff_settings = dict(settings or {})
+            if surfaces is not None:
+                eff_settings["surfaces"] = [
+                    s.to_dict() if hasattr(s, "to_dict") else s for s in surfaces
+                ]
+
             project_data: Dict[str, Any] = {
                 "app": APP_NAME,
                 "schema_version": SCHEMA_VERSION,
@@ -96,7 +103,8 @@ class ProjectManager:
                 "project_name": path.stem,
                 "current_cue_index": current_index,
                 "cues_count": len(cues),
-                "settings": settings or {},
+                "settings": eff_settings,
+                "surfaces": eff_settings.get("surfaces", []),
                 "cues": [cue.to_dict() for cue in cues],
             }
 
@@ -133,6 +141,8 @@ class ProjectManager:
 
             current_index = data.get("current_cue_index", -1)
             settings = data.get("settings", {})
+            if "surfaces" in data and "surfaces" not in settings:
+                settings["surfaces"] = data["surfaces"]
             raw_cues = data.get("cues", [])
 
             loaded_cues: List[Cue] = []

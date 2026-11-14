@@ -389,6 +389,7 @@ def main() -> int:
                         opacity=init_op,
                         layer=layer,
                         aspect_ratio=cue.aspect_ratio,
+                        surface_id=cue.surface_id,
                     )
                     lp.load(
                         cue.file_path,
@@ -431,6 +432,7 @@ def main() -> int:
                     pos_x=cue.position_x,
                     pos_y=cue.position_y,
                     aspect_ratio=cue.aspect_ratio,
+                    surface_id=cue.surface_id,
                 )
                 anim_end = max(
                     cue.fade_in,
