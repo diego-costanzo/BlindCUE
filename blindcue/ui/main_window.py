@@ -90,6 +90,7 @@ from ui.hardware_info import (
     show_about_dialog,
     show_hardware_info_dialog,
 )
+from ui.hold_button import HoldProgressButton
 from ui.inspector_panel import CueInspectorPanel
 from ui.live_show_view import LiveShowPanel
 from ui.live_status_panel import LiveStatusPanel
@@ -756,24 +757,32 @@ class MainWindow(QMainWindow):
         self._btn_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
         sb.addWidget(self._btn_lock_layout)
 
-        self._btn_jam_mode = QPushButton("🎚 Jam Mode: OFF")
-        self._btn_jam_mode.setCheckable(True)
-        self._btn_jam_mode.setChecked(False)
-        self._btn_jam_mode.setFixedHeight(22)
-        self._btn_jam_mode.setMinimumWidth(130)
-        self._btn_jam_mode.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_jam_mode.setStyleSheet(
-            "QPushButton { background-color: #16202e; color: #94a3b8; border: 1px solid #2d3e56; "
-            "border-radius: 4px; font-size: 11px; font-weight: bold; padding: 2px 8px; } "
-            "QPushButton:hover { background-color: #24354c; color: #ffffff; border-color: #38bdf8; } "
-            "QPushButton:checked { background-color: #064e3b; color: #34d399; border: 1px solid #10b981; }"
+        self._btn_jam_mode = HoldProgressButton(
+            text_idle="🎚 Jam: OFF (Tieni 5s)",
+            text_active="🎚 Jam Mode: ATTIVO",
+            hold_ms=5000,
+            deactivate_hold_ms=1500,
+            is_toggle=True,
+            initial_state=False,
+            color_idle="#16202e",
+            border_idle="#2d3e56",
+            text_color_idle="#94a3b8",
+            color_active="#064e3b",
+            border_active="#10b981",
+            text_color_active="#34d399",
+            fill_color="#10b981",
         )
+        self._btn_jam_mode.setFixedHeight(22)
+        self._btn_jam_mode.setMinimumWidth(160)
+        self._btn_jam_mode.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
         self._btn_jam_mode.setToolTip(
             "Modalità Jam / Contest (Default: OFF).\n"
+            "PROTEZIONE REGIA: Tieni premuto per 5 secondi per attivare.\n"
             "Quando attiva, applica automaticamente il livellamento sonoro EBU R128 (-16 LUFS)\n"
-            "su tutti i media per evitare salti improvvisi di volume durante contest o jam session."
+            "su tutti i media per evitare salti improvvisi di volume durante contest o jam session.\n"
+            "Per disattivare: tieni premuto 1.5 secondi."
         )
-        self._btn_jam_mode.toggled.connect(self._set_jam_mode)
+        self._btn_jam_mode.toggled_state.connect(self._set_jam_mode)
         sb.addWidget(self._btn_jam_mode)
 
         self._status_label = QLabel("Ready — No show loaded")
@@ -2993,8 +3002,7 @@ class MainWindow(QMainWindow):
             self._act_jam_mode.blockSignals(False)
         if hasattr(self, "_btn_jam_mode"):
             self._btn_jam_mode.blockSignals(True)
-            self._btn_jam_mode.setChecked(enabled)
-            self._btn_jam_mode.setText("🎚 Jam Mode: ATTIVO" if enabled else "🎚 Jam Mode: OFF")
+            self._btn_jam_mode.set_active(enabled, silent=True)
             self._btn_jam_mode.blockSignals(False)
 
         if enabled:

@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from models.cue import Cue, MediaType
+from ui.hold_button import HoldProgressButton
 from ui.theme import CLR_LIVE, CLR_PREVIZ
 
 
@@ -68,6 +69,7 @@ class _LiveLayerBar(QWidget):
         self._phase: str = ""  # "" (normal), "PRE" (Pre-Delay), "POST" (Post-Delay)
 
         # Interactive scrub state
+        self._locked: bool = False
         self._hover_active: bool = False
         self._hover_x: float = -1.0
         self._hover_sec: float = 0.0
@@ -81,12 +83,22 @@ class _LiveLayerBar(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
 
     def _is_seekable(self) -> bool:
+        if getattr(self, "_locked", False):
+            return False
         return (
             self._is_live
             and self._media_type in (MediaType.AUDIO, MediaType.VIDEO)
             and self._end_sec > self._start_sec
             and self._phase not in ("PRE", "POST")
         )
+
+    def set_locked(self, locked: bool) -> None:
+        self._locked = bool(locked)
+        if self._locked:
+            self._is_dragging = False
+            self._hover_active = False
+            self.unsetCursor()
+        self.update()
 
     def _x_to_sec(self, x: float) -> float:
         w = max(1.0, float(self.width()))
@@ -628,11 +640,14 @@ class LiveStatusPanel(QGroupBox):
             parent,
         )
         self._compact_live_mode = compact_live_mode
+        self._locked: bool = compact_live_mode
         self._layer_labels: dict[int, _LiveLayerBar] = {}
         self._play_pause_buttons: dict[int, _LayerRoundIconButton] = {}
         self._jump_back_buttons: dict[int, _LayerRoundIconButton] = {}
         self._clear_buttons: dict[int, QPushButton] = {}
         self._build_ui()
+        if self._compact_live_mode:
+            self.set_locked(True)
 
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
@@ -669,11 +684,30 @@ class LiveStatusPanel(QGroupBox):
             btn_pp.setToolTip(f"Metti in Pausa Layer {layer} (utile durante le prove)")
             btn_pp.clicked.connect(lambda _=False, idx=layer: self.layer_play_pause_clicked.emit(idx))
 
-            btn = QPushButton(f"✕ Cut L{layer}")
-            btn.setFixedHeight(26)
-            btn.setToolTip(f"Rimuovi / arresta immediatamente il contenuto su Layer {layer}")
-            btn.setStyleSheet(cut_style)
-            btn.clicked.connect(lambda _=False, idx=layer: self.clear_layer_clicked.emit(idx))
+            if self._compact_live_mode:
+                btn = HoldProgressButton(
+                    text_idle=f"✕ Cut L{layer} (1.5s)",
+                    hold_ms=1500,
+                    is_toggle=False,
+                    color_idle="#2b1111",
+                    border_idle="#772222",
+                    text_color_idle="#ff8888",
+                    fill_color="#ef4444",
+                )
+                btn.setFixedHeight(26)
+                btn.setMinimumWidth(102)
+                btn.setFont(QFont("sans-serif", 9, QFont.Weight.Bold))
+                btn.setToolTip(
+                    f"Rimuovi / arresta immediatamente il contenuto su Layer {layer}.\n"
+                    "PROTEZIONE LIVE: Tieni premuto per 1.5 secondi per confermare il taglio ed evitare click involontari."
+                )
+                btn.hold_completed.connect(lambda idx=layer: self.clear_layer_clicked.emit(idx))
+            else:
+                btn = QPushButton(f"✕ Cut L{layer}")
+                btn.setFixedHeight(26)
+                btn.setToolTip(f"Rimuovi / arresta immediatamente il contenuto su Layer {layer}")
+                btn.setStyleSheet(cut_style)
+                btn.clicked.connect(lambda _=False, idx=layer: self.clear_layer_clicked.emit(idx))
 
             row.addWidget(bar, stretch=1)
             row.addWidget(btn_back10)
@@ -735,6 +769,29 @@ class LiveStatusPanel(QGroupBox):
             w_t.setVisible(not self._compact_live_mode)
         layout.addLayout(row_tappo)
         layout.addStretch()
+
+    def is_locked(self) -> bool:
+        return self._locked
+
+    def set_locked(self, locked: bool) -> None:
+        """Lock or unlock interactive scrub, rehearsal jump, and pause across all layers."""
+        self._locked = bool(locked)
+        for layer, bar in self._layer_labels.items():
+            bar.set_locked(self._locked)
+        for layer, btn_back in self._jump_back_buttons.items():
+            btn_back.setEnabled(not self._locked)
+            btn_back.setToolTip(
+                "🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (3s)"
+                if self._locked
+                else f"Salta indietro di 10s su Layer {layer} (prove)"
+            )
+        for layer, btn_pp in self._play_pause_buttons.items():
+            btn_pp.setEnabled(not self._locked)
+            btn_pp.setToolTip(
+                "🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (3s)"
+                if self._locked
+                else f"Metti in Pausa Layer {layer} (prove)"
+            )
 
     @staticmethod
     def _style_play_pause_btn(btn: _LayerRoundIconButton, *, paused: bool) -> None:

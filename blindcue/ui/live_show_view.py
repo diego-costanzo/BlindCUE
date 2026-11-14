@@ -57,6 +57,7 @@ from ui.cue_table import (
     format_cue_ref,
     paint_cue_row_decorations,
 )
+from ui.hold_button import HoldProgressButton
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ
 
@@ -841,7 +842,36 @@ class LiveShowPanel(QWidget):
 
         self.live_status = LiveStatusPanel(compact_live_mode=True)
         self.live_status.setMinimumHeight(140)
-        dock.addWidget(self.live_status, stretch=54)
+        dock.addWidget(self.live_status, stretch=52)
+
+        # Safety Lock Button: Protects Layer controls against accidental touches in crowded control booths
+        self.btn_layer_lock = HoldProgressButton(
+            text_idle="🔒\nBLOCCO\nLAYER\n(Tieni 3s)",
+            text_active="🔓\nLAYER\nATTIVI\n(Click = 🔒)",
+            hold_ms=3000,
+            deactivate_hold_ms=0,  # 1 immediate click to re-lock
+            is_toggle=True,
+            initial_state=False,   # Starts LOCKED by default
+            fill_orientation="vertical",
+            color_idle="#2d0a0a",
+            border_idle="#b91c1c",
+            text_color_idle="#fca5a5",
+            color_active="#064e3b",
+            border_active="#10b981",
+            text_color_active="#6ee7b7",
+            fill_color="#ef4444",
+        )
+        self.btn_layer_lock.setFixedWidth(78)
+        self.btn_layer_lock.setMinimumHeight(140)
+        self.btn_layer_lock.setFont(QFont("sans-serif", 9, QFont.Weight.Bold))
+        self.btn_layer_lock.setToolTip(
+            "🔒 CONTROLLI LAYER BLOCCATI (Protezione di Sicurezza Regia)\n"
+            "Di default le barre e i controlli dei layer sono protetti per evitare spostamenti o tagli accidentali.\n"
+            "Per sbloccare scrub, riavvolgimento e pausa dei singoli layer: tieni premuto per 3 secondi.\n"
+            "Quando sbloccato, un singolo click istantaneo riattiva subito il blocco."
+        )
+        self.btn_layer_lock.toggled_state.connect(lambda active: self.live_status.set_locked(not active))
+        dock.addWidget(self.btn_layer_lock, stretch=0)
 
         transport_frame = QFrame()
         transport_frame.setStyleSheet(
@@ -862,7 +892,7 @@ class LiveShowPanel(QWidget):
         self._apply_pause_btn_style(paused=False)
         tr_layout.addWidget(self.btn_pause_all)
 
-        self.btn_go = QPushButton("▶   GO  —  PROSSIMA CUE   [ SPAZIO ]")
+        self.btn_go = QPushButton("▶   GO  —  PROSSIMA CUE")
         self.btn_go.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_go.setMinimumHeight(64)
         self.btn_go.setFont(QFont("sans-serif", 17, QFont.Weight.Bold))
@@ -875,7 +905,7 @@ class LiveShowPanel(QWidget):
         self.btn_go.clicked.connect(self.go_requested)
         tr_layout.addWidget(self.btn_go, stretch=1)
 
-        dock.addWidget(transport_frame, stretch=46)
+        dock.addWidget(transport_frame, stretch=48)
         root.addLayout(dock)
 
     def stopwatch_elapsed_sec(self) -> float:
@@ -1159,11 +1189,19 @@ class LiveShowPanel(QWidget):
                 self.lbl_standby_banner.setText(
                     f"PROSSIMA IN STANDBY:  #{standby_row + 1} {q_badge}'{sb_cue.name}'  {layer_badge} [{type_tag}]{extras_str}{notes_str}"
                 )
-                self.btn_go.setText(f"▶   GO:  {ref} '{sb_cue.name}'   [ SPAZIO ]")
+                self.btn_go.setText(f"▶   GO:  {ref} '{sb_cue.name}'")
+                self.btn_go.setToolTip(
+                    f"Esegui cue in Standby: {ref} '{sb_cue.name}'\n"
+                    "Scorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]"
+                )
             else:
                 self.live_table.clearSelection()
                 self.lbl_standby_banner.setText("Nessuna cue pronta in scaletta")
-                self.btn_go.setText("▶   GO  —  PROSSIMA CUE   [ SPAZIO ]")
+                self.btn_go.setText("▶   GO  —  PROSSIMA CUE")
+                self.btn_go.setToolTip(
+                    "Esegui prossima cue\n"
+                    "Scorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]"
+                )
 
             self.btn_break_loop.setVisible(show_break_loop)
         finally:
