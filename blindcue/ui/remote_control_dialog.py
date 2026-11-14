@@ -36,8 +36,8 @@ class RemoteControlDialog(QDialog):
         super().__init__(parent)
         self._remote_mgr = remote_mgr
         self.setWindowTitle("📡 Controllo Remoto LAN (Web & OSC) — BlindCUE")
-        self.resize(840, 680)
-        self.setMinimumSize(780, 600)
+        self.resize(880, 710)
+        self.setMinimumSize(840, 660)
 
         self._build_ui()
         self._update_display()
@@ -48,15 +48,15 @@ class RemoteControlDialog(QDialog):
     def _build_ui(self) -> None:
         self.setStyleSheet("""
             QDialog {
-                background-color: #0f172a;
+                background-color: #0c1017;
                 color: #f8fafc;
             }
             QGroupBox {
-                background-color: #1e293b;
-                border: 1px solid #334155;
+                background-color: #151d2c;
+                border: 1px solid #283548;
                 border-radius: 8px;
-                margin-top: 10px;
-                padding: 10px;
+                margin-top: 12px;
+                padding: 12px;
                 font-weight: bold;
                 font-size: 11px;
                 color: #38bdf8;
@@ -64,28 +64,32 @@ class RemoteControlDialog(QDialog):
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
-                padding: 0 4px;
+                padding: 0 6px;
+                background: transparent;
+            }
+            QGroupBox QLabel, QGroupBox QCheckBox {
+                background: transparent;
             }
             QTabWidget::pane {
-                border: 1px solid #334155;
-                background-color: #1e293b;
+                border: 1px solid #283548;
+                background-color: #151d2c;
                 border-radius: 8px;
                 padding: 12px;
             }
             QTabBar::tab {
-                background: #0f172a;
+                background: #0c1017;
                 color: #94a3b8;
-                border: 1px solid #334155;
+                border: 1px solid #283548;
                 border-bottom: none;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
-                padding: 8px 16px;
+                padding: 8px 18px;
                 font-weight: bold;
                 font-size: 12px;
                 margin-right: 4px;
             }
             QTabBar::tab:selected {
-                background: #1e293b;
+                background: #151d2c;
                 color: #38bdf8;
                 border-color: #38bdf8;
             }
@@ -94,29 +98,30 @@ class RemoteControlDialog(QDialog):
             }
             QLabel {
                 color: #cbd5e1;
+                background: transparent;
             }
             QPushButton {
-                background-color: #334155;
+                background-color: #263346;
                 color: #ffffff;
-                border: 1px solid #475569;
+                border: 1px solid #3b4d66;
                 border-radius: 6px;
                 padding: 6px 14px;
                 font-weight: bold;
                 font-size: 11px;
             }
             QPushButton:hover {
-                background-color: #475569;
+                background-color: #33445c;
                 border-color: #64748b;
             }
             QPushButton:pressed {
                 background-color: #0284c7;
             }
             QLineEdit, QSpinBox {
-                background-color: #0f172a;
+                background-color: #0b1120;
                 color: #ffffff;
-                border: 1px solid #475569;
-                border-radius: 4px;
-                padding: 4px 6px;
+                border: 1px solid #3b4d66;
+                border-radius: 5px;
+                padding: 4px 8px;
                 font-size: 12px;
             }
             QCheckBox {
@@ -124,6 +129,21 @@ class RemoteControlDialog(QDialog):
                 font-size: 12px;
                 font-weight: bold;
                 spacing: 8px;
+                background: transparent;
+            }
+            QCheckBox::indicator {
+                width: 16px;
+                height: 16px;
+                background-color: #0b1120;
+                border: 1px solid #475569;
+                border-radius: 4px;
+            }
+            QCheckBox::indicator:hover {
+                border-color: #38bdf8;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #0284c7;
+                border-color: #38bdf8;
             }
         """)
 
@@ -133,22 +153,24 @@ class RemoteControlDialog(QDialog):
 
         # ── Header Banner with Master Toggle ──
         header = QHBoxLayout()
+        header.setSpacing(14)
+
         header_v = QVBoxLayout()
+        header_v.setSpacing(2)
         lbl_title = QLabel("📡 CONTROLLO REMOTO IN RETE LOCALE (LAN REGIA)")
-        lbl_title.setStyleSheet("font-size: 16px; font-weight: 900; color: #38bdf8; letter-spacing: 0.5px;")
+        lbl_title.setStyleSheet("font-size: 15px; font-weight: 900; color: #38bdf8; letter-spacing: 0.5px; background: transparent;")
         lbl_desc = QLabel("Telecomando Operatore (GO/Pause/Panic), Monitor Regista (Sola Lettura) e Server OSC per automazione.")
-        lbl_desc.setStyleSheet("font-size: 11px; color: #94a3b8;")
+        lbl_desc.setStyleSheet("font-size: 11px; color: #94a3b8; background: transparent;")
         header_v.addWidget(lbl_title)
         header_v.addWidget(lbl_desc)
-        header.addLayout(header_v)
-        header.addStretch()
+        header.addLayout(header_v, stretch=1)
 
         self.btn_master_toggle = QPushButton("🔴 SERVIZI REMOTI: DISATTIVATI (Avvia)")
-        self.btn_master_toggle.setFixedHeight(34)
-        self.btn_master_toggle.setMinimumWidth(260)
+        self.btn_master_toggle.setFixedHeight(36)
+        self.btn_master_toggle.setMinimumWidth(280)
         self.btn_master_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_master_toggle.clicked.connect(self._toggle_master_services)
-        header.addWidget(self.btn_master_toggle)
+        header.addWidget(self.btn_master_toggle, 0, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
 
         main_lay.addLayout(header)
 
@@ -168,12 +190,12 @@ class RemoteControlDialog(QDialog):
         # Tab 3: Configurazione Porte & OSC
         self.tab_osc = QWidget()
         self._build_osc_tab()
-        self.tabs.addTab(self.tab_osc, "🎛️ Automazione OSC & Porte")
+        self.tabs.addTab(self.tab_osc, "🎛️ Automazione OSC && Porte")
 
         main_lay.addWidget(self.tabs, stretch=1)
 
         # ── Group: Sicurezza & Protezione Accessi (Anti-Burlone) ──
-        grp_sec = QGroupBox("🛡️ SICUREZZA REGIA & PROTEZIONE PIN (ANTI-BURLONE)")
+        grp_sec = QGroupBox("🛡️ SICUREZZA REGIA — PROTEZIONE PIN (ANTI-BURLONE)")
         sec_lay = QVBoxLayout(grp_sec)
         sec_lay.setSpacing(8)
 
@@ -185,12 +207,27 @@ class RemoteControlDialog(QDialog):
         self.chk_pin.toggled.connect(self._on_pin_settings_changed)
         sec_top_row.addWidget(self.chk_pin)
 
-        sec_top_row.addWidget(QLabel("PIN Attuale:"))
+        lbl_pin_lbl = QLabel("PIN Attuale:")
+        lbl_pin_lbl.setStyleSheet("font-weight: bold; color: #94a3b8;")
+        sec_top_row.addWidget(lbl_pin_lbl)
+
         self.txt_pin = QLineEdit(self._remote_mgr.get_pin())
         self.txt_pin.setMaxLength(6)
-        self.txt_pin.setFixedWidth(85)
+        self.txt_pin.setFixedWidth(120)
         self.txt_pin.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.txt_pin.setStyleSheet("font-weight: 900; font-size: 15px; letter-spacing: 3px; color: #38bdf8;")
+        self.txt_pin.setStyleSheet("""
+            QLineEdit {
+                background-color: #060a12;
+                color: #38bdf8;
+                border: 2px solid #0284c7;
+                border-radius: 6px;
+                font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Roboto Mono', 'Ubuntu Mono', 'monospace', monospace;
+                font-size: 15px;
+                font-weight: 900;
+                letter-spacing: 3px;
+                padding: 2px 4px;
+            }
+        """)
         self.txt_pin.textChanged.connect(self._on_pin_settings_changed)
         sec_top_row.addWidget(self.txt_pin)
 
@@ -200,7 +237,7 @@ class RemoteControlDialog(QDialog):
         sec_top_row.addWidget(self.btn_new_pin)
 
         self.btn_kick_all = QPushButton("⛔ Disconnetti Tutti")
-        self.btn_kick_all.setStyleSheet("background-color: #450a0a; color: #f87171; border-color: #991b1b;")
+        self.btn_kick_all.setStyleSheet("background-color: #450a0a; color: #f87171; border: 1px solid #991b1b; font-weight: bold;")
         self.btn_kick_all.setToolTip("Sbatte fuori all'istante tutti i dispositivi connessi")
         self.btn_kick_all.clicked.connect(self._kick_all_clients)
         sec_top_row.addWidget(self.btn_kick_all)
@@ -218,7 +255,7 @@ class RemoteControlDialog(QDialog):
             "Chiunque altro sulla LAN che tenti di accedere via browser troverà il tastierino PIN casuale a 6 cifre con blocco forzatura dopo 5 errori."
         )
         lbl_sec_tip.setWordWrap(True)
-        lbl_sec_tip.setStyleSheet("font-size: 10px; color: #94a3b8; line-height: 1.3;")
+        lbl_sec_tip.setStyleSheet("font-size: 11px; color: #94a3b8; line-height: 1.4; background: transparent;")
         sec_lay.addWidget(lbl_sec_tip)
 
         main_lay.addWidget(grp_sec)
@@ -226,8 +263,8 @@ class RemoteControlDialog(QDialog):
         # ── Bottom Bar ──
         bottom_row = QHBoxLayout()
 
-        self.lbl_clients_count = QLabel("📱 Client connessi: 0")
-        self.lbl_clients_count.setStyleSheet("font-weight: bold; color: #94a3b8; font-size: 11px;")
+        self.lbl_clients_count = QLabel("📱 Client Web connessi: 0")
+        self.lbl_clients_count.setStyleSheet("font-weight: bold; color: #94a3b8; font-size: 11px; background: transparent;")
         bottom_row.addWidget(self.lbl_clients_count)
 
         bottom_row.addStretch()
@@ -257,12 +294,13 @@ class RemoteControlDialog(QDialog):
         self.lbl_qr_op = QLabel()
         self.lbl_qr_op.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_qr_op.setFixedSize(160, 160)
+        self.lbl_qr_op.setStyleSheet("background: #ffffff;")
         qr_inner.addWidget(self.lbl_qr_op)
         qr_box.addWidget(self.qr_frame_op)
 
         lbl_scan_op = QLabel("Inquadra con Smartphone\nper aprire il Telecomando LIVE")
         lbl_scan_op.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_scan_op.setStyleSheet("font-size: 10px; color: #94a3b8; font-weight: bold;")
+        lbl_scan_op.setStyleSheet("font-size: 10px; color: #94a3b8; font-weight: bold; background: transparent;")
         qr_box.addWidget(lbl_scan_op)
 
         lay.addLayout(qr_box)
@@ -272,7 +310,7 @@ class RemoteControlDialog(QDialog):
         info_lay.setSpacing(8)
 
         lbl_op_title = QLabel("📱 TELECOMANDO MASTER LIVE (OPERATORE)")
-        lbl_op_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #38bdf8;")
+        lbl_op_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #38bdf8; background: transparent;")
         info_lay.addWidget(lbl_op_title)
 
         lbl_op_desc = QLabel(
@@ -280,11 +318,26 @@ class RemoteControlDialog(QDialog):
             "Offre il controllo completo sull'emissione dei media."
         )
         lbl_op_desc.setWordWrap(True)
-        lbl_op_desc.setStyleSheet("font-size: 11px; color: #cbd5e1;")
+        lbl_op_desc.setStyleSheet("font-size: 11px; color: #cbd5e1; background: transparent;")
         info_lay.addWidget(lbl_op_desc)
 
         features_box = QFrame()
-        features_box.setStyleSheet("background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px;")
+        features_box.setObjectName("op_features_card")
+        features_box.setStyleSheet("""
+            QFrame#op_features_card {
+                background-color: #0b1120;
+                border: 1px solid #233147;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QFrame#op_features_card QLabel {
+                background: transparent;
+                border: none;
+                font-size: 11px;
+                color: #e2e8f0;
+                padding: 2px 0px;
+            }
+        """)
         feat_lay = QVBoxLayout(features_box)
         feat_lay.setSpacing(4)
         feat_lay.addWidget(QLabel("✅ <b>Pulsante GO tattile gigante</b> con vibrazione aptica"))
@@ -297,11 +350,11 @@ class RemoteControlDialog(QDialog):
         url_row = QHBoxLayout()
         url_row.setSpacing(6)
         lbl_u = QLabel("Indirizzo Web:")
-        lbl_u.setStyleSheet("font-size: 11px; font-weight: bold; color: #94a3b8;")
+        lbl_u.setStyleSheet("font-size: 11px; font-weight: bold; color: #94a3b8; background: transparent;")
         url_row.addWidget(lbl_u)
 
         self.lbl_url_op = QLabel("http://127.0.0.1:8080")
-        self.lbl_url_op.setStyleSheet("font-size: 12px; font-weight: 800; color: #38bdf8; font-family: monospace;")
+        self.lbl_url_op.setStyleSheet("font-size: 12px; font-weight: 800; color: #38bdf8; font-family: monospace; background: transparent;")
         self.lbl_url_op.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         url_row.addWidget(self.lbl_url_op, stretch=1)
 
@@ -335,12 +388,13 @@ class RemoteControlDialog(QDialog):
         self.lbl_qr_dir = QLabel()
         self.lbl_qr_dir.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.lbl_qr_dir.setFixedSize(160, 160)
+        self.lbl_qr_dir.setStyleSheet("background: #ffffff;")
         qr_inner.addWidget(self.lbl_qr_dir)
         qr_box.addWidget(self.qr_frame_dir)
 
         lbl_scan_dir = QLabel("Inquadra con Tablet / iPad\nper aprire il Monitor Regia")
         lbl_scan_dir.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        lbl_scan_dir.setStyleSheet("font-size: 10px; color: #c084fc; font-weight: bold;")
+        lbl_scan_dir.setStyleSheet("font-size: 10px; color: #c084fc; font-weight: bold; background: transparent;")
         qr_box.addWidget(lbl_scan_dir)
 
         lay.addLayout(qr_box)
@@ -349,8 +403,8 @@ class RemoteControlDialog(QDialog):
         info_lay = QVBoxLayout()
         info_lay.setSpacing(8)
 
-        lbl_dir_title = QLabel("👁️ MONITOR REGISTA & DIRETTORE DI SCENA (SOLA LETTURA)")
-        lbl_dir_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #c084fc;")
+        lbl_dir_title = QLabel("👁️ MONITOR REGISTA && DIRETTORE DI SCENA (SOLA LETTURA)")
+        lbl_dir_title.setStyleSheet("font-size: 14px; font-weight: 800; color: #c084fc; background: transparent;")
         info_lay.addWidget(lbl_dir_title)
 
         lbl_dir_desc = QLabel(
@@ -358,11 +412,26 @@ class RemoteControlDialog(QDialog):
             "Mostra in tempo reale come lavorano i 3 layer e la scaletta, garantendo zero rischi."
         )
         lbl_dir_desc.setWordWrap(True)
-        lbl_dir_desc.setStyleSheet("font-size: 11px; color: #cbd5e1;")
+        lbl_dir_desc.setStyleSheet("font-size: 11px; color: #cbd5e1; background: transparent;")
         info_lay.addWidget(lbl_dir_desc)
 
         features_box = QFrame()
-        features_box.setStyleSheet("background: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 8px;")
+        features_box.setObjectName("dir_features_card")
+        features_box.setStyleSheet("""
+            QFrame#dir_features_card {
+                background-color: #0b1120;
+                border: 1px solid #233147;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QFrame#dir_features_card QLabel {
+                background: transparent;
+                border: none;
+                font-size: 11px;
+                color: #e2e8f0;
+                padding: 2px 0px;
+            }
+        """)
         feat_lay = QVBoxLayout(features_box)
         feat_lay.setSpacing(4)
         feat_lay.addWidget(QLabel("👁️ <b>Panoramica 3 Layer Live:</b> stato simultaneo di Layer 1 (Fondo), Layer 2 (Medio) e Layer 3 (Overlay)"))
@@ -375,11 +444,11 @@ class RemoteControlDialog(QDialog):
         url_row = QHBoxLayout()
         url_row.setSpacing(6)
         lbl_u = QLabel("Indirizzo Monitor:")
-        lbl_u.setStyleSheet("font-size: 11px; font-weight: bold; color: #94a3b8;")
+        lbl_u.setStyleSheet("font-size: 11px; font-weight: bold; color: #94a3b8; background: transparent;")
         url_row.addWidget(lbl_u)
 
         self.lbl_url_dir = QLabel("http://127.0.0.1:8080/monitor")
-        self.lbl_url_dir.setStyleSheet("font-size: 12px; font-weight: 800; color: #c084fc; font-family: monospace;")
+        self.lbl_url_dir.setStyleSheet("font-size: 12px; font-weight: 800; color: #c084fc; font-family: monospace; background: transparent;")
         self.lbl_url_dir.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         url_row.addWidget(self.lbl_url_dir, stretch=1)
 
@@ -395,21 +464,34 @@ class RemoteControlDialog(QDialog):
 
         # Quick Guide Box for communicating with the director in the auditorium
         guide_box = QFrame()
-        guide_box.setStyleSheet("background: #0f172a; border: 1px dashed #475569; border-radius: 6px; padding: 8px;")
+        guide_box.setObjectName("dir_guide_card")
+        guide_box.setStyleSheet("""
+            QFrame#dir_guide_card {
+                background-color: #0b1120;
+                border: 1px dashed #334d6e;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QFrame#dir_guide_card QLabel {
+                background: transparent;
+                border: none;
+                padding: 1px 0px;
+            }
+        """)
         guide_lay = QVBoxLayout(guide_box)
         guide_lay.setSpacing(4)
         lbl_g_title = QLabel("🗣️ <b>Come collegare il regista che si trova in platea:</b>")
-        lbl_g_title.setStyleSheet("font-size: 11px; color: #38bdf8; font-weight: bold;")
+        lbl_g_title.setStyleSheet("font-size: 11px; color: #38bdf8; font-weight: bold; background: transparent;")
         guide_lay.addWidget(lbl_g_title)
 
         lbl_g1 = QLabel("1. <b>A voce / Intercom (se digita a mano):</b> Digli di collegarsi al Wi-Fi del teatro, aprire il browser (Safari, Chrome o Edge) e digitare l'indirizzo IP con la porta e <code>/monitor</code> (oppure <code>/regia</code>). Inserirà poi il PIN a 6 cifre visualizzato in basso.")
         lbl_g1.setWordWrap(True)
-        lbl_g1.setStyleSheet("font-size: 10px; color: #cbd5e1; line-height: 1.3;")
+        lbl_g1.setStyleSheet("font-size: 10px; color: #cbd5e1; line-height: 1.3; background: transparent;")
         guide_lay.addWidget(lbl_g1)
 
         lbl_g2 = QLabel("2. <b>Via Messaggio / WhatsApp / Email:</b> Clicca su <b>[ 📋 Copia Link Monitor ]</b> e incollaglielo in chat. Il link copiato include già il token PIN autorizzato: al regista basterà toccare il link per entrare subito senza digitare nulla!")
         lbl_g2.setWordWrap(True)
-        lbl_g2.setStyleSheet("font-size: 10px; color: #cbd5e1; line-height: 1.3;")
+        lbl_g2.setStyleSheet("font-size: 10px; color: #cbd5e1; line-height: 1.3; background: transparent;")
         guide_lay.addWidget(lbl_g2)
 
         info_lay.addWidget(guide_box)
@@ -422,11 +504,11 @@ class RemoteControlDialog(QDialog):
         lay.setSpacing(10)
 
         # Configuration Box
-        grp_cfg = QGroupBox("⚙ CONFIGURAZIONE PORTE DI RETE & PROTOCOLLI")
+        grp_cfg = QGroupBox("⚙ CONFIGURAZIONE PORTE DI RETE && PROTOCOLLI")
         cfg_lay = QGridLayout(grp_cfg)
         cfg_lay.setSpacing(8)
 
-        self.chk_web = QCheckBox("Abilita Servizio Web (Telecomando & Monitor Regia)")
+        self.chk_web = QCheckBox("Abilita Servizio Web (Telecomando && Monitor Regia)")
         self.chk_web.setChecked(self._remote_mgr._web_enabled)
         self.chk_web.toggled.connect(self._remote_mgr.set_web_enabled)
         cfg_lay.addWidget(self.chk_web, 0, 0)
@@ -434,7 +516,9 @@ class RemoteControlDialog(QDialog):
         self.spin_web_port = QSpinBox()
         self.spin_web_port.setRange(1024, 65535)
         self.spin_web_port.setValue(self._remote_mgr.get_web_port())
-        cfg_lay.addWidget(QLabel("Porta Web:"), 0, 1)
+        lbl_pw = QLabel("Porta Web:")
+        lbl_pw.setStyleSheet("background: transparent; color: #cbd5e1; font-weight: bold;")
+        cfg_lay.addWidget(lbl_pw, 0, 1)
         cfg_lay.addWidget(self.spin_web_port, 0, 2)
 
         self.chk_osc = QCheckBox("Abilita Server OSC UDP")
@@ -445,11 +529,13 @@ class RemoteControlDialog(QDialog):
         self.spin_osc_port = QSpinBox()
         self.spin_osc_port.setRange(1024, 65535)
         self.spin_osc_port.setValue(self._remote_mgr.get_osc_port())
-        cfg_lay.addWidget(QLabel("Porta OSC UDP:"), 1, 1)
+        lbl_po = QLabel("Porta OSC UDP:")
+        lbl_po.setStyleSheet("background: transparent; color: #cbd5e1; font-weight: bold;")
+        cfg_lay.addWidget(lbl_po, 1, 1)
         cfg_lay.addWidget(self.spin_osc_port, 1, 2)
 
         self.btn_apply_ports = QPushButton("🔄 Applica Nuove Porte")
-        self.btn_apply_ports.setStyleSheet("background-color: #0284c7; color: #ffffff;")
+        self.btn_apply_ports.setStyleSheet("background-color: #0284c7; color: #ffffff; font-weight: bold;")
         self.btn_apply_ports.clicked.connect(self._apply_ports)
         cfg_lay.addWidget(self.btn_apply_ports, 2, 0, 1, 3)
 
@@ -472,14 +558,14 @@ class RemoteControlDialog(QDialog):
         """
         lbl_cheat = QLabel(cheat_text)
         lbl_cheat.setTextFormat(Qt.TextFormat.RichText)
-        lbl_cheat.setStyleSheet("font-size: 11px; line-height: 1.3;")
+        lbl_cheat.setStyleSheet("font-size: 11px; line-height: 1.3; background: transparent;")
         lbl_cheat.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         osc_lay.addWidget(lbl_cheat)
 
         lay.addWidget(grp_osc)
 
         self.lbl_last_cmd = QLabel("Ultima attività: Nessun comando ricevuto")
-        self.lbl_last_cmd.setStyleSheet("font-size: 11px; color: #94a3b8; font-style: italic;")
+        self.lbl_last_cmd.setStyleSheet("font-size: 11px; color: #94a3b8; font-style: italic; background: transparent;")
         lay.addWidget(self.lbl_last_cmd)
 
         lay.addStretch()
@@ -489,25 +575,27 @@ class RemoteControlDialog(QDialog):
         osc_ok = self._remote_mgr.is_osc_active()
 
         if web_ok or osc_ok:
-            pin_badge = f" [🔒 PIN {self._remote_mgr.get_pin()}]" if self._remote_mgr.is_pin_enabled() else ""
-            self.btn_master_toggle.setText(f"🟢 SERVIZI REMOTI: ATTIVI{pin_badge} (Disattiva)")
+            pin_badge = f" [PIN {self._remote_mgr.get_pin()}]" if self._remote_mgr.is_pin_enabled() else ""
+            self.btn_master_toggle.setText(f"🟢 SERVIZI: ATTIVI{pin_badge} (Arresta)")
             self.btn_master_toggle.setStyleSheet("""
                 background-color: #064e3b;
                 color: #4ade80;
-                border: 1px solid #059669;
+                border: 1.5px solid #059669;
                 border-radius: 6px;
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: 800;
+                padding: 6px 14px;
             """)
         else:
-            self.btn_master_toggle.setText("🔴 SERVIZI REMOTI: DISATTIVATI (Clicca per Avviare)")
+            self.btn_master_toggle.setText("🔴 SERVIZI REMOTI: OFF (Avvia)")
             self.btn_master_toggle.setStyleSheet("""
                 background-color: #450a0a;
                 color: #f87171;
-                border: 1px solid #991b1b;
+                border: 1.5px solid #991b1b;
                 border-radius: 6px;
-                font-size: 12px;
+                font-size: 11px;
                 font-weight: 800;
+                padding: 6px 14px;
             """)
 
         self.chk_web.setChecked(self._remote_mgr._web_enabled)
