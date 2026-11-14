@@ -116,6 +116,33 @@ class HoldProgressButton(QPushButton):
         self._text_active = text
         self.update()
 
+    def set_palette_colors(
+        self,
+        *,
+        color_idle: Optional[str] = None,
+        border_idle: Optional[str] = None,
+        text_color_idle: Optional[str] = None,
+        color_active: Optional[str] = None,
+        border_active: Optional[str] = None,
+        text_color_active: Optional[str] = None,
+        fill_color: Optional[str] = None,
+    ) -> None:
+        if color_idle is not None:
+            self._color_idle = QColor(color_idle)
+        if border_idle is not None:
+            self._border_idle = QColor(border_idle)
+        if text_color_idle is not None:
+            self._text_color_idle = QColor(text_color_idle)
+        if color_active is not None:
+            self._color_active = QColor(color_active)
+        if border_active is not None:
+            self._border_active = QColor(border_active)
+        if text_color_active is not None:
+            self._text_color_active = QColor(text_color_active)
+        if fill_color is not None:
+            self._fill_color = QColor(fill_color)
+        self.update()
+
     # ── Mouse & Timer Event Handlers ──────────────────────────────────
 
     def enterEvent(self, event) -> None:  # noqa: N802

@@ -275,11 +275,55 @@ class MainWindow(QMainWindow):
         if hasattr(self, "_waveform_panel") and self._waveform_panel is not None:
             self._waveform_panel.update()
         if hasattr(self, "_live_status_panel") and self._live_status_panel is not None:
+            if hasattr(self._live_status_panel, "refresh_theme_styles"):
+                self._live_status_panel.refresh_theme_styles()
             self._live_status_panel.update()
         if hasattr(self, "_inspector_panel") and self._inspector_panel is not None:
             if hasattr(self._inspector_panel, "refresh_theme_styles"):
                 self._inspector_panel.refresh_theme_styles()
             self._inspector_panel.update()
+
+        # Update Status Bar widgets
+        t = get_active_theme()
+        if hasattr(self, "_lbl_hw_info") and self._lbl_hw_info is not None:
+            if t.is_monochrome:
+                self._lbl_hw_info.setStyleSheet("color: #ffffff; font-size: 11px; padding-left: 6px;")
+            elif t.theme_id == "warm_amber_studio":
+                self._lbl_hw_info.setStyleSheet("color: #fbbf24; font-size: 11px; padding-left: 6px;")
+            else:
+                self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
+
+        if hasattr(self, "_btn_jam_mode") and self._btn_jam_mode is not None:
+            if t.is_monochrome:
+                self._btn_jam_mode.set_palette_colors(
+                    color_idle="#1a1b1f",
+                    border_idle="#3f404d",
+                    text_color_idle="#d4d4d8",
+                    color_active="#26272e",
+                    border_active="#ffffff",
+                    text_color_active="#ffffff",
+                    fill_color="#ffffff",
+                )
+            elif t.theme_id == "warm_amber_studio":
+                self._btn_jam_mode.set_palette_colors(
+                    color_idle="#1e1916",
+                    border_idle="#3d322a",
+                    text_color_idle="#bfa89b",
+                    color_active="#2b2420",
+                    border_active="#f59e0b",
+                    text_color_active="#fbbf24",
+                    fill_color="#f59e0b",
+                )
+            else:
+                self._btn_jam_mode.set_palette_colors(
+                    color_idle="#16202e",
+                    border_idle="#2d3e56",
+                    text_color_idle="#94a3b8",
+                    color_active="#064e3b",
+                    border_active="#10b981",
+                    text_color_active="#34d399",
+                    fill_color="#10b981",
+                )
 
     def _update_go_button_style(self) -> None:
         """Update Main GO button stylesheet to honor the active visual theme."""
@@ -292,6 +336,19 @@ class MainWindow(QMainWindow):
                     background-color: {t.go};
                     color: #0c1017;
                     border: 2px solid #ffffff;
+                    border-radius: 6px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{ background-color: {t.accent_hover}; }}
+                QPushButton:pressed {{ background-color: {t.accent_muted}; }}
+            """)
+        elif t.theme_id == "warm_amber_studio":
+            self._btn_go.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {t.go};
+                    color: #151210;
+                    border: 1px solid #fbbf24;
                     border-radius: 6px;
                     font-size: 18px;
                     font-weight: bold;

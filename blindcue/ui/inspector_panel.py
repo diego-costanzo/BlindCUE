@@ -75,7 +75,7 @@ def _make_layer_btn_style(checked_bg: str, checked_border: str, is_mono: bool = 
         hover_border = "#525363"
         pressed_bg = "#18191f"
         checked_bg = "#383946"
-        checked_border = "#38bdf8"
+        checked_border = "#ffffff"
     else:
         idle_bg = "#182231"
         idle_color = "#cbd5e1"
@@ -250,10 +250,12 @@ class CueInspectorPanel(QGroupBox):
         lay.setSpacing(5)
 
         lbl_title = QLabel(title)
+        lbl_title.setObjectName("inspCardTitle")
         lbl_title.setMinimumWidth(0)
         lbl_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
+        active_t = get_active_theme()
         lbl_title.setStyleSheet(
-            "color: #38bdf8; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; border: none; background: transparent;"
+            f"color: {active_t.accent}; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; border: none; background: transparent;"
         )
         lay.addWidget(lbl_title)
         if guide:
@@ -1146,19 +1148,24 @@ class CueInspectorPanel(QGroupBox):
         theme = get_active_theme()
         is_mono = theme.is_monochrome
 
-        # 1. Update Card containers
+        # 1. Update Card containers and card title labels
         card_bg = "#1a1b1f" if is_mono else "#101723"
         card_border = "#33343e" if is_mono else "#223044"
         for card in self.findChildren(QFrame, "inspCard"):
             card.setStyleSheet(
                 f"QFrame#inspCard {{ background-color: {card_bg}; border: 1px solid {card_border}; border-radius: 6px; }}"
             )
+        active_t = get_active_theme()
+        for title_lbl in self.findChildren(QLabel, "inspCardTitle"):
+            title_lbl.setStyleSheet(
+                f"color: {active_t.accent}; font-size: 10px; font-weight: bold; letter-spacing: 0.4px; border: none; background: transparent;"
+            )
 
         # 2. Timing Pipeline Banner
         if hasattr(self, "_pipe_lbl") and self._pipe_lbl is not None:
             if is_mono:
                 self._pipe_lbl.setStyleSheet(
-                    "background-color: #141518; color: #d4d4d8; border: 1px solid #33343e; "
+                    "background-color: #141518; color: #ffffff; border: 1px solid #525363; "
                     "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 3px 4px;"
                 )
             else:
@@ -1184,7 +1191,7 @@ class CueInspectorPanel(QGroupBox):
                     "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1px solid #3f404d; "
                     "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 0px 3px; } "
                     "QPushButton:hover:!checked { background-color: #2d2f38; border-color: #525363; color: #ffffff; } "
-                    "QPushButton:checked { background-color: #383946; border: 1.5px solid #38bdf8; color: #ffffff; } "
+                    "QPushButton:checked { background-color: #383946; border: 1.5px solid #ffffff; color: #ffffff; } "
                     "QPushButton:disabled { background-color: #141518; color: #525363; border-color: #27272a; }"
                 )
             else:
@@ -1223,7 +1230,7 @@ class CueInspectorPanel(QGroupBox):
                     QPushButton {
                         background-color: #26272e;
                         color: #f4f4f5;
-                        border: 1.5px solid #38bdf8;
+                        border: 1.5px solid #ffffff;
                         border-radius: 5px;
                         font-weight: bold;
                         font-size: 11px;
@@ -1232,7 +1239,7 @@ class CueInspectorPanel(QGroupBox):
                     }
                     QPushButton:hover {
                         background-color: #33343d;
-                        border-color: #7dd3fc;
+                        border-color: #d4d4d8;
                         color: #ffffff;
                     }
                 """)
@@ -1260,6 +1267,61 @@ class CueInspectorPanel(QGroupBox):
             l_bg = "#1a1b1f" if is_mono else "#1a162b"
             l_border = "#33343e" if is_mono else "#3b2d54"
             self.loop_card.setStyleSheet(f"QFrame {{ background-color: {l_bg}; border: 1px solid {l_border}; border-radius: 6px; }}")
+
+        # 9. Loudness Scan Button & Checkbox
+        if hasattr(self, "btn_scan_loudness") and self.btn_scan_loudness is not None:
+            if is_mono:
+                self.btn_scan_loudness.setStyleSheet(
+                    "QPushButton { background-color: #26272e; color: #f4f4f5; border: 1px solid #525363; "
+                    "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 3px 8px; } "
+                    "QPushButton:hover { background-color: #33343d; border-color: #ffffff; color: #ffffff; }"
+                )
+            else:
+                self.btn_scan_loudness.setStyleSheet(
+                    f"QPushButton {{ background-color: {active_t.button_bg}; color: {active_t.accent}; border: 1px solid {active_t.button_border}; "
+                    f"border-radius: 4px; font-size: 10px; font-weight: bold; padding: 3px 8px; }} "
+                    f"QPushButton:hover {{ background-color: {active_t.button_hover_bg}; border-color: {active_t.accent}; color: #ffffff; }}"
+                )
+
+        if hasattr(self, "chk_normalize_cue") and self.chk_normalize_cue is not None:
+            if is_mono:
+                self.chk_normalize_cue.setStyleSheet("""
+                    QCheckBox {
+                        font-weight: bold;
+                        font-size: 11px;
+                        color: #f4f4f5;
+                        spacing: 6px;
+                        background: transparent;
+                    }
+                    QCheckBox::indicator {
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 3px;
+                        border: 1px solid #71717a;
+                        background-color: #1a1b1f;
+                    }
+                    QCheckBox::indicator:checked { background-color: #ffffff; border-color: #ffffff; }
+                    QCheckBox::indicator:hover { border-color: #ffffff; }
+                """)
+            else:
+                self.chk_normalize_cue.setStyleSheet(f"""
+                    QCheckBox {{
+                        font-weight: bold;
+                        font-size: 11px;
+                        color: {active_t.accent};
+                        spacing: 6px;
+                        background: transparent;
+                    }}
+                    QCheckBox::indicator {{
+                        width: 16px;
+                        height: 16px;
+                        border-radius: 3px;
+                        border: 1px solid {active_t.accent};
+                        background-color: {active_t.input_bg};
+                    }}
+                    QCheckBox::indicator:checked {{ background-color: {active_t.accent_muted}; }}
+                    QCheckBox::indicator:hover {{ border-color: {active_t.accent_hover}; }}
+                """)
 
     @staticmethod
     def _make_nudge_btn(text: str, tooltip: str) -> QPushButton:

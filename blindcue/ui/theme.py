@@ -93,13 +93,13 @@ THEME_OBSIDIAN_SLATE = ThemeDefinition(
     slider_subpage="#0284c7",
 )
 
-# ── Theme 2: Carbon Monocromo (Grayscale & Luminous Accent · WCAG AAA) ──
+# ── Theme 2: Carbon Monocromo (100% Scala di Grigi · Bianco Puro · WCAG AAA) ──
 # Pro neutral gray-scale architecture inspired by DaVinci Resolve & Ableton:
-# Eliminates chromatic noise, uses stepped neutral carbon tones with high-luminance accents.
+# 100% pure black & white / grayscale, zero chromatic noise, stepped graphite and luminous platinum white.
 THEME_CARBON_MONO = ThemeDefinition(
     theme_id="carbon_mono",
-    name="Carbon Monocromo (Scala di Grigi & Accento Luminoso)",
-    description="Architettura in scala di grigi carbonio ad alta leggibilità: elimina il rumore cromatico per daltonici e ipovedenti, guidando lo sguardo con accenti luminosi.",
+    name="Carbon Monocromo (100% Scala di Grigi · Bianco Puro)",
+    description="Architettura al 100% in scala di grigi senza alcun colore: solo seta bianca, argento e grafite per la massima chiarezza e accessibilità assoluta.",
     is_high_contrast=True,
     is_monochrome=True,
     bg="#111215",              # Neutral deep carbon backdrop
@@ -118,60 +118,66 @@ THEME_CARBON_MONO = ThemeDefinition(
     border_subtle="#27272a",
     border_width="1.5px",
     table_grid="#27272a",
-    accent="#38bdf8",          # High-luminance electric sky cyan accent
-    accent_hover="#7dd3fc",
-    accent_muted="#0284c7",
-    live="#38bdf8",            # Pure luminous electric sky cyan
+    accent="#ffffff",          # Pure luminous platinum white (100% grayscale)
+    accent_hover="#f4f4f5",
+    accent_muted="#d4d4d8",
+    live="#ffffff",            # Pure luminous platinum white for LIVE
     previz="#d4d4d8",          # Luminous silver for standby
-    go="#38bdf8",
+    go="#ffffff",              # Pure white GO
     button_bg="#26272e",       # Solid stepped carbon button
     button_border="#3f3f46",
     button_hover_bg="#33343d",
     slider_groove="#27272a",
-    slider_subpage="#38bdf8",
+    slider_subpage="#ffffff",
 )
 
-# ── Theme 3: Deep Indigo & Warm Amber (Night Studio) ─────────────────
-THEME_DEEP_INDIGO_AMBER = ThemeDefinition(
-    theme_id="deep_indigo_amber",
-    name="Deep Indigo & Warm Amber (Studio Notturno)",
-    description="Tonalità rilassanti blu notte profondo e accenti caldi ambra/rame per sessioni prolungate senza affaticamento.",
+# ── Theme 3: Warm Amber Studio (Caldo Analogico · Valvolare) ─────────
+# Warm organic palette inspired by vintage analog consoles and tube preamps:
+# Deep roasted espresso / mocha backdrops, warm glowing amber accents, and creamy silk typography.
+THEME_WARM_AMBER_STUDIO = ThemeDefinition(
+    theme_id="warm_amber_studio",
+    name="Warm Amber Studio (Caldo Analogico · Valvolare)",
+    description="Palette calda e organica ispirata ai banchi audio analogici valvolari: toni caffè tostato, accenti ambra dorata e rame per il massimo comfort visivo.",
     is_high_contrast=False,
     is_monochrome=False,
-    bg="#090d16",
-    panel="#111827",
-    panel_elevated="#1e293b",
-    input_bg="#080c14",
-    input_focus_bg="#141f33",
-    header_bg="#0d1320",
-    status_bg="#070a12",
-    menu_bg="#111827",
-    text="#f8fafc",
-    text_muted="#94a3b8",
-    selection_bg="#312e81",
+    bg="#151210",              # Warm roasted espresso / mocha backdrop
+    panel="#1e1916",           # Warm dark walnut / mahogany panel
+    panel_elevated="#2b2420",  # Elevated warm console surface
+    input_bg="#120f0d",        # Sunken warm input
+    input_focus_bg="#241e1a",  # Warm console focus lift
+    header_bg="#191512",       # Header bar
+    status_bg="#100d0b",       # Bottom bar
+    menu_bg="#1e1916",
+    text="#fef3c7",            # Warm parchment / creamy silk typography
+    text_muted="#bfa89b",      # Warm sepia / muted copper secondary text
+    selection_bg="#453324",    # Deep toasted caramel selection
     selection_fg="#ffffff",
-    border="#293548",
-    border_subtle="#1e2738",
+    border="#3d322a",          # Warm bronze / copper border
+    border_subtle="#2a221c",
     border_width="1px",
-    table_grid="#1e293b",
-    accent="#f59e0b",
-    accent_hover="#fbbf24",
-    accent_muted="#d97706",
-    live="#10b981",
-    previz="#fb923c",
-    go="#10b981",
-    button_bg="#1a2336",
-    button_border="#2c3d5a",
-    button_hover_bg="#263753",
-    slider_groove="#1f293b",
+    table_grid="#2a221c",
+    accent="#f59e0b",          # Warm glowing amber
+    accent_hover="#fbbf24",    # Radiant golden amber
+    accent_muted="#b45309",    # Burnt sienna
+    live="#10b981",            # Studio emerald
+    previz="#fb923c",          # Warm copper standby
+    go="#f59e0b",              # Warm amber GO
+    button_bg="#26201b",       # Warm console button
+    button_border="#42372f",
+    button_hover_bg="#362d26",
+    slider_groove="#2a221c",
     slider_subpage="#f59e0b",
 )
+
+# Backward-compatibility alias for Deep Indigo Amber
+THEME_DEEP_INDIGO_AMBER = THEME_WARM_AMBER_STUDIO
 
 THEMES: Mapping[str, ThemeDefinition] = {
     THEME_OBSIDIAN_SLATE.theme_id: THEME_OBSIDIAN_SLATE,
     THEME_CARBON_MONO.theme_id: THEME_CARBON_MONO,
-    THEME_DEEP_INDIGO_AMBER.theme_id: THEME_DEEP_INDIGO_AMBER,
+    THEME_WARM_AMBER_STUDIO.theme_id: THEME_WARM_AMBER_STUDIO,
     # Backward compatibility aliases
+    "deep_indigo_amber": THEME_WARM_AMBER_STUDIO,
     "high_contrast_mono": THEME_CARBON_MONO,
     "high_contrast_gold": THEME_CARBON_MONO,
     "daylight_studio": THEME_CARBON_MONO,

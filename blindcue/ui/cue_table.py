@@ -104,7 +104,7 @@ def get_group_mode_pill(group_mode: str, is_mono: bool = False):
 def get_link_rail_color(mode: str, is_mono: bool = False) -> Optional[QColor]:
     if is_mono:
         if mode == "AUTO_FOLLOW":
-            return QColor("#38bdf8")
+            return QColor("#ffffff")
         if mode == "SIMULTANEOUS":
             return QColor("#a1a1aa")
         return None
@@ -146,10 +146,10 @@ def paint_cue_row_decorations(
                 painter.fillRect(rect.left(), rect.top() + 1, 4, rect.height() - 2, QColor("#525363"))
 
         if is_live:
-            # Luminous Sky Cyan subtle lift for LIVE
-            painter.fillRect(rect, QColor(56, 189, 248, 32))
+            # Pure luminous white lift for LIVE in monochrome
+            painter.fillRect(rect, QColor(255, 255, 255, 38))
             if col == 0:
-                painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#38bdf8"))
+                painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#ffffff"))
         elif is_standby:
             # Crisp neutral silver lift for STANDBY
             painter.fillRect(rect, QColor(255, 255, 255, 20))
@@ -262,6 +262,7 @@ class CueTableDelegate(QStyledItemDelegate):
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
         style = opt.widget.style() if opt.widget else QApplication.style()
+        is_mono = get_active_theme().is_monochrome
 
         if col == 0:
             raw_num = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
@@ -283,7 +284,7 @@ class CueTableDelegate(QStyledItemDelegate):
 
             if is_group:
                 arrow_sym = "▶" if is_collapsed else "▼"
-                painter.setPen(QColor("#38bdf8"))
+                painter.setPen(QColor("#ffffff" if is_mono else "#38bdf8"))
                 painter.drawText(
                     opt.rect.adjusted(4, 0, -28, 0),
                     Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -408,8 +409,8 @@ class CueTableDelegate(QStyledItemDelegate):
                 if is_mono:
                     if status_txt == "LIVE":
                         s_bg = QColor("#2c2d36")
-                        s_border = QColor("#38bdf8")
-                        s_fg = QColor("#38bdf8")
+                        s_border = QColor("#ffffff")
+                        s_fg = QColor("#ffffff")
                     else:
                         s_bg = QColor("#22232a")
                         s_border = QColor("#d4d4d8")
@@ -514,9 +515,9 @@ class CueTableDelegate(QStyledItemDelegate):
                     fw = 46
                     fy = rect.top() + (rect.height() - lh) // 2
                     f_rect = QRect(right_x - fw, fy, fw, lh)
-                    f_border = QColor("#38bdf8")
+                    f_border = QColor("#ffffff" if is_mono else "#38bdf8")
                     f_bg = QColor("#1e1f26") if is_mono else QColor("#0c2638")
-                    f_fg = QColor("#38bdf8") if is_mono else QColor("#7dd3fc")
+                    f_fg = QColor("#ffffff") if is_mono else QColor("#7dd3fc")
                     painter.setPen(QPen(f_border, 1))
                     painter.setBrush(f_bg)
                     painter.drawRoundedRect(f_rect, 3, 3)
@@ -542,7 +543,7 @@ class CueTableDelegate(QStyledItemDelegate):
                 tw = 16
                 ty = rect.top() + (rect.height() - 16) // 2
                 t_rect = QRect(right_x - tw, ty, tw, 16)
-                painter.setPen(QColor("#a78bfa"))
+                painter.setPen(QColor("#d4d4d8" if is_mono else "#a78bfa"))
                 painter.drawText(t_rect, Qt.AlignmentFlag.AlignCenter, timing_badge)
                 right_x -= tw + 2
 
@@ -550,7 +551,7 @@ class CueTableDelegate(QStyledItemDelegate):
                 nw = 16
                 ny = rect.top() + (rect.height() - 16) // 2
                 n_rect = QRect(right_x - nw, ny, nw, 16)
-                painter.setPen(QColor("#38bdf8"))
+                painter.setPen(QColor("#ffffff" if is_mono else "#38bdf8"))
                 painter.drawText(n_rect, Qt.AlignmentFlag.AlignCenter, "📝")
                 right_x -= nw + 4
 
@@ -564,7 +565,12 @@ class CueTableDelegate(QStyledItemDelegate):
             elided_name = painter.fontMetrics().elidedText(
                 disp_name, Qt.TextElideMode.ElideRight, avail_w
             )
-            name_clr = QColor("#c084fc") if is_group else QColor(status_clr)
+            if is_mono:
+                name_clr = QColor("#ffffff") if (status_txt == "LIVE" or is_group) else (
+                    QColor("#f4f4f5") if status_txt == "STANDBY" else QColor("#e4e4e7")
+                )
+            else:
+                name_clr = QColor("#c084fc") if is_group else QColor(status_clr)
             painter.setPen(name_clr)
             painter.drawText(
                 name_rect,
@@ -578,9 +584,10 @@ class CueTableDelegate(QStyledItemDelegate):
 
     def createEditor(self, parent: QWidget, option: QStyleOptionViewItem, index) -> QLineEdit:  # noqa: N802
         editor = QLineEdit(parent)
+        active_t = get_active_theme()
         editor.setStyleSheet(
-            "QLineEdit { background-color: #0f1520; border: 1px solid #38bdf8; "
-            "color: #ffffff; padding: 1px 6px; font-weight: bold; border-radius: 3px; }"
+            f"QLineEdit {{ background-color: {active_t.input_bg}; border: 1px solid {active_t.accent}; "
+            f"color: {active_t.text}; padding: 1px 6px; font-weight: bold; border-radius: 3px; }}"
         )
         if index.column() == 1:
             editor.setAlignment(Qt.AlignmentFlag.AlignCenter)

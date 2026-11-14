@@ -212,8 +212,20 @@ class CueListPanel(QGroupBox):
 
     def refresh_theme_styles(self) -> None:
         """Apply theme-aware styling to cue list panel buttons and link boxes."""
-        is_mono = get_active_theme().is_monochrome
+        active_t = get_active_theme()
+        is_mono = active_t.is_monochrome
         if is_mono:
+            if hasattr(self, "lbl_count"):
+                self.lbl_count.setStyleSheet(
+                    "color: #ffffff; background-color: #1a1b1f; border: 1px solid #3f404d; "
+                    "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 1px 6px;"
+                )
+            if hasattr(self, "btn_go_live"):
+                self.btn_go_live.setStyleSheet(
+                    "QPushButton { background-color: #26272e; color: #ffffff; border: 1.5px solid #ffffff; "
+                    "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 8px; } "
+                    "QPushButton:hover { background-color: #383946; }"
+                )
             if hasattr(self, "link_box"):
                 self.link_box.setStyleSheet(
                     "QFrame { background-color: #1a1b1f; border: 1px solid #33343e; border-radius: 5px; }"
@@ -228,13 +240,24 @@ class CueListPanel(QGroupBox):
                     "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1px solid #3f404d; "
                     "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 4px; } "
                     "QPushButton:hover:!checked { background-color: #2d2f38; border-color: #525363; color: #ffffff; } "
-                    "QPushButton:checked { background-color: #383946; border: 1.5px solid #38bdf8; color: #ffffff; } "
+                    "QPushButton:checked { background-color: #383946; border: 1.5px solid #ffffff; color: #ffffff; } "
                     "QPushButton:disabled { color: #525363; border-color: #27272a; background-color: #141518; }"
                 )
         else:
+            if hasattr(self, "lbl_count"):
+                self.lbl_count.setStyleSheet(
+                    f"color: {active_t.accent}; background-color: {active_t.input_bg}; border: 1px solid {active_t.border}; "
+                    "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 1px 6px;"
+                )
+            if hasattr(self, "btn_go_live"):
+                self.btn_go_live.setStyleSheet(
+                    "QPushButton { background-color: #064e3b; color: #69f0ae; border: 1px solid #00e676; "
+                    "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 8px; } "
+                    "QPushButton:hover { background-color: #047857; color: #ffffff; }"
+                )
             if hasattr(self, "link_box"):
                 self.link_box.setStyleSheet(
-                    "QFrame { background-color: #101620; border: 1px solid #1e293b; border-radius: 5px; }"
+                    f"QFrame {{ background-color: {active_t.input_bg}; border: 1px solid {active_t.border}; border-radius: 5px; }}"
                 )
             if hasattr(self, "btn_delete"):
                 self.btn_delete.setStyleSheet(
@@ -246,11 +269,11 @@ class CueListPanel(QGroupBox):
                 chk_bg = spec[3] if spec else "#065f46"
                 chk_border = spec[4] if spec else "#10b981"
                 btn.setStyleSheet(
-                    f"QPushButton {{ background-color: #182130; color: #94a3b8; border: 1px solid #2a374b; "
+                    f"QPushButton {{ background-color: {active_t.button_bg}; color: {active_t.text_muted}; border: 1px solid {active_t.button_border}; "
                     f"border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 4px; }} "
-                    f"QPushButton:hover:!checked {{ background-color: #223044; border-color: {chk_border}; color: #ffffff; }} "
+                    f"QPushButton:hover:!checked {{ background-color: {active_t.button_hover_bg}; border-color: {chk_border}; color: #ffffff; }} "
                     f"QPushButton:checked {{ background-color: {chk_bg}; border: 1px solid {chk_border}; color: #ffffff; }} "
-                    f"QPushButton:disabled {{ color: #475569; border-color: #1a2230; background-color: #0e131b; }}"
+                    f"QPushButton:disabled {{ color: #475569; border-color: {active_t.border_subtle}; background-color: {active_t.panel}; }}"
                 )
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802

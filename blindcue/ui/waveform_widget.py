@@ -809,7 +809,7 @@ class WaveformWidget(QWidget):
                     c = QColor(255, 255, 255, 22 if i == self._active_section_idx else (14 if i % 2 == 0 else 6))
                 painter.fillRect(x0, 0, max(1, x1 - x0), h, c)
                 if i == self._active_section_idx:
-                    painter.fillRect(x0, 0, max(1, x1 - x0), 3, QColor("#38bdf8"))
+                    painter.fillRect(x0, 0, max(1, x1 - x0), 3, QColor("#ffffff"))
             else:
                 if sec.skip:
                     c = QColor("#2a161a")
@@ -829,7 +829,7 @@ class WaveformWidget(QWidget):
         for i, sec in enumerate(self._sections):
             accent, _, _ = SECTION_PALETTE[i % len(SECTION_PALETTE)]
             if is_mono:
-                accent = "#38bdf8" if i == self._active_section_idx else "#a1a1aa"
+                accent = "#ffffff" if i == self._active_section_idx else "#a1a1aa"
             x0 = int(self._sec_to_x(sec.start))
             end_s = sec.end if sec.end is not None else eff_end
             x1 = int(self._sec_to_x(end_s))
@@ -880,7 +880,7 @@ class WaveformWidget(QWidget):
         dimmed_for_opacity = (self._envelope_mode == "opacity")
         is_mono = get_active_theme().is_monochrome
         if is_mono:
-            active_clr = QColor("#38bdf8") if not dimmed_for_opacity else QColor("#71717a")
+            active_clr = QColor("#ffffff") if not dimmed_for_opacity else QColor("#71717a")
             inactive_clr = QColor("#27272a")
         else:
             active_clr = QColor("#1f6b4a" if dimmed_for_opacity else CLR_LIVE)

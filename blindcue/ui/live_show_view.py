@@ -212,14 +212,14 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             if is_mono:
-                pen_clr = QColor("#38bdf8") if is_live else (QColor("#d4d4d8") if is_standby else QColor("#888891"))
+                pen_clr = QColor("#ffffff") if is_live else (QColor("#d4d4d8") if is_standby else QColor("#888891"))
             else:
                 pen_clr = QColor("#4ade80") if is_live else (QColor("#fcd34d") if is_standby else QColor("#94a3b8"))
 
             if is_group:
                 arrow_sym = "▶" if is_collapsed else "▼"
                 painter.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
-                painter.setPen(QColor("#38bdf8"))
+                painter.setPen(QColor("#ffffff" if is_mono else "#38bdf8"))
                 painter.drawText(
                     opt.rect.adjusted(6, 0, -28, 0),
                     Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -270,9 +270,9 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 py = rect.top() + (rect.height() - ph) // 2
                 pill_rect = QRect(px, py, pw, ph)
 
-                q_border = QColor("#3f404d") if is_mono else QColor("#0284c7")
+                q_border = QColor("#525363") if is_mono else QColor("#0284c7")
                 q_bg = QColor("#22232a") if is_mono else QColor("#082f49")
-                q_fg = QColor("#38bdf8")
+                q_fg = QColor("#ffffff") if is_mono else QColor("#38bdf8")
                 painter.setPen(QPen(q_border, 1))
                 painter.setBrush(q_bg)
                 painter.drawRoundedRect(pill_rect, 4, 4)
@@ -420,7 +420,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     name_clr = QColor("#d4d4d8")
                 elif is_waiting:
                     disp_name = name_text
-                    name_clr = QColor("#38bdf8")
+                    name_clr = QColor("#d4d4d8")
                 elif is_group:
                     disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
                     name_clr = QColor("#f4f4f5")
@@ -473,7 +473,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
                 painter.setFont(QFont(opt.font.family(), 9))
                 if is_mono:
-                    ico_clr = QColor("#f4f4f5" if is_urgent else "#38bdf8")
+                    ico_clr = QColor("#ffffff" if is_urgent else "#d4d4d8")
                 else:
                     ico_clr = QColor("#f59e0b" if is_urgent else "#38bdf8")
                 painter.setPen(ico_clr)
@@ -530,7 +530,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
             if is_mono:
                 if follow_mode == "AUTO_FOLLOW":
-                    fm_txt, fm_bg, fm_border, fm_fg = "⤵ AUTO-GO", QColor("#1e1f26"), QColor("#38bdf8"), QColor("#38bdf8")
+                    fm_txt, fm_bg, fm_border, fm_fg = "⤵ AUTO-GO", QColor("#1e1f26"), QColor("#d4d4d8"), QColor("#ffffff")
                     fm_w = 68
                 elif follow_mode == "SIMULTANEOUS":
                     fm_txt, fm_bg, fm_border, fm_fg = "⇉ SIMULT", QColor("#22232a"), QColor("#525363"), QColor("#e4e4e7")
@@ -648,8 +648,8 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 if is_live:
                     st_label = "● LIVE"
                     st_bg = QColor("#2c2d36")
-                    st_border = QColor("#38bdf8")
-                    st_fg = QColor("#38bdf8")
+                    st_border = QColor("#ffffff")
+                    st_fg = QColor("#ffffff")
                 elif phase_txt:
                     st_label = f"⏳ {phase_txt}"
                     st_bg = QColor("#1e1f26")
@@ -745,12 +745,9 @@ class LiveShowPanel(QWidget):
         root.setSpacing(8)
 
         # ── 1. Top Show Bar (Left controls | Dead-Center Clock | Right Show Stopwatch + PANIC) ──
-        top_bar = QFrame()
-        top_bar.setFixedHeight(50)
-        top_bar.setStyleSheet(
-            "QFrame { background-color: #101620; border: 1px solid #1e293b; border-radius: 6px; }"
-        )
-        top_layout = QHBoxLayout(top_bar)
+        self.top_bar = QFrame()
+        self.top_bar.setFixedHeight(50)
+        top_layout = QHBoxLayout(self.top_bar)
         top_layout.setContentsMargins(10, 5, 10, 5)
         top_layout.setSpacing(8)
 
@@ -842,7 +839,7 @@ class LiveShowPanel(QWidget):
         top_layout.addWidget(left_box, stretch=1)
         top_layout.addWidget(self.lbl_clock, stretch=0)
         top_layout.addWidget(right_box, stretch=1)
-        root.addWidget(top_bar)
+        root.addWidget(self.top_bar)
 
         # ── 2. Center Hero Area: Extended 6-Column Live Scaletta ──────────────
         self.live_table = LiveCueTable()
@@ -888,21 +885,14 @@ class LiveShowPanel(QWidget):
         root.addWidget(self.live_table, stretch=1)
 
         # Standby Hero Bar + optional Break Section Loop shortcut
-        standby_bar = QFrame()
-        standby_bar.setFixedHeight(40)
-        standby_bar.setStyleSheet(
-            "QFrame { background-color: #0b111a; border: 1px solid #1e2d42; border-radius: 6px; }"
-        )
-        sb_layout = QHBoxLayout(standby_bar)
+        self.standby_bar = QFrame()
+        self.standby_bar.setFixedHeight(40)
+        sb_layout = QHBoxLayout(self.standby_bar)
         sb_layout.setContentsMargins(12, 2, 12, 2)
         sb_layout.setSpacing(10)
 
         self.lbl_standby_pill = QLabel("▶ STANDBY")
         self.lbl_standby_pill.setFixedHeight(26)
-        self.lbl_standby_pill.setStyleSheet(
-            "QLabel { background-color: #451a03; color: #fbbf24; border: 1px solid #d97706; "
-            "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; }"
-        )
         sb_layout.addWidget(self.lbl_standby_pill)
 
         self.lbl_standby_banner = QLabel("Nessuna cue pronta in scaletta")
@@ -917,14 +907,9 @@ class LiveShowPanel(QWidget):
         self.btn_break_loop.setVisible(False)
         self.btn_break_loop.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_break_loop.setFixedHeight(26)
-        self.btn_break_loop.setStyleSheet(
-            "QPushButton { background-color: #78350f; color: #fef3c7; border: 1px solid #f59e0b; "
-            "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 10px; } "
-            "QPushButton:hover { background-color: #b45309; }"
-        )
         self.btn_break_loop.clicked.connect(self.break_loop_requested)
         sb_layout.addWidget(self.btn_break_loop)
-        root.addWidget(standby_bar)
+        root.addWidget(self.standby_bar)
 
         # ── 3. Bottom Transport & Live Output Dock ───────────────────────────
         dock = QHBoxLayout()
@@ -965,11 +950,8 @@ class LiveShowPanel(QWidget):
         self.btn_layer_lock.toggled_state.connect(lambda active: self.live_status.set_locked(not active))
         dock.addWidget(self.btn_layer_lock, stretch=0)
 
-        transport_frame = QFrame()
-        transport_frame.setStyleSheet(
-            "QFrame { background-color: #0e141e; border: 1px solid #1e293b; border-radius: 6px; }"
-        )
-        tr_layout = QVBoxLayout(transport_frame)
+        self.transport_frame = QFrame()
+        tr_layout = QVBoxLayout(self.transport_frame)
         tr_layout.setContentsMargins(10, 8, 10, 8)
         tr_layout.setSpacing(8)
 
@@ -992,17 +974,12 @@ class LiveShowPanel(QWidget):
         self.btn_go.setFont(QFont("sans-serif", 17, QFont.Weight.Bold))
         self.btn_go.setAccessibleName("GO - Avvia Cue in Standby")
         self.btn_go.setAccessibleDescription("Manda in esecuzione la cue pronta in standby. Tasto di scelta rapida: Spazio.")
-        self.btn_go.setStyleSheet(
-            f"QPushButton {{ background-color: {CLR_GO}; color: #04130a; border: none; "
-            f"border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; }} "
-            f"QPushButton:hover {{ background-color: #69f0ae; }} "
-            f"QPushButton:pressed {{ background-color: #00c853; }}"
-        )
         self.btn_go.clicked.connect(self.go_requested)
         tr_layout.addWidget(self.btn_go, stretch=1)
 
-        dock.addWidget(transport_frame, stretch=48)
+        dock.addWidget(self.transport_frame, stretch=48)
         root.addLayout(dock)
+        self.refresh_theme_styles()
 
     def stopwatch_elapsed_sec(self) -> float:
         """Return total elapsed seconds recorded by the Show Duration Stopwatch."""
@@ -1066,9 +1043,9 @@ class LiveShowPanel(QWidget):
             if is_mono:
                 if state == "running":
                     self.btn_stopwatch.setStyleSheet(
-                        "QPushButton { background-color: #2c2d36; color: #38bdf8; border: 1.5px solid #38bdf8; "
+                        "QPushButton { background-color: #2c2d36; color: #ffffff; border: 1.5px solid #ffffff; "
                         "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
-                        "QPushButton:hover { background-color: #383946; border-color: #7dd3fc; color: #ffffff; }"
+                        "QPushButton:hover { background-color: #383946; border-color: #d4d4d8; color: #ffffff; }"
                     )
                 elif state == "paused":
                     self.btn_stopwatch.setStyleSheet(
@@ -1170,7 +1147,7 @@ class LiveShowPanel(QWidget):
                 )
                 self.lbl_show_badge.setText("● MODALITÀ LIVE (SHOW MODE)")
                 self.lbl_show_badge.setStyleSheet(
-                    "QLabel { background-color: #2c2d36; color: #38bdf8; border: 1.5px solid #38bdf8; "
+                    "QLabel { background-color: #2c2d36; color: #ffffff; border: 1.5px solid #ffffff; "
                     "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
                 )
             else:
@@ -1186,19 +1163,207 @@ class LiveShowPanel(QWidget):
                 )
 
     def refresh_theme_styles(self) -> None:
-        """Apply theme styling to Live Show controls (GO button, break loop, layer bars, pause badge)."""
-        is_mono = get_active_theme().is_monochrome
+        """Apply theme styling to Live Show controls (top bar, table, dock, GO button, panic, layer bars)."""
+        active_t = get_active_theme()
+        is_mono = active_t.is_monochrome
+
+        # 1. Top Show Bar & its controls
+        if hasattr(self, "top_bar") and self.top_bar is not None:
+            if is_mono:
+                self.top_bar.setStyleSheet(
+                    "QFrame { background-color: #16171b; border: 1.5px solid #3f404d; border-radius: 6px; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.top_bar.setStyleSheet(
+                    "QFrame { background-color: #191512; border: 1px solid #3d322a; border-radius: 6px; }"
+                )
+            else:
+                self.top_bar.setStyleSheet(
+                    "QFrame { background-color: #101620; border: 1px solid #1e293b; border-radius: 6px; }"
+                )
+
+        if hasattr(self, "btn_back_project") and self.btn_back_project is not None:
+            if is_mono:
+                self.btn_back_project.setStyleSheet(
+                    "QPushButton { background-color: #26272e; color: #f4f4f6; border: 1.5px solid #3f404d; "
+                    "border-radius: 5px; font-weight: bold; font-size: 12px; padding: 0px 14px; } "
+                    "QPushButton:hover { background-color: #33343d; border-color: #ffffff; color: #ffffff; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.btn_back_project.setStyleSheet(
+                    "QPushButton { background-color: #26201b; color: #fef3c7; border: 1px solid #42372f; "
+                    "border-radius: 5px; font-weight: bold; font-size: 12px; padding: 0px 14px; } "
+                    "QPushButton:hover { background-color: #362d26; border-color: #f59e0b; color: #ffffff; }"
+                )
+            else:
+                self.btn_back_project.setStyleSheet(
+                    "QPushButton { background-color: #1c2636; color: #e2e8f0; border: 1px solid #3c4f6b; "
+                    "border-radius: 5px; font-weight: bold; font-size: 12px; padding: 0px 14px; } "
+                    "QPushButton:hover { background-color: #27364d; border-color: #38bdf8; color: #ffffff; }"
+                )
+
+        if hasattr(self, "btn_stopwatch_reset") and self.btn_stopwatch_reset is not None:
+            if is_mono:
+                self.btn_stopwatch_reset.setStyleSheet(
+                    "QPushButton { background-color: #26272e; color: #d4d4d8; border: 1.5px solid #3f404d; "
+                    "border-radius: 5px; font-weight: bold; font-size: 15px; } "
+                    "QPushButton:hover { background-color: #33343d; color: #ffffff; border-color: #ffffff; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.btn_stopwatch_reset.setStyleSheet(
+                    "QPushButton { background-color: #26201b; color: #bfa89b; border: 1px solid #42372f; "
+                    "border-radius: 5px; font-weight: bold; font-size: 15px; } "
+                    "QPushButton:hover { background-color: #362d26; color: #ffffff; border-color: #f59e0b; }"
+                )
+            else:
+                self.btn_stopwatch_reset.setStyleSheet(
+                    "QPushButton { background-color: #16202e; color: #94a3b8; border: 1px solid #334155; "
+                    "border-radius: 5px; font-weight: bold; font-size: 15px; } "
+                    "QPushButton:hover { background-color: #253347; color: #f8fafc; border-color: #64748b; }"
+                )
+
+        if hasattr(self, "btn_panic") and self.btn_panic is not None:
+            if is_mono:
+                self.btn_panic.setStyleSheet(
+                    "QPushButton { background-color: #1a1b1f; color: #ffffff; border: 2px solid #ffffff; "
+                    "border-radius: 6px; font-weight: bold; font-size: 13px; padding: 0px 14px; } "
+                    "QPushButton:hover { background-color: #26272e; border-color: #f4f4f5; } "
+                    "QPushButton:pressed { background-color: #3f3f46; }"
+                )
+            else:
+                self.btn_panic.setStyleSheet(
+                    "QPushButton { background-color: #7f1d1d; color: #ffffff; border: 2px solid #ef4444; "
+                    "border-radius: 6px; font-weight: bold; font-size: 13px; padding: 0px 14px; } "
+                    "QPushButton:hover { background-color: #dc2626; border-color: #fca5a5; } "
+                    "QPushButton:pressed { background-color: #991b1b; }"
+                )
+
+        # 2. Live Scaletta Table
+        if hasattr(self, "live_table") and self.live_table is not None:
+            if is_mono:
+                self.live_table.setStyleSheet(
+                    "QTableWidget { background-color: #111215; border: 1.5px solid #3f404d; border-radius: 6px; "
+                    "font-size: 13px; gridline-color: #27272a; } "
+                    "QTableWidget::item { padding: 4px 6px; border-bottom: 1px solid #27272a; } "
+                    "QHeaderView::section { background-color: #16171b; color: #ffffff; font-weight: bold; "
+                    "font-size: 11px; padding: 6px; border: none; border-bottom: 1.5px solid #3f404d; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.live_table.setStyleSheet(
+                    "QTableWidget { background-color: #151210; border: 1px solid #3d322a; border-radius: 6px; "
+                    "font-size: 13px; gridline-color: #2a221c; } "
+                    "QTableWidget::item { padding: 4px 6px; border-bottom: 1px solid #2a221c; } "
+                    "QHeaderView::section { background-color: #191512; color: #f59e0b; font-weight: bold; "
+                    "font-size: 11px; padding: 6px; border: none; border-bottom: 1px solid #3d322a; }"
+                )
+            else:
+                self.live_table.setStyleSheet(
+                    "QTableWidget { background-color: #0b0f16; border: 1px solid #1e293b; border-radius: 6px; "
+                    "font-size: 13px; gridline-color: #161f2c; } "
+                    "QTableWidget::item { padding: 4px 6px; border-bottom: 1px solid #131b26; } "
+                    "QHeaderView::section { background-color: #131a26; color: #94a3b8; font-weight: bold; "
+                    "font-size: 11px; padding: 6px; border: none; border-bottom: 1px solid #243144; }"
+                )
+
+        # 3. Standby Bar
+        if hasattr(self, "standby_bar") and self.standby_bar is not None:
+            if is_mono:
+                self.standby_bar.setStyleSheet(
+                    "QFrame { background-color: #1a1b1f; border: 1.5px solid #3f404d; border-radius: 6px; }"
+                )
+                self.lbl_standby_pill.setStyleSheet(
+                    "QLabel { background-color: #22232a; color: #ffffff; border: 1.5px solid #ffffff; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.standby_bar.setStyleSheet(
+                    "QFrame { background-color: #1e1916; border: 1px solid #3d322a; border-radius: 6px; }"
+                )
+                self.lbl_standby_pill.setStyleSheet(
+                    "QLabel { background-color: #3d2612; color: #fbbf24; border: 1px solid #d97706; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; }"
+                )
+            else:
+                self.standby_bar.setStyleSheet(
+                    "QFrame { background-color: #0b111a; border: 1px solid #1e2d42; border-radius: 6px; }"
+                )
+                self.lbl_standby_pill.setStyleSheet(
+                    "QLabel { background-color: #451a03; color: #fbbf24; border: 1px solid #d97706; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; }"
+                )
+
+        # 4. Layer Safety Lock Button
+        if hasattr(self, "btn_layer_lock") and self.btn_layer_lock is not None:
+            if is_mono:
+                self.btn_layer_lock.set_palette_colors(
+                    color_idle="#1a1b1f",
+                    border_idle="#ffffff",
+                    text_color_idle="#ffffff",
+                    color_active="#26272e",
+                    border_active="#d4d4d8",
+                    text_color_active="#ffffff",
+                    fill_color="#ffffff",
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.btn_layer_lock.set_palette_colors(
+                    color_idle="#2d1508",
+                    border_idle="#b45309",
+                    text_color_idle="#fed7aa",
+                    color_active="#1b2a1a",
+                    border_active="#10b981",
+                    text_color_active="#a7f3d0",
+                    fill_color="#f59e0b",
+                )
+            else:
+                self.btn_layer_lock.set_palette_colors(
+                    color_idle="#2d0a0a",
+                    border_idle="#b91c1c",
+                    text_color_idle="#fca5a5",
+                    color_active="#064e3b",
+                    border_active="#10b981",
+                    text_color_active="#6ee7b7",
+                    fill_color="#ef4444",
+                )
+
+        # 5. Bottom Transport Frame
+        if hasattr(self, "transport_frame") and self.transport_frame is not None:
+            if is_mono:
+                self.transport_frame.setStyleSheet(
+                    "QFrame { background-color: #16171b; border: 1.5px solid #3f404d; border-radius: 6px; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.transport_frame.setStyleSheet(
+                    "QFrame { background-color: #191512; border: 1px solid #3d322a; border-radius: 6px; }"
+                )
+            else:
+                self.transport_frame.setStyleSheet(
+                    "QFrame { background-color: #0e141e; border: 1px solid #1e293b; border-radius: 6px; }"
+                )
+
+        # 6. GO and Loop Buttons
         if is_mono:
             self.btn_go.setStyleSheet(
-                "QPushButton { background-color: #38bdf8; color: #0c1017; border: 2px solid #ffffff; "
+                "QPushButton { background-color: #ffffff; color: #0c0c0e; border: 2px solid #d4d4d8; "
                 "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; } "
-                "QPushButton:hover { background-color: #7dd3fc; } "
-                "QPushButton:pressed { background-color: #0284c7; }"
+                "QPushButton:hover { background-color: #f4f4f5; border-color: #ffffff; } "
+                "QPushButton:pressed { background-color: #d4d4d8; }"
             )
             self.btn_break_loop.setStyleSheet(
                 "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #525363; "
                 "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
                 "QPushButton:hover { background-color: #2d2f38; border-color: #a1a1aa; color: #ffffff; }"
+            )
+        elif active_t.theme_id == "warm_amber_studio":
+            self.btn_go.setStyleSheet(
+                "QPushButton { background-color: #f59e0b; color: #151210; border: 1px solid #fbbf24; "
+                "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; } "
+                "QPushButton:hover { background-color: #fbbf24; } "
+                "QPushButton:pressed { background-color: #b45309; }"
+            )
+            self.btn_break_loop.setStyleSheet(
+                "QPushButton { background-color: #2b2420; color: #fef3c7; border: 1px solid #f59e0b; "
+                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
+                "QPushButton:hover { background-color: #3d322a; }"
             )
         else:
             self.btn_go.setStyleSheet(
@@ -1215,6 +1380,8 @@ class LiveShowPanel(QWidget):
         self._apply_pause_btn_style(paused=getattr(self, "_is_paused_all", False))
         self._last_sw_state = ""
         self._refresh_stopwatch_ui()
+        if hasattr(self, "live_status") and hasattr(self.live_status, "refresh_theme_styles"):
+            self.live_status.refresh_theme_styles()
 
     def set_global_paused(self, paused: bool) -> None:
         self._is_paused_all = paused

@@ -407,7 +407,7 @@ class _LiveLayerBar(QWidget):
             if is_mono:
                 grad.setColorAt(0.0, QColor(36, 38, 48, 160))
                 grad.setColorAt(1.0, QColor(68, 70, 84, 220))
-                edge_clr = QColor("#d4d4d8") if self._is_paused else QColor("#38bdf8")
+                edge_clr = QColor("#d4d4d8") if self._is_paused else QColor("#ffffff")
             else:
                 if self._is_paused:
                     grad.setColorAt(0.0, QColor(180, 120, 12, 95))
@@ -437,7 +437,7 @@ class _LiveLayerBar(QWidget):
 
         # Crisp border highlight
         if is_mono:
-            border_clr = QColor("#d4d4d8") if self._is_paused else QColor("#38bdf8")
+            border_clr = QColor("#d4d4d8") if self._is_paused else QColor("#ffffff")
             b_width = 1.5 if self._is_paused else 1.8
         else:
             if self._is_paused:
@@ -531,7 +531,12 @@ class _LiveLayerBar(QWidget):
 
             p.save()
             p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            line_clr = QColor("#fde047") if self._is_dragging else QColor("#38bdf8")
+            if is_mono:
+                line_clr = QColor("#ffffff") if self._is_dragging else QColor("#d4d4d8")
+                bg_clr = QColor("#22232a")
+            else:
+                line_clr = QColor("#fde047") if self._is_dragging else QColor("#38bdf8")
+                bg_clr = QColor("#221b05" if self._is_dragging else "#082f49")
             line_clr.setAlpha(245 if self._is_dragging else 180)
             p.setPen(QPen(line_clr, 1.5, Qt.PenStyle.SolidLine if self._is_dragging else Qt.PenStyle.DashLine))
             p.drawLine(int(active_x), 1, int(active_x), h - 1)
@@ -546,7 +551,6 @@ class _LiveLayerBar(QWidget):
             b_rect = QRectF(bx, by, bw, bh)
 
             p.setPen(QPen(line_clr, 1.0))
-            bg_clr = QColor("#221b05" if self._is_dragging else "#082f49")
             bg_clr.setAlpha(235)
             p.setBrush(bg_clr)
             p.drawRoundedRect(b_rect, 3.5, 3.5)
@@ -812,6 +816,7 @@ class LiveStatusPanel(QGroupBox):
             w_t.setVisible(not self._compact_live_mode)
         layout.addLayout(row_tappo)
         layout.addStretch()
+        self.refresh_theme_styles()
 
     def is_locked(self) -> bool:
         return self._locked
@@ -918,3 +923,92 @@ class LiveStatusPanel(QGroupBox):
     def set_layer0_label(self, file_path: Optional[str]) -> None:
         name = Path(file_path).name if file_path else "Logo BlindCue (Predefinito)"
         self.lbl_tappo_info.setText(f"Tappo (L0): {name}")
+
+    def refresh_theme_styles(self) -> None:
+        """Update button styles and hold button palettes according to the active theme."""
+        active_t = get_active_theme()
+        is_mono = active_t.is_monochrome
+
+        for layer, btn in self._clear_buttons.items():
+            if isinstance(btn, HoldProgressButton):
+                if is_mono:
+                    btn.set_palette_colors(
+                        color_idle="#1a1b1f",
+                        border_idle="#525363",
+                        text_color_idle="#ffffff",
+                        fill_color="#ffffff",
+                    )
+                elif active_t.theme_id == "warm_amber_studio":
+                    btn.set_palette_colors(
+                        color_idle="#2d1508",
+                        border_idle="#7c2d12",
+                        text_color_idle="#fca5a5",
+                        fill_color="#f59e0b",
+                    )
+                else:
+                    btn.set_palette_colors(
+                        color_idle="#2b1111",
+                        border_idle="#772222",
+                        text_color_idle="#ff8888",
+                        fill_color="#ef4444",
+                    )
+            elif isinstance(btn, QPushButton):
+                if is_mono:
+                    btn.setStyleSheet(
+                        "QPushButton { background-color: #22232a; color: #ffffff; border: 1.5px solid #525363; "
+                        "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; } "
+                        "QPushButton:hover { background-color: #2d2f38; border-color: #ffffff; }"
+                    )
+                elif active_t.theme_id == "warm_amber_studio":
+                    btn.setStyleSheet(
+                        "QPushButton { background-color: #2d1508; color: #fca5a5; border: 1px solid #7c2d12; "
+                        "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; } "
+                        "QPushButton:hover { background-color: #431407; border-color: #f59e0b; color: #ffffff; }"
+                    )
+                else:
+                    btn.setStyleSheet(
+                        "QPushButton { background-color: #381414; color: #ff8888; border: 1px solid #772222; "
+                        "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 8px; } "
+                        "QPushButton:hover { background-color: #551c1c; border-color: #ff4444; color: #ffffff; }"
+                    )
+
+        if hasattr(self, "btn_clear_all") and self.btn_clear_all is not None:
+            if is_mono:
+                self.btn_clear_all.setStyleSheet(
+                    "QPushButton { background-color: #1a1b1f; color: #ffffff; border: 1.5px solid #525363; "
+                    "border-radius: 4px; font-weight: bold; padding: 6px; } "
+                    "QPushButton:hover { background-color: #26272e; border-color: #ffffff; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                self.btn_clear_all.setStyleSheet(
+                    "QPushButton { background-color: #2d1508; color: #fed7aa; border: 1px solid #7c2d12; "
+                    "border-radius: 4px; font-weight: bold; padding: 6px; } "
+                    "QPushButton:hover { background-color: #431407; border-color: #f59e0b; color: #ffffff; }"
+                )
+            else:
+                self.btn_clear_all.setStyleSheet(
+                    "QPushButton { background-color: #3a1111; color: #ff9999; border: 1px solid #882222; "
+                    "border-radius: 4px; font-weight: bold; padding: 6px; } "
+                    "QPushButton:hover { background-color: #551c1c; border-color: #ff4444; color: #ffffff; }"
+                )
+
+        for btn in list(self._jump_back_buttons.values()) + list(self._play_pause_buttons.values()):
+            if is_mono:
+                btn.setStyleSheet(
+                    "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1px solid #3f404d; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; } "
+                    "QPushButton:hover { background-color: #2d2f38; border-color: #ffffff; color: #ffffff; }"
+                )
+            elif active_t.theme_id == "warm_amber_studio":
+                btn.setStyleSheet(
+                    "QPushButton { background-color: #26201b; color: #bfa89b; border: 1px solid #42372f; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; } "
+                    "QPushButton:hover { background-color: #362d26; border-color: #f59e0b; color: #ffffff; }"
+                )
+            else:
+                btn.setStyleSheet(
+                    "QPushButton { background-color: #1a2230; color: #94a3b8; border: 1px solid #2d3e56; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; } "
+                    "QPushButton:hover { background-color: #243144; border-color: #38bdf8; color: #ffffff; }"
+                )
+        self.update()
