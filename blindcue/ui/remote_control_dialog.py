@@ -392,6 +392,27 @@ class RemoteControlDialog(QDialog):
         url_row.addWidget(self.btn_open_dir)
 
         info_lay.addLayout(url_row)
+
+        # Quick Guide Box for communicating with the director in the auditorium
+        guide_box = QFrame()
+        guide_box.setStyleSheet("background: #0f172a; border: 1px dashed #475569; border-radius: 6px; padding: 8px;")
+        guide_lay = QVBoxLayout(guide_box)
+        guide_lay.setSpacing(4)
+        lbl_g_title = QLabel("🗣️ <b>Come collegare il regista che si trova in platea:</b>")
+        lbl_g_title.setStyleSheet("font-size: 11px; color: #38bdf8; font-weight: bold;")
+        guide_lay.addWidget(lbl_g_title)
+
+        lbl_g1 = QLabel("1. <b>A voce / Intercom (se digita a mano):</b> Digli di collegarsi al Wi-Fi del teatro, aprire il browser (Safari, Chrome o Edge) e digitare l'indirizzo IP con la porta e <code>/monitor</code> (oppure <code>/regia</code>). Inserirà poi il PIN a 6 cifre visualizzato in basso.")
+        lbl_g1.setWordWrap(True)
+        lbl_g1.setStyleSheet("font-size: 10px; color: #cbd5e1; line-height: 1.3;")
+        guide_lay.addWidget(lbl_g1)
+
+        lbl_g2 = QLabel("2. <b>Via Messaggio / WhatsApp / Email:</b> Clicca su <b>[ 📋 Copia Link Monitor ]</b> e incollaglielo in chat. Il link copiato include già il token PIN autorizzato: al regista basterà toccare il link per entrare subito senza digitare nulla!")
+        lbl_g2.setWordWrap(True)
+        lbl_g2.setStyleSheet("font-size: 10px; color: #cbd5e1; line-height: 1.3;")
+        guide_lay.addWidget(lbl_g2)
+
+        info_lay.addWidget(guide_box)
         info_lay.addStretch()
         lay.addLayout(info_lay, stretch=1)
 

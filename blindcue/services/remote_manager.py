@@ -28,6 +28,21 @@ def get_local_lan_ips() -> list[str]:
     """Detect non-loopback IPv4 addresses assigned to the local network interfaces."""
     ips: set[str] = set()
 
+    # Strategy 0: Qt Network Interface discovery (rock-solid on Linux/macOS/Windows, even offline)
+    try:
+        from PySide6.QtNetwork import QAbstractSocket, QNetworkInterface
+        for iface in QNetworkInterface.allInterfaces():
+            flags = iface.flags()
+            if (flags & QNetworkInterface.InterfaceFlag.IsUp) and not (flags & QNetworkInterface.InterfaceFlag.IsLoopBack):
+                for entry in iface.addressEntries():
+                    ip_obj = entry.ip()
+                    if ip_obj.protocol() == QAbstractSocket.NetworkLayerProtocol.IPv4Protocol and not ip_obj.isLoopback():
+                        s_ip = ip_obj.toString().strip()
+                        if s_ip and not s_ip.startswith("127."):
+                            ips.add(s_ip)
+    except Exception:
+        pass
+
     # Strategy 1: Open temporary UDP socket to determine preferred outgoing route
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -52,9 +67,9 @@ def get_local_lan_ips() -> list[str]:
     if not ips:
         ips.add("127.0.0.1")
 
-    # Sort so that preferred IP (from Strategy 1) comes first if present
+    # Sort so that preferred IP (from private subnets) comes first if present
     res = list(ips)
-    res.sort(key=lambda x: (x.startswith("127."), not x.startswith("192.168."), not x.startswith("10.")))
+    res.sort(key=lambda x: (x.startswith("127."), not x.startswith("192.168."), not x.startswith("10."), not x.startswith("172.")))
     return res
 
 
