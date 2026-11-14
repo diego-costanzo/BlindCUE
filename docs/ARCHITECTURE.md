@@ -180,3 +180,4 @@ Per sviluppatori interessati a derivare o semplificare la base di codice:
   - Il modulo `services/osc_server.py` e il relativo protocollo possono essere esclusi senza impattare la scaletta e i motori di riproduzione.
 - **Personalizzazione del Motore di Output**:
   - La classe `OutputWindow` espone un'interfaccia standard (`show_layer_frame`, `clear_layer`, `set_blackout`). È possibile rimpiazzare il canvas Qt basato su `QLabel`/`QPainter` con un render engine accelerato in OpenGL/Vulkan senza toccare la logica delle Cue o dello Scheduler.
+

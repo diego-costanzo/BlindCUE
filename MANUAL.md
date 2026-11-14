@@ -4,3 +4,4 @@ Manuale operativo completo per tecnici teatrali, operatori audio/video e diretto
 La guida ufficiale completa risiede in: **[`docs/MANUAL.md`](docs/MANUAL.md)**.
 
 Consulta il file sopra citato per il testo integrale con indice cliccabile, diagrammi Mermaid, esempi pratici passo-passo e guida al troubleshooting.
+

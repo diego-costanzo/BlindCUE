@@ -250,3 +250,4 @@ In caso di imprevisti o emergenze sul palco durante la replica:
 ### 4. L'audio della sala non si sente mentre in cuffia funziona
 - **Causa**: Il canale di uscita della cue o la scheda audio master sono disattivati.
 - **Soluzione**: Verificare il volume generale nella barra inferiore di BlindCue. Controllare in `Dispositivi e Uscite` che il dispositivo Master Sala corrisponda all'effettiva interfaccia collegata al mixer di sala.
+
