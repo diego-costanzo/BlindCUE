@@ -16,7 +16,7 @@ import os
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 from models.cue import Cue, CueStatus
 
@@ -31,7 +31,7 @@ AUTOSAVE_FILENAME = "autosave.json"
 class ProjectManager:
     """Manages saving, loading, autosaving, and crash recovery for show files."""
 
-    def __init__(self, autosave_dir: Optional[Path] = None) -> None:
+    def __init__(self, autosave_dir: Path | None = None) -> None:
         self.autosave_dir = autosave_dir or DEFAULT_AUTOSAVE_DIR
         self.autosave_file = self.autosave_dir / AUTOSAVE_FILENAME
         self._ensure_dirs()
@@ -46,7 +46,7 @@ class ProjectManager:
     # ── Atomic JSON File Write ────────────────────────────────────────
 
     @staticmethod
-    def _atomic_write_json(file_path: Path, data: Dict[str, Any]) -> None:
+    def _atomic_write_json(file_path: Path, data: dict[str, Any]) -> None:
         """Write JSON data atomically to avoid corrupting files on crash or power loss."""
         target_dir = file_path.parent
         target_dir.mkdir(parents=True, exist_ok=True)
@@ -79,10 +79,10 @@ class ProjectManager:
     def save_project(
         self,
         file_path: str | Path,
-        cues: List[Cue],
+        cues: list[Cue],
         current_index: int = -1,
-        settings: Optional[Dict[str, Any]] = None,
-        surfaces: Optional[List[Any]] = None,
+        settings: dict[str, Any] | None = None,
+        surfaces: list[Any] | None = None,
     ) -> bool:
         """Save show cues, project state, and virtual surfaces to a .blindcue JSON file.
 
@@ -96,7 +96,7 @@ class ProjectManager:
                     s.to_dict() if hasattr(s, "to_dict") else s for s in surfaces
                 ]
 
-            project_data: Dict[str, Any] = {
+            project_data: dict[str, Any] = {
                 "app": APP_NAME,
                 "schema_version": SCHEMA_VERSION,
                 "saved_at": datetime.now().isoformat(),
@@ -117,7 +117,7 @@ class ProjectManager:
 
     def load_project(
         self, file_path: str | Path
-    ) -> Tuple[List[Cue], int, Dict[str, Any]]:
+    ) -> tuple[list[Cue], int, dict[str, Any]]:
         """Load show cues and project state from a .blindcue JSON file.
 
         Returns (cues, current_index, settings).
@@ -145,24 +145,29 @@ class ProjectManager:
                 settings["surfaces"] = data["surfaces"]
             raw_cues = data.get("cues", [])
 
-            loaded_cues: List[Cue] = []
+            loaded_cues: list[Cue] = []
+            proj_dir = path.parent.resolve()
             for item in raw_cues:
                 try:
                     cue = Cue.from_dict(item)
                     # Check if file exists at recorded absolute path
-                    if not os.path.isfile(cue.file_path):
-                        # Attempt to resolve relative to project directory (e.g. copied folder/USB)
-                        rel_candidate = path.parent / cue.file_path
-                        if rel_candidate.is_file():
-                            cue.file_path = str(rel_candidate.resolve())
-                        else:
-                            # Also check by base filename in the project folder
-                            base_candidate = path.parent / os.path.basename(cue.file_path)
-                            if base_candidate.is_file():
-                                cue.file_path = str(base_candidate.resolve())
+                    file_p = Path(cue.file_path)
+                    if not file_p.is_file():
+                        # Attempt safe resolution relative to project directory (Anti-Path-Traversal)
+                        try:
+                            rel_candidate = (path.parent / file_p).resolve()
+                            if rel_candidate.is_file() and rel_candidate.is_relative_to(proj_dir):
+                                cue.file_path = str(rel_candidate)
+                            else:
+                                # Also check by base filename in the project folder
+                                base_candidate = (path.parent / file_p.name).resolve()
+                                if base_candidate.is_file() and base_candidate.is_relative_to(proj_dir):
+                                    cue.file_path = str(base_candidate)
+                        except (ValueError, OSError) as path_err:
+                            logger.debug("[PROJECT] Path resolution skipped for %s: %s", cue.file_path, path_err)
 
                     # Reset LIVE or PREVIZ runtime status to OFFLINE or LOADED
-                    cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE
+                    cue.status = CueStatus.LOADED if Path(cue.file_path).is_file() else CueStatus.OFFLINE
                     loaded_cues.append(cue)
                 except Exception as cue_exc:
                     logger.warning("[PROJECT] Skipping invalid cue item: %s (%s)", item, cue_exc)
@@ -181,15 +186,15 @@ class ProjectManager:
 
     def autosave(
         self,
-        cues: List[Cue],
+        cues: list[Cue],
         current_index: int = -1,
-        active_project_path: Optional[str] = None,
-        settings: Optional[Dict[str, Any]] = None,
+        active_project_path: str | None = None,
+        settings: dict[str, Any] | None = None,
     ) -> bool:
         """Perform an automatic background save with recovery metadata."""
         try:
             self._ensure_dirs()
-            recovery_data: Dict[str, Any] = {
+            recovery_data: dict[str, Any] = {
                 "app": APP_NAME,
                 "schema_version": SCHEMA_VERSION,
                 "saved_at": datetime.now().isoformat(),
@@ -220,7 +225,7 @@ class ProjectManager:
         except Exception as exc:
             logger.debug("[PROJECT] Could not mark clean exit: %s", exc)
 
-    def check_crash_recovery(self) -> Optional[Dict[str, Any]]:
+    def check_crash_recovery(self) -> dict[str, Any] | None:
         """Check if an unclosed session exists that can be recovered.
 
         Returns the recovery dictionary if an abnormal termination was detected,

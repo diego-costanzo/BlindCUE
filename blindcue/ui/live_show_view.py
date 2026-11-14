@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Optional
+from typing import Any, Optional
 
 from PySide6.QtCore import QDateTime, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
@@ -53,8 +53,6 @@ from ui.cue_table import (
     ROLE_STATUS_CLR,
     ROLE_STATUS_TXT,
     ROLE_TIMELINE_COMPOSED,
-    _GROUP_MODE_PILLS,
-    _LINK_RAIL_COLORS,
     format_cue_ref,
     get_group_mode_pill,
     get_media_badge,

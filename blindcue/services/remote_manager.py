@@ -11,14 +11,17 @@ Provides a single high-level interface to:
 from __future__ import annotations
 
 import logging
+import secrets
+import shutil
 import socket
 import subprocess
 from typing import Any, Callable, Optional
 
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, Signal
 from PySide6.QtGui import QImage, QPixmap
 
 from services.osc_server import OscServer
+from services.qr_generator import generate_qr_pixmap as native_qr_generate
 from services.web_server import WebRemoteServer
 
 logger = logging.getLogger("blindcue.remote")
@@ -97,10 +100,9 @@ class RemoteManager(QObject):
         self._osc_enabled: bool = False
         self._osc_port: int = 53000
 
-        # Security PIN & Anti-Burlone Controls (6-digit random PIN)
-        import random
+        # Security PIN & Anti-Burlone Controls (6-digit cryptographically secure PIN)
         self._pin_enabled: bool = True
-        self._pin: str = f"{random.randint(100000, 999999)}"
+        self._pin: str = f"{secrets.randbelow(900000) + 100000}"
         self._qr_includes_pin: bool = True
         self._osc_pin_required: bool = False
         self._osc_allowed_ips: list[str] = []
@@ -119,16 +121,16 @@ class RemoteManager(QObject):
         self._broadcast_timer.start()
 
     def _wire_bridges(self) -> None:
-        # Wire Web Server bridge
+        # Wire Web Server bridge (Cross-thread QueuedConnection guarantees safe main-thread delivery)
         wb = self.web_server.bridge
-        wb.go_requested.connect(self.go_requested.emit)
-        wb.panic_requested.connect(self.panic_requested.emit)
-        wb.blackout_requested.connect(self.blackout_requested.emit)
-        wb.pause_toggle_requested.connect(self.pause_toggle_requested.emit)
-        wb.next_cue_requested.connect(self.next_cue_requested.emit)
-        wb.prev_cue_requested.connect(self.prev_cue_requested.emit)
-        wb.cue_go_requested.connect(self.cue_go_requested.emit)
-        wb.cue_select_requested.connect(self.cue_select_requested.emit)
+        wb.go_requested.connect(self.go_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.panic_requested.connect(self.panic_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.blackout_requested.connect(self.blackout_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.pause_toggle_requested.connect(self.pause_toggle_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.next_cue_requested.connect(self.next_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.prev_cue_requested.connect(self.prev_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.cue_go_requested.connect(self.cue_go_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.cue_select_requested.connect(self.cue_select_requested.emit, Qt.ConnectionType.QueuedConnection)
 
         # Wire OSC Server bridge
         os_srv = self.osc_server
@@ -174,8 +176,7 @@ class RemoteManager(QObject):
         return list(self._osc_allowed_ips)
 
     def generate_new_pin(self) -> str:
-        import random
-        self._pin = f"{random.randint(100000, 999999)}"
+        self._pin = f"{secrets.randbelow(900000) + 100000}"
         self.web_server.set_pin_protection(self._pin_enabled, self._pin)
         self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
         self.revoke_all_sessions()
@@ -285,27 +286,37 @@ class RemoteManager(QObject):
             self.web_server.broadcast_state()
 
     def generate_qr_pixmap(self, url: Optional[str] = None, size: int = 220) -> Optional[QPixmap]:
-        """Generate high-contrast QR code QPixmap for scanning with smartphones."""
+        """Generate high-contrast QR code QPixmap for scanning with smartphones (100% cross-platform)."""
         target_url = url or self.get_qr_url()
+
+        # 1. Primary: Native 100% pure-Python QR Generator (Zero external dependencies on Linux, macOS, Windows)
         try:
-            # Call system qrencode
-            proc = subprocess.run(
-                ["qrencode", "-s", "6", "-m", "2", "-o", "-", target_url],
-                capture_output=True,
-                check=False,
-            )
-            if proc.returncode == 0 and proc.stdout:
-                img = QImage()
-                if img.loadFromData(proc.stdout):
-                    pix = QPixmap.fromImage(img)
-                    return pix.scaled(
-                        size,
-                        size,
-                        # Qt.AspectRatioMode.KeepAspectRatio,
-                        # Qt.TransformationMode.SmoothTransformation
-                    )
+            pix = native_qr_generate(target_url, size=size)
+            if pix is not None and not pix.isNull():
+                return pix
         except Exception as exc:
-            logger.warning("[REMOTE] qrencode failed or not available: %s", exc)
+            logger.debug("[REMOTE] Native QR generator fallback: %s", exc)
+
+        # 2. Secondary Fallback: System qrencode if available
+        if shutil.which("qrencode"):
+            try:
+                proc = subprocess.run(
+                    ["qrencode", "-s", "6", "-m", "2", "-o", "-", target_url],
+                    capture_output=True,
+                    check=False,
+                )
+                if proc.returncode == 0 and proc.stdout:
+                    img = QImage()
+                    if img.loadFromData(proc.stdout):
+                        pix = QPixmap.fromImage(img)
+                        return pix.scaled(
+                            size,
+                            size,
+                            Qt.AspectRatioMode.KeepAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation,
+                        )
+            except Exception as exc:
+                logger.warning("[REMOTE] qrencode failed: %s", exc)
 
         return None
 

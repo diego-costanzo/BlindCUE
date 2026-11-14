@@ -14,6 +14,7 @@ Serves a native-feeling touch-optimized web controller for smartphones and table
 
 from __future__ import annotations
 
+import hmac
 import http.server
 import json
 import logging
@@ -25,6 +26,9 @@ from typing import Any, Callable, Optional
 from PySide6.QtCore import QObject, Signal
 
 logger = logging.getLogger("blindcue.web")
+
+# Maximum permitted HTTP request payload (64 KB) to protect against DoS
+MAX_HTTP_PAYLOAD_BYTES = 65536
 
 # ── Embedded Mobile Web App (HTML5 + CSS3 + Vanilla ES6) ─────────────
 _HTML_PAGE = """<!DOCTYPE html>
@@ -2040,7 +2044,10 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
 
         try:
             length = int(self.headers.get("Content-Length", 0))
-            raw_body = self.rfile.read(length)
+            if length > MAX_HTTP_PAYLOAD_BYTES:
+                self.send_error(413, "Payload Too Large")
+                return
+            raw_body = self.rfile.read(min(length, MAX_HTTP_PAYLOAD_BYTES))
             data = json.loads(raw_body.decode("utf-8"))
         except Exception as exc:
             self.send_error(400, f"Malformed JSON: {exc}")
@@ -2121,7 +2128,7 @@ class WebRemoteServer:
                 rem = max(1, int(lockout - now))
                 return False, f"Troppi tentativi errati. Blocco temporaneo per {rem}s."
 
-            if str(candidate).strip() == self._pin:
+            if hmac.compare_digest(str(candidate).strip(), self._pin):
                 self._failed_attempts.pop(client_ip, None)
                 return True, ""
             else:
@@ -2200,7 +2207,7 @@ class WebRemoteServer:
 
         try:
             # Bind to 0.0.0.0 (all LAN interfaces)
-            self._httpd = _ThreadingHttpServer(("0.0.0.0", self.port), _BlindCueHttpRequestHandler, controller=self)
+            self._httpd = _ThreadingHttpServer(("0.0.0.0", self.port), _BlindCueHttpRequestHandler, controller=self)  # noqa: S104
             self._running = True
 
             self._thread = threading.Thread(target=self._run_server, daemon=True, name="BlindCue-WebServer")

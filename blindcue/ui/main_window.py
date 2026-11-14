@@ -3077,7 +3077,7 @@ class MainWindow(QMainWindow):
 
         elif mode == GroupMode.RANDOM.value:
             import random
-            chosen = random.choice(children)
+            chosen = random.choice(children)  # noqa: S311  # Non-cryptographic cue shuffle
             if chosen.pre_delay <= 0.02:
                 for other in self._cues:
                     if other.layer == chosen.layer and other.cue_id != chosen.cue_id and other.status == CueStatus.LIVE:

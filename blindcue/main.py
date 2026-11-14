@@ -308,7 +308,7 @@ def main() -> int:
             main_win.set_global_paused(False)
             logger.info("[MAIN] RIPRENDI TUTTO executed")
 
-    def _finalize_cue_exit(cue: Cue, layer: int, *, expected_gen: Optional[int] = None) -> None:
+    def _finalize_cue_exit(cue: Cue, layer: int, *, expected_gen: int | None = None) -> None:
         """Clear output layer after playback + optional post_delay and trigger AUTO_FOLLOW if enabled."""
         if expected_gen is not None and layer_fire_gen.get(layer) != expected_gen:
             return

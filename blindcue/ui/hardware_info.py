@@ -5,8 +5,10 @@ from __future__ import annotations
 import gc
 import logging
 import os
+import platform
 import shutil
 import subprocess
+import sys
 
 from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QMessageBox, QWidget
@@ -20,18 +22,57 @@ PROFILE_PERFORMANCE = "performance"
 
 
 def get_memory_details() -> dict:
-    """Inspect physical system RAM via /proc/meminfo on Linux."""
+    """Inspect physical system RAM across Linux, macOS, and Windows."""
     total_mb = 4096
     avail_mb = 2048
-    try:
-        with open("/proc/meminfo", "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith("MemTotal:"):
-                    total_mb = int(line.split()[1]) // 1024
-                elif line.startswith("MemAvailable:"):
-                    avail_mb = int(line.split()[1]) // 1024
-    except Exception as exc:
-        logger.debug("[HW-INFO] Could not read /proc/meminfo: %s", exc)
+
+    # 1. Linux (/proc/meminfo)
+    if sys.platform.startswith("linux"):
+        try:
+            with open("/proc/meminfo", "r", encoding="utf-8") as f:
+                for line in f:
+                    if line.startswith("MemTotal:"):
+                        total_mb = int(line.split()[1]) // 1024
+                    elif line.startswith("MemAvailable:"):
+                        avail_mb = int(line.split()[1]) // 1024
+        except Exception as exc:
+            logger.debug("[HW-INFO] Could not read /proc/meminfo: %s", exc)
+
+    # 2. macOS (sysctl hw.memsize)
+    elif sys.platform == "darwin":
+        try:
+            res = subprocess.run(["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=2)
+            total_b = int(res.stdout.strip())
+            total_mb = total_b // (1024 * 1024)
+            avail_mb = max(1024, total_mb // 2)
+        except Exception as exc:
+            logger.debug("[HW-INFO] macOS sysctl hw.memsize failed: %s", exc)
+
+    # 3. Windows (GlobalMemoryStatusEx via ctypes)
+    elif sys.platform.startswith("win"):
+        try:
+            import ctypes
+
+            class _MEMORYSTATUSEX(ctypes.Structure):
+                _fields_ = [
+                    ("dwLength", ctypes.c_ulong),
+                    ("dwMemoryLoad", ctypes.c_ulong),
+                    ("ullTotalPhys", ctypes.c_ulonglong),
+                    ("ullAvailPhys", ctypes.c_ulonglong),
+                    ("ullTotalPageFile", ctypes.c_ulonglong),
+                    ("ullAvailPageFile", ctypes.c_ulonglong),
+                    ("ullTotalVirtual", ctypes.c_ulonglong),
+                    ("ullAvailVirtual", ctypes.c_ulonglong),
+                    ("sullAvailExtendedVirtual", ctypes.c_ulonglong),
+                ]
+
+            stat = _MEMORYSTATUSEX()
+            stat.dwLength = ctypes.sizeof(_MEMORYSTATUSEX)
+            if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(stat)):
+                total_mb = int(stat.ullTotalPhys // (1024 * 1024))
+                avail_mb = int(stat.ullAvailPhys // (1024 * 1024))
+        except Exception as exc:
+            logger.debug("[HW-INFO] Windows GlobalMemoryStatusEx failed: %s", exc)
 
     return {
         "total_mb": total_mb,
@@ -42,32 +83,55 @@ def get_memory_details() -> dict:
 
 
 def get_hardware_details() -> dict:
-    """Inspect CPU, GPU/DRI, memory, and Wayland session details for diagnostics."""
+    """Inspect CPU, GPU, memory, and display server across Linux, macOS, and Windows."""
     cpu_cores = os.cpu_count() or 1
-    cpu_model = "Multi-core CPU"
-    try:
-        with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
-            for line in f:
-                if "model name" in line:
-                    cpu_model = line.split(":", 1)[1].strip()
-                    break
-    except Exception:
-        pass
+    cpu_model = platform.processor() or "Multi-core CPU"
 
-    gpu_desc = "Scheda Grafica Integrata / Discreta"
-    if shutil.which("lspci"):
+    # CPU Model detection
+    if sys.platform.startswith("linux"):
         try:
-            res = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
-            lines = [line for line in res.stdout.splitlines() if any(k in line for k in ("VGA", "3D", "Display"))]
-            if lines:
-                parts = lines[0].split(":", 2)
-                gpu_desc = parts[-1].strip() if len(parts) >= 3 else lines[0]
+            with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+                for line in f:
+                    if "model name" in line:
+                        cpu_model = line.split(":", 1)[1].strip()
+                        break
         except Exception:
             pass
-    elif os.path.exists("/dev/dri/renderD128"):
-        gpu_desc = "Mesa Direct Rendering (DRI/DRM)"
+    elif sys.platform == "darwin":
+        try:
+            res = subprocess.run(["sysctl", "-n", "machdep.cpu.brand_string"], capture_output=True, text=True, timeout=2)
+            brand = res.stdout.strip()
+            if brand:
+                cpu_model = brand
+        except Exception:
+            cpu_model = f"Apple Silicon ({platform.machine()})"
+    elif sys.platform.startswith("win"):
+        cpu_model = os.environ.get("PROCESSOR_IDENTIFIER", cpu_model)
 
-    has_vaapi = os.path.exists("/dev/dri/renderD128")
+    # GPU Description & Hardware Acceleration
+    gpu_desc = "Scheda Grafica Integrata / Discreta"
+    has_hw_accel = False
+
+    if sys.platform.startswith("linux"):
+        if shutil.which("lspci"):
+            try:
+                res = subprocess.run(["lspci"], capture_output=True, text=True, timeout=2)
+                lines = [line for line in res.stdout.splitlines() if any(k in line for k in ("VGA", "3D", "Display"))]
+                if lines:
+                    parts = lines[0].split(":", 2)
+                    gpu_desc = parts[-1].strip() if len(parts) >= 3 else lines[0]
+            except Exception:
+                pass
+        elif os.path.exists("/dev/dri/renderD128"):
+            gpu_desc = "Mesa Direct Rendering (DRI/DRM)"
+        has_hw_accel = os.path.exists("/dev/dri/renderD128")
+    elif sys.platform == "darwin":
+        gpu_desc = f"Apple Metal Graphics ({platform.machine()})"
+        has_hw_accel = True
+    elif sys.platform.startswith("win"):
+        gpu_desc = "Direct3D / DXVA2 Hardware Adapter"
+        has_hw_accel = True
+
     wayland_session = os.environ.get("WAYLAND_DISPLAY", "")
     mem = get_memory_details()
 
@@ -75,8 +139,10 @@ def get_hardware_details() -> dict:
         "cpu_cores": cpu_cores,
         "cpu_model": cpu_model,
         "gpu_desc": gpu_desc,
-        "has_vaapi": has_vaapi,
+        "has_vaapi": has_hw_accel,
+        "has_hw_accel": has_hw_accel,
         "wayland_session": wayland_session,
+        "os_name": platform.system(),
         "total_gb": mem["total_gb"],
         "avail_gb": mem["avail_gb"],
         "total_mb": mem["total_mb"],

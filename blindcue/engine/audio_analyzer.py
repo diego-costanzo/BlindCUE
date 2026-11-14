@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Optional
 
 import numpy as np
-from PySide6.QtCore import QObject, QRunnable, Signal, Slot
+from PySide6.QtCore import QObject, QRunnable, QStandardPaths, Signal, Slot
 
 logger = logging.getLogger(__name__)
 
@@ -256,12 +256,14 @@ def render_normalized_media(
     if not os.path.isfile(file_path):
         return None
 
-    cache_dir = os.path.expanduser("~/.cache/blindcue/audio")
+    # Cross-platform standard cache path (Linux ~/.cache, macOS ~/Library/Caches, Windows %LOCALAPPDATA%)
+    base_cache = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation)
+    cache_dir = os.path.join(base_cache or os.path.expanduser("~/.cache"), "blindcue", "audio")
     os.makedirs(cache_dir, exist_ok=True)
 
     stem = Path(file_path).stem
     ext = Path(file_path).suffix.lower()
-    h = hashlib.md5(f"{file_path}_{os.path.getmtime(file_path)}".encode()).hexdigest()[:8]
+    h = hashlib.md5(f"{file_path}_{os.path.getmtime(file_path)}".encode(), usedforsecurity=False).hexdigest()[:8]
 
     video_exts = {".mp4", ".mkv", ".mov", ".webm", ".avi"}
     is_video = ext in video_exts

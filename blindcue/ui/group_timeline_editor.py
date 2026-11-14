@@ -328,7 +328,6 @@ class GroupTimelineCanvas(QWidget):
 
         # 2. Tracks backgrounds
         for row in range(3):
-            layer = 3 - row
             y = self.RULER_HEIGHT + row * self.TRACK_HEIGHT
             bg_clr = QColor("#0e1522" if row % 2 == 0 else "#0b101a")
             p.fillRect(self.HEADER_WIDTH, y, w - self.HEADER_WIDTH, self.TRACK_HEIGHT, bg_clr)
