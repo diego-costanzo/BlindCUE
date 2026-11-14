@@ -92,6 +92,7 @@ class SurfaceDefinition:
     hole_w: float = 0.50                        # Inner hole W relative to surface (0.0..1.0)
     hole_h: float = 0.50                        # Inner hole H relative to surface (0.0..1.0)
     mask_image_path: Optional[str] = None       # File path to custom PNG mask
+    mask_show_guide: bool = False               # High-visibility optical guide projected on stage
 
     def __post_init__(self) -> None:
         if self.mode not in (SurfaceMode.RECTANGLE.value, SurfaceMode.QUAD.value):
@@ -178,6 +179,7 @@ class SurfaceDefinition:
             "hole_w": round(float(self.hole_w), 6),
             "hole_h": round(float(self.hole_h), 6),
             "mask_image_path": self.mask_image_path,
+            "mask_show_guide": bool(self.mask_show_guide),
         }
 
     @classmethod
@@ -221,6 +223,7 @@ class SurfaceDefinition:
             hole_w=max(0.01, min(1.0, float(data.get("hole_w", 0.50)))),
             hole_h=max(0.01, min(1.0, float(data.get("hole_h", 0.50)))),
             mask_image_path=data.get("mask_image_path"),
+            mask_show_guide=bool(data.get("mask_show_guide", False)),
         )
 
     def clone(self, new_id: Optional[str] = None, new_name: Optional[str] = None) -> SurfaceDefinition:

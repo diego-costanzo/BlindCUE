@@ -96,51 +96,69 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
         h = max(1.0, float(self._output.height()))
         return QRectF(0.0, 0.0, w, h)
 
+    def _draw_guide_badge(self, painter: QPainter, cx: float, cy: float, text: str, col: QColor) -> None:
+        font_b = QFont("sans-serif", 9, QFont.Weight.Bold)
+        painter.setFont(font_b)
+        bw = painter.fontMetrics().horizontalAdvance(text) + 18
+        bh = 22
+        badge_rect = QRectF(cx - bw / 2, cy - bh / 2, bw, bh)
+        painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
+        painter.setPen(QPen(col, 1.5))
+        painter.drawRoundedRect(badge_rect, 4, 4)
+        painter.setPen(QColor(255, 255, 255))
+        painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, text)
+
     def paint(self, painter: QPainter, option, widget=None) -> None:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         w = max(1.0, float(self._output.width()))
         h = max(1.0, float(self._output.height()))
 
-        # 1. Subtle projector alignment crosshatch grid (every 10%)
-        grid_pen = QPen(QColor(71, 85, 105, 130), 1, Qt.PenStyle.DashLine)
-        painter.setPen(grid_pen)
-        for i in range(1, 10):
-            gx = w * (i / 10.0)
-            gy = h * (i / 10.0)
-            painter.drawLine(QPointF(gx, 0), QPointF(gx, h))
-            painter.drawLine(QPointF(0, gy), QPointF(w, gy))
-
-        # Center optical crosshair (50%, 50%)
-        cx, cy = w * 0.5, h * 0.5
-        center_pen = QPen(QColor(255, 255, 255, 200), 2, Qt.PenStyle.SolidLine)
-        painter.setPen(center_pen)
-        painter.drawLine(QPointF(cx - 30, cy), QPointF(cx + 30, cy))
-        painter.drawLine(QPointF(cx, cy - 30), QPointF(cx, cy + 30))
-        painter.drawEllipse(QPointF(cx, cy), 16, 16)
-
-        # 2. Dual projector / multi-screen seam indicator (if wide aspect ratio >= 2.0)
-        if w / h >= 2.0:
-            seam_pen = QPen(QColor(244, 63, 94, 220), 2, Qt.PenStyle.DashDotLine)
-            painter.setPen(seam_pen)
-            painter.drawLine(QPointF(cx, 0), QPointF(cx, h))
-
-            # Seam banner
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(QBrush(QColor(15, 23, 42, 230)))
-            seam_badge = QRectF(cx - 100, 46, 200, 24)
-            painter.drawRoundedRect(seam_badge, 4, 4)
-            painter.setPen(QPen(QColor(244, 63, 94), 1))
-            painter.drawRoundedRect(seam_badge, 4, 4)
-            painter.setPen(QColor(255, 255, 255))
-            font_seam = QFont("sans-serif", 9)
-            font_seam.setBold(True)
-            painter.setFont(font_seam)
-            painter.drawText(seam_badge, Qt.AlignmentFlag.AlignCenter, "GIUNZIONE 50% (DUAL)")
-
-        # 3. Draw all defined virtual surfaces
+        is_full_calib = self._output.is_calibration_guides_visible()
         surfaces = self._output.get_surfaces()
-        corner_names = ["C1 · TL", "C2 · TR", "C3 · BR", "C4 · BL"]
+        has_mask_guide = any(s.mask_show_guide for s in surfaces)
 
+        if not is_full_calib and not has_mask_guide:
+            return
+
+        if is_full_calib:
+            # 1. Subtle projector alignment crosshatch grid (every 10%)
+            grid_pen = QPen(QColor(71, 85, 105, 130), 1, Qt.PenStyle.DashLine)
+            painter.setPen(grid_pen)
+            for i in range(1, 10):
+                gx = w * (i / 10.0)
+                gy = h * (i / 10.0)
+                painter.drawLine(QPointF(gx, 0), QPointF(gx, h))
+                painter.drawLine(QPointF(0, gy), QPointF(w, gy))
+
+            # Center optical crosshair (50%, 50%)
+            cx, cy = w * 0.5, h * 0.5
+            center_pen = QPen(QColor(255, 255, 255, 200), 2, Qt.PenStyle.SolidLine)
+            painter.setPen(center_pen)
+            painter.drawLine(QPointF(cx - 30, cy), QPointF(cx + 30, cy))
+            painter.drawLine(QPointF(cx, cy - 30), QPointF(cx, cy + 30))
+            painter.drawEllipse(QPointF(cx, cy), 16, 16)
+
+            # 2. Dual projector / multi-screen seam indicator (if wide aspect ratio >= 2.0)
+            if w / h >= 2.0:
+                seam_pen = QPen(QColor(244, 63, 94, 220), 2, Qt.PenStyle.DashDotLine)
+                painter.setPen(seam_pen)
+                painter.drawLine(QPointF(cx, 0), QPointF(cx, h))
+
+                # Seam banner
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QBrush(QColor(15, 23, 42, 230)))
+                seam_badge = QRectF(cx - 100, 46, 200, 24)
+                painter.drawRoundedRect(seam_badge, 4, 4)
+                painter.setPen(QPen(QColor(244, 63, 94), 1))
+                painter.drawRoundedRect(seam_badge, 4, 4)
+                painter.setPen(QColor(255, 255, 255))
+                font_seam = QFont("sans-serif", 9)
+                font_seam.setBold(True)
+                painter.setFont(font_seam)
+                painter.drawText(seam_badge, Qt.AlignmentFlag.AlignCenter, "GIUNZIONE 50% (DUAL)")
+
+        # 3. Draw surfaces and masks
+        corner_names = ["C1 · TL", "C2 · TR", "C3 · BR", "C4 · BL"]
         font_label = QFont("sans-serif", 10)
         font_label.setBold(True)
         font_corner = QFont("sans-serif", 9)
@@ -159,22 +177,22 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
                 fill_brush = QBrush(QColor(col.red(), col.green(), col.blue(), 15))
 
             if s.mode == SurfaceMode.QUAD:
-                # 4-corner perspective quad
                 p0 = QPointF(w * s.corners[0][0], h * s.corners[0][1])
                 p1 = QPointF(w * s.corners[1][0], h * s.corners[1][1])
                 p2 = QPointF(w * s.corners[2][0], h * s.corners[2][1])
                 p3 = QPointF(w * s.corners[3][0], h * s.corners[3][1])
                 poly = QPolygonF([p0, p1, p2, p3])
 
-                painter.setPen(stroke_pen)
-                painter.setBrush(fill_brush)
-                painter.drawPolygon(poly)
+                if is_full_calib:
+                    painter.setPen(stroke_pen)
+                    painter.setBrush(fill_brush)
+                    painter.drawPolygon(poly)
 
-                # Optical center diagonals
-                diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 160), 1, Qt.PenStyle.DotLine)
-                painter.setPen(diag_pen)
-                painter.drawLine(p0, p2)
-                painter.drawLine(p1, p3)
+                    # Optical center diagonals
+                    diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 160), 1, Qt.PenStyle.DotLine)
+                    painter.setPen(diag_pen)
+                    painter.drawLine(p0, p2)
+                    painter.drawLine(p1, p3)
 
                 corners = [p0, p1, p2, p3]
                 scx = (p0.x() + p1.x() + p2.x() + p3.x()) / 4.0
@@ -183,20 +201,20 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
                 sh_px = int(h * s.h)
 
             else:
-                # Rectangle mode
                 rx, ry = w * s.x, h * s.y
                 rw, rh = w * s.w, h * s.h
                 rect = QRectF(rx, ry, rw, rh)
 
-                painter.setPen(stroke_pen)
-                painter.setBrush(fill_brush)
-                painter.drawRect(rect)
+                if is_full_calib:
+                    painter.setPen(stroke_pen)
+                    painter.setBrush(fill_brush)
+                    painter.drawRect(rect)
 
-                # Diagonals
-                diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 160), 1, Qt.PenStyle.DotLine)
-                painter.setPen(diag_pen)
-                painter.drawLine(rect.topLeft(), rect.bottomRight())
-                painter.drawLine(rect.topRight(), rect.bottomLeft())
+                    # Diagonals
+                    diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 160), 1, Qt.PenStyle.DotLine)
+                    painter.setPen(diag_pen)
+                    painter.drawLine(rect.topLeft(), rect.bottomRight())
+                    painter.drawLine(rect.topRight(), rect.bottomLeft())
 
                 corners = [rect.topLeft(), rect.topRight(), rect.bottomRight(), rect.bottomLeft()]
                 scx, scy = rect.center().x(), rect.center().y()
@@ -204,12 +222,15 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
 
             # Draw mask overlay guides if mask is active
             if s.mask_type == MaskType.ELLIPSE.value:
-                mask_pen = QPen(QColor("#f59e0b" if not is_active else "#ffffff"), 2, Qt.PenStyle.DashDotLine)
+                is_hole = s.mask_invert
+                col_mask = QColor("#f43f5e" if is_hole else "#00f0ff")
+                mask_pen = QPen(col_mask, 3, Qt.PenStyle.SolidLine)
                 painter.setPen(mask_pen)
-                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.setBrush(QBrush(QColor(col_mask.red(), col_mask.green(), col_mask.blue(), 40 if is_hole else 20), Qt.BrushStyle.DiagCrossPattern if is_hole else Qt.BrushStyle.SolidPattern))
+
+                epath = QPainterPath()
+                epath.addEllipse(QRectF(0, 0, 1, 1))
                 if s.mode == SurfaceMode.QUAD:
-                    epath = QPainterPath()
-                    epath.addEllipse(QRectF(0, 0, 1, 1))
                     src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
                     dst_p = QPolygonF([p0, p1, p2, p3])
                     m_xf = QTransform()
@@ -217,85 +238,104 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
                         painter.drawPath(m_xf.map(epath))
                 else:
                     painter.drawEllipse(rect)
+
+                dim_txt = f"{'⭕ BUCO ELLITTICO' if is_hole else '⭕ SAGOMA ELLISSE'}: {int(sw_px)}×{int(sh_px)} px"
+                if s.mask_feather > 0:
+                    dim_txt += f" (Feather {s.mask_feather}px)"
+                self._draw_guide_badge(painter, scx, scy - 30, dim_txt, col_mask)
+
             elif s.mask_type == MaskType.HOLE.value:
-                mask_pen = QPen(QColor("#f43f5e"), 2, Qt.PenStyle.DashDotLine)
+                is_hole = not s.mask_invert
+                col_mask = QColor("#f43f5e" if is_hole else "#00f0ff")
+                mask_pen = QPen(col_mask, 3, Qt.PenStyle.SolidLine)
                 painter.setPen(mask_pen)
-                h_brush = QBrush(QColor(244, 63, 94, 50), Qt.BrushStyle.DiagCrossPattern)
-                painter.setBrush(h_brush)
+                painter.setBrush(QBrush(QColor(col_mask.red(), col_mask.green(), col_mask.blue(), 50 if is_hole else 20), Qt.BrushStyle.DiagCrossPattern if is_hole else Qt.BrushStyle.SolidPattern))
+
+                hpath = QPainterPath()
+                hpath.addRect(QRectF(s.hole_x, s.hole_y, s.hole_w, s.hole_h))
                 if s.mode == SurfaceMode.QUAD:
-                    hpath = QPainterPath()
-                    hpath.addRect(QRectF(s.hole_x, s.hole_y, s.hole_w, s.hole_h))
                     src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
                     dst_p = QPolygonF([p0, p1, p2, p3])
                     m_xf = QTransform()
                     if QTransform.quadToQuad(src_p, dst_p, m_xf):
                         painter.drawPath(m_xf.map(hpath))
+                    hc_x = (p0.x() + p1.x() + p2.x() + p3.x()) / 4.0
+                    hc_y = (p0.y() + p1.y() + p2.y() + p3.y()) / 4.0
                 else:
                     h_rect = QRectF(rx + rw * s.hole_x, ry + rh * s.hole_y, rw * s.hole_w, rh * s.hole_h)
                     painter.drawRect(h_rect)
+                    hc_x = h_rect.center().x()
+                    hc_y = h_rect.center().y()
 
-            # Draw corner reticles
-            painter.setFont(font_corner)
-            for idx, cpt in enumerate(corners):
+                dim_txt = f"{'🔲 BUCO / FORATURA' if is_hole else '🔲 SAGOMA INTERNA'}: {int(sw_px * s.hole_w)}×{int(sh_px * s.hole_h)} px"
+                if s.mask_feather > 0:
+                    dim_txt += f" (Feather {s.mask_feather}px)"
+                self._draw_guide_badge(painter, hc_x, hc_y - 20, dim_txt, col_mask)
+
+            if is_full_calib:
+                # Draw corner reticles
+                painter.setFont(font_corner)
+                for idx, cpt in enumerate(corners):
+                    painter.setPen(QPen(col, 2, Qt.PenStyle.SolidLine))
+                    painter.setBrush(QBrush(QColor(15, 23, 42, 220)))
+                    painter.drawEllipse(cpt, 12, 12)
+                    painter.drawLine(QPointF(cpt.x() - 18, cpt.y()), QPointF(cpt.x() + 18, cpt.y()))
+                    painter.drawLine(QPointF(cpt.x(), cpt.y() - 18), QPointF(cpt.x(), cpt.y() + 18))
+
+                    # Corner label
+                    c_lbl = corner_names[idx]
+                    offset_x = 16 if idx in (0, 3) else -70
+                    offset_y = -16 if idx in (0, 1) else 24
+                    lbl_rect = QRectF(cpt.x() + offset_x, cpt.y() + offset_y, 60, 20)
+                    painter.setBrush(QBrush(QColor(15, 23, 42, 200)))
+                    painter.setPen(QPen(col, 1))
+                    painter.drawRoundedRect(lbl_rect, 3, 3)
+                    painter.setPen(col)
+                    painter.drawText(lbl_rect, Qt.AlignmentFlag.AlignCenter, c_lbl)
+
+                # Center optical target
                 painter.setPen(QPen(col, 2, Qt.PenStyle.SolidLine))
-                painter.setBrush(QBrush(QColor(15, 23, 42, 220)))
-                painter.drawEllipse(cpt, 12, 12)
-                painter.drawLine(QPointF(cpt.x() - 18, cpt.y()), QPointF(cpt.x() + 18, cpt.y()))
-                painter.drawLine(QPointF(cpt.x(), cpt.y() - 18), QPointF(cpt.x(), cpt.y() + 18))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawEllipse(QPointF(scx, scy), 10, 10)
+                painter.drawLine(QPointF(scx - 16, scy), QPointF(scx + 16, scy))
+                painter.drawLine(QPointF(scx, scy - 16), QPointF(scx, scy + 16))
 
-                # Corner label
-                c_lbl = corner_names[idx]
-                offset_x = 16 if idx in (0, 3) else -70
-                offset_y = -16 if idx in (0, 1) else 24
-                lbl_rect = QRectF(cpt.x() + offset_x, cpt.y() + offset_y, 60, 20)
-                painter.setBrush(QBrush(QColor(15, 23, 42, 200)))
-                painter.setPen(QPen(col, 1))
-                painter.drawRoundedRect(lbl_rect, 3, 3)
-                painter.setPen(col)
-                painter.drawText(lbl_rect, Qt.AlignmentFlag.AlignCenter, c_lbl)
+                # Surface Name badge
+                mask_tag = ""
+                if s.mask_type == MaskType.ELLIPSE.value:
+                    mask_tag = " · ⭕ Ellisse"
+                elif s.mask_type == MaskType.HOLE.value:
+                    mask_tag = " · 🔲 Buco"
+                elif s.mask_type == MaskType.IMAGE.value:
+                    mask_tag = " · 🖼 PNG"
+                badge_text = f"{s.name}{mask_tag} [{sw_px}×{sh_px} px]"
+                painter.setFont(font_label)
+                bw = max(180, int(painter.fontMetrics().horizontalAdvance(badge_text) + 24))
+                bh = 28
+                badge_rect = QRectF(scx - bw / 2, scy - bh / 2, bw, bh)
+                painter.setBrush(QBrush(QColor(15, 23, 42, 230)))
+                painter.setPen(QPen(col, 2 if is_active else 1))
+                painter.drawRoundedRect(badge_rect, 5, 5)
+                painter.setPen(QColor(255, 255, 255))
+                painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
 
-            # Center optical target
-            painter.setPen(QPen(col, 2, Qt.PenStyle.SolidLine))
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawEllipse(QPointF(scx, scy), 10, 10)
-            painter.drawLine(QPointF(scx - 16, scy), QPointF(scx + 16, scy))
-            painter.drawLine(QPointF(scx, scy - 16), QPointF(scx, scy + 16))
-
-            # Surface Name badge
-            mask_tag = ""
-            if s.mask_type == MaskType.ELLIPSE.value:
-                mask_tag = " · ⭕ Ellisse"
-            elif s.mask_type == MaskType.HOLE.value:
-                mask_tag = " · 🔲 Buco"
-            elif s.mask_type == MaskType.IMAGE.value:
-                mask_tag = " · 🖼 PNG"
-            badge_text = f"{s.name}{mask_tag} [{sw_px}×{sh_px} px]"
-            painter.setFont(font_label)
-            bw = max(180, int(painter.fontMetrics().horizontalAdvance(badge_text) + 24))
-            bh = 28
-            badge_rect = QRectF(scx - bw / 2, scy - bh / 2, bw, bh)
-            painter.setBrush(QBrush(QColor(15, 23, 42, 230)))
-            painter.setPen(QPen(col, 2 if is_active else 1))
-            painter.drawRoundedRect(badge_rect, 5, 5)
+        if is_full_calib:
+            # 4. Top calibration status banner
+            banner_w = 480
+            banner_h = 32
+            banner_rect = QRectF((w - banner_w) / 2, 8, banner_w, banner_h)
+            painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
+            painter.setPen(QPen(QColor(0, 240, 255), 2))
+            painter.drawRoundedRect(banner_rect, 6, 6)
             painter.setPen(QColor(255, 255, 255))
-            painter.drawText(badge_rect, Qt.AlignmentFlag.AlignCenter, badge_text)
-
-        # 4. Top calibration status banner
-        banner_w = 480
-        banner_h = 32
-        banner_rect = QRectF((w - banner_w) / 2, 8, banner_w, banner_h)
-        painter.setBrush(QBrush(QColor(15, 23, 42, 240)))
-        painter.setPen(QPen(QColor(0, 240, 255), 2))
-        painter.drawRoundedRect(banner_rect, 6, 6)
-        painter.setPen(QColor(255, 255, 255))
-        font_banner = QFont("sans-serif", 10)
-        font_banner.setBold(True)
-        painter.setFont(font_banner)
-        painter.drawText(
-            banner_rect,
-            Qt.AlignmentFlag.AlignCenter,
-            "📐 CALIBRAZIONE SUPERFICI LIVE · Premi F7 per Chiudere",
-        )
+            font_banner = QFont("sans-serif", 10)
+            font_banner.setBold(True)
+            painter.setFont(font_banner)
+            painter.drawText(
+                banner_rect,
+                Qt.AlignmentFlag.AlignCenter,
+                "📐 CALIBRAZIONE SUPERFICI LIVE · Premi F7 per Chiudere",
+            )
 
 
 class OutputWindow(QWidget):

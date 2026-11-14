@@ -2,11 +2,13 @@
 
 Provides theatre technicians and live operators with:
 - Visual management of virtual screens / surfaces (Full screen, Slices, PiP, Dual Projector Spanning).
-- Direct mouse dragging of bounding boxes and 4-corner perspective handles (keystone / corner-pinning).
+- Direct mouse dragging of bounding boxes, 4-corner perspective handles, and cutout masks.
 - Real-time on-projector alignment guides and test pattern toggle (F7).
 - Micro-nudge directional controls for precision calibration onto physical objects/architectures.
 - Dual unit support: native Pixels (px) and normalized Percentages (%).
 - Masking & Cutouts: Ellipse/Circle cutout, Inner Rectangular Hole cutout, and Custom PNG Image Mask.
+- Dual Mask Direction: "Proietta all'Interno" (Sagoma) vs "Buca al Centro" (Foratura).
+- Soft-edge feathering and high-visibility live alignment guides on the projector.
 """
 
 from __future__ import annotations
@@ -50,6 +52,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSlider,
     QSplitter,
     QVBoxLayout,
     QWidget,
@@ -77,7 +80,7 @@ logger = logging.getLogger(__name__)
 class SurfaceCanvasWidget(QWidget):
     """Interactive visual representation of the stage projector canvas.
 
-    Allows operators to drag entire surfaces or individual corner pins in real-time
+    Allows operators to drag entire surfaces, corner pins, or cutout masks in real-time
     with live coordinate HUD overlays, hover highlights, mask footprints, and precision snapping.
     """
 
@@ -98,12 +101,13 @@ class SurfaceCanvasWidget(QWidget):
         # Hover & visual feedback state
         self._hovered_corner: Optional[int] = None
         self._hovered_surface: bool = False
+        self._hovered_hole: bool = False
         self._output_res: tuple[int, int] = (1920, 1080)
         self._unit_mode: str = "px"  # "px" or "percent"
         self._last_mouse_pos = QPointF()
 
         # Interaction drag state
-        self._drag_mode: Optional[str] = None  # None, "corner_0".."corner_3", "move_surface"
+        self._drag_mode: Optional[str] = None  # "corner_0".."corner_3", "move_surface", "move_hole", "resize_hole"
         self._drag_start_mouse = QPointF()
         self._drag_start_surface: Optional[SurfaceDefinition] = None
         self._aspect_ratio: float = 16.0 / 9.0
@@ -198,7 +202,7 @@ class SurfaceCanvasWidget(QWidget):
         if not active_surf:
             return
 
-        # Check corner handles first with generous hit radius (18 px)
+        # 1. Check corner handles first with generous hit radius (18 px)
         handle_radius = 18.0
         for i in range(4):
             cpt = self._norm_to_canvas(active_surf.corners[i][0], active_surf.corners[i][1])
@@ -213,7 +217,38 @@ class SurfaceCanvasWidget(QWidget):
                 self.update()
                 return
 
-        # Check inside active surface body for whole move
+        # 2. Check inner hole mask interaction
+        if active_surf.mask_type == MaskType.HOLE.value and active_surf.mode == SurfaceMode.RECTANGLE.value:
+            crect = self._get_canvas_rect()
+            s_tl = self._norm_to_canvas(active_surf.x, active_surf.y)
+            s_cw = crect.width() * active_surf.w
+            s_ch = crect.height() * active_surf.h
+            h_rect = QRectF(
+                s_tl.x() + s_cw * active_surf.hole_x,
+                s_tl.y() + s_ch * active_surf.hole_y,
+                s_cw * active_surf.hole_w,
+                s_ch * active_surf.hole_h,
+            )
+
+            # Check bottom-right corner resize handle of the hole
+            dist_br = math.hypot(mpos.x() - h_rect.right(), mpos.y() - h_rect.bottom())
+            if dist_br <= 14.0:
+                self._drag_mode = "resize_hole"
+                self._drag_start_mouse = mpos
+                self._drag_start_surface = active_surf.clone()
+                self.setCursor(QCursor(Qt.CursorShape.SizeFDiagCursor))
+                self.update()
+                return
+
+            if h_rect.contains(mpos):
+                self._drag_mode = "move_hole"
+                self._drag_start_mouse = mpos
+                self._drag_start_surface = active_surf.clone()
+                self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+                self.update()
+                return
+
+        # 3. Check inside active surface body for whole move
         poly = QPolygonF([
             self._norm_to_canvas(pt[0], pt[1]) for pt in active_surf.corners
         ])
@@ -225,7 +260,7 @@ class SurfaceCanvasWidget(QWidget):
             self.update()
             return
 
-        # Check if clicking on another surface
+        # 4. Check if clicking on another surface
         for s in self._surfaces:
             if s.surface_id == self._active_surface_id:
                 continue
@@ -259,7 +294,6 @@ class SurfaceCanvasWidget(QWidget):
                 if active_surf.mode == SurfaceMode.QUAD.value:
                     active_surf.set_corner(c_idx, new_x, new_y)
                 else:
-                    # In RECTANGLE mode, moving a corner resizes the bounding box
                     cur_rect_x = self._drag_start_surface.x
                     cur_rect_y = self._drag_start_surface.y
                     cur_rect_w = self._drag_start_surface.w
@@ -292,8 +326,33 @@ class SurfaceCanvasWidget(QWidget):
                 self.update()
                 return
 
+            elif self._drag_mode == "move_hole":
+                s_cw = max(1.0, crect.width() * active_surf.w)
+                s_ch = max(1.0, crect.height() * active_surf.h)
+                dx_hole = (mpos.x() - self._drag_start_mouse.x()) / s_cw
+                dy_hole = (mpos.y() - self._drag_start_mouse.y()) / s_ch
+                start_hx = self._drag_start_surface.hole_x
+                start_hy = self._drag_start_surface.hole_y
+                active_surf.hole_x = max(0.0, min(1.0 - active_surf.hole_w, start_hx + dx_hole))
+                active_surf.hole_y = max(0.0, min(1.0 - active_surf.hole_h, start_hy + dy_hole))
+                self.surface_modified.emit(active_surf)
+                self.update()
+                return
+
+            elif self._drag_mode == "resize_hole":
+                s_cw = max(1.0, crect.width() * active_surf.w)
+                s_ch = max(1.0, crect.height() * active_surf.h)
+                dx_hole = (mpos.x() - self._drag_start_mouse.x()) / s_cw
+                dy_hole = (mpos.y() - self._drag_start_mouse.y()) / s_ch
+                start_hw = self._drag_start_surface.hole_w
+                start_hh = self._drag_start_surface.hole_h
+                active_surf.hole_w = max(0.05, min(1.0 - active_surf.hole_x, start_hw + dx_hole))
+                active_surf.hole_h = max(0.05, min(1.0 - active_surf.hole_y, start_hh + dy_hole))
+                self.surface_modified.emit(active_surf)
+                self.update()
+                return
+
             elif self._drag_mode == "move_surface":
-                # Translate entire surface
                 if active_surf.mode == SurfaceMode.RECTANGLE.value:
                     start_x = self._drag_start_surface.x
                     start_y = self._drag_start_surface.y
@@ -303,7 +362,6 @@ class SurfaceCanvasWidget(QWidget):
                     active_surf.y = round(new_y, 6)
                     active_surf.sync_quad_from_rect()
                 else:
-                    # Translate all 4 corners keeping relative shape
                     for i in range(4):
                         sc = self._drag_start_surface.corners[i]
                         nx = max(0.0, min(1.0, sc[0] + dx_norm))
@@ -318,8 +376,10 @@ class SurfaceCanvasWidget(QWidget):
         # Hover detection when not dragging
         prev_hover_c = self._hovered_corner
         prev_hover_s = self._hovered_surface
+        prev_hover_h = self._hovered_hole
         self._hovered_corner = None
         self._hovered_surface = False
+        self._hovered_hole = False
 
         if active_surf:
             handle_radius = 18.0
@@ -329,6 +389,31 @@ class SurfaceCanvasWidget(QWidget):
                     self._hovered_corner = i
                     self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
                     if self._hovered_corner != prev_hover_c:
+                        self.update()
+                    return
+
+            # Check hover on hole mask
+            if active_surf.mask_type == MaskType.HOLE.value and active_surf.mode == SurfaceMode.RECTANGLE.value:
+                crect = self._get_canvas_rect()
+                s_tl = self._norm_to_canvas(active_surf.x, active_surf.y)
+                s_cw = crect.width() * active_surf.w
+                s_ch = crect.height() * active_surf.h
+                h_rect = QRectF(
+                    s_tl.x() + s_cw * active_surf.hole_x,
+                    s_tl.y() + s_ch * active_surf.hole_y,
+                    s_cw * active_surf.hole_w,
+                    s_ch * active_surf.hole_h,
+                )
+                if math.hypot(mpos.x() - h_rect.right(), mpos.y() - h_rect.bottom()) <= 14.0:
+                    self.setCursor(QCursor(Qt.CursorShape.SizeFDiagCursor))
+                    self._hovered_hole = True
+                    if not prev_hover_h:
+                        self.update()
+                    return
+                if h_rect.contains(mpos):
+                    self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+                    self._hovered_hole = True
+                    if not prev_hover_h:
                         self.update()
                     return
 
@@ -343,7 +428,7 @@ class SurfaceCanvasWidget(QWidget):
                 return
 
         self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
-        if prev_hover_c is not None or prev_hover_s:
+        if prev_hover_c is not None or prev_hover_s or prev_hover_h:
             self.update()
         super().mouseMoveEvent(event)
 
@@ -363,7 +448,6 @@ class SurfaceCanvasWidget(QWidget):
             super().keyPressEvent(event)
             return
 
-        # Number keys 1..4 switch corner directly
         if event.key() in (Qt.Key.Key_1, Qt.Key.Key_2, Qt.Key.Key_3, Qt.Key.Key_4):
             idx = event.key() - Qt.Key.Key_1
             self._active_corner = idx
@@ -413,17 +497,13 @@ class SurfaceCanvasWidget(QWidget):
         theme = get_active_theme()
         is_mono = theme.is_monochrome
 
-        # Outer widget background
         painter.fillRect(self.rect(), QColor("#090d16" if not is_mono else "#111114"))
-
         crect = self._get_canvas_rect()
 
-        # Stage projector canvas background
         painter.fillRect(crect, QColor("#111827" if not is_mono else "#18181c"))
         painter.setPen(QPen(QColor("#334155" if not is_mono else "#383840"), 1))
         painter.drawRect(crect)
 
-        # Draw 10% grid lines
         grid_pen = QPen(QColor(71, 85, 105, 80 if not is_mono else 60), 1, Qt.PenStyle.DashLine)
         painter.setPen(grid_pen)
         for i in range(1, 10):
@@ -432,13 +512,11 @@ class SurfaceCanvasWidget(QWidget):
             painter.drawLine(QPointF(gx, crect.y()), QPointF(gx, crect.bottom()))
             painter.drawLine(QPointF(crect.x(), gy), QPointF(crect.right(), gy))
 
-        # Center optical crosshair on stage
         cx, cy = crect.center().x(), crect.center().y()
         painter.setPen(QPen(QColor(255, 255, 255, 120), 1, Qt.PenStyle.SolidLine))
         painter.drawLine(QPointF(cx - 15, cy), QPointF(cx + 15, cy))
         painter.drawLine(QPointF(cx, cy - 15), QPointF(cx, cy + 15))
 
-        # Draw dual-projector 50% seam line if aspect ratio >= 2.0
         if self._aspect_ratio >= 2.0:
             painter.setPen(QPen(QColor("#f43f5e"), 1, Qt.PenStyle.DashDotLine))
             painter.drawLine(QPointF(cx, crect.y()), QPointF(cx, crect.bottom()))
@@ -447,12 +525,9 @@ class SurfaceCanvasWidget(QWidget):
             painter.setFont(font_seam)
             painter.drawText(int(cx + 4), int(crect.y() + 14), "SEAM 50%")
 
-        # Draw all surfaces
         corner_names = ["TL", "TR", "BR", "BL"]
-        font_badge = QFont("sans-serif", 9)
-        font_badge.setBold(True)
-        font_corner = QFont("sans-serif", 8)
-        font_corner.setBold(True)
+        font_badge = QFont("sans-serif", 9, QFont.Weight.Bold)
+        font_corner = QFont("sans-serif", 8, QFont.Weight.Bold)
 
         for s in self._surfaces:
             is_active = (s.surface_id == self._active_surface_id)
@@ -465,13 +540,11 @@ class SurfaceCanvasWidget(QWidget):
             poly_pts = [self._norm_to_canvas(pt[0], pt[1]) for pt in s.corners]
             poly = QPolygonF(poly_pts)
 
-            # Fill surface
             fill_alpha = 60 if is_active else 20
             painter.setBrush(QBrush(QColor(col.red(), col.green(), col.blue(), fill_alpha)))
             painter.setPen(QPen(col, 2 if is_active else 1, Qt.PenStyle.SolidLine if is_active else Qt.PenStyle.DashLine))
             painter.drawPolygon(poly)
 
-            # Optical diagonals
             diag_pen = QPen(QColor(col.red(), col.green(), col.blue(), 140 if is_active else 70), 1, Qt.PenStyle.DotLine)
             painter.setPen(diag_pen)
             painter.drawLine(poly_pts[0], poly_pts[2])
@@ -479,9 +552,11 @@ class SurfaceCanvasWidget(QWidget):
 
             # Draw mask overlay guides on canvas
             if s.mask_type == MaskType.ELLIPSE.value:
-                mask_pen = QPen(QColor("#f59e0b" if not is_mono else "#ffffff"), 2, Qt.PenStyle.DashDotLine)
+                is_hole = s.mask_invert
+                col_mask = QColor("#f43f5e" if is_hole else "#00f0ff")
+                mask_pen = QPen(col_mask, 2, Qt.PenStyle.SolidLine if is_active else Qt.PenStyle.DashDotLine)
                 painter.setPen(mask_pen)
-                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.setBrush(QBrush(QColor(col_mask.red(), col_mask.green(), col_mask.blue(), 40 if is_hole else 20), Qt.BrushStyle.DiagCrossPattern if is_hole else Qt.BrushStyle.SolidPattern))
                 epath = QPainterPath()
                 epath.addEllipse(QRectF(0, 0, 1, 1))
                 src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
@@ -491,10 +566,11 @@ class SurfaceCanvasWidget(QWidget):
                     painter.drawPath(m_xf.map(epath))
 
             elif s.mask_type == MaskType.HOLE.value:
-                mask_pen = QPen(QColor("#f43f5e" if not is_mono else "#ffffff"), 2, Qt.PenStyle.DashDotLine)
+                is_hole = not s.mask_invert
+                col_mask = QColor("#f43f5e" if is_hole else "#00f0ff")
+                mask_pen = QPen(col_mask, 2, Qt.PenStyle.SolidLine if is_active else Qt.PenStyle.DashDotLine)
                 painter.setPen(mask_pen)
-                h_brush = QBrush(QColor(244, 63, 94, 50 if not is_mono else 60), Qt.BrushStyle.DiagCrossPattern)
-                painter.setBrush(h_brush)
+                painter.setBrush(QBrush(QColor(col_mask.red(), col_mask.green(), col_mask.blue(), 50 if is_hole else 20), Qt.BrushStyle.DiagCrossPattern if is_hole else Qt.BrushStyle.SolidPattern))
                 hpath = QPainterPath()
                 hpath.addRect(QRectF(s.hole_x, s.hole_y, s.hole_w, s.hole_h))
                 src_p = QPolygonF([QPointF(0, 0), QPointF(1, 0), QPointF(1, 1), QPointF(0, 1)])
@@ -503,7 +579,6 @@ class SurfaceCanvasWidget(QWidget):
                 if QTransform.quadToQuad(src_p, dst_p, m_xf):
                     painter.drawPath(m_xf.map(hpath))
 
-            # Surface centroid badge
             scx = sum(p.x() for p in poly_pts) / 4.0
             scy = sum(p.y() for p in poly_pts) / 4.0
 
@@ -537,7 +612,6 @@ class SurfaceCanvasWidget(QWidget):
                     h_rad = 10 if (is_selected_corner or is_hovered or is_dragging_this) else 8
                     handle_col = QColor("#f59e0b" if not is_mono else "#ffffff") if is_selected_corner else col
 
-                    # Glowing dashed ring on hover or active dragging
                     if is_hovered or is_dragging_this:
                         ring_pen = QPen(QColor("#38bdf8" if not is_mono else "#ffffff"), 2, Qt.PenStyle.DashLine)
                         painter.setPen(ring_pen)
@@ -548,7 +622,6 @@ class SurfaceCanvasWidget(QWidget):
                     painter.setPen(QPen(QColor("#000000"), 2))
                     painter.drawEllipse(pt, h_rad, h_rad)
 
-                    # Label
                     c_lbl = f"C{idx+1} {corner_names[idx]}"
                     ox = 12 if idx in (0, 3) else -42
                     oy = -12 if idx in (0, 1) else 18
@@ -570,6 +643,14 @@ class SurfaceCanvasWidget(QWidget):
                 pct_x = c_norm[0] * 100.0
                 pct_y = c_norm[1] * 100.0
                 hud_text = f"C{c_idx+1} ({corner_names[c_idx]}): {px_x} px, {px_y} px  ({pct_x:.1f}%, {pct_y:.1f}%)"
+            elif self._drag_mode in ("move_hole", "resize_hole"):
+                sw_px = max(1.0, float(self._output_res[0]) * active_surf.w)
+                sh_px = max(1.0, float(self._output_res[1]) * active_surf.h)
+                hx_px = int(round(active_surf.hole_x * sw_px))
+                hy_px = int(round(active_surf.hole_y * sh_px))
+                hw_px = int(round(active_surf.hole_w * sw_px))
+                hh_px = int(round(active_surf.hole_h * sh_px))
+                hud_text = f"🔲 Buco: {hx_px}, {hy_px} px · Dim: {hw_px} × {hh_px} px"
             else:
                 px_x = int(round(active_surf.x * self._output_res[0]))
                 px_y = int(round(active_surf.y * self._output_res[1]))
@@ -933,7 +1014,7 @@ class SurfaceMappingDialog(QDialog):
         mask_frame.setStyleSheet("background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 6px;")
         mask_lay = QVBoxLayout(mask_frame)
         mask_lay.setContentsMargins(8, 8, 8, 8)
-        mask_lay.setSpacing(6)
+        mask_lay.setSpacing(8)
 
         lbl_mask_title = QLabel("🎭 MASCHERA & RITAGLIO (MASK)")
         lbl_mask_title.setStyleSheet("font-size: 10px; font-weight: bold; color: #38bdf8; letter-spacing: 1px;")
@@ -941,12 +1022,12 @@ class SurfaceMappingDialog(QDialog):
 
         mask_type_row = QHBoxLayout()
         mask_type_row.setSpacing(6)
-        mask_type_row.addWidget(QLabel("Tipo:"))
+        mask_type_row.addWidget(QLabel("Forma:"))
         self.combo_mask_type = QComboBox()
         self.combo_mask_type.setStyleSheet("background: #0f172a; color: #ffffff; border: 1px solid #475569; border-radius: 4px; padding: 4px;")
         self.combo_mask_type.addItem("Nessuna (Piena)", MaskType.NONE.value)
         self.combo_mask_type.addItem("⭕ Ellisse / Cerchio", MaskType.ELLIPSE.value)
-        self.combo_mask_type.addItem("🔲 Buco / Cutout Interno", MaskType.HOLE.value)
+        self.combo_mask_type.addItem("🔲 Rettangolo / Finestra (Cutout)", MaskType.HOLE.value)
         self.combo_mask_type.addItem("🖼 Maschera Immagine PNG", MaskType.IMAGE.value)
         self.combo_mask_type.currentIndexChanged.connect(self._on_mask_type_changed)
         mask_type_row.addWidget(self.combo_mask_type)
@@ -957,18 +1038,55 @@ class SurfaceMappingDialog(QDialog):
         self.mask_detail_lay.setContentsMargins(0, 0, 0, 0)
         self.mask_detail_lay.setSpacing(6)
 
-        # Invert Checkbox
-        self.chk_mask_invert = QCheckBox("Inverti Maschera")
-        self.chk_mask_invert.setStyleSheet("color: #cbd5e1; font-size: 11px;")
-        self.chk_mask_invert.toggled.connect(self._on_mask_invert_changed)
-        self.mask_detail_lay.addWidget(self.chk_mask_invert)
+        # Mask Direction Mode: "Proietta all'Interno" vs "Buca al Centro"
+        dir_label = QLabel("Comportamento / Direzione:")
+        dir_label.setStyleSheet("font-size: 11px; color: #94a3b8;")
+        self.mask_detail_lay.addWidget(dir_label)
+
+        dir_btn_row = QHBoxLayout()
+        dir_btn_row.setSpacing(6)
+
+        self.btn_mask_dir_inside = QPushButton("🔘 Proietta all'Interno (Sagoma)")
+        self.btn_mask_dir_inside.setCheckable(True)
+        self.btn_mask_dir_inside.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_mask_dir_inside.clicked.connect(lambda: self._set_mask_direction(inside=True))
+
+        self.btn_mask_dir_hole = QPushButton("🔲 Buca al Centro (Foratura)")
+        self.btn_mask_dir_hole.setCheckable(True)
+        self.btn_mask_dir_hole.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_mask_dir_hole.clicked.connect(lambda: self._set_mask_direction(inside=False))
+
+        dir_style = """
+            QPushButton {
+                background: #0f172a;
+                color: #cbd5e1;
+                border: 1px solid #475569;
+                border-radius: 4px;
+                padding: 5px 8px;
+                font-size: 11px;
+            }
+            QPushButton:checked {
+                background: #0284c7;
+                color: #ffffff;
+                font-weight: bold;
+                border: 1px solid #38bdf8;
+            }
+        """
+        self.btn_mask_dir_inside.setStyleSheet(dir_style)
+        self.btn_mask_dir_hole.setStyleSheet(dir_style)
+        dir_btn_row.addWidget(self.btn_mask_dir_inside)
+        dir_btn_row.addWidget(self.btn_mask_dir_hole)
+        self.mask_detail_lay.addLayout(dir_btn_row)
 
         # Feather (Sfumatura Bordi)
         self.feather_box = QFrame()
-        feather_lay = QHBoxLayout(self.feather_box)
-        feather_lay.setContentsMargins(0, 0, 0, 0)
-        feather_lay.setSpacing(6)
-        feather_lay.addWidget(QLabel("Sfumatura (Feather):"))
+        feather_vlay = QVBoxLayout(self.feather_box)
+        feather_vlay.setContentsMargins(0, 0, 0, 0)
+        feather_vlay.setSpacing(4)
+
+        feather_top_row = QHBoxLayout()
+        feather_top_row.setSpacing(6)
+        feather_top_row.addWidget(QLabel("Sfumatura Bordo (Feather):"))
         self.spin_mask_feather = SmartDoubleSpinBox()
         self.spin_mask_feather.setRange(0, 50)
         self.spin_mask_feather.setDecimals(0)
@@ -976,7 +1094,19 @@ class SurfaceMappingDialog(QDialog):
         self.spin_mask_feather.setSingleStep(1)
         self.spin_mask_feather.setStyleSheet("background: #0f172a; color: #ffffff; border: 1px solid #475569; border-radius: 4px;")
         self.spin_mask_feather.valueChanged.connect(self._on_mask_feather_changed)
-        feather_lay.addWidget(self.spin_mask_feather)
+        feather_top_row.addWidget(self.spin_mask_feather)
+        feather_vlay.addLayout(feather_top_row)
+
+        # Quick Feather Presets
+        feather_presets = QHBoxLayout()
+        feather_presets.setSpacing(4)
+        for lbl_p, val_p in (("Netto (0px)", 0), ("Morbido (15px)", 15), ("Vignetta (35px)", 35)):
+            pb = QPushButton(lbl_p)
+            pb.setCursor(Qt.CursorShape.PointingHandCursor)
+            pb.setStyleSheet("background: #334155; color: #cbd5e1; border: 1px solid #475569; border-radius: 3px; font-size: 10px; padding: 2px 6px;")
+            pb.clicked.connect(lambda _=False, v=val_p: self.spin_mask_feather.setValue(v))
+            feather_presets.addWidget(pb)
+        feather_vlay.addLayout(feather_presets)
         self.mask_detail_lay.addWidget(self.feather_box)
 
         # Hole coordinates grid
@@ -993,13 +1123,13 @@ class SurfaceMappingDialog(QDialog):
             s.setStyleSheet("background: #0f172a; color: #ffffff; border: 1px solid #475569; border-radius: 4px;")
             s.valueChanged.connect(self._on_hole_spins_changed)
 
-        self.hole_grid_lay.addWidget(QLabel("Buco X:"), 0, 0)
+        self.hole_grid_lay.addWidget(QLabel("Pos X:"), 0, 0)
         self.hole_grid_lay.addWidget(self.spin_hx, 0, 1)
-        self.hole_grid_lay.addWidget(QLabel("Buco Y:"), 0, 2)
+        self.hole_grid_lay.addWidget(QLabel("Pos Y:"), 0, 2)
         self.hole_grid_lay.addWidget(self.spin_hy, 0, 3)
-        self.hole_grid_lay.addWidget(QLabel("Buco W:"), 1, 0)
+        self.hole_grid_lay.addWidget(QLabel("Larghezza:"), 1, 0)
         self.hole_grid_lay.addWidget(self.spin_hw, 1, 1)
-        self.hole_grid_lay.addWidget(QLabel("Buco H:"), 1, 2)
+        self.hole_grid_lay.addWidget(QLabel("Altezza:"), 1, 2)
         self.hole_grid_lay.addWidget(self.spin_hh, 1, 3)
         self.mask_detail_lay.addWidget(self.hole_grid)
 
@@ -1029,6 +1159,12 @@ class SurfaceMappingDialog(QDialog):
         self.lbl_mask_path.setWordWrap(True)
         img_lay.addWidget(self.lbl_mask_path)
         self.mask_detail_lay.addWidget(self.image_mask_box)
+
+        # Live Projector Mask Guide Toggle
+        self.chk_mask_guide = QCheckBox("👁 Evidenzia Bordo Maschera sul Proiettore Live")
+        self.chk_mask_guide.setStyleSheet("color: #38bdf8; font-size: 11px; font-weight: bold; margin-top: 4px;")
+        self.chk_mask_guide.toggled.connect(self._on_mask_guide_toggled)
+        self.mask_detail_lay.addWidget(self.chk_mask_guide)
 
         mask_lay.addWidget(self.mask_detail_stack)
         left_lay.addWidget(mask_frame)
@@ -1074,7 +1210,7 @@ class SurfaceMappingDialog(QDialog):
         self.canvas = SurfaceCanvasWidget()
         right_panel.addWidget(self.canvas)
 
-        hint_lbl = QLabel("💡 Mouse: trascina i vertici C1..C4 o il riquadro. Frecce per micro-nudge. Maschere: ritaglia in cerchio, crea forature interne o applica un file PNG.")
+        hint_lbl = QLabel("💡 Mouse: trascina i vertici o il riquadro. Trascina direttamente il buco sul canvas. Bordo Guida: proietta il contorno esatto sul palco per allinearlo al millimetro.")
         hint_lbl.setStyleSheet("font-size: 11px; color: #94a3b8; font-style: italic;")
         right_panel.addWidget(hint_lbl)
 
@@ -1192,7 +1328,6 @@ class SurfaceMappingDialog(QDialog):
                 self.list_surfaces.setCurrentItem(item)
         self.list_surfaces.blockSignals(False)
 
-        # Disable delete for default surface
         self.btn_del.setEnabled(self._active_id != DEFAULT_SURFACE_ID)
 
     def _sync_controls_from_surface(self, s: SurfaceDefinition) -> None:
@@ -1207,6 +1342,22 @@ class SurfaceMappingDialog(QDialog):
             c_pt = s.corners[self._active_corner]
             self.spin_cx.setValue(self._to_display_x(c_pt[0]))
             self.spin_cy.setValue(self._to_display_y(c_pt[1]))
+
+        # Update hole spinboxes
+        if s.mask_type == MaskType.HOLE.value:
+            if self._unit_mode == "px":
+                sw_px = max(1.0, float(self._output_res[0]) * s.w)
+                sh_px = max(1.0, float(self._output_res[1]) * s.h)
+                self.spin_hx.setValue(round(s.hole_x * sw_px))
+                self.spin_hy.setValue(round(s.hole_y * sh_px))
+                self.spin_hw.setValue(round(s.hole_w * sw_px))
+                self.spin_hh.setValue(round(s.hole_h * sh_px))
+            else:
+                self.spin_hx.setValue(round(s.hole_x * 100.0, 1))
+                self.spin_hy.setValue(round(s.hole_y * 100.0, 1))
+                self.spin_hw.setValue(round(s.hole_w * 100.0, 1))
+                self.spin_hh.setValue(round(s.hole_h * 100.0, 1))
+
         self._updating_ui = False
 
     def _load_active_surface_to_controls(self) -> None:
@@ -1218,7 +1369,6 @@ class SurfaceMappingDialog(QDialog):
         self.btn_mode_rect.setChecked(is_rect)
         self.btn_mode_quad.setChecked(not is_rect)
 
-        # Clear coord layout
         while self.coord_lay.count():
             item = self.coord_lay.takeAt(0)
             if w := item.widget():
@@ -1261,8 +1411,13 @@ class SurfaceMappingDialog(QDialog):
         else:
             self.combo_mask_type.setCurrentIndex(0)
 
-        self.chk_mask_invert.setChecked(s.mask_invert)
+        # Direction button states
+        is_inside = (not s.mask_invert) if s.mask_type != MaskType.HOLE.value else s.mask_invert
+        self.btn_mask_dir_inside.setChecked(is_inside)
+        self.btn_mask_dir_hole.setChecked(not is_inside)
+
         self.spin_mask_feather.setValue(s.mask_feather)
+        self.chk_mask_guide.setChecked(s.mask_show_guide)
 
         # Update hole spins based on unit mode
         if self._unit_mode == "px":
@@ -1305,23 +1460,13 @@ class SurfaceMappingDialog(QDialog):
         is_img = (mask_type == MaskType.IMAGE.value)
 
         self.mask_detail_stack.setVisible(not is_none)
-        self.chk_mask_invert.setVisible(not is_none)
         self.feather_box.setVisible(is_ellipse or is_hole)
         self.hole_grid.setVisible(is_hole)
         self.image_mask_box.setVisible(is_img)
 
-        if is_ellipse:
-            self.chk_mask_invert.setText("Inverti (Buca l'ellisse al centro)")
-        elif is_hole:
-            self.chk_mask_invert.setText("Inverti (Proietta solo nel buco)")
-        elif is_img:
-            self.chk_mask_invert.setText("Inverti Maschera PNG")
-
     def _sync_to_output(self) -> None:
         """Propagate current surface state live to the live OutputWindow."""
         self._output.set_surfaces(self._surfaces)
-        if self._output.is_calibration_guides_visible():
-            self._output.set_calibration_guides_visible(True, active_surface_id=self._active_id)
         self.surfaces_changed.emit(self._surfaces)
 
     # ── Slots ─────────────────────────────────────────────────────────
@@ -1420,12 +1565,16 @@ class SurfaceMappingDialog(QDialog):
         self.canvas.update()
         self._sync_to_output()
 
-    @Slot(bool)
-    def _on_mask_invert_changed(self, checked: bool) -> None:
+    def _set_mask_direction(self, inside: bool) -> None:
         if self._updating_ui:
             return
         s = self._get_active_surface()
-        s.mask_invert = checked
+        self.btn_mask_dir_inside.setChecked(inside)
+        self.btn_mask_dir_hole.setChecked(not inside)
+        if s.mask_type == MaskType.HOLE.value:
+            s.mask_invert = inside  # for Hole, normal is hole (False), inside is True
+        else:
+            s.mask_invert = not inside  # for Ellipse/Image, normal is inside (False), hole is True
         self.canvas.update()
         self._sync_to_output()
 
@@ -1436,6 +1585,14 @@ class SurfaceMappingDialog(QDialog):
         s = self._get_active_surface()
         s.mask_feather = int(val)
         self.canvas.update()
+        self._sync_to_output()
+
+    @Slot(bool)
+    def _on_mask_guide_toggled(self, checked: bool) -> None:
+        if self._updating_ui:
+            return
+        s = self._get_active_surface()
+        s.mask_show_guide = checked
         self._sync_to_output()
 
     @Slot()
@@ -1585,6 +1742,13 @@ class SurfaceMappingDialog(QDialog):
                 "Monitor Singolo Rilevato",
                 "È presente un solo schermo collegato. Per usare lo spanning multi-proiettore, collega un secondo monitor/proiettore alle uscite HDMI o DisplayPort.",
             )
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        # Automatically disable temporary mask guides on close
+        for s in self._surfaces:
+            s.mask_show_guide = False
+        self._sync_to_output()
+        super().closeEvent(event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
         if event.key() == Qt.Key.Key_F7:
