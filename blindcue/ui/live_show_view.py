@@ -1343,10 +1343,10 @@ class LiveShowPanel(QWidget):
         # 6. GO and Loop Buttons
         if is_mono:
             self.btn_go.setStyleSheet(
-                "QPushButton { background-color: #ffffff; color: #0c0c0e; border: 2px solid #d4d4d8; "
+                "QPushButton { background-color: #26272e; color: #ffffff; border: 2px solid #ffffff; "
                 "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; } "
-                "QPushButton:hover { background-color: #f4f4f5; border-color: #ffffff; } "
-                "QPushButton:pressed { background-color: #d4d4d8; }"
+                "QPushButton:hover { background-color: #33343d; border-color: #ffffff; color: #ffffff; } "
+                "QPushButton:pressed { background-color: #18191f; }"
             )
             self.btn_break_loop.setStyleSheet(
                 "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #525363; "

@@ -334,14 +334,14 @@ class MainWindow(QMainWindow):
             self._btn_go.setStyleSheet(f"""
                 QPushButton {{
                     background-color: {t.go};
-                    color: #0c1017;
+                    color: #ffffff;
                     border: 2px solid #ffffff;
                     border-radius: 6px;
                     font-size: 18px;
                     font-weight: bold;
                 }}
-                QPushButton:hover {{ background-color: {t.accent_hover}; }}
-                QPushButton:pressed {{ background-color: {t.accent_muted}; }}
+                QPushButton:hover {{ background-color: {t.button_hover_bg}; border-color: #ffffff; color: #ffffff; }}
+                QPushButton:pressed {{ background-color: {t.input_bg}; }}
             """)
         elif t.theme_id == "warm_amber_studio":
             self._btn_go.setStyleSheet(f"""
