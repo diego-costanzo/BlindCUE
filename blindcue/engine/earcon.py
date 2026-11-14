@@ -103,3 +103,4 @@ class EarconManager:
         """Play warning alert tone on blocked operation or critical safety trigger."""
         if self._enabled and "alert" in self._sounds:
             self._sounds["alert"].play()
+
