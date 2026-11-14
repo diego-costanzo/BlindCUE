@@ -1328,16 +1328,16 @@ class MainWindow(QMainWindow):
         self._remote_mgr = mgr
         if mgr is not None:
             mgr.set_state_provider(self.get_remote_state)
-            mgr.go_requested.connect(self._on_remote_go)
-            mgr.panic_requested.connect(self._on_remote_panic)
-            mgr.blackout_requested.connect(self._on_remote_blackout)
-            mgr.pause_toggle_requested.connect(self._on_remote_pause_toggle)
-            mgr.next_cue_requested.connect(self._on_remote_next_cue)
-            mgr.prev_cue_requested.connect(self._on_remote_prev_cue)
-            mgr.cue_go_requested.connect(self._on_remote_cue_go)
-            mgr.cue_select_requested.connect(self._on_remote_cue_select)
-            mgr.volume_change_requested.connect(self._on_remote_volume_change)
-            mgr.activity_updated.connect(self._update_remote_status_bar)
+            mgr.go_requested.connect(self._on_remote_go, Qt.ConnectionType.QueuedConnection)
+            mgr.panic_requested.connect(self._on_remote_panic, Qt.ConnectionType.QueuedConnection)
+            mgr.blackout_requested.connect(self._on_remote_blackout, Qt.ConnectionType.QueuedConnection)
+            mgr.pause_toggle_requested.connect(self._on_remote_pause_toggle, Qt.ConnectionType.QueuedConnection)
+            mgr.next_cue_requested.connect(self._on_remote_next_cue, Qt.ConnectionType.QueuedConnection)
+            mgr.prev_cue_requested.connect(self._on_remote_prev_cue, Qt.ConnectionType.QueuedConnection)
+            mgr.cue_go_requested.connect(self._on_remote_cue_go, Qt.ConnectionType.QueuedConnection)
+            mgr.cue_select_requested.connect(self._on_remote_cue_select, Qt.ConnectionType.QueuedConnection)
+            mgr.volume_change_requested.connect(self._on_remote_volume_change, Qt.ConnectionType.QueuedConnection)
+            mgr.activity_updated.connect(self._update_remote_status_bar, Qt.ConnectionType.QueuedConnection)
             self._update_remote_status_bar()
 
     def open_remote_control_dialog(self) -> None:

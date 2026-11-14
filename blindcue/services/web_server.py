@@ -2241,3 +2241,9 @@ class WebRemoteServer:
         with self._clients_lock:
             self._sse_clients.clear()
         logger.info("[WEB] Remote Web Server stopped")
+
+    def __del__(self) -> None:
+        try:
+            self.stop()
+        except Exception:
+            pass

@@ -131,17 +131,17 @@ class RemoteManager(QObject):
         wb.cue_go_requested.connect(self.cue_go_requested.emit, Qt.ConnectionType.QueuedConnection)
         wb.cue_select_requested.connect(self.cue_select_requested.emit, Qt.ConnectionType.QueuedConnection)
 
-        # Wire OSC Server bridge
+        # Wire OSC Server bridge (Cross-thread QueuedConnection guarantees safe main-thread delivery)
         os_srv = self.osc_server
-        os_srv.go_requested.connect(self.go_requested.emit)
-        os_srv.panic_requested.connect(self.panic_requested.emit)
-        os_srv.blackout_requested.connect(self.blackout_requested.emit)
-        os_srv.pause_toggle_requested.connect(self.pause_toggle_requested.emit)
-        os_srv.next_cue_requested.connect(self.next_cue_requested.emit)
-        os_srv.prev_cue_requested.connect(self.prev_cue_requested.emit)
-        os_srv.cue_go_requested.connect(self.cue_go_requested.emit)
-        os_srv.cue_select_requested.connect(self.cue_select_requested.emit)
-        os_srv.volume_change_requested.connect(self.volume_change_requested.emit)
+        os_srv.go_requested.connect(self.go_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.panic_requested.connect(self.panic_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.blackout_requested.connect(self.blackout_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.pause_toggle_requested.connect(self.pause_toggle_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.next_cue_requested.connect(self.next_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.prev_cue_requested.connect(self.prev_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.cue_go_requested.connect(self.cue_go_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.cue_select_requested.connect(self.cue_select_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.volume_change_requested.connect(self.volume_change_requested.emit, Qt.ConnectionType.QueuedConnection)
 
     def set_state_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
         """Register callback that provides full current show state snapshot."""

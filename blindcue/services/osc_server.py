@@ -107,6 +107,12 @@ class OscServer(QObject):
         self._is_running = False
         logger.info("[OSC] Server stopped")
 
+    def __del__(self) -> None:
+        try:
+            self.stop()
+        except Exception:
+            pass
+
     def _on_ready_read(self) -> None:
         if not self._socket:
             return

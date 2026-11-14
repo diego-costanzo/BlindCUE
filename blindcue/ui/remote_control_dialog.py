@@ -43,7 +43,7 @@ class RemoteControlDialog(QDialog):
         self._update_display()
 
         # Connect live updates
-        self._remote_mgr.activity_updated.connect(self._update_display)
+        self._remote_mgr.activity_updated.connect(self._update_display, Qt.ConnectionType.QueuedConnection)
 
     def _build_ui(self) -> None:
         self.setStyleSheet("""
