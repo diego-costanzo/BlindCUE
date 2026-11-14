@@ -16,9 +16,9 @@ from __future__ import annotations
 import logging
 import math
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, Signal, Slot
+from PySide6.QtCore import QPointF, QRectF, Qt, Signal, Slot
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -33,17 +33,13 @@ from PySide6.QtGui import (
     QTransform,
 )
 from PySide6.QtWidgets import (
-    QApplication,
     QCheckBox,
     QComboBox,
     QDialog,
-    QDoubleSpinBox,
     QFileDialog,
     QFrame,
     QGridLayout,
-    QGroupBox,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QListWidget,
@@ -52,15 +48,12 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
-    QSlider,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
 from models.surface import (
     DEFAULT_SURFACE_ID,
-    DEFAULT_SURFACE_NAME,
     PRESET_DEFINITIONS,
     SURFACE_COLORS,
     MaskType,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from PySide6.QtCore import QLocale, QPointF, QSize
+from PySide6.QtCore import QLocale, QSize
 from PySide6.QtGui import QColor, QPainter, QPen, QValidator
 from PySide6.QtWidgets import QDoubleSpinBox, QSizePolicy, QStyle, QStyleOptionSpinBox, QWidget
 

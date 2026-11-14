@@ -11,8 +11,9 @@ Questo documento descrive **ogni singolo file e cartella del codice sorgente** d
 - [3. Entry Point (`blindcue/main.py`)](#arch-main)
 - [4. Livello Dati (`blindcue/models/`)](#arch-models)
 - [5. Motore Multimediale e Logica (`blindcue/engine/`)](#arch-engine)
-- [6. Interfaccia Utente Modulare (`blindcue/ui/`)](#arch-ui)
-- [7. Mappa Completa Dipendenze tra Moduli](#arch-dipendenze)
+- [6. Servizi di Rete & Controllo Remoto LAN (`blindcue/services/`)](#arch-services)
+- [7. Interfaccia Utente Modulare (`blindcue/ui/`)](#arch-ui)
+- [8. Mappa Completa Dipendenze tra Moduli](#arch-dipendenze)
 
 ---
 
@@ -61,7 +62,8 @@ flowchart LR
 
 | File | Classi / Funzioni | Cosa fa |
 |------|-------------------|---------|
-| [`models/cue.py`](../blindcue/models/cue.py) | `MediaType`, `CueStatus`, `FollowMode`, `GroupMode`, `CueSection`, `Cue` | Definisce la struttura dati di ogni **Cue** e **Gruppo/Scena** (`cue_id`, `q_label`, `name`, `layer`, `scale`, `crop`, `position_x/y`, `opacity`, `aspect_ratio`, `volume`, `fade_in/out`, `fade_curve`, `volume_points`, `opacity_points`, `in_point/out_point`, `loop`, `loop_count`, `hold_time`, `pre_delay`, `post_delay`, `follow_mode`, `color`, `parent_id`, `group_mode`, `collapsed`, `sections`, `notes`), la validazione difensiva (con supporto file_path vuoto per container) e la serializzazione JSON atomica (`to_dict` / `from_dict`). |
+| [`models/cue.py`](../blindcue/models/cue.py) | `MediaType`, `CueStatus`, `FollowMode`, `GroupMode`, `CueSection`, `Cue` | Definisce la struttura dati di ogni **Cue** e **Gruppo/Scena** (`cue_id`, `q_label`, `name`, `layer`, `scale`, `crop`, `position_x/y`, `opacity`, `aspect_ratio`, `volume`, `fade_in/out`, `fade_curve`, `volume_points`, `opacity_points`, `in_point/out_point`, `loop`, `loop_count`, `hold_time`, `pre_delay`, `post_delay`, `follow_mode`, `color`, `parent_id`, `group_mode`, `collapsed`, `sections`, `notes`, `surface_id`), la validazione difensiva (con supporto file_path vuoto per container) e la serializzazione JSON atomica (`to_dict` / `from_dict`). |
+| [`models/surface.py`](../blindcue/models/surface.py) | `SurfaceMode`, `MaskType`, `SurfaceDefinition`, `create_default_surface` | Modello dei **display virtuali e superfici di mapping** (Schermo Intero, Split Doppia Proiezione SX/DX, Picture-in-Picture, Quad Obliquo a 4 vertici) con maschere vettoriali (Ellisse, Foro Rettangolare, Maschera PNG) e coordinate normalizzate `[0..1]`. |
 | [`models/project_manager.py`](../blindcue/models/project_manager.py) | `ProjectManager` | Gestisce apertura, salvataggio `.blindcue`, autosave periodico in `~/.config/blindcue/autosave.json` e **crash recovery** all'avvio. Usa sempre la **scrittura atomica POSIX** (`tempfile` nella stessa cartella → `fsync` → `os.replace`) in modo che un blackout elettrico durante il salvataggio non corrompa mai lo show. |
 
 ---
@@ -81,15 +83,31 @@ flowchart LR
 
 ---
 
+<a id="arch-services"></a>
+
+## 📡 6. Servizi di Rete & Controllo Remoto LAN (`blindcue/services/`)
+
+| File | Classi / Funzioni | Cosa fa |
+|------|-------------------|---------|
+| [`services/osc_protocol.py`](../blindcue/services/osc_protocol.py) | `build_osc_message`, `parse_osc_message` | Codec binario OSC 1.0 (Open Sound Control) puro Python, zero dipendenze esterne. Gestisce padding a 4 byte, stringhe, interi, float a 32 bit e booleani. |
+| [`services/osc_server.py`](../blindcue/services/osc_server.py) | `OscServer` | Ricevitore UDP nativo Qt (`QUdpSocket`) su porta standard `53000`. Elabora pacchetti OSC di automazione (`/go`, `/panic`, `/pause`, `/cue/<n>/go`) con autenticazione PIN e whitelist IP opzionale. |
+| [`services/web_server.py`](../blindcue/services/web_server.py) | `WebRemoteServer`, `WebRemoteBridge` | Server HTTP multithread con streaming real-time Server-Sent Events (SSE). Serve l'app Web mobile operatore per smartphone e l'interfaccia dedicata **Monitor Regista** (`/monitor` e `/regia`) a sola lettura, protette da PIN a 6 cifre e blocco anti-forzatura. |
+| [`services/remote_manager.py`](../blindcue/services/remote_manager.py) | `RemoteManager`, `get_local_lan_ips` | Coordinatore di alto livello per i servizi remoti: disattivato di default per sicurezza rete, gestisce l'interruttore Master ON/OFF, generazione del PIN casuale a 6 cifre, codici QR per fotocamera e rilevamento IP interfaccia LAN tramite `QNetworkInterface`. |
+
+---
+
 <a id="arch-ui"></a>
 
-## 🖥️ 6. Interfaccia Utente Modulare (`blindcue/ui/`)
+## 🖥️ 7. Interfaccia Utente Modulare (`blindcue/ui/`)
 
 ### Finestre Principali & Uscita Live
 | File | Classi / Funzioni | Cosa fa |
 |------|-------------------|---------|
 | [`ui/main_window.py`](../blindcue/ui/main_window.py) | `MainWindow` | Finestra principale del tecnico. Contiene un `QStackedWidget` per commutare in <1 ms tra la **Vista Progetto** (i 6 pannelli configurabili con splitter bloccabili) e la **Modalità LIVE (`LiveShowPanel`)**. Coordina selezione singola/multipla, catene `SIMULTANEOUS`, blocchi di sicurezza tasti in Live Mode, `LIVE MIRROR`, Undo/Redo e salvataggi. |
-| [`ui/output_window.py`](../blindcue/ui/output_window.py) | `OutputWindow` | Finestra proiettore Wayland basata su `QGraphicsScene`. Compone `Layer 0` (Tappo) sotto i livelli indipendenti `Layer 1, 2, 3` (immagini scalate/croppate e `QGraphicsVideoItem` primari + secondari per doppio deck video). Gestisce `show_mirrored_frame` per l'anteprima Mirror dei video in Standby, `show_fallback` (`0.2s` fade) e **`panic_blackout`** (`0ms` su Nero puro `#000000` o Tappo custom). |
+| [`ui/output_window.py`](../blindcue/ui/output_window.py) | `OutputWindow` | Finestra proiettore Wayland basata su `QGraphicsScene`. Compone `Layer 0` (Tappo) sotto i livelli indipendenti `Layer 1, 2, 3` (immagini scalate/croppate e `QGraphicsVideoItem` primari + secondari per doppio deck video). Supporta multi-superficie di mapping, mascheramento geometrico, `show_mirrored_frame` per l'anteprima Mirror dei video in Standby, `show_fallback` (`0.2s` fade) e **`panic_blackout`** (`0ms` su Nero puro `#000000` o Tappo custom). |
+| [`ui/surface_mapping_dialog.py`](../blindcue/ui/surface_mapping_dialog.py) | `SurfaceMappingDialog`, `SurfaceCanvasWidget` | Studio di calibrazione e video mapping (`F7`): gestione schermi virtuali (Schermo Intero, Split SX/DX, PiP, Quad a 4 vertici), trascinamento interattivo col mouse, unità duali pixel (px) e percentuali (%), maschere vettoriali (ellisse, foratura centrale, sagoma esterna, PNG custom) e griglie di allineamento sul proiettore live. |
+| [`ui/remote_control_dialog.py`](../blindcue/ui/remote_control_dialog.py) | `RemoteControlDialog` | Finestra di gestione remota (`F8`): interruttore master ON/OFF, schede separate per Telecomando Operatore (QR code mobile) e Monitor Regista (Sola Lettura `/monitor`), configurazione porte Web/OSC, prontuario comandi e sicurezza PIN casuale a 6 cifre. |
+| [`ui/group_timeline_editor.py`](../blindcue/ui/group_timeline_editor.py) | `GroupTimelineStudioDialog`, `StudioTimelineCanvas` | Studio multitraccia a 3 livelli non distruttivo per gruppi cue: allineamento visivo di pre-delay, tracce e tagli con timecode e snap. |
 | [`ui/tappo_pattern.py`](../blindcue/ui/tappo_pattern.py) | `is_default_tappo_path`, `render_default_tappo_pixmap` | Genera dinamicamente un pattern vettoriale di **calibrazione proiettore** ad alta precisione attorno al logo **BlindCue**: bordi perimetrali cyan a filo `0px`, tacche `10%`, area `90% Safe`, squadre d'angolo ambra/verdi, griglia `16×9`, cerchi concentrici anti-keystone ed etichette `ALTO/BASSO/SX/DX`. |
 
 ### Componenti Modalità Progetto & LIVE
@@ -113,6 +131,7 @@ flowchart LR
 | [`ui/spinboxes.py`](../blindcue/ui/spinboxes.py) | `SmartDoubleSpinBox`, `InPointSpinBox`, `OutPointSpinBox` | Spinbox decimali tolleranti a punto `.` e virgola `,`, con pulsanti vettoriali `+` / `-` ad alto contrasto e logica intelligente per scalare indietro da *"Fine File"* al punto `OUT`. |
 | [`ui/drop_zone.py`](../blindcue/ui/drop_zone.py) | `DropZone` | Area tratteggiata per importare al volo uno o più file multimediali via Drag & Drop dal file manager di sistema. |
 | [`ui/device_settings_dialog.py`](../blindcue/ui/device_settings_dialog.py) | `DeviceSettingsDialog` | Finestra modale per la gestione rapida di: profilo hardware (Auto / Eco muletto <=4GB / Performance), assegnazione Master Audio Sala (PA), Monitor Cuffia Regia (PFL) e selezione schermo video di proiezione. |
+| [`ui/hold_button.py`](../blindcue/ui/hold_button.py) | `HoldProgressButton` | Pulsante tattile con barra di avanzamento temporale circolare/lineare per azioni critiche di regia che richiedono pressione prolungata (es. attivazione Modalità Jam / EBU R128 a 5s). |
 | [`ui/hardware_info.py`](../blindcue/ui/hardware_info.py) | `detect_hardware_brief`, `show_hardware_info_dialog`, `show_about_dialog`, `get_memory_details`, `evaluate_hardware_profile`, `ShowRuntimeGuard` | Ispeziona `/proc/cpuinfo`, `/proc/meminfo`, `lspci`, `/dev/dri/renderD128` e sessione Wayland. Include `ShowRuntimeGuard` che disattiva o posticipa il Garbage Collector Python durante la Modalità LIVE e adatta il pool di thread hardware alle capacità della macchina. |
 | [`ui/theme.py`](../blindcue/ui/theme.py) | `DARK_STYLESHEET`, costanti colore & estensioni | Palette *Pro Broadcast Obsidian Slate*, foglio di stile unificato Qt6, percorso logo di default ed insiemi delle estensioni video/audio/immagine riconosciute. |
 
@@ -120,7 +139,7 @@ flowchart LR
 
 <a id="arch-dipendenze"></a>
 
-## 🔗 7. Mappa Completa Dipendenze tra Moduli
+## 🔗 8. Mappa Completa Dipendenze tra Moduli
 
 - **Nessun riferimento circolare tra GUI e Motore**: `models/` non importa nulla da `ui/` o `engine/`; `engine/envelope.py` non importa nulla da Qt GUI (`PySide6.QtWidgets`); solo `blindcue/main.py` connette insieme `MainWindow`, `OutputWindow`, `LivePlayer`, `TestPlayer` e `ShowScheduler`.
 - **Single Source of Truth geometrica**: tutte le trasformazioni visive di Anteprima, Mirroring ed Uscita Proiettore convergono su [`compute_media_frame_geometry`](../blindcue/ui/layout_math.py).

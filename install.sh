@@ -97,7 +97,7 @@ install_system_packages() {
 
     case "$FAMILY" in
         arch)
-            PACKAGES=("ffmpeg" "python")
+            PACKAGES=("ffmpeg" "python" "qrencode")
             
             # Check what needs to be installed
             TO_INSTALL=()
@@ -116,7 +116,7 @@ install_system_packages() {
             ;;
 
         debian)
-            PACKAGES=("ffmpeg" "python3" "python3-venv" "python3-pip" "build-essential")
+            PACKAGES=("ffmpeg" "python3" "python3-venv" "python3-pip" "build-essential" "qrencode")
 
             log_info "Aggiornamento indici apt..."
             sudo apt-get update -y
@@ -125,7 +125,7 @@ install_system_packages() {
             ;;
 
         fedora)
-            PACKAGES=("ffmpeg" "python3" "python3-pip")
+            PACKAGES=("ffmpeg" "python3" "python3-pip" "qrencode")
 
             log_info "Installazione pacchetti via dnf: ${PACKAGES[*]}"
             sudo dnf install -y "${PACKAGES[@]}"

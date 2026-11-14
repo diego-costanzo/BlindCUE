@@ -5,8 +5,8 @@ from __future__ import annotations
 import time
 from typing import Optional
 
-from PySide6.QtCore import QDateTime, QPointF, QRect, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QPolygonF
+from PySide6.QtCore import QDateTime, QRect, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -62,7 +62,7 @@ from ui.cue_table import (
 )
 from ui.hold_button import HoldProgressButton
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
-from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ, get_active_theme
+from ui.theme import CLR_GO, get_active_theme
 
 _LINK_ICONS = {
     FollowMode.MANUAL.value: "⏹",

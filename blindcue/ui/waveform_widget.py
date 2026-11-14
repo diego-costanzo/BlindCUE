@@ -57,7 +57,6 @@ from engine.envelope import (
     FADE_CURVE_LABELS,
     add_or_update_point,
     apply_fade_curve,
-    evaluate_cue_level,
     evaluate_points_envelope,
     move_point,
     normalize_points,

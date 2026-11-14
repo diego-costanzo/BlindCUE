@@ -7,18 +7,14 @@ strictly limited to the media cues already present in the group.
 
 from __future__ import annotations
 
-import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
-from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QColor,
-    QCursor,
     QFont,
-    QFontMetrics,
-    QIcon,
     QLinearGradient,
     QMouseEvent,
     QPainter,
@@ -28,12 +24,10 @@ from PySide6.QtGui import (
     QPolygonF,
 )
 from PySide6.QtWidgets import (
-    QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDialog,
     QFrame,
-    QGraphicsDropShadowEffect,
     QGroupBox,
     QHBoxLayout,
     QLabel,
@@ -50,7 +44,7 @@ from PySide6.QtWidgets import (
 
 from models.cue import Cue, MediaType
 from ui.spinboxes import SmartDoubleSpinBox
-from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ, CLR_TEXT, build_stylesheet, get_active_theme
+from ui.theme import CLR_GO, build_stylesheet
 
 
 def _fmt_timecode(sec: float) -> str:

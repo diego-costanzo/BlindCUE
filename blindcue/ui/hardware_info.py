@@ -7,7 +7,6 @@ import logging
 import os
 import shutil
 import subprocess
-from typing import Optional
 
 from PySide6.QtCore import QThreadPool
 from PySide6.QtWidgets import QMessageBox, QWidget

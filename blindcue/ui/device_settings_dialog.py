@@ -6,12 +6,10 @@ import logging
 from typing import Optional
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication, QScreen
-from PySide6.QtMultimedia import QAudioDevice
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
-    QFrame,
     QGroupBox,
     QHBoxLayout,
     QLabel,

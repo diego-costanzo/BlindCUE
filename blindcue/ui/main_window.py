@@ -42,7 +42,6 @@ from engine.audio_analyzer import (
     DynamicsOptimizer,
     LoudnessScanner,
     WaveformAnalyzer,
-    scan_file_loudness,
 )
 from engine.earcon import EarconManager
 from engine.envelope import (
@@ -106,12 +105,10 @@ from ui.preview_panel import PreviewControlPanel
 from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
 from ui.theme import (
     AUDIO_EXT,
-    CLR_GO,
     CLR_LIVE,
     CLR_PREVIZ,
     CLR_TEXT,
     CLR_TEXT_MUTED,
-    DARK_STYLESHEET,
     DEFAULT_LOGO_PATH,
     IMAGE_EXT,
     THEMES,

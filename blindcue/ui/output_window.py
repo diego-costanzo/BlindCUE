@@ -52,7 +52,6 @@ from PySide6.QtWidgets import (
 
 from models.surface import (
     DEFAULT_SURFACE_ID,
-    DEFAULT_SURFACE_NAME,
     MaskType,
     SurfaceDefinition,
     SurfaceMode,

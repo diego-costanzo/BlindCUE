@@ -14,15 +14,12 @@ from __future__ import annotations
 import logging
 from typing import Any, Optional, Sequence
 
-from PySide6.QtCore import QByteArray, QObject, Signal
+from PySide6.QtCore import QObject, Signal
 from PySide6.QtGui import QGuiApplication, QScreen
 from PySide6.QtMultimedia import QAudioDevice, QMediaDevices
 
 from ui.hardware_info import (
     PROFILE_AUTO,
-    PROFILE_ECO,
-    PROFILE_PERFORMANCE,
-    PROFILE_STANDARD,
     ShowRuntimeGuard,
     evaluate_hardware_profile,
 )
