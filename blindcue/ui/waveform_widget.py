@@ -67,7 +67,7 @@ from engine.envelope import (
 )
 from models.cue import CueSection, MediaType
 from ui.section_bar import SECTION_PALETTE, SectionControlBar
-from ui.theme import CLR_ACCENT, CLR_LIVE, CLR_PANEL
+from ui.theme import CLR_ACCENT, CLR_LIVE, CLR_PANEL, get_active_theme
 
 _CLR_PLAYHEAD = "#fbbf24"
 _CLR_PLAYHEAD_GLOW = "#fef08a"
@@ -796,27 +796,40 @@ class WaveformWidget(QWidget):
 
     def _paint_sections_bg(self, painter: QPainter, w: int, h: int) -> None:
         eff_end = self._effective_end_sec()
+        is_mono = get_active_theme().is_monochrome
         for i, sec in enumerate(self._sections):
             accent, bg, _ = SECTION_PALETTE[i % len(SECTION_PALETTE)]
             x0 = int(self._sec_to_x(sec.start))
             end_s = sec.end if sec.end is not None else eff_end
             x1 = int(self._sec_to_x(end_s))
-            if sec.skip:
-                c = QColor("#2a161a")
-                c.setAlpha(150)
+            if is_mono:
+                if sec.skip:
+                    c = QColor(0, 0, 0, 160)
+                else:
+                    c = QColor(255, 255, 255, 22 if i == self._active_section_idx else (14 if i % 2 == 0 else 6))
+                painter.fillRect(x0, 0, max(1, x1 - x0), h, c)
+                if i == self._active_section_idx:
+                    painter.fillRect(x0, 0, max(1, x1 - x0), 3, QColor("#38bdf8"))
             else:
-                c = QColor(bg)
-                c.setAlpha(175 if i == self._active_section_idx else 115)
-            painter.fillRect(x0, 0, max(1, x1 - x0), h, c)
-            if i == self._active_section_idx:
-                painter.fillRect(x0, 0, max(1, x1 - x0), 3, QColor(accent))
+                if sec.skip:
+                    c = QColor("#2a161a")
+                    c.setAlpha(150)
+                else:
+                    c = QColor(bg)
+                    c.setAlpha(175 if i == self._active_section_idx else 115)
+                painter.fillRect(x0, 0, max(1, x1 - x0), h, c)
+                if i == self._active_section_idx:
+                    painter.fillRect(x0, 0, max(1, x1 - x0), 3, QColor(accent))
 
     def _paint_section_dividers(self, painter: QPainter, w: int, h: int) -> None:
         eff_end = self._effective_end_sec()
+        is_mono = get_active_theme().is_monochrome
         painter.setFont(QFont("sans-serif", 8, QFont.Weight.Bold))
         badge_y = h - 29 if self._zoom > 1.02 else h - 18
         for i, sec in enumerate(self._sections):
             accent, _, _ = SECTION_PALETTE[i % len(SECTION_PALETTE)]
+            if is_mono:
+                accent = "#38bdf8" if i == self._active_section_idx else "#a1a1aa"
             x0 = int(self._sec_to_x(sec.start))
             end_s = sec.end if sec.end is not None else eff_end
             x1 = int(self._sec_to_x(end_s))
@@ -833,7 +846,8 @@ class WaveformWidget(QWidget):
                 is_hot = (self._hover_kind == "SECTION_DIV" and self._hover_idx == i) or (
                     self._dragging_kind == "SECTION_DIV" and self._dragging_idx == i
                 )
-                pen = QPen(QColor("#ffffff" if is_hot else accent), 2 if is_hot else 1.5, Qt.PenStyle.DashLine)
+                div_clr = "#ffffff" if is_hot else (accent if not is_mono else "#525363")
+                pen = QPen(QColor(div_clr), 2 if is_hot else 1.5, Qt.PenStyle.DashLine)
                 painter.setPen(pen)
                 painter.drawLine(dx, 18, dx, h)
 
@@ -864,8 +878,13 @@ class WaveformWidget(QWidget):
         # Render smoothly into pixel columns (either 1 bar per sample or max-pool per pixel)
         mid_y = h / 2.0
         dimmed_for_opacity = (self._envelope_mode == "opacity")
-        active_clr = QColor("#1f6b4a" if dimmed_for_opacity else CLR_LIVE)
-        inactive_clr = QColor("#363b42" if dimmed_for_opacity else "#444444")
+        is_mono = get_active_theme().is_monochrome
+        if is_mono:
+            active_clr = QColor("#38bdf8") if not dimmed_for_opacity else QColor("#71717a")
+            inactive_clr = QColor("#27272a")
+        else:
+            active_clr = QColor("#1f6b4a" if dimmed_for_opacity else CLR_LIVE)
+            inactive_clr = QColor("#363b42" if dimmed_for_opacity else "#444444")
 
         painter.setPen(Qt.PenStyle.NoPen)
         if visible_count <= w:

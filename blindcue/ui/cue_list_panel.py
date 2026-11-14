@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
 
 from models.cue import FollowMode, MediaType
 from ui.cue_table import CueSequenceTable
+from ui.theme import get_active_theme
 
 _FOLLOW_SPECS = (
     (
@@ -176,12 +177,9 @@ class CueListPanel(QGroupBox):
         layout.addLayout(btn_edit_row)
 
         # 3-State Sequencing Link Mode Selector (Blocco | Auto-GO | Simultanea) — Fixed height prevents hover jump!
-        link_box = QFrame()
-        link_box.setFixedHeight(74)
-        link_box.setStyleSheet(
-            "QFrame { background-color: #101620; border: 1px solid #1e293b; border-radius: 5px; }"
-        )
-        link_layout = QVBoxLayout(link_box)
+        self.link_box = QFrame()
+        self.link_box.setFixedHeight(74)
+        link_layout = QVBoxLayout(self.link_box)
         link_layout.setContentsMargins(6, 5, 6, 4)
         link_layout.setSpacing(4)
 
@@ -193,13 +191,6 @@ class CueListPanel(QGroupBox):
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
             btn.setFixedHeight(24)
             btn.setToolTip(hint)
-            btn.setStyleSheet(
-                f"QPushButton {{ background-color: #182130; color: #94a3b8; border: 1px solid #2a374b; "
-                f"border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 4px; }} "
-                f"QPushButton:hover:!checked {{ background-color: #223044; border-color: {chk_border}; color: #ffffff; }} "
-                f"QPushButton:checked {{ background-color: {chk_bg}; border: 1px solid {chk_border}; color: #ffffff; }} "
-                f"QPushButton:disabled {{ color: #475569; border-color: #1a2230; background-color: #0e131b; }}"
-            )
             btn.clicked.connect(lambda _=False, m=mode_val: self.follow_mode_selected.emit(m))
             btn.installEventFilter(self)
             self._follow_buttons[mode_val] = btn
@@ -214,9 +205,53 @@ class CueListPanel(QGroupBox):
         self.lbl_follow_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
         self.lbl_follow_hint.setStyleSheet("color: #64748b; font-size: 9px; border: none; background: transparent;")
         link_layout.addWidget(self.lbl_follow_hint)
-        layout.addWidget(link_box)
+        layout.addWidget(self.link_box)
 
         self.set_follow_mode_checked(FollowMode.MANUAL.value, enabled=False)
+        self.refresh_theme_styles()
+
+    def refresh_theme_styles(self) -> None:
+        """Apply theme-aware styling to cue list panel buttons and link boxes."""
+        is_mono = get_active_theme().is_monochrome
+        if is_mono:
+            if hasattr(self, "link_box"):
+                self.link_box.setStyleSheet(
+                    "QFrame { background-color: #1a1b1f; border: 1px solid #33343e; border-radius: 5px; }"
+                )
+            if hasattr(self, "btn_delete"):
+                self.btn_delete.setStyleSheet(
+                    "QPushButton { color: #f4f4f5; border: 1.5px solid #525363; background-color: #22232a; font-weight: bold; border-radius: 4px; } "
+                    "QPushButton:hover { background-color: #2d2f38; border-color: #f87171; color: #fca5a5; }"
+                )
+            for mode_val, btn in self._follow_buttons.items():
+                btn.setStyleSheet(
+                    "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1px solid #3f404d; "
+                    "border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 4px; } "
+                    "QPushButton:hover:!checked { background-color: #2d2f38; border-color: #525363; color: #ffffff; } "
+                    "QPushButton:checked { background-color: #383946; border: 1.5px solid #38bdf8; color: #ffffff; } "
+                    "QPushButton:disabled { color: #525363; border-color: #27272a; background-color: #141518; }"
+                )
+        else:
+            if hasattr(self, "link_box"):
+                self.link_box.setStyleSheet(
+                    "QFrame { background-color: #101620; border: 1px solid #1e293b; border-radius: 5px; }"
+                )
+            if hasattr(self, "btn_delete"):
+                self.btn_delete.setStyleSheet(
+                    "QPushButton { color: #ff8080; border: 1px solid #ff4444; background-color: #401818; font-weight: bold; } "
+                    "QPushButton:hover { background-color: #5c2222; }"
+                )
+            for mode_val, btn in self._follow_buttons.items():
+                spec = next((s for s in _FOLLOW_SPECS if s[0] == mode_val), None)
+                chk_bg = spec[3] if spec else "#065f46"
+                chk_border = spec[4] if spec else "#10b981"
+                btn.setStyleSheet(
+                    f"QPushButton {{ background-color: #182130; color: #94a3b8; border: 1px solid #2a374b; "
+                    f"border-radius: 4px; font-size: 10px; font-weight: bold; padding: 0px 4px; }} "
+                    f"QPushButton:hover:!checked {{ background-color: #223044; border-color: {chk_border}; color: #ffffff; }} "
+                    f"QPushButton:checked {{ background-color: {chk_bg}; border: 1px solid {chk_border}; color: #ffffff; }} "
+                    f"QPushButton:disabled {{ color: #475569; border-color: #1a2230; background-color: #0e131b; }}"
+                )
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802
         if event.type() == QEvent.Type.Enter:

@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from models.cue import Cue
-from ui.theme import CLR_ACCENT, CLR_TEXT, CUE_COLOR_PALETTE
+from ui.theme import CLR_ACCENT, CLR_TEXT, CUE_COLOR_PALETTE, get_active_theme
 
 # Custom item roles for Cue Tables (Col 2 stores cue.name in EditRole)
 ROLE_MEDIA_TYPE = Qt.ItemDataRole.UserRole + 1
@@ -51,17 +51,73 @@ ROLE_PHASE_TXT = Qt.ItemDataRole.UserRole + 25
 ROLE_LAYER_CONFLICT = Qt.ItemDataRole.UserRole + 26
 ROLE_TIMELINE_COMPOSED = Qt.ItemDataRole.UserRole + 27
 
+# Broadcast Default Media Badges (Obsidian Slate / Deep Indigo)
+_MEDIA_BADGE_BROADCAST = {
+    "VIDEO": ("VID", QColor("#0284c7"), QColor("#e0f2fe"), None),
+    "AUDIO": ("AUD", QColor("#0d9488"), QColor("#ccfbf1"), None),
+    "IMAGE": ("IMG", QColor("#d97706"), QColor("#fef3c7"), None),
+    "GROUP": ("GRP", QColor("#6d28d9"), QColor("#ede9fe"), None),
+}
+
+# Stepped Carbon/Graphite Monocromo Badges (WCAG AAA · Zero Chromatic Clutter)
+_MEDIA_BADGE_CARBON_MONO = {
+    "VIDEO": ("VID", QColor("#2d2f38"), QColor("#f4f4f5"), QColor("#525363")),
+    "AUDIO": ("AUD", QColor("#22232a"), QColor("#d4d4d8"), QColor("#3f404d")),
+    "IMAGE": ("IMG", QColor("#373844"), QColor("#ffffff"), QColor("#6b6d7c")),
+    "GROUP": ("GRP", QColor("#18191f"), QColor("#e4e4e7"), QColor("#484956")),
+}
+
+# Backward compatibility alias
+_MEDIA_BADGE = _MEDIA_BADGE_BROADCAST
+
+
+def get_media_badge(media_type: str, is_mono: bool = False):
+    badges = _MEDIA_BADGE_CARBON_MONO if is_mono else _MEDIA_BADGE_BROADCAST
+    return badges.get(media_type)
+
+
+_GROUP_MODE_PILLS_BROADCAST = {
+    "SIMULTANEOUS": ("⇉ SIMULT", QColor("#065f46"), QColor("#34d399"), None),
+    "SEQUENCE": ("⤵ CASCATA", QColor("#0c4a6e"), QColor("#38bdf8"), None),
+    "STEP": ("⏹ PASSO", QColor("#312e81"), QColor("#a5b4fc"), None),
+    "RANDOM": ("🎲 RND", QColor("#701a75"), QColor("#f472b6"), None),
+    "LOOP": ("🔁 LOOP", QColor("#78350f"), QColor("#fbbf24"), None),
+}
+
+_GROUP_MODE_PILLS_CARBON_MONO = {
+    "SIMULTANEOUS": ("⇉ SIMULT", QColor("#272832"), QColor("#f4f4f5"), QColor("#525363")),
+    "SEQUENCE": ("⤵ CASCATA", QColor("#22232a"), QColor("#e4e4e7"), QColor("#484956")),
+    "STEP": ("⏹ PASSO", QColor("#1e1f26"), QColor("#d4d4d8"), QColor("#3f404d")),
+    "RANDOM": ("🎲 RND", QColor("#292a34"), QColor("#f4f4f5"), QColor("#585969")),
+    "LOOP": ("🔁 LOOP", QColor("#2c2d37"), QColor("#ffffff"), QColor("#5c5e6f")),
+}
+
+# Backward compatibility alias
+_GROUP_MODE_PILLS = _GROUP_MODE_PILLS_BROADCAST
+
+
+def get_group_mode_pill(group_mode: str, is_mono: bool = False):
+    pills = _GROUP_MODE_PILLS_CARBON_MONO if is_mono else _GROUP_MODE_PILLS_BROADCAST
+    return pills.get(group_mode)
+
+
+def get_link_rail_color(mode: str, is_mono: bool = False) -> Optional[QColor]:
+    if is_mono:
+        if mode == "AUTO_FOLLOW":
+            return QColor("#38bdf8")
+        if mode == "SIMULTANEOUS":
+            return QColor("#a1a1aa")
+        return None
+    if mode == "AUTO_FOLLOW":
+        return QColor("#38bdf8")
+    if mode == "SIMULTANEOUS":
+        return QColor("#f59e0b")
+    return None
+
+
 _LINK_RAIL_COLORS = {
     "SIMULTANEOUS": QColor("#f59e0b"),
     "AUTO_FOLLOW": QColor("#38bdf8"),
-}
-
-_GROUP_MODE_PILLS = {
-    "SIMULTANEOUS": ("⇉ SIMULT", QColor("#065f46"), QColor("#34d399")),
-    "SEQUENCE": ("⤵ CASCATA", QColor("#0c4a6e"), QColor("#38bdf8")),
-    "STEP": ("⏹ PASSO", QColor("#312e81"), QColor("#a5b4fc")),
-    "RANDOM": ("🎲 RND", QColor("#701a75"), QColor("#f472b6")),
-    "LOOP": ("🔁 LOOP", QColor("#78350f"), QColor("#fbbf24")),
 }
 
 
@@ -78,36 +134,60 @@ def paint_cue_row_decorations(
     prev_color = str(index.data(ROLE_PREV_COLOR) or "")
     is_live = bool(index.data(ROLE_IS_LIVE))
     is_standby = bool(index.data(ROLE_IS_STANDBY))
+    is_mono = get_active_theme().is_monochrome
 
     painter.save()
-    if cue_color:
-        wash = QColor(cue_color)
-        if wash.isValid():
-            wash.setAlpha(20 if is_selected else 30)
-            painter.fillRect(rect, wash)
+    if is_mono:
+        # High-legibility monochrome decoration:
+        # Subtle neutral graphite lift for color-tagged cues, without chromatic noise
+        if cue_color:
+            painter.fillRect(rect, QColor(255, 255, 255, 10 if is_selected else 16))
             if col == 0 and not is_live and not is_standby:
-                ribbon = QColor(cue_color)
-                painter.fillRect(rect.left(), rect.top() + 1, 4, rect.height() - 2, ribbon)
+                painter.fillRect(rect.left(), rect.top() + 1, 4, rect.height() - 2, QColor("#525363"))
 
-    if is_live:
-        live_wash = QColor("#092919")
-        live_wash.setAlpha(150)
-        painter.fillRect(rect, live_wash)
-        if col == 0:
-            painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#10b981"))
-    elif is_standby:
-        sb_wash = QColor("#261a08")
-        sb_wash.setAlpha(160)
-        painter.fillRect(rect, sb_wash)
-        if col == 0:
-            painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#f59e0b"))
+        if is_live:
+            # Luminous Sky Cyan subtle lift for LIVE
+            painter.fillRect(rect, QColor(56, 189, 248, 32))
+            if col == 0:
+                painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#38bdf8"))
+        elif is_standby:
+            # Crisp neutral silver lift for STANDBY
+            painter.fillRect(rect, QColor(255, 255, 255, 20))
+            if col == 0:
+                painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#d4d4d8"))
 
-    if index.row() > 0 and cue_color != prev_color and (cue_color or prev_color):
-        div_clr = QColor(cue_color or prev_color)
-        if div_clr.isValid():
-            div_clr.setAlpha(155)
-            painter.setPen(QPen(div_clr, 1.5))
+        if index.row() > 0 and cue_color != prev_color and (cue_color or prev_color):
+            painter.setPen(QPen(QColor("#525363"), 1.5))
             painter.drawLine(rect.left(), rect.top() + 1, rect.right(), rect.top() + 1)
+    else:
+        if cue_color:
+            wash = QColor(cue_color)
+            if wash.isValid():
+                wash.setAlpha(20 if is_selected else 30)
+                painter.fillRect(rect, wash)
+                if col == 0 and not is_live and not is_standby:
+                    ribbon = QColor(cue_color)
+                    painter.fillRect(rect.left(), rect.top() + 1, 4, rect.height() - 2, ribbon)
+
+        if is_live:
+            live_wash = QColor("#092919")
+            live_wash.setAlpha(150)
+            painter.fillRect(rect, live_wash)
+            if col == 0:
+                painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#10b981"))
+        elif is_standby:
+            sb_wash = QColor("#261a08")
+            sb_wash.setAlpha(160)
+            painter.fillRect(rect, sb_wash)
+            if col == 0:
+                painter.fillRect(rect.left(), rect.top() + 1, 5, rect.height() - 2, QColor("#f59e0b"))
+
+        if index.row() > 0 and cue_color != prev_color and (cue_color or prev_color):
+            div_clr = QColor(cue_color or prev_color)
+            if div_clr.isValid():
+                div_clr.setAlpha(155)
+                painter.setPen(QPen(div_clr, 1.5))
+                painter.drawLine(rect.left(), rect.top() + 1, rect.right(), rect.top() + 1)
 
     if col == 0:
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
@@ -116,8 +196,8 @@ def paint_cue_row_decorations(
         rail_x = float(rect.left() + 11)
         mid_y = float(rect.center().y())
 
-        if incoming in _LINK_RAIL_COLORS:
-            in_clr = _LINK_RAIL_COLORS[incoming]
+        in_clr = get_link_rail_color(incoming, is_mono)
+        if in_clr is not None:
             painter.setPen(QPen(in_clr, 2.0))
             painter.drawLine(QPointF(rail_x, float(rect.top())), QPointF(rail_x, mid_y))
             painter.drawLine(QPointF(rail_x, mid_y), QPointF(rail_x + 6.0, mid_y))
@@ -130,8 +210,8 @@ def paint_cue_row_decorations(
             ])
             painter.drawPolygon(arrow)
 
-        if outgoing in _LINK_RAIL_COLORS:
-            out_clr = _LINK_RAIL_COLORS[outgoing]
+        out_clr = get_link_rail_color(outgoing, is_mono)
+        if out_clr is not None:
             painter.setPen(QPen(out_clr, 2.0))
             painter.drawLine(QPointF(rail_x, mid_y), QPointF(rail_x, float(rect.bottom()) + 0.5))
             painter.setPen(Qt.PenStyle.NoPen)
@@ -266,6 +346,7 @@ class CueTableDelegate(QStyledItemDelegate):
             status_clr = str(index.data(ROLE_STATUS_CLR) or CLR_TEXT)
             follow_mode = str(index.data(ROLE_FOLLOW_MODE) or "MANUAL")
             timing_badge = str(index.data(ROLE_TIMING_BADGE) or "")
+            is_mono = get_active_theme().is_monochrome
 
             opt.text = ""
             style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
@@ -291,12 +372,16 @@ class CueTableDelegate(QStyledItemDelegate):
                 )
                 left_x += 18
 
-            if media_type in self._MEDIA_BADGE:
-                tag_txt, bg_clr, fg_clr = self._MEDIA_BADGE[media_type]
+            badge_info = get_media_badge(media_type, is_mono)
+            if badge_info:
+                tag_txt, bg_clr, fg_clr, border_clr = badge_info
                 pill_w, pill_h = (32, 16) if is_group else (28, 16)
                 pill_y = rect.top() + (rect.height() - pill_h) // 2
                 pill_rect = QRect(left_x, pill_y, pill_w, pill_h)
-                painter.setPen(Qt.PenStyle.NoPen)
+                if border_clr is not None:
+                    painter.setPen(QPen(border_clr, 1))
+                else:
+                    painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(bg_clr)
                 painter.drawRoundedRect(pill_rect, 3, 3)
 
@@ -320,9 +405,20 @@ class CueTableDelegate(QStyledItemDelegate):
                 sh = 16
                 sy = rect.top() + (rect.height() - sh) // 2
                 s_rect = QRect(right_x - sw, sy, sw, sh)
-                s_bg = QColor("#064e3b") if status_txt == "LIVE" else QColor("#451a03")
-                s_fg = QColor(status_clr)
-                painter.setPen(QPen(s_fg, 1))
+                if is_mono:
+                    if status_txt == "LIVE":
+                        s_bg = QColor("#2c2d36")
+                        s_border = QColor("#38bdf8")
+                        s_fg = QColor("#38bdf8")
+                    else:
+                        s_bg = QColor("#22232a")
+                        s_border = QColor("#d4d4d8")
+                        s_fg = QColor("#f4f4f5")
+                else:
+                    s_bg = QColor("#064e3b") if status_txt == "LIVE" else QColor("#451a03")
+                    s_border = QColor(status_clr)
+                    s_fg = QColor(status_clr)
+                painter.setPen(QPen(s_border, 1.5 if is_mono and status_txt == "LIVE" else 1.0))
                 painter.setBrush(s_bg)
                 painter.drawRoundedRect(s_rect, 3, 3)
                 painter.setPen(s_fg)
@@ -333,14 +429,15 @@ class CueTableDelegate(QStyledItemDelegate):
 
             if is_group:
                 # Group mode pill on the right
-                if group_mode in _GROUP_MODE_PILLS:
-                    gm_txt, gm_bg, gm_fg = _GROUP_MODE_PILLS[group_mode]
-                    gm_border = gm_fg
+                gm_info = get_group_mode_pill(group_mode, is_mono)
+                if gm_info:
+                    gm_txt, gm_bg, gm_fg, gm_border_spec = gm_info
+                    gm_border = gm_border_spec or gm_fg
                     if conflict_reason:
                         gm_txt = f"⚠️ {gm_txt}"
-                        gm_bg = QColor("#451a03")
-                        gm_fg = QColor("#fbbf24")
-                        gm_border = QColor("#d97706")
+                        gm_bg = QColor("#2c2d36") if is_mono else QColor("#451a03")
+                        gm_fg = QColor("#f4f4f5") if is_mono else QColor("#fbbf24")
+                        gm_border = QColor("#a1a1aa") if is_mono else QColor("#d97706")
                     painter.setFont(tag_font)
                     fm_gm = painter.fontMetrics()
                     gm_w = fm_gm.horizontalAdvance(gm_txt) + 10
@@ -358,10 +455,13 @@ class CueTableDelegate(QStyledItemDelegate):
                     fm_tc = painter.fontMetrics()
                     tc_w = fm_tc.horizontalAdvance(tc_txt) + 10
                     tc_rect = QRect(right_x - tc_w, rect.top() + (rect.height() - 16) // 2, tc_w, 16)
-                    painter.setPen(QPen(QColor("#6366f1"), 1))
-                    painter.setBrush(QColor("#1e1b4b"))
+                    tc_border = QColor("#525363") if is_mono else QColor("#6366f1")
+                    tc_bg = QColor("#22232a") if is_mono else QColor("#1e1b4b")
+                    tc_fg = QColor("#f4f4f5") if is_mono else QColor("#a5b4fc")
+                    painter.setPen(QPen(tc_border, 1))
+                    painter.setBrush(tc_bg)
                     painter.drawRoundedRect(tc_rect, 3, 3)
-                    painter.setPen(QColor("#a5b4fc"))
+                    painter.setPen(tc_fg)
                     painter.drawText(tc_rect, Qt.AlignmentFlag.AlignCenter, tc_txt)
                     right_x -= tc_w + 4
 
@@ -371,10 +471,10 @@ class CueTableDelegate(QStyledItemDelegate):
                     fm_cc = painter.fontMetrics()
                     cc_w = fm_cc.horizontalAdvance(cc_txt) + 10
                     cc_rect = QRect(right_x - cc_w, rect.top() + (rect.height() - 16) // 2, cc_w, 16)
-                    painter.setPen(QPen(QColor("#334155"), 1))
-                    painter.setBrush(QColor("#0f172a"))
+                    painter.setPen(QPen(QColor("#3f404d") if is_mono else QColor("#334155"), 1))
+                    painter.setBrush(QColor("#18191f") if is_mono else QColor("#0f172a"))
                     painter.drawRoundedRect(cc_rect, 3, 3)
-                    painter.setPen(QColor("#94a3b8"))
+                    painter.setPen(QColor("#a1a1aa") if is_mono else QColor("#94a3b8"))
                     painter.drawText(cc_rect, Qt.AlignmentFlag.AlignCenter, cc_txt)
                     right_x -= cc_w + 4
             else:
@@ -385,10 +485,13 @@ class CueTableDelegate(QStyledItemDelegate):
                     lh = 16
                     ly = rect.top() + (rect.height() - lh) // 2
                     l_rect = QRect(right_x - lw, ly, lw, lh)
-                    painter.setPen(QPen(QColor("#d97706"), 1))
-                    painter.setBrush(QColor("#451a03"))
+                    l_border = QColor("#a1a1aa") if is_mono else QColor("#d97706")
+                    l_bg = QColor("#2c2d36") if is_mono else QColor("#451a03")
+                    l_fg = QColor("#f4f4f5") if is_mono else QColor("#fbbf24")
+                    painter.setPen(QPen(l_border, 1))
+                    painter.setBrush(l_bg)
                     painter.drawRoundedRect(l_rect, 3, 3)
-                    painter.setPen(QColor("#fbbf24"))
+                    painter.setPen(l_fg)
                     painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
                     right_x -= lw + 4
                 else:
@@ -397,10 +500,13 @@ class CueTableDelegate(QStyledItemDelegate):
                     lw, lh = 22, 16
                     ly = rect.top() + (rect.height() - lh) // 2
                     l_rect = QRect(right_x - lw, ly, lw, lh)
-                    painter.setPen(QPen(QColor("#283548"), 1))
-                    painter.setBrush(QColor("#1a2332"))
+                    l_border = QColor("#3f404d") if is_mono else QColor("#283548")
+                    l_bg = QColor("#22232a") if is_mono else QColor("#1a2332")
+                    l_fg = QColor("#d4d4d8") if is_mono else QColor("#94a3b8")
+                    painter.setPen(QPen(l_border, 1))
+                    painter.setBrush(l_bg)
                     painter.drawRoundedRect(l_rect, 3, 3)
-                    painter.setPen(QColor("#94a3b8"))
+                    painter.setPen(l_fg)
                     painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
                     right_x -= lw + 4
 
@@ -408,20 +514,26 @@ class CueTableDelegate(QStyledItemDelegate):
                     fw = 46
                     fy = rect.top() + (rect.height() - lh) // 2
                     f_rect = QRect(right_x - fw, fy, fw, lh)
-                    painter.setPen(QPen(QColor("#38bdf8"), 1))
-                    painter.setBrush(QColor("#0c2638"))
+                    f_border = QColor("#38bdf8")
+                    f_bg = QColor("#1e1f26") if is_mono else QColor("#0c2638")
+                    f_fg = QColor("#38bdf8") if is_mono else QColor("#7dd3fc")
+                    painter.setPen(QPen(f_border, 1))
+                    painter.setBrush(f_bg)
                     painter.drawRoundedRect(f_rect, 3, 3)
-                    painter.setPen(QColor("#7dd3fc"))
+                    painter.setPen(f_fg)
                     painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⤵ AUTO")
                     right_x -= fw + 4
                 elif follow_mode == "SIMULTANEOUS":
                     fw = 42
                     fy = rect.top() + (rect.height() - lh) // 2
                     f_rect = QRect(right_x - fw, fy, fw, lh)
-                    painter.setPen(QPen(QColor("#f59e0b"), 1))
-                    painter.setBrush(QColor("#332006"))
+                    f_border = QColor("#525363") if is_mono else QColor("#f59e0b")
+                    f_bg = QColor("#22232a") if is_mono else QColor("#332006")
+                    f_fg = QColor("#e4e4e7") if is_mono else QColor("#fcd34d")
+                    painter.setPen(QPen(f_border, 1))
+                    painter.setBrush(f_bg)
                     painter.drawRoundedRect(f_rect, 3, 3)
-                    painter.setPen(QColor("#fcd34d"))
+                    painter.setPen(f_fg)
                     painter.drawText(f_rect, Qt.AlignmentFlag.AlignCenter, "⇉ SIM")
                     right_x -= fw + 4
 

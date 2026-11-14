@@ -29,7 +29,7 @@ from PySide6.QtWidgets import (
 from models.cue import Cue, FollowMode, GroupMode, MediaType, _sanitize_hex_color
 from ui.cue_table import format_cue_ref
 from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
-from ui.theme import CLR_ACCENT, CUE_COLOR_PALETTE, NUDGE_BTN_STYLE
+from ui.theme import CLR_ACCENT, CUE_COLOR_PALETTE, NUDGE_BTN_STYLE, get_active_theme
 
 # Preset index <-> repetition count mapping (0 = infinite loop)
 _LOOP_PRESET_COUNTS = (0, 2, 3, 4, 5, 10)
@@ -65,27 +65,44 @@ _GROUP_MODE_SPECS = (
 )
 
 
-def _make_layer_btn_style(checked_bg: str, checked_border: str) -> str:
+def _make_layer_btn_style(checked_bg: str, checked_border: str, is_mono: bool = False) -> str:
     """Return tactile toggle button styling with clear hover and active selection border."""
+    if is_mono:
+        idle_bg = "#22232a"
+        idle_color = "#d4d4d8"
+        idle_border = "#3f404d"
+        hover_bg = "#2d2f38"
+        hover_border = "#525363"
+        pressed_bg = "#18191f"
+        checked_bg = "#383946"
+        checked_border = "#38bdf8"
+    else:
+        idle_bg = "#182231"
+        idle_color = "#cbd5e1"
+        idle_border = "#3c4f6b"
+        hover_bg = "#24334a"
+        hover_border = checked_border
+        pressed_bg = "#111924"
+
     return f"""
         QPushButton {{
-            background-color: #182231;
-            color: #cbd5e1;
-            border: 1px solid #3c4f6b;
-            border-bottom: 2px solid #2b3a50;
+            background-color: {idle_bg};
+            color: {idle_color};
+            border: 1px solid {idle_border};
+            border-bottom: 2px solid {idle_border};
             border-radius: 5px;
             padding: 3px 4px;
             font-size: 11px;
             font-weight: bold;
         }}
         QPushButton:hover:!checked {{
-            background-color: #24334a;
-            border: 1px solid {checked_border};
-            border-bottom: 2px solid {checked_border};
+            background-color: {hover_bg};
+            border: 1px solid {hover_border};
+            border-bottom: 2px solid {hover_border};
             color: #ffffff;
         }}
         QPushButton:pressed {{
-            background-color: #111924;
+            background-color: {pressed_bg};
         }}
         QPushButton:checked {{
             background-color: {checked_bg};
@@ -222,8 +239,11 @@ class CueInspectorPanel(QGroupBox):
         card = QFrame()
         card.setObjectName("inspCard")
         card.setMinimumWidth(0)
+        is_mono = get_active_theme().is_monochrome
+        card_bg = "#1a1b1f" if is_mono else "#101723"
+        card_border = "#33343e" if is_mono else "#223044"
         card.setStyleSheet(
-            "QFrame#inspCard { background-color: #101723; border: 1px solid #223044; border-radius: 6px; }"
+            f"QFrame#inspCard {{ background-color: {card_bg}; border: 1px solid {card_border}; border-radius: 6px; }}"
         )
         lay = QVBoxLayout(card)
         lay.setContentsMargins(8, 6, 8, 7)
@@ -442,16 +462,12 @@ class CueInspectorPanel(QGroupBox):
 
         # Card 3: Incastro Temporale (Pre · Durata · Post) & Sequenza
         c3, l3 = self._make_card("3 · TEMPI DI INCASTRO (PRE · DURATA · POST)")
-        pipe_lbl = QLabel("GO  ▶  [⏳ Pre]  ▶  [▶ Media / Durata]  ▶  [⏱ Post]")
-        pipe_lbl.setWordWrap(True)
-        pipe_lbl.setMinimumWidth(0)
-        pipe_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
-        pipe_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        pipe_lbl.setStyleSheet(
-            "background-color: #09111b; color: #7dd3fc; border: 1px solid #1e3a5f; "
-            "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 3px 4px;"
-        )
-        l3.addWidget(pipe_lbl)
+        self._pipe_lbl = QLabel("GO  ▶  [⏳ Pre]  ▶  [▶ Media / Durata]  ▶  [⏱ Post]")
+        self._pipe_lbl.setWordWrap(True)
+        self._pipe_lbl.setMinimumWidth(0)
+        self._pipe_lbl.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Minimum)
+        self._pipe_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        l3.addWidget(self._pipe_lbl)
 
         timing_grid = QGridLayout()
         timing_grid.setHorizontalSpacing(6)
@@ -1122,6 +1138,128 @@ class CueInspectorPanel(QGroupBox):
 
         self.tab_group = self._wrap_tab_scroll(page)
         self.tab_widget.addTab(self.tab_group, "📁 Gruppo · Scena")
+
+        self.refresh_theme_styles()
+
+    def refresh_theme_styles(self) -> None:
+        """Apply theme-appropriate palettes and styling to cards, buttons, banners, and toggles."""
+        theme = get_active_theme()
+        is_mono = theme.is_monochrome
+
+        # 1. Update Card containers
+        card_bg = "#1a1b1f" if is_mono else "#101723"
+        card_border = "#33343e" if is_mono else "#223044"
+        for card in self.findChildren(QFrame, "inspCard"):
+            card.setStyleSheet(
+                f"QFrame#inspCard {{ background-color: {card_bg}; border: 1px solid {card_border}; border-radius: 6px; }}"
+            )
+
+        # 2. Timing Pipeline Banner
+        if hasattr(self, "_pipe_lbl") and self._pipe_lbl is not None:
+            if is_mono:
+                self._pipe_lbl.setStyleSheet(
+                    "background-color: #141518; color: #d4d4d8; border: 1px solid #33343e; "
+                    "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 3px 4px;"
+                )
+            else:
+                self._pipe_lbl.setStyleSheet(
+                    "background-color: #09111b; color: #7dd3fc; border: 1px solid #1e3a5f; "
+                    "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 3px 4px;"
+                )
+
+        # 3. Layer buttons
+        for layer_idx, btn in self._layer_buttons.items():
+            spec = next((s for s in _LAYER_BTN_SPECS if s[0] == layer_idx), None)
+            bg = spec[3] if spec else "#075985"
+            border = spec[4] if spec else "#38bdf8"
+            btn.setStyleSheet(_make_layer_btn_style(bg, border, is_mono).replace("font-size: 11px;", "font-size: 10px;"))
+
+        # 4. Follow buttons
+        for mode_val, btn in self._follow_buttons.items():
+            spec = next((s for s in _FOLLOW_MINI_SPECS if s[0] == mode_val), None)
+            bg = spec[3] if spec else "#0c4a6e"
+            border = spec[4] if spec else "#38bdf8"
+            if is_mono:
+                btn.setStyleSheet(
+                    "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1px solid #3f404d; "
+                    "border-radius: 4px; font-size: 9px; font-weight: bold; padding: 0px 3px; } "
+                    "QPushButton:hover:!checked { background-color: #2d2f38; border-color: #525363; color: #ffffff; } "
+                    "QPushButton:checked { background-color: #383946; border: 1.5px solid #38bdf8; color: #ffffff; } "
+                    "QPushButton:disabled { background-color: #141518; color: #525363; border-color: #27272a; }"
+                )
+            else:
+                btn.setStyleSheet(
+                    f"QPushButton {{ background-color: #161f2d; color: #94a3b8; border: 1px solid #2b3a4f; "
+                    f"border-radius: 4px; font-size: 9px; font-weight: bold; padding: 0px 3px; }} "
+                    f"QPushButton:hover:!checked {{ background-color: #202e42; border-color: {border}; color: #ffffff; }} "
+                    f"QPushButton:checked {{ background-color: {bg}; border: 1px solid {border}; color: #ffffff; }} "
+                    f"QPushButton:disabled {{ background-color: #0e131c; color: #475569; border-color: #1a2230; }}"
+                )
+
+        # 5. Group Mode buttons
+        for g_mode, btn in self._group_mode_buttons.items():
+            spec = next((s for s in _GROUP_MODE_SPECS if s[0] == g_mode), None)
+            bg = spec[3] if spec else "#0c4a6e"
+            border = spec[4] if spec else "#38bdf8"
+            btn.setStyleSheet(_make_layer_btn_style(bg, border, is_mono))
+
+        # 6. Group Membership Box
+        if hasattr(self, "frame_group_membership") and self.frame_group_membership is not None:
+            g_bg = "#1a1b1f" if is_mono else "#1e1430"
+            g_border = "#3f404d" if is_mono else "#4c1d95"
+            self.frame_group_membership.setStyleSheet(
+                f"QFrame {{ background-color: {g_bg}; border: 1px solid {g_border}; border-radius: 5px; padding: 2px; }}"
+            )
+        if hasattr(self, "lbl_group_membership") and self.lbl_group_membership is not None:
+            g_fg = "#e4e4e7" if is_mono else "#c084fc"
+            self.lbl_group_membership.setStyleSheet(
+                f"color: {g_fg}; font-size: 10px; font-weight: bold; border: none; background: transparent;"
+            )
+
+        # 7. Timeline Studio Button
+        if hasattr(self, "btn_open_timeline_studio") and self.btn_open_timeline_studio is not None:
+            if is_mono:
+                self.btn_open_timeline_studio.setStyleSheet("""
+                    QPushButton {
+                        background-color: #26272e;
+                        color: #f4f4f5;
+                        border: 1.5px solid #38bdf8;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        font-size: 11px;
+                        padding: 4px 12px;
+                        margin-top: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #33343d;
+                        border-color: #7dd3fc;
+                        color: #ffffff;
+                    }
+                """)
+            else:
+                self.btn_open_timeline_studio.setStyleSheet("""
+                    QPushButton {
+                        background-color: #1e1b4b;
+                        color: #a5b4fc;
+                        border: 1.5px solid #6366f1;
+                        border-radius: 5px;
+                        font-weight: bold;
+                        font-size: 11px;
+                        padding: 4px 12px;
+                        margin-top: 4px;
+                    }
+                    QPushButton:hover {
+                        background-color: #312e81;
+                        border-color: #818cf8;
+                        color: #ffffff;
+                    }
+                """)
+
+        # 8. Loop Card
+        if hasattr(self, "loop_card") and self.loop_card is not None:
+            l_bg = "#1a1b1f" if is_mono else "#1a162b"
+            l_border = "#33343e" if is_mono else "#3b2d54"
+            self.loop_card.setStyleSheet(f"QFrame {{ background-color: {l_bg}; border: 1px solid {l_border}; border-radius: 6px; }}")
 
     @staticmethod
     def _make_nudge_btn(text: str, tooltip: str) -> QPushButton:

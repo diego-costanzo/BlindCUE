@@ -259,9 +259,16 @@ class MainWindow(QMainWindow):
             self._theme_actions[theme_id].setChecked(True)
 
         # Repaint custom-painted components
+        self._update_go_button_style()
         if hasattr(self, "_cue_list") and self._cue_list is not None:
             self._cue_list.viewport().update()
+        if hasattr(self, "_cue_list_panel") and self._cue_list_panel is not None:
+            if hasattr(self._cue_list_panel, "refresh_theme_styles"):
+                self._cue_list_panel.refresh_theme_styles()
+            self._cue_list_panel.update()
         if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+            if hasattr(self._live_show_panel, "refresh_theme_styles"):
+                self._live_show_panel.refresh_theme_styles()
             self._live_show_panel.update()
             if hasattr(self._live_show_panel, "live_table"):
                 self._live_show_panel.live_table.viewport().update()
@@ -269,6 +276,42 @@ class MainWindow(QMainWindow):
             self._waveform_panel.update()
         if hasattr(self, "_live_status_panel") and self._live_status_panel is not None:
             self._live_status_panel.update()
+        if hasattr(self, "_inspector_panel") and self._inspector_panel is not None:
+            if hasattr(self._inspector_panel, "refresh_theme_styles"):
+                self._inspector_panel.refresh_theme_styles()
+            self._inspector_panel.update()
+
+    def _update_go_button_style(self) -> None:
+        """Update Main GO button stylesheet to honor the active visual theme."""
+        if not hasattr(self, "_btn_go") or self._btn_go is None:
+            return
+        t = get_active_theme()
+        if t.is_monochrome:
+            self._btn_go.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {t.go};
+                    color: #0c1017;
+                    border: 2px solid #ffffff;
+                    border-radius: 6px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{ background-color: {t.accent_hover}; }}
+                QPushButton:pressed {{ background-color: {t.accent_muted}; }}
+            """)
+        else:
+            self._btn_go.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {t.go};
+                    color: #000;
+                    border: none;
+                    border-radius: 6px;
+                    font-size: 18px;
+                    font-weight: bold;
+                }}
+                QPushButton:hover {{ background-color: #69f0ae; }}
+                QPushButton:pressed {{ background-color: #00c853; }}
+            """)
 
     def _set_earcons_enabled(self, enabled: bool) -> None:
         """Enable or disable auditory accessibility guidance chimes and persist setting."""
@@ -654,17 +697,7 @@ class MainWindow(QMainWindow):
         self._btn_go.setMinimumHeight(48)
         self._btn_go.setMaximumHeight(54)
         self._btn_go.setFont(QFont("sans-serif", 18, QFont.Weight.Bold))
-        self._btn_go.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {CLR_GO};
-                color: #000;
-                border: none;
-                border-radius: 6px;
-                font-size: 18px;
-            }}
-            QPushButton:hover {{ background-color: #69f0ae; }}
-            QPushButton:pressed {{ background-color: #00c853; }}
-        """)
+        self._update_go_button_style()
         self._btn_go.clicked.connect(self._on_go)
         center_layout.addWidget(self._btn_go, stretch=0)
         top_splitter.addWidget(center_panel)

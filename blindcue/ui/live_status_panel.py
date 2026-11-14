@@ -31,7 +31,7 @@ from PySide6.QtWidgets import (
 
 from models.cue import Cue, MediaType
 from ui.hold_button import HoldProgressButton
-from ui.theme import CLR_LIVE, CLR_PREVIZ
+from ui.theme import CLR_LIVE, CLR_PREVIZ, get_active_theme
 
 
 def _fmt_mmss(sec: float) -> str:
@@ -358,11 +358,19 @@ class _LiveLayerBar(QWidget):
         clip_path = QPainterPath()
         clip_path.addRoundedRect(rect, 4.0, 4.0)
 
+        is_mono = get_active_theme().is_monochrome
+
         if not self._is_live:
-            p.fillPath(clip_path, QColor("#22262e"))
-            p.setPen(QPen(QColor("#4b5563"), 1))
-            p.drawPath(clip_path)
-            p.setPen(QColor("#7b8494"))
+            if is_mono:
+                p.fillPath(clip_path, QColor("#16171b"))
+                p.setPen(QPen(QColor("#2c2d36"), 1))
+                p.drawPath(clip_path)
+                p.setPen(QColor("#71717a"))
+            else:
+                p.fillPath(clip_path, QColor("#22262e"))
+                p.setPen(QPen(QColor("#4b5563"), 1))
+                p.drawPath(clip_path)
+                p.setPen(QColor("#7b8494"))
             p.setFont(QFont("sans-serif", 10))
             p.drawText(rect.adjusted(10, 0, -10, 0), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, f"Layer {self._layer_idx}: —")
             p.end()
@@ -371,14 +379,17 @@ class _LiveLayerBar(QWidget):
         is_timed, progress, left_str, right_str, remaining = self._progress_metrics()
 
         # Base dark studio bar
-        if self._is_paused:
-            base_bg = QColor("#211a08")
-        elif self._phase == "PRE":
-            base_bg = QColor("#0d1e2e")
-        elif self._phase == "POST":
-            base_bg = QColor("#22152e")
+        if is_mono:
+            base_bg = QColor("#1e1f26") if self._is_paused else QColor("#16171c")
         else:
-            base_bg = QColor("#0e2215")
+            if self._is_paused:
+                base_bg = QColor("#211a08")
+            elif self._phase == "PRE":
+                base_bg = QColor("#0d1e2e")
+            elif self._phase == "POST":
+                base_bg = QColor("#22152e")
+            else:
+                base_bg = QColor("#0e2215")
         p.fillPath(clip_path, base_bg)
 
         # Progressive left-to-right animated fill
@@ -386,26 +397,34 @@ class _LiveLayerBar(QWidget):
         p.setClipPath(clip_path)
         if not is_timed:
             # Static image active fill
-            p.fillRect(rect, QColor(16, 125, 58, 95))
+            if is_mono:
+                p.fillRect(rect, QColor(255, 255, 255, 25))
+            else:
+                p.fillRect(rect, QColor(16, 125, 58, 95))
         elif progress > 0.0:
             fill_w = w * progress
             grad = QLinearGradient(0.0, 0.0, max(1.0, fill_w), 0.0)
-            if self._is_paused:
-                grad.setColorAt(0.0, QColor(180, 120, 12, 95))
-                grad.setColorAt(1.0, QColor(245, 158, 11, 145))
-                edge_clr = QColor("#fbbf24")
-            elif self._phase == "PRE":
-                grad.setColorAt(0.0, QColor(14, 116, 144, 110))
-                grad.setColorAt(1.0, QColor(56, 189, 248, 155))
-                edge_clr = QColor("#7dd3fc")
-            elif self._phase == "POST":
-                grad.setColorAt(0.0, QColor(109, 40, 217, 110))
-                grad.setColorAt(1.0, QColor(192, 132, 252, 155))
-                edge_clr = QColor("#d8b4fe")
+            if is_mono:
+                grad.setColorAt(0.0, QColor(36, 38, 48, 160))
+                grad.setColorAt(1.0, QColor(68, 70, 84, 220))
+                edge_clr = QColor("#d4d4d8") if self._is_paused else QColor("#38bdf8")
             else:
-                grad.setColorAt(0.0, QColor(16, 115, 54, 105))
-                grad.setColorAt(1.0, QColor(0, 230, 118, 150))
-                edge_clr = QColor("#69f0ae")
+                if self._is_paused:
+                    grad.setColorAt(0.0, QColor(180, 120, 12, 95))
+                    grad.setColorAt(1.0, QColor(245, 158, 11, 145))
+                    edge_clr = QColor("#fbbf24")
+                elif self._phase == "PRE":
+                    grad.setColorAt(0.0, QColor(14, 116, 144, 110))
+                    grad.setColorAt(1.0, QColor(56, 189, 248, 155))
+                    edge_clr = QColor("#7dd3fc")
+                elif self._phase == "POST":
+                    grad.setColorAt(0.0, QColor(109, 40, 217, 110))
+                    grad.setColorAt(1.0, QColor(192, 132, 252, 155))
+                    edge_clr = QColor("#d8b4fe")
+                else:
+                    grad.setColorAt(0.0, QColor(16, 115, 54, 105))
+                    grad.setColorAt(1.0, QColor(0, 230, 118, 150))
+                    edge_clr = QColor("#69f0ae")
             p.fillRect(QRectF(0.0, 0.0, fill_w, float(h)), grad)
             p.setPen(QPen(edge_clr, 2.0))
             p.drawLine(int(fill_w), 1, int(fill_w), h - 1)
@@ -417,15 +436,20 @@ class _LiveLayerBar(QWidget):
         p.restore()
 
         # Crisp border highlight
-        if self._is_paused:
-            border_clr = QColor("#f59e0b")
-        elif self._phase == "PRE":
-            border_clr = QColor("#38bdf8")
-        elif self._phase == "POST":
-            border_clr = QColor("#c084fc")
+        if is_mono:
+            border_clr = QColor("#d4d4d8") if self._is_paused else QColor("#38bdf8")
+            b_width = 1.5 if self._is_paused else 1.8
         else:
-            border_clr = QColor(CLR_LIVE)
-        p.setPen(QPen(border_clr, 1.2))
+            if self._is_paused:
+                border_clr = QColor("#f59e0b")
+            elif self._phase == "PRE":
+                border_clr = QColor("#38bdf8")
+            elif self._phase == "POST":
+                border_clr = QColor("#c084fc")
+            else:
+                border_clr = QColor(CLR_LIVE)
+            b_width = 1.2
+        p.setPen(QPen(border_clr, b_width))
         p.drawRoundedRect(rect, 4.0, 4.0)
 
         # Text regions: Left elapsed | Center title | Right countdown
@@ -439,7 +463,11 @@ class _LiveLayerBar(QWidget):
 
         if left_str:
             p.setFont(mono)
-            p.setPen(QColor("#fde68a" if self._is_paused else "#a7f3d0"))
+            if is_mono:
+                left_pen = QColor("#f4f4f5")
+            else:
+                left_pen = QColor("#fde68a" if self._is_paused else "#a7f3d0")
+            p.setPen(left_pen)
             p.drawText(
                 QRectF(m_pad, 0, left_w, h),
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -448,14 +476,17 @@ class _LiveLayerBar(QWidget):
 
         if right_str:
             p.setFont(mono)
-            if self._is_paused:
-                r_clr = QColor("#fbbf24")
-            elif remaining is not None and not self._is_looping_inf and remaining <= 5.0:
-                r_clr = QColor("#ff8080")
-            elif remaining is not None and not self._is_looping_inf and remaining <= 12.0:
-                r_clr = QColor("#fbbf24")
+            if is_mono:
+                r_clr = QColor("#ffffff" if (remaining is not None and not self._is_looping_inf and remaining <= 5.0) else "#f4f4f5")
             else:
-                r_clr = QColor("#d1fae5")
+                if self._is_paused:
+                    r_clr = QColor("#fbbf24")
+                elif remaining is not None and not self._is_looping_inf and remaining <= 5.0:
+                    r_clr = QColor("#ff8080")
+                elif remaining is not None and not self._is_looping_inf and remaining <= 12.0:
+                    r_clr = QColor("#fbbf24")
+                else:
+                    r_clr = QColor("#d1fae5")
             p.setPen(r_clr)
             p.drawText(
                 QRectF(w - m_pad - right_w, 0, right_w, h),
@@ -475,7 +506,11 @@ class _LiveLayerBar(QWidget):
         elided_title = fm_title.elidedText(raw_title, Qt.TextElideMode.ElideRight, avail_center_w)
 
         p.setFont(title_font)
-        p.setPen(QColor("#fef3c7" if self._is_paused else "#ffffff"))
+        if is_mono:
+            title_clr = QColor("#ffffff")
+        else:
+            title_clr = QColor("#fef3c7" if self._is_paused else "#ffffff")
+        p.setPen(title_clr)
         p.drawText(
             QRectF(center_left, 0, avail_center_w, h),
             Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignCenter,

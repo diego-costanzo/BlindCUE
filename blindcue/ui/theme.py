@@ -17,6 +17,7 @@ class ThemeDefinition:
     name: str
     description: str
     is_high_contrast: bool
+    is_monochrome: bool
 
     # Core canvas & surfaces
     bg: str
@@ -62,6 +63,7 @@ THEME_OBSIDIAN_SLATE = ThemeDefinition(
     name="Obsidian Slate (Regia Pro · Predefinito)",
     description="Tema scuro broadcast calibrato per ambienti di regia con luce soffusa. Morbido e riposante.",
     is_high_contrast=False,
+    is_monochrome=False,
     bg="#0c1017",
     panel="#151b26",
     panel_elevated="#1e2838",
@@ -99,6 +101,7 @@ THEME_CARBON_MONO = ThemeDefinition(
     name="Carbon Monocromo (Scala di Grigi & Accento Luminoso)",
     description="Architettura in scala di grigi carbonio ad alta leggibilità: elimina il rumore cromatico per daltonici e ipovedenti, guidando lo sguardo con accenti luminosi.",
     is_high_contrast=True,
+    is_monochrome=True,
     bg="#111215",              # Neutral deep carbon backdrop
     panel="#1a1b1f",           # Solid tactile graphite panel
     panel_elevated="#26272e",  # Stepped elevated carbon surface
@@ -118,9 +121,9 @@ THEME_CARBON_MONO = ThemeDefinition(
     accent="#38bdf8",          # High-luminance electric sky cyan accent
     accent_hover="#7dd3fc",
     accent_muted="#0284c7",
-    live="#4ade80",            # High-luminance lime green
-    previz="#fbbf24",          # High-luminance warm amber
-    go="#4ade80",
+    live="#38bdf8",            # Pure luminous electric sky cyan
+    previz="#d4d4d8",          # Luminous silver for standby
+    go="#38bdf8",
     button_bg="#26272e",       # Solid stepped carbon button
     button_border="#3f3f46",
     button_hover_bg="#33343d",
@@ -134,6 +137,7 @@ THEME_DEEP_INDIGO_AMBER = ThemeDefinition(
     name="Deep Indigo & Warm Amber (Studio Notturno)",
     description="Tonalità rilassanti blu notte profondo e accenti caldi ambra/rame per sessioni prolungate senza affaticamento.",
     is_high_contrast=False,
+    is_monochrome=False,
     bg="#090d16",
     panel="#111827",
     panel_elevated="#1e293b",

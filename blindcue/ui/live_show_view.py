@@ -56,11 +56,13 @@ from ui.cue_table import (
     _GROUP_MODE_PILLS,
     _LINK_RAIL_COLORS,
     format_cue_ref,
+    get_group_mode_pill,
+    get_media_badge,
     paint_cue_row_decorations,
 )
 from ui.hold_button import HoldProgressButton
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
-from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ
+from ui.theme import CLR_ACCENT, CLR_GO, CLR_LIVE, CLR_PREVIZ, get_active_theme
 
 _LINK_ICONS = {
     FollowMode.MANUAL.value: "⏹",
@@ -198,6 +200,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
         is_collapsed = bool(index.data(ROLE_GROUP_COLLAPSED))
         phase_txt = str(index.data(ROLE_PHASE_TXT) or "")
         is_waiting = bool(phase_txt)
+        is_mono = get_active_theme().is_monochrome
 
         # ── Col 0: # & Group Chevron & Link Rail ──────────────────────────────
         if col == 0:
@@ -208,7 +211,10 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
             painter.save()
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            pen_clr = QColor("#4ade80") if is_live else (QColor("#fcd34d") if is_standby else QColor("#94a3b8"))
+            if is_mono:
+                pen_clr = QColor("#38bdf8") if is_live else (QColor("#d4d4d8") if is_standby else QColor("#888891"))
+            else:
+                pen_clr = QColor("#4ade80") if is_live else (QColor("#fcd34d") if is_standby else QColor("#94a3b8"))
 
             if is_group:
                 arrow_sym = "▶" if is_collapsed else "▼"
@@ -264,14 +270,17 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 py = rect.top() + (rect.height() - ph) // 2
                 pill_rect = QRect(px, py, pw, ph)
 
-                painter.setPen(QPen(QColor("#0284c7"), 1))
-                painter.setBrush(QColor("#082f49"))
+                q_border = QColor("#3f404d") if is_mono else QColor("#0284c7")
+                q_bg = QColor("#22232a") if is_mono else QColor("#082f49")
+                q_fg = QColor("#38bdf8")
+                painter.setPen(QPen(q_border, 1))
+                painter.setBrush(q_bg)
                 painter.drawRoundedRect(pill_rect, 4, 4)
-                painter.setPen(QColor("#38bdf8"))
+                painter.setPen(q_fg)
                 painter.drawText(pill_rect, Qt.AlignmentFlag.AlignCenter, raw_q)
             else:
                 painter.setFont(opt.font)
-                painter.setPen(QColor("#334155"))
+                painter.setPen(QColor("#3f404d") if is_mono else QColor("#334155"))
                 painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "—")
             painter.restore()
             return
@@ -309,12 +318,16 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 left_x += 20
 
             # Media badge pill
-            if media_type in self._MEDIA_BADGE:
-                tag_txt, bg_clr, fg_clr = self._MEDIA_BADGE[media_type]
+            badge_info = get_media_badge(media_type, is_mono)
+            if badge_info:
+                tag_txt, bg_clr, fg_clr, border_clr = badge_info
                 pill_w, pill_h = (34, 18) if is_group else (30, 18)
                 pill_y = rect.top() + (rect.height() - pill_h) // 2
                 pill_rect = QRect(left_x, pill_y, pill_w, pill_h)
-                painter.setPen(Qt.PenStyle.NoPen)
+                if border_clr is not None:
+                    painter.setPen(QPen(border_clr, 1))
+                else:
+                    painter.setPen(Qt.PenStyle.NoPen)
                 painter.setBrush(bg_clr)
                 painter.drawRoundedRect(pill_rect, 3, 3)
 
@@ -333,13 +346,15 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
             # Right badges
             if is_group:
-                if group_mode in _GROUP_MODE_PILLS:
-                    gm_txt, gm_bg, gm_fg = _GROUP_MODE_PILLS[group_mode]
+                gm_info = get_group_mode_pill(group_mode, is_mono)
+                if gm_info:
+                    gm_txt, gm_bg, gm_fg, gm_border_spec = gm_info
+                    gm_border = gm_border_spec or gm_fg
                     painter.setFont(tag_font)
                     fm_gm = painter.fontMetrics()
                     gm_w = fm_gm.horizontalAdvance(gm_txt) + 12
                     gm_rect = QRect(right_x - gm_w, rect.top() + (rect.height() - 18) // 2, gm_w, 18)
-                    painter.setPen(QPen(gm_fg, 1))
+                    painter.setPen(QPen(gm_border, 1))
                     painter.setBrush(gm_bg)
                     painter.drawRoundedRect(gm_rect, 3, 3)
                     painter.setPen(gm_fg)
@@ -352,10 +367,10 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     fm_cc = painter.fontMetrics()
                     cc_w = fm_cc.horizontalAdvance(cc_txt) + 10
                     cc_rect = QRect(right_x - cc_w, rect.top() + (rect.height() - 18) // 2, cc_w, 18)
-                    painter.setPen(QPen(QColor("#334155"), 1))
-                    painter.setBrush(QColor("#0f172a"))
+                    painter.setPen(QPen(QColor("#3f404d") if is_mono else QColor("#334155"), 1))
+                    painter.setBrush(QColor("#18191f") if is_mono else QColor("#0f172a"))
                     painter.drawRoundedRect(cc_rect, 3, 3)
-                    painter.setPen(QColor("#94a3b8"))
+                    painter.setPen(QColor("#a1a1aa") if is_mono else QColor("#94a3b8"))
                     painter.drawText(cc_rect, Qt.AlignmentFlag.AlignCenter, cc_txt)
                     right_x -= cc_w + 6
             else:
@@ -365,10 +380,13 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     fm_lp = painter.fontMetrics()
                     lp_w = fm_lp.horizontalAdvance(loop_txt) + 10
                     lp_rect = QRect(right_x - lp_w, rect.top() + (rect.height() - 18) // 2, lp_w, 18)
-                    painter.setPen(QPen(QColor("#d97706"), 1))
-                    painter.setBrush(QColor("#451a03"))
+                    lp_border = QColor("#525363") if is_mono else QColor("#d97706")
+                    lp_bg = QColor("#22232a") if is_mono else QColor("#451a03")
+                    lp_fg = QColor("#f4f4f5") if is_mono else QColor("#fbbf24")
+                    painter.setPen(QPen(lp_border, 1))
+                    painter.setBrush(lp_bg)
                     painter.drawRoundedRect(lp_rect, 3, 3)
-                    painter.setPen(QColor("#fbbf24"))
+                    painter.setPen(lp_fg)
                     painter.drawText(lp_rect, Qt.AlignmentFlag.AlignCenter, loop_txt)
                     right_x -= lp_w + 6
 
@@ -378,10 +396,10 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     fm_sec = painter.fontMetrics()
                     sec_w = fm_sec.horizontalAdvance(sec_txt) + 8
                     sec_rect = QRect(right_x - sec_w, rect.top() + (rect.height() - 18) // 2, sec_w, 18)
-                    painter.setPen(QPen(QColor("#334155"), 1))
-                    painter.setBrush(QColor("#1e293b"))
+                    painter.setPen(QPen(QColor("#3f404d") if is_mono else QColor("#334155"), 1))
+                    painter.setBrush(QColor("#1e1f26") if is_mono else QColor("#1e293b"))
                     painter.drawRoundedRect(sec_rect, 3, 3)
-                    painter.setPen(QColor("#94a3b8"))
+                    painter.setPen(QColor("#a1a1aa") if is_mono else QColor("#94a3b8"))
                     painter.drawText(sec_rect, Qt.AlignmentFlag.AlignCenter, sec_txt)
                     right_x -= sec_w + 6
 
@@ -393,21 +411,38 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 name_font.setBold(True)
             painter.setFont(name_font)
 
-            if is_group:
-                disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
-                name_clr = QColor("#c084fc")
-            elif is_live:
-                disp_name = name_text
-                name_clr = QColor("#4ade80")
-            elif is_standby:
-                disp_name = name_text
-                name_clr = QColor("#fef08a")
-            elif is_waiting:
-                disp_name = name_text
-                name_clr = QColor("#7dd3fc")
+            if is_mono:
+                if is_live:
+                    disp_name = name_text
+                    name_clr = QColor("#ffffff")
+                elif is_standby:
+                    disp_name = name_text
+                    name_clr = QColor("#d4d4d8")
+                elif is_waiting:
+                    disp_name = name_text
+                    name_clr = QColor("#38bdf8")
+                elif is_group:
+                    disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
+                    name_clr = QColor("#f4f4f5")
+                else:
+                    disp_name = name_text
+                    name_clr = QColor("#a1a1aa")
             else:
-                disp_name = name_text
-                name_clr = QColor("#f8fafc")
+                if is_group:
+                    disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
+                    name_clr = QColor("#c084fc")
+                elif is_live:
+                    disp_name = name_text
+                    name_clr = QColor("#4ade80")
+                elif is_standby:
+                    disp_name = name_text
+                    name_clr = QColor("#fef08a")
+                elif is_waiting:
+                    disp_name = name_text
+                    name_clr = QColor("#7dd3fc")
+                else:
+                    disp_name = name_text
+                    name_clr = QColor("#f8fafc")
 
             elided_name = painter.fontMetrics().elidedText(disp_name, Qt.TextElideMode.ElideRight, avail_w)
             painter.setPen(name_clr)
@@ -430,12 +465,18 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 is_urgent = any(k in notes_text.upper() for k in self._URGENT_NOTES_KEYWORDS)
 
                 if is_urgent:
-                    painter.setPen(QPen(QColor("#d97706"), 1))
-                    painter.setBrush(QColor(69, 26, 3, 160))
+                    u_border = QColor("#a1a1aa") if is_mono else QColor("#d97706")
+                    u_bg = QColor(40, 41, 51, 180) if is_mono else QColor(69, 26, 3, 160)
+                    painter.setPen(QPen(u_border, 1))
+                    painter.setBrush(u_bg)
                     painter.drawRoundedRect(rect, 4, 4)
 
                 painter.setFont(QFont(opt.font.family(), 9))
-                painter.setPen(QColor("#f59e0b" if is_urgent else "#38bdf8"))
+                if is_mono:
+                    ico_clr = QColor("#f4f4f5" if is_urgent else "#38bdf8")
+                else:
+                    ico_clr = QColor("#f59e0b" if is_urgent else "#38bdf8")
+                painter.setPen(ico_clr)
                 painter.drawText(
                     QRect(rect.left() + 4, rect.top(), 20, rect.height()),
                     Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -447,7 +488,10 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 if is_urgent:
                     note_font.setBold(True)
                 painter.setFont(note_font)
-                note_clr = QColor("#fef3c7" if is_urgent else "#cbd5e1")
+                if is_mono:
+                    note_clr = QColor("#ffffff" if is_urgent else "#a1a1aa")
+                else:
+                    note_clr = QColor("#fef3c7" if is_urgent else "#cbd5e1")
                 painter.setPen(note_clr)
                 avail_w = max(20, rect.width() - 28)
                 elided = painter.fontMetrics().elidedText(notes_text, Qt.TextElideMode.ElideRight, avail_w)
@@ -458,7 +502,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 )
             else:
                 painter.setFont(opt.font)
-                painter.setPen(QColor("#334155"))
+                painter.setPen(QColor("#3f404d") if is_mono else QColor("#334155"))
                 painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, "—")
 
             painter.restore()
@@ -484,15 +528,26 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             tag_font.setBold(True)
             painter.setFont(tag_font)
 
-            if follow_mode == "AUTO_FOLLOW":
-                fm_txt, fm_bg, fm_border, fm_fg = "⤵ AUTO-GO", QColor("#0c2638"), QColor("#38bdf8"), QColor("#7dd3fc")
-                fm_w = 68
-            elif follow_mode == "SIMULTANEOUS":
-                fm_txt, fm_bg, fm_border, fm_fg = "⇉ SIMULT", QColor("#332006"), QColor("#f59e0b"), QColor("#fcd34d")
-                fm_w = 66
+            if is_mono:
+                if follow_mode == "AUTO_FOLLOW":
+                    fm_txt, fm_bg, fm_border, fm_fg = "⤵ AUTO-GO", QColor("#1e1f26"), QColor("#38bdf8"), QColor("#38bdf8")
+                    fm_w = 68
+                elif follow_mode == "SIMULTANEOUS":
+                    fm_txt, fm_bg, fm_border, fm_fg = "⇉ SIMULT", QColor("#22232a"), QColor("#525363"), QColor("#e4e4e7")
+                    fm_w = 66
+                else:
+                    fm_txt, fm_bg, fm_border, fm_fg = "⏹ MANUALE", QColor("#18191f"), QColor("#33343d"), QColor("#888891")
+                    fm_w = 70
             else:
-                fm_txt, fm_bg, fm_border, fm_fg = "⏹ MANUALE", QColor("#131a26"), QColor("#243144"), QColor("#94a3b8")
-                fm_w = 70
+                if follow_mode == "AUTO_FOLLOW":
+                    fm_txt, fm_bg, fm_border, fm_fg = "⤵ AUTO-GO", QColor("#0c2638"), QColor("#38bdf8"), QColor("#7dd3fc")
+                    fm_w = 68
+                elif follow_mode == "SIMULTANEOUS":
+                    fm_txt, fm_bg, fm_border, fm_fg = "⇉ SIMULT", QColor("#332006"), QColor("#f59e0b"), QColor("#fcd34d")
+                    fm_w = 66
+                else:
+                    fm_txt, fm_bg, fm_border, fm_fg = "⏹ MANUALE", QColor("#131a26"), QColor("#243144"), QColor("#94a3b8")
+                    fm_w = 70
 
             right_x = rect.right()
             fm_rect = QRect(right_x - fm_w, rect.top() + (rect.height() - 18) // 2, fm_w, 18)
@@ -508,10 +563,13 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 painter.setFont(tag_font)
                 pw = min(56, painter.fontMetrics().horizontalAdvance(pre_txt) + 8)
                 p_rect = QRect(rect.left(), rect.top() + (rect.height() - 18) // 2, pw, 18)
-                painter.setPen(QPen(QColor("#d97706"), 1))
-                painter.setBrush(QColor("#332006"))
+                p_border = QColor("#484956") if is_mono else QColor("#d97706")
+                p_bg = QColor("#22232a") if is_mono else QColor("#332006")
+                p_fg = QColor("#d4d4d8") if is_mono else QColor("#fbbf24")
+                painter.setPen(QPen(p_border, 1))
+                painter.setBrush(p_bg)
                 painter.drawRoundedRect(p_rect, 3, 3)
-                painter.setPen(QColor("#fbbf24"))
+                painter.setPen(p_fg)
                 painter.drawText(p_rect, Qt.AlignmentFlag.AlignCenter, pre_txt)
 
             # Anchored duration slot (stable horizontal column across all rows)
@@ -520,7 +578,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             dur_rect = QRect(dur_x, rect.top(), dur_w, rect.height())
             dur_font = QFont("monospace", 10, QFont.Weight.Bold)
             painter.setFont(dur_font)
-            painter.setPen(QColor("#e2e8f0"))
+            painter.setPen(QColor("#f4f4f5") if is_mono else QColor("#e2e8f0"))
             painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
 
             # Middle-right slot: Post-Delay pill (if configured)
@@ -530,10 +588,13 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 post_w = min(60, painter.fontMetrics().horizontalAdvance(post_txt) + 8)
                 post_x = dur_x + dur_w + 6
                 post_rect = QRect(post_x, rect.top() + (rect.height() - 18) // 2, post_w, 18)
-                painter.setPen(QPen(QColor("#7c3aed"), 1))
-                painter.setBrush(QColor("#2e1065"))
+                post_border = QColor("#484956") if is_mono else QColor("#7c3aed")
+                post_bg = QColor("#22232a") if is_mono else QColor("#2e1065")
+                post_fg = QColor("#d4d4d8") if is_mono else QColor("#c084fc")
+                painter.setPen(QPen(post_border, 1))
+                painter.setBrush(post_bg)
                 painter.drawRoundedRect(post_rect, 3, 3)
-                painter.setPen(QColor("#c084fc"))
+                painter.setPen(post_fg)
                 painter.drawText(post_rect, Qt.AlignmentFlag.AlignCenter, post_txt)
 
             painter.restore()
@@ -563,16 +624,19 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             ly = rect.top() + (rect.height() - lh) // 2
             l_rect = QRect(rect.left(), ly, lw, lh)
 
-            if is_group:
-                painter.setPen(QPen(QColor("#7c3aed"), 1))
-                painter.setBrush(QColor("#2e1065"))
-                painter.drawRoundedRect(l_rect, 3, 3)
-                painter.setPen(QColor("#c084fc"))
+            if is_mono:
+                l_border = QColor("#484956") if is_group else QColor("#3f404d")
+                l_bg = QColor("#1e1f26") if is_group else QColor("#22232a")
+                l_fg = QColor("#f4f4f5") if is_group else QColor("#d4d4d8")
             else:
-                painter.setPen(QPen(QColor("#334155"), 1))
-                painter.setBrush(QColor("#1e293b"))
-                painter.drawRoundedRect(l_rect, 3, 3)
-                painter.setPen(QColor("#94a3b8"))
+                if is_group:
+                    l_border, l_bg, l_fg = QColor("#7c3aed"), QColor("#2e1065"), QColor("#c084fc")
+                else:
+                    l_border, l_bg, l_fg = QColor("#334155"), QColor("#1e293b"), QColor("#94a3b8")
+            painter.setPen(QPen(l_border, 1))
+            painter.setBrush(l_bg)
+            painter.drawRoundedRect(l_rect, 3, 3)
+            painter.setPen(l_fg)
             painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_txt)
 
             tag_font = QFont(opt.font)
@@ -580,26 +644,48 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             tag_font.setBold(True)
             painter.setFont(tag_font)
 
-            if is_live:
-                st_label = "● LIVE"
-                st_bg = QColor("#064e3b")
-                st_border = QColor("#10b981")
-                st_fg = QColor("#4ade80")
-            elif phase_txt:
-                st_label = f"⏳ {phase_txt}"
-                st_bg = QColor("#082f49")
-                st_border = QColor("#0284c7")
-                st_fg = QColor("#7dd3fc")
-            elif is_standby:
-                st_label = "▶ STANDBY"
-                st_bg = QColor("#451a03")
-                st_border = QColor("#d97706")
-                st_fg = QColor("#fbbf24")
+            if is_mono:
+                if is_live:
+                    st_label = "● LIVE"
+                    st_bg = QColor("#2c2d36")
+                    st_border = QColor("#38bdf8")
+                    st_fg = QColor("#38bdf8")
+                elif phase_txt:
+                    st_label = f"⏳ {phase_txt}"
+                    st_bg = QColor("#1e1f26")
+                    st_border = QColor("#71717a")
+                    st_fg = QColor("#a1a1aa")
+                elif is_standby:
+                    st_label = "▶ STANDBY"
+                    st_bg = QColor("#22232a")
+                    st_border = QColor("#a1a1aa")
+                    st_fg = QColor("#e4e4e7")
+                else:
+                    st_label = "PRONTO"
+                    st_bg = QColor("#16171b")
+                    st_border = QColor("#27272a")
+                    st_fg = QColor("#71717a")
             else:
-                st_label = "PRONTO"
-                st_bg = QColor("#101722")
-                st_border = QColor("#1e293b")
-                st_fg = QColor("#64748b")
+                if is_live:
+                    st_label = "● LIVE"
+                    st_bg = QColor("#064e3b")
+                    st_border = QColor("#10b981")
+                    st_fg = QColor("#4ade80")
+                elif phase_txt:
+                    st_label = f"⏳ {phase_txt}"
+                    st_bg = QColor("#082f49")
+                    st_border = QColor("#0284c7")
+                    st_fg = QColor("#7dd3fc")
+                elif is_standby:
+                    st_label = "▶ STANDBY"
+                    st_bg = QColor("#451a03")
+                    st_border = QColor("#d97706")
+                    st_fg = QColor("#fbbf24")
+                else:
+                    st_label = "PRONTO"
+                    st_bg = QColor("#101722")
+                    st_border = QColor("#1e293b")
+                    st_fg = QColor("#64748b")
 
             fm_st = painter.fontMetrics()
             sw = max(72, fm_st.horizontalAdvance(st_label) + 12)
@@ -608,7 +694,8 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             sy = rect.top() + (rect.height() - sh) // 2
             s_rect = QRect(sx, sy, sw, sh)
 
-            painter.setPen(QPen(st_border, 1.5 if (is_live or is_standby) else 1.0))
+            b_width = 2.0 if (is_mono and is_live) else (1.5 if (is_live or is_standby) else 1.0)
+            painter.setPen(QPen(st_border, b_width))
             painter.setBrush(st_bg)
             painter.drawRoundedRect(s_rect, 4, 4)
             painter.setPen(st_fg)
@@ -975,30 +1062,54 @@ class LiveShowPanel(QWidget):
 
         if state != self._last_sw_state:
             self._last_sw_state = state
+            is_mono = get_active_theme().is_monochrome
+            if is_mono:
+                if state == "running":
+                    self.btn_stopwatch.setStyleSheet(
+                        "QPushButton { background-color: #2c2d36; color: #38bdf8; border: 1.5px solid #38bdf8; "
+                        "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                        "QPushButton:hover { background-color: #383946; border-color: #7dd3fc; color: #ffffff; }"
+                    )
+                elif state == "paused":
+                    self.btn_stopwatch.setStyleSheet(
+                        "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #a1a1aa; "
+                        "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                        "QPushButton:hover { background-color: #2d2f38; border-color: #ffffff; color: #ffffff; }"
+                    )
+                else:
+                    self.btn_stopwatch.setStyleSheet(
+                        "QPushButton { background-color: #16171b; color: #71717a; border: 1px solid #27272a; "
+                        "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                        "QPushButton:hover { background-color: #22232a; border-color: #3f404d; color: #a1a1aa; }"
+                    )
+            else:
+                if state == "running":
+                    self.btn_stopwatch.setStyleSheet(
+                        "QPushButton { background-color: #0b2920; color: #6ee7b7; border: 1px solid #10b981; "
+                        "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                        "QPushButton:hover { background-color: #113b2e; border-color: #34d399; color: #ffffff; }"
+                    )
+                elif state == "paused":
+                    self.btn_stopwatch.setStyleSheet(
+                        "QPushButton { background-color: #2b2109; color: #fcd34d; border: 1px solid #d97706; "
+                        "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                        "QPushButton:hover { background-color: #3d2f0e; border-color: #fbbf24; color: #ffffff; }"
+                    )
+                else:
+                    self.btn_stopwatch.setStyleSheet(
+                        "QPushButton { background-color: #151e2c; color: #94a3b8; border: 1px solid #334155; "
+                        "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                        "QPushButton:hover { background-color: #1e293b; border-color: #38bdf8; color: #f8fafc; }"
+                    )
             if state == "running":
-                self.btn_stopwatch.setStyleSheet(
-                    "QPushButton { background-color: #0b2920; color: #6ee7b7; border: 1px solid #10b981; "
-                    "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
-                    "QPushButton:hover { background-color: #113b2e; border-color: #34d399; color: #ffffff; }"
-                )
                 self.btn_stopwatch.setToolTip(
                     "Cronometro Spettacolo in corso (avvio auto al 1° GO o manuale) — Clicca per PAUSA (non ferma i media)"
                 )
             elif state == "paused":
-                self.btn_stopwatch.setStyleSheet(
-                    "QPushButton { background-color: #2b2109; color: #fcd34d; border: 1px solid #d97706; "
-                    "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
-                    "QPushButton:hover { background-color: #3d2f0e; border-color: #fbbf24; color: #ffffff; }"
-                )
                 self.btn_stopwatch.setToolTip(
                     "Cronometro Spettacolo in PAUSA — Clicca per RIPRENDERE o usa ↺ per azzerare e riarmare"
                 )
             else:
-                self.btn_stopwatch.setStyleSheet(
-                    "QPushButton { background-color: #151e2c; color: #94a3b8; border: 1px solid #334155; "
-                    "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
-                    "QPushButton:hover { background-color: #1e293b; border-color: #38bdf8; color: #f8fafc; }"
-                )
                 self.btn_stopwatch.setToolTip(
                     "Durata Spettacolo (Cronometro): parte in automatico al 1° GO oppure clicca qui ora per avviare nelle filate/prove"
                 )
@@ -1024,30 +1135,86 @@ class LiveShowPanel(QWidget):
             self.cue_row_double_clicked.emit(row)
 
     def _apply_pause_btn_style(self, *, paused: bool) -> None:
+        is_mono = get_active_theme().is_monochrome
         if paused:
             self.btn_pause_all.setText("▶  RIPRENDI TUTTO  [IN PAUSA]")
-            self.btn_pause_all.setStyleSheet(
-                "QPushButton { background-color: #f59e0b; color: #000000; border: 2px solid #fef3c7; "
-                "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
-                "QPushButton:hover { background-color: #fbbf24; }"
-            )
-            self.lbl_show_badge.setText("⏸ SHOW IN PAUSA")
-            self.lbl_show_badge.setStyleSheet(
-                "QLabel { background-color: #78350f; color: #fde68a; border: 1px solid #f59e0b; "
-                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
-            )
+            if is_mono:
+                self.btn_pause_all.setStyleSheet(
+                    "QPushButton { background-color: #f4f4f5; color: #111215; border: 2px solid #ffffff; "
+                    "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                    "QPushButton:hover { background-color: #ffffff; }"
+                )
+                self.lbl_show_badge.setText("⏸ SHOW IN PAUSA")
+                self.lbl_show_badge.setStyleSheet(
+                    "QLabel { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #a1a1aa; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
+                )
+            else:
+                self.btn_pause_all.setStyleSheet(
+                    "QPushButton { background-color: #f59e0b; color: #000000; border: 2px solid #fef3c7; "
+                    "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                    "QPushButton:hover { background-color: #fbbf24; }"
+                )
+                self.lbl_show_badge.setText("⏸ SHOW IN PAUSA")
+                self.lbl_show_badge.setStyleSheet(
+                    "QLabel { background-color: #78350f; color: #fde68a; border: 1px solid #f59e0b; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
+                )
         else:
             self.btn_pause_all.setText("⏸  PAUSA TUTTO")
-            self.btn_pause_all.setStyleSheet(
-                "QPushButton { background-color: #3f2806; color: #fbbf24; border: 1px solid #d97706; "
-                "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
-                "QPushButton:hover { background-color: #5c3b09; color: #ffffff; }"
+            if is_mono:
+                self.btn_pause_all.setStyleSheet(
+                    "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #525363; "
+                    "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                    "QPushButton:hover { background-color: #2d2f38; border-color: #a1a1aa; color: #ffffff; }"
+                )
+                self.lbl_show_badge.setText("● MODALITÀ LIVE (SHOW MODE)")
+                self.lbl_show_badge.setStyleSheet(
+                    "QLabel { background-color: #2c2d36; color: #38bdf8; border: 1.5px solid #38bdf8; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
+                )
+            else:
+                self.btn_pause_all.setStyleSheet(
+                    "QPushButton { background-color: #3f2806; color: #fbbf24; border: 1px solid #d97706; "
+                    "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
+                    "QPushButton:hover { background-color: #5c3b09; color: #ffffff; }"
+                )
+                self.lbl_show_badge.setText("● MODALITÀ LIVE (SHOW MODE)")
+                self.lbl_show_badge.setStyleSheet(
+                    "QLabel { background-color: #064e3b; color: #69f0ae; border: 1px solid #10b981; "
+                    "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
+                )
+
+    def refresh_theme_styles(self) -> None:
+        """Apply theme styling to Live Show controls (GO button, break loop, layer bars, pause badge)."""
+        is_mono = get_active_theme().is_monochrome
+        if is_mono:
+            self.btn_go.setStyleSheet(
+                "QPushButton { background-color: #38bdf8; color: #0c1017; border: 2px solid #ffffff; "
+                "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; } "
+                "QPushButton:hover { background-color: #7dd3fc; } "
+                "QPushButton:pressed { background-color: #0284c7; }"
             )
-            self.lbl_show_badge.setText("● MODALITÀ LIVE (SHOW MODE)")
-            self.lbl_show_badge.setStyleSheet(
-                "QLabel { background-color: #064e3b; color: #69f0ae; border: 1px solid #10b981; "
-                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
+            self.btn_break_loop.setStyleSheet(
+                "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #525363; "
+                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
+                "QPushButton:hover { background-color: #2d2f38; border-color: #a1a1aa; color: #ffffff; }"
             )
+        else:
+            self.btn_go.setStyleSheet(
+                f"QPushButton {{ background-color: {CLR_GO}; color: #04130a; border: none; "
+                f"border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; }} "
+                f"QPushButton:hover {{ background-color: #69f0ae; }} "
+                f"QPushButton:pressed {{ background-color: #00c853; }}"
+            )
+            self.btn_break_loop.setStyleSheet(
+                "QPushButton { background-color: #78350f; color: #fef3c7; border: 1px solid #f59e0b; "
+                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
+                "QPushButton:hover { background-color: #b45309; }"
+            )
+        self._apply_pause_btn_style(paused=getattr(self, "_is_paused_all", False))
+        self._last_sw_state = ""
+        self._refresh_stopwatch_ui()
 
     def set_global_paused(self, paused: bool) -> None:
         self._is_paused_all = paused
