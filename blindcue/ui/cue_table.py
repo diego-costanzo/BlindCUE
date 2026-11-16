@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from PySide6.QtCore import QItemSelectionModel, QPointF, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygonF
@@ -50,6 +49,7 @@ ROLE_IS_STANDBY = Qt.ItemDataRole.UserRole + 24
 ROLE_PHASE_TXT = Qt.ItemDataRole.UserRole + 25
 ROLE_LAYER_CONFLICT = Qt.ItemDataRole.UserRole + 26
 ROLE_TIMELINE_COMPOSED = Qt.ItemDataRole.UserRole + 27
+ROLE_OUTPUT_TARGET = Qt.ItemDataRole.UserRole + 28
 
 # Broadcast Default Media Badges (Obsidian Slate / Deep Indigo)
 _MEDIA_BADGE_BROADCAST = {
@@ -72,6 +72,10 @@ _MEDIA_BADGE = _MEDIA_BADGE_BROADCAST
 
 
 def get_media_badge(media_type: str, is_mono: bool = False):
+    """Return the (label, colour, background) badge for a media type.
+
+    *is_mono* selects the high-contrast Carbon palette used by the live view.
+    """
     badges = _MEDIA_BADGE_CARBON_MONO if is_mono else _MEDIA_BADGE_BROADCAST
     return badges.get(media_type)
 
@@ -97,11 +101,13 @@ _GROUP_MODE_PILLS = _GROUP_MODE_PILLS_BROADCAST
 
 
 def get_group_mode_pill(group_mode: str, is_mono: bool = False):
+    """Return the (label, background, foreground, border) pill for a group mode."""
     pills = _GROUP_MODE_PILLS_CARBON_MONO if is_mono else _GROUP_MODE_PILLS_BROADCAST
     return pills.get(group_mode)
 
 
-def get_link_rail_color(mode: str, is_mono: bool = False) -> Optional[QColor]:
+def get_link_rail_color(mode: str, is_mono: bool = False) -> QColor | None:
+    """Colour of the rail linking a group cue to its children (``None`` = default)."""
     if is_mono:
         if mode == "AUTO_FOLLOW":
             return QColor("#ffffff")
@@ -254,10 +260,12 @@ class CueTableDelegate(QStyledItemDelegate):
     }
 
     def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        """Attach the custom background brush computed in :meth:`paint`."""
         super().initStyleOption(option, index)
         option.state &= ~QStyle.StateFlag.State_HasFocus
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        """Draw one cue row: coloured status band, live badge and inline editor."""
         col = index.column()
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
@@ -427,6 +435,8 @@ class CueTableDelegate(QStyledItemDelegate):
                 right_x -= sw + 4
 
             conflict_reason = str(index.data(ROLE_LAYER_CONFLICT) or "")
+            out_target = str(index.data(ROLE_OUTPUT_TARGET) or "A").upper()
+            layer_prefix = "B·" if out_target == "B" else ""
 
             if is_group:
                 # Group mode pill on the right
@@ -480,7 +490,7 @@ class CueTableDelegate(QStyledItemDelegate):
                     right_x -= cc_w + 4
             else:
                 if conflict_reason:
-                    layer_str = f"⚠️ L{layer}"
+                    layer_str = f"⚠️ {layer_prefix}L{layer}"
                     painter.setFont(tag_font)
                     lw = painter.fontMetrics().horizontalAdvance(layer_str) + 8
                     lh = 16
@@ -496,9 +506,10 @@ class CueTableDelegate(QStyledItemDelegate):
                     painter.drawText(l_rect, Qt.AlignmentFlag.AlignCenter, layer_str)
                     right_x -= lw + 4
                 else:
-                    layer_str = f"L{layer}"
+                    layer_str = f"{layer_prefix}L{layer}"
                     painter.setFont(tag_font)
-                    lw, lh = 22, 16
+                    lw = painter.fontMetrics().horizontalAdvance(layer_str) + 8
+                    lh = 16
                     ly = rect.top() + (rect.height() - lh) // 2
                     l_rect = QRect(right_x - lw, ly, lw, lh)
                     l_border = QColor("#3f404d") if is_mono else QColor("#283548")
@@ -583,6 +594,7 @@ class CueTableDelegate(QStyledItemDelegate):
         super().paint(painter, option, index)
 
     def createEditor(self, parent: QWidget, option: QStyleOptionViewItem, index) -> QLineEdit:  # noqa: N802
+        """Create the inline editor for the Q and Name columns only."""
         editor = QLineEdit(parent)
         active_t = get_active_theme()
         editor.setStyleSheet(
@@ -595,11 +607,13 @@ class CueTableDelegate(QStyledItemDelegate):
         return editor
 
     def setEditorData(self, editor: QLineEdit, index) -> None:  # noqa: N802
+        """Seed the inline editor with the current cell text."""
         val = str(index.data(Qt.ItemDataRole.EditRole) or "")
         editor.setText(val)
         editor.selectAll()
 
     def setModelData(self, editor: QLineEdit, model, index) -> None:  # noqa: N802
+        """Commit the edited text back to the cue table model."""
         model.setData(index, editor.text().strip(), Qt.ItemDataRole.EditRole)
 
 
@@ -614,7 +628,8 @@ class CueSequenceTable(QTableWidget):
     extract_child_requested = Signal()
     open_timeline_requested = Signal()
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the cue sequence table with its three columns and selection rules."""
         super().__init__(0, 3, parent)
         self._last_emitted_row: int = -1
 
@@ -661,7 +676,7 @@ class CueSequenceTable(QTableWidget):
             return [row] if row >= 0 else []
         return sorted({idx.row() for idx in sm.selectedRows() if 0 <= idx.row() < self.rowCount()})
 
-    def select_rows(self, rows: list[int], anchor_row: Optional[int] = None) -> None:
+    def select_rows(self, rows: list[int], anchor_row: int | None = None) -> None:
         """Select *rows* programmatically cleanly while preserving an anchor row."""
         valid = [r for r in rows if 0 <= r < self.rowCount()]
         if not valid:
@@ -713,6 +728,7 @@ class CueSequenceTable(QTableWidget):
         self.setRowCount(0)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
+        """Collapse/expand group cues and start the anchor selection."""
         if event.button() == Qt.MouseButton.LeftButton:
             idx = self.indexAt(event.pos())
             if idx.isValid() and idx.column() == 0:
@@ -724,6 +740,7 @@ class CueSequenceTable(QTableWidget):
         super().mousePressEvent(event)
 
     def contextMenuEvent(self, event) -> None:  # noqa: N802
+        """Right-click menu for the selected cue(s): edit, duplicate, delete."""
         rows = self.selected_rows()
         if not rows:
             idx = self.indexAt(event.pos())
@@ -767,6 +784,7 @@ class CueSequenceTable(QTableWidget):
         menu.exec(event.globalPos())
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
+        """Keyboard navigation: arrows move the anchor, Enter starts editing."""
         if event.key() == Qt.Key.Key_F2 and self.currentRow() >= 0 and self.currentColumn() == 0:
             item_q = self.item(self.currentRow(), 1)
             if item_q is not None:

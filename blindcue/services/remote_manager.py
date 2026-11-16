@@ -14,10 +14,12 @@ import io
 import logging
 import secrets
 import socket
-from typing import Any, Callable, Optional
+import threading
+from typing import Any
+from collections.abc import Callable
 
 from PySide6.QtCore import QObject, Qt, QTimer, Signal
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtGui import QPixmap
 
 from services.osc_server import OscServer
 from services.qr_generator import generate_qr_pixmap as native_qr_generate
@@ -43,7 +45,7 @@ def get_local_lan_ips() -> list[str]:
                         if s_ip and not s_ip.startswith("127."):
                             ips.add(s_ip)
     except Exception:
-        pass
+        logger.debug("[REMOTE] Qt interface discovery failed", exc_info=True)
 
     # Strategy 1: Open temporary UDP socket to determine preferred outgoing route
     try:
@@ -54,7 +56,7 @@ def get_local_lan_ips() -> list[str]:
         if primary_ip and not primary_ip.startswith("127."):
             ips.add(primary_ip)
     except Exception:
-        pass
+        logger.debug("[REMOTE] Primary route detection failed", exc_info=True)
 
     # Strategy 2: Hostname resolution for additional physical/Wi-Fi interfaces
     try:
@@ -64,7 +66,7 @@ def get_local_lan_ips() -> list[str]:
             if not ip.startswith("127."):
                 ips.add(ip)
     except Exception:
-        pass
+        logger.debug("[REMOTE] Hostname resolution failed", exc_info=True)
 
     if not ips:
         ips.add("127.0.0.1")
@@ -91,7 +93,8 @@ class RemoteManager(QObject):
 
     activity_updated = Signal()                 # emitted whenever clients or packets change
 
-    def __init__(self, parent: Optional[QObject] = None) -> None:
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Create the remote manager with Web/OSC disabled until the operator enables them."""
         super().__init__(parent)
 
         self._web_enabled: bool = False
@@ -105,6 +108,11 @@ class RemoteManager(QObject):
         self._qr_includes_pin: bool = True
         self._osc_pin_required: bool = False
         self._osc_allowed_ips: list[str] = []
+
+        # GUI-thread snapshot cache: HTTP worker threads must never touch Qt widgets
+        self._state_provider: Callable[[], dict[str, Any]] | None = None
+        self._state_cache: dict[str, Any] = {"show_title": "BlindCue", "is_live": False, "cues": []}
+        self._state_lock = threading.Lock()
 
         self.web_server = WebRemoteServer(port=self._web_port)
         self.web_server.set_pin_protection(self._pin_enabled, self._pin)
@@ -145,36 +153,65 @@ class RemoteManager(QObject):
 
     def set_state_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
         """Register callback that provides full current show state snapshot."""
-        self.web_server.set_state_provider(provider)
+        self._state_provider = provider
+        self.web_server.set_state_provider(self._get_cached_state)
+
+    def _get_cached_state(self) -> dict[str, Any]:
+        """Return a copy of the last GUI-thread snapshot (safe from HTTP worker threads)."""
+        with self._state_lock:
+            return dict(self._state_cache)
+
+    def _refresh_state_cache(self) -> None:
+        """Rebuild the snapshot cache; must run on the Qt main thread only."""
+        if self._state_provider is None:
+            return
+        try:
+            state = self._state_provider()
+        except Exception:
+            logger.debug("[REMOTE] State provider failed", exc_info=True)
+            return
+        if isinstance(state, dict):
+            with self._state_lock:
+                self._state_cache = state
 
     def is_web_active(self) -> bool:
+        """True when the operator enabled the web remote AND the server is listening."""
         return self._web_enabled and self.web_server.is_running()
 
     def is_osc_active(self) -> bool:
+        """True when the operator enabled OSC AND the UDP server is listening."""
         return self._osc_enabled and self.osc_server.is_running()
 
     def get_web_port(self) -> int:
+        """TCP port of the web remote (QR codes and URLs use it)."""
         return self._web_port
 
     def get_osc_port(self) -> int:
+        """UDP port of the OSC automation endpoint."""
         return self._osc_port
 
     def is_pin_enabled(self) -> bool:
+        """True when the web remote requires the PIN."""
         return self._pin_enabled
 
     def get_pin(self) -> str:
+        """Current PIN (6 digits, regenerable)."""
         return self._pin
 
     def is_qr_pin_included(self) -> bool:
+        """True when the QR code embeds the PIN for one-tap phone access."""
         return self._qr_includes_pin
 
     def is_osc_pin_required(self) -> bool:
+        """True when OSC packets must carry the PIN."""
         return self._osc_pin_required
 
     def get_osc_allowed_ips(self) -> list[str]:
+        """IP allow-list for OSC (empty list means any address)."""
         return list(self._osc_allowed_ips)
 
     def generate_new_pin(self) -> str:
+        """Regenerate a random 6-digit PIN and revoke every open session."""
         self._pin = f"{secrets.SystemRandom().randint(100000, 999999)}"
         self.web_server.set_pin_protection(self._pin_enabled, self._pin)
         self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
@@ -183,6 +220,7 @@ class RemoteManager(QObject):
         return self._pin
 
     def set_pin_security(self, enabled: bool, pin: str, qr_includes_pin: bool = True) -> None:
+        """Enable/disable PIN protection and push the new policy to both servers."""
         self._pin_enabled = bool(enabled)
         self._pin = str(pin).strip()
         self._qr_includes_pin = bool(qr_includes_pin)
@@ -190,7 +228,8 @@ class RemoteManager(QObject):
         self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
         self.activity_updated.emit()
 
-    def set_osc_security(self, pin_required: bool, allowed_ips: Optional[list[str]] = None) -> None:
+    def set_osc_security(self, pin_required: bool, allowed_ips: list[str] | None = None) -> None:
+        """Enable/disable OSC PIN protection and set the allow-list of IPs."""
         self._osc_pin_required = bool(pin_required)
         self._osc_allowed_ips = [ip.strip() for ip in allowed_ips] if allowed_ips else []
         self.osc_server.set_security(self._osc_pin_required, self._pin, self._osc_allowed_ips)
@@ -203,6 +242,7 @@ class RemoteManager(QObject):
         self.activity_updated.emit()
 
     def get_primary_web_url(self, include_pin: bool = False) -> str:
+        """Base web URL on the first LAN address (localhost when offline)."""
         ips = get_local_lan_ips()
         ip = ips[0] if ips else "127.0.0.1"
         base = f"http://{ip}:{self._web_port}"
@@ -228,10 +268,12 @@ class RemoteManager(QObject):
         return self.get_monitor_url(include_pin=self._qr_includes_pin)
 
     def get_all_web_urls(self) -> list[str]:
+        """Every URL the remote can be reached at (one per LAN interface)."""
         ips = get_local_lan_ips()
         return [f"http://{ip}:{self._web_port}" for ip in ips]
 
     def get_osc_address(self) -> str:
+        """Human-readable OSC endpoint shown in the settings dialog."""
         ips = get_local_lan_ips()
         ip = ips[0] if ips else "127.0.0.1"
         return f"udp://{ip}:{self._osc_port}"
@@ -258,6 +300,7 @@ class RemoteManager(QObject):
         self.activity_updated.emit()
 
     def set_web_enabled(self, enabled: bool) -> None:
+        """Turn the web remote on/off without touching the OSC endpoint."""
         self._web_enabled = bool(enabled)
         if self._web_enabled:
             if not self.web_server.is_running():
@@ -267,6 +310,7 @@ class RemoteManager(QObject):
         self.activity_updated.emit()
 
     def set_osc_enabled(self, enabled: bool) -> None:
+        """Start or stop the OSC listener according to the user preference."""
         self._osc_enabled = bool(enabled)
         if self._osc_enabled:
             if not self.osc_server.is_running():
@@ -278,13 +322,17 @@ class RemoteManager(QObject):
     def trigger_state_broadcast(self) -> None:
         """Immediately broadcast state update to all web clients (e.g. on GO or cue change)."""
         if self.is_web_active():
-            self.web_server.broadcast_state()
+            self._refresh_state_cache()
+            self.web_server.broadcast_state(self._state_cache)
 
     def _on_broadcast_tick(self) -> None:
-        if self.is_web_active() and self.web_server.get_connected_clients_count() > 0:
-            self.web_server.broadcast_state()
+        if not self.is_web_active():
+            return
+        self._refresh_state_cache()
+        if self.web_server.get_connected_clients_count() > 0:
+            self.web_server.broadcast_state(self._state_cache)
 
-    def generate_qr_pixmap(self, url: Optional[str] = None, size: int = 220) -> Optional[QPixmap]:
+    def generate_qr_pixmap(self, url: str | None = None, size: int = 220) -> QPixmap | None:
         """Generate high-contrast QR code QPixmap for scanning with smartphones (100% cross-platform)."""
         target_url = url or self.get_qr_url()
 

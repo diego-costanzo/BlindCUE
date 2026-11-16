@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Callable, Optional, Sequence
+from typing import Any
+from collections.abc import Callable, Sequence
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
@@ -33,19 +34,20 @@ class _PlayerSignals(QObject):
 class LivePlayer(QObject):
     """Multimedia player for the LIVE output (audio + video on external screen)."""
 
-    def __init__(self, video_widget: Optional[Any] = None,
-                 video_output: Optional[Any] = None,
-                 parent: Optional[QObject] = None) -> None:
+    def __init__(self, video_widget: Any | None = None,
+                 video_output: Any | None = None,
+                 parent: QObject | None = None) -> None:
+        """Create the live player bound to a video output widget."""
         super().__init__(parent)
         self.signals = _PlayerSignals()
         self._video_output = video_output or video_widget
-        self._standby_video_output: Optional[Any] = None
-        self._deck_switch_cb: Optional[Callable[[int], None]] = None
-        self._opacity_cb: Optional[Callable[[float], None]] = None
+        self._standby_video_output: Any | None = None
+        self._deck_switch_cb: Callable[[int], None] | None = None
+        self._opacity_cb: Callable[[float], None] | None = None
 
-        self._fade_timer: Optional[QTimer] = None
+        self._fade_timer: QTimer | None = None
         self._start_ms: int = 0
-        self._end_ms: Optional[int] = None
+        self._end_ms: int | None = None
         self._duration_sec: float = 0.0
         self._file_path: str = ""
         self._is_looping: bool = False
@@ -53,10 +55,10 @@ class LivePlayer(QObject):
         self._current_loop_iteration: int = 0
 
         # Lazy standby deck for pre-cued anti-stutter jumps (allocated only when needed)
-        self._audio_device: Optional[QAudioDevice] = None
-        self._standby_player: Optional[QMediaPlayer] = None
-        self._standby_audio: Optional[QAudioOutput] = None
-        self._standby_target_ms: Optional[int] = None
+        self._audio_device: QAudioDevice | None = None
+        self._standby_player: QMediaPlayer | None = None
+        self._standby_audio: QAudioOutput | None = None
+        self._standby_target_ms: int | None = None
         self._standby_ready: bool = False
         self._active_deck: int = 0  # 0 = primary, 1 = standby deck
 
@@ -72,9 +74,14 @@ class LivePlayer(QObject):
         self._is_video_cue: bool = False
         self._apply_fade_in: bool = True
         self._apply_fade_out_at_end: bool = True
-        self._last_emitted_opacity: Optional[float] = None
+        self._last_emitted_opacity: float | None = None
         self._sequencer = SectionSequencer()
         self._manual_fade_active: bool = False
+        # Section boundary latch: after a jump/continuation we must not react to
+        # the stale position report of the section we just left, otherwise the
+        # sequencer advances twice and silently eats one loop or one cut.
+        self._boundary_armed: bool = True
+        self._finished: bool = False
 
         self._driver_timer = QTimer(self)
         self._driver_timer.setInterval(20)  # 50 Hz precision poll + envelope
@@ -119,7 +126,7 @@ class LivePlayer(QObject):
         self._standby_player.mediaStatusChanged.connect(lambda st: self._on_deck_status(1, st))
         self._standby_player.errorOccurred.connect(lambda err, msg: self._on_deck_error(1, err, msg))
 
-    def _deck_pair(self, idx: Optional[int] = None) -> tuple[QMediaPlayer, QAudioOutput]:
+    def _deck_pair(self, idx: int | None = None) -> tuple[QMediaPlayer, QAudioOutput]:
         target = self._active_deck if idx is None else idx
         if target == 1 and self._standby_player is not None and self._standby_audio is not None:
             return self._standby_player, self._standby_audio
@@ -129,24 +136,33 @@ class LivePlayer(QObject):
         return 1 if self._active_deck == 0 else 0
 
     def set_video_output(self, video_output: Any) -> None:
+        """Route the active deck's video to *video_output* (QGraphicsVideoItem or widget)."""
         self._video_output = video_output
         self._player.setVideoOutput(video_output)
 
     def set_video_widget(self, video_widget: Any) -> None:
+        """Alias of :meth:`set_video_output` kept for callers using widget semantics."""
         self.set_video_output(video_widget)
 
     def set_secondary_video_output(self, video_output: Any) -> None:
+        """Assign the standby deck's video sink so a pre-cued frame is already decoded."""
         self._standby_video_output = video_output
         if self._standby_player is not None:
             self._standby_player.setVideoOutput(video_output)
 
-    def set_deck_switch_callback(self, callback: Optional[Callable[[int], None]]) -> None:
+    def set_deck_switch_callback(self, callback: Callable[[int], None] | None) -> None:
+        """Register a callback invoked with the new deck index (0/1) after a handoff.
+
+        The UI uses it to raise/lower the two video layers without a black frame
+        during contiguous-section jumps.
+        """
         self._deck_switch_cb = callback
 
-    def set_opacity_callback(self, callback: Optional[Callable[[float], None]]) -> None:
+    def set_opacity_callback(self, callback: Callable[[float], None] | None) -> None:
+        """Register the callback that applies the video opacity envelope (0.0-1.0)."""
         self._opacity_cb = callback
 
-    def set_audio_device(self, device: Optional[QAudioDevice]) -> None:
+    def set_audio_device(self, device: QAudioDevice | None) -> None:
         """Assign live output audio device (e.g. Master Sala / PA system)."""
         self._audio_device = device
         if self._audio is not None and device is not None and not device.isNull():
@@ -189,25 +205,28 @@ class LivePlayer(QObject):
         start_s = self._start_ms / 1000.0
         eff_end = self._effective_end_sec()
         self._sequencer.configure(self._sections_cfg, start_s, eff_end)
+        self._boundary_armed = True
+        self._finished = False
         if self._sequencer.active:
             first_start = self._sequencer.active_start_sec()
-            self._start_ms = max(0, int(first_start * 1000))
-            if self._sequencer.current_index > 0:
+            # Never overwrite ``_start_ms``: it is the cue IN point and the
+            # reference used to normalise the sections on every re-configure.
+            if first_start * 1000.0 > self._start_ms + 20:
                 p, _ = self._deck_pair()
-                p.setPosition(self._start_ms)
+                p.setPosition(int(round(first_start * 1000)))
             self._pre_cue_next_target()
 
     def hot_update_automation(
         self,
         *,
-        base_volume: Optional[float] = None,
-        base_opacity: Optional[float] = None,
-        fade_in: Optional[float] = None,
-        fade_out: Optional[float] = None,
-        fade_curve: Optional[str] = None,
-        volume_points: Optional[Sequence[Sequence[float]]] = None,
-        opacity_points: Optional[Sequence[Sequence[float]]] = None,
-        sections: Optional[Sequence[CueSection]] = None,
+        base_volume: float | None = None,
+        base_opacity: float | None = None,
+        fade_in: float | None = None,
+        fade_out: float | None = None,
+        fade_curve: str | None = None,
+        volume_points: Sequence[Sequence[float]] | None = None,
+        opacity_points: Sequence[Sequence[float]] | None = None,
+        sections: Sequence[CueSection] | None = None,
     ) -> None:
         """Update envelope points or section loops on the fly without interrupting playback."""
         if base_volume is not None:
@@ -226,8 +245,7 @@ class LivePlayer(QObject):
             self._opacity_points = [list(p) for p in opacity_points]
         if sections is not None:
             self._sections_cfg = [CueSection(**s.to_dict()) for s in sections]
-            self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
-            self._pre_cue_next_target()
+            self._refresh_live_sections()
         self._ensure_driver_timer()
 
     def jump_to_section(self, section_index: int) -> bool:
@@ -254,6 +272,7 @@ class LivePlayer(QObject):
         return True
 
     def active_section_index(self) -> int:
+        """Index of the section currently playing, or ``-1`` when the cue has none."""
         return self._sequencer.current_index if self._sequencer.active else -1
 
     # ── Internal Helpers ──────────────────────────────────────────────
@@ -289,7 +308,7 @@ class LivePlayer(QObject):
 
     def _pre_cue_next_target(self) -> None:
         """Pre-load and pause the idle deck at the next jump target for near-zero stutter."""
-        target_sec: Optional[float] = None
+        target_sec: float | None = None
         if self._sequencer.active:
             target_sec = self._sequencer.peek_next_jump_target()
         elif self._is_video_cue and self._is_looping and self._file_path:
@@ -317,6 +336,8 @@ class LivePlayer(QObject):
 
     def _execute_jump_ms(self, target_ms: int) -> None:
         """Switch to pre-cued idle deck when parked on target, otherwise fast direct seek."""
+        self._boundary_armed = False
+        self._finished = False
         active_p, active_a = self._deck_pair(self._active_deck)
         idle_idx = self._idle_deck_idx()
         idle_p, idle_a = self._deck_pair(idle_idx)
@@ -397,11 +418,21 @@ class LivePlayer(QObject):
         player, _ = self._deck_pair()
         if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
             return
+        if self._finished:
+            return
 
         if self._sequencer.active:
             cur_end_sec = self._sequencer.active_end_sec()
-            if cur_end_sec > 0 and pos_ms >= int(cur_end_sec * 1000) - 18:
+            end_ms = int(cur_end_sec * 1000)
+            if not self._boundary_armed:
+                # A jump/continuation was just issued: ignore stale position
+                # reports coming from the section we already left.
+                if pos_ms >= end_ms - 18:
+                    return
+                self._boundary_armed = True
+            if cur_end_sec > 0 and pos_ms >= end_ms - 18:
                 action, next_idx, target_sec = self._sequencer.advance_at_boundary()
+                self._boundary_armed = False
                 if action == "EOF":
                     self._handle_cue_finished()
                     return
@@ -427,6 +458,7 @@ class LivePlayer(QObject):
                 self._handle_cue_finished()
 
     def _handle_cue_finished(self) -> None:
+        self._finished = True
         self._driver_timer.stop()
         player, _ = self._deck_pair()
         player.pause()
@@ -457,10 +489,19 @@ class LivePlayer(QObject):
         if deck_idx != self._active_deck or dur_ms <= 0:
             return
         self._duration_sec = dur_ms / 1000.0
-        if self._sections_cfg:
-            self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
-            self._pre_cue_next_target()
+        self._refresh_live_sections()
         self.signals.duration_changed.emit(self._duration_sec)
+
+    def _refresh_live_sections(self) -> None:
+        """Re-normalise sections mid-flight and leave a section just marked as skip."""
+        if not self._sections_cfg:
+            return
+        before = self._sequencer.current_index
+        self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
+        if self._sequencer.active and self._sequencer.current_index != before:
+            self._execute_jump_ms(int(round(self._sequencer.active_start_sec() * 1000)))
+            return
+        self._pre_cue_next_target()
 
     def _on_deck_status(self, deck_idx: int, status: QMediaPlayer.MediaStatus) -> None:
         if deck_idx != self._active_deck:
@@ -468,6 +509,8 @@ class LivePlayer(QObject):
                 self._standby_ready = True
                 if self._standby_target_ms is not None and self._standby_player is not None:
                     self._standby_player.setPosition(self._standby_target_ms)
+            return
+        if self._finished:
             return
 
         player, _ = self._deck_pair(deck_idx)
@@ -480,18 +523,21 @@ class LivePlayer(QObject):
             if target > 0:
                 player.setPosition(target)
         elif status == QMediaPlayer.MediaStatus.EndOfMedia:
+            # A stale end-of-media report can arrive right after a jump issued at
+            # the same edge: honour the latch or the sequencer advances twice.
+            if not self._boundary_armed:
+                return
             if self._sequencer.active:
                 action, next_idx, target_sec = self._sequencer.advance_at_boundary()
+                self._boundary_armed = False
                 if action == "EOF":
-                    self._driver_timer.stop()
-                    self.signals.eof_reached.emit()
+                    self._handle_cue_finished()
                 elif target_sec is not None:
                     if next_idx is not None:
                         self.signals.section_changed.emit(next_idx)
                     self._execute_jump_ms(int(round(target_sec * 1000)))
             elif not self._is_looping:
-                self._driver_timer.stop()
-                self.signals.eof_reached.emit()
+                self._handle_cue_finished()
 
     def _on_deck_error(self, deck_idx: int, error: QMediaPlayer.Error, msg: str) -> None:
         if deck_idx != self._active_deck:
@@ -504,10 +550,12 @@ class LivePlayer(QObject):
     # ── Public Playback API ───────────────────────────────────────────
 
     def load(self, file_path: str, start: float = 0.0,
-             end: Optional[float] = None) -> None:
+             end: float | None = None) -> None:
         """Load a media file cleanly on Deck 0, resetting any standby/fade state."""
         try:
             self._manual_fade_active = False
+            self._boundary_armed = True
+            self._finished = False
             self._driver_timer.stop()
             if self._fade_timer is not None and self._fade_timer.isActive():
                 self._fade_timer.stop()
@@ -548,6 +596,10 @@ class LivePlayer(QObject):
             pos_ms = player.position()
             if (self._end_ms is not None and pos_ms >= self._end_ms) or \
                player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+                # Replay from the top: the sequencer restarts on the first
+                # playable section, never on the last one that was played.
+                if self._sequencer.active:
+                    self._sequencer.restart()
                 target = (
                     int(round(self._sequencer.active_start_sec() * 1000))
                     if self._sequencer.active
@@ -555,6 +607,17 @@ class LivePlayer(QObject):
                 )
                 player.setPosition(target)
                 pos_ms = target
+            elif self._sequencer.active:
+                # The deck may sit outside the indexed section (stop/scrub):
+                # re-align so skip/loop settings are honoured from the first frame.
+                idx = self._sequencer.section_index_for_time(pos_ms / 1000.0)
+                if idx is not None and idx != self._sequencer.current_index:
+                    target = self._sequencer.jump_to(idx)
+                    if target is not None and target * 1000.0 > pos_ms + 20:
+                        pos_ms = int(round(target * 1000))
+                        player.setPosition(pos_ms)
+            self._finished = False
+            self._boundary_armed = True
 
             self._apply_envelope_at(pos_ms / 1000.0)
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
@@ -567,6 +630,7 @@ class LivePlayer(QObject):
             logger.error("[LIVE] play() failed: %s", exc, exc_info=True)
 
     def pause(self) -> None:
+        """Pause playback and stop the precision driver, keeping the current position."""
         try:
             self._driver_timer.stop()
             player, _ = self._deck_pair()
@@ -576,20 +640,25 @@ class LivePlayer(QObject):
             logger.error("[LIVE] pause() failed: %s", exc, exc_info=True)
 
     def is_playing(self) -> bool:
+        """True while the active deck is actually playing (never raises)."""
         try:
             player, _ = self._deck_pair()
             return player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
         except Exception:
+            logger.debug("[LIVE] is_playing() probe failed", exc_info=True)
             return False
 
     def is_paused(self) -> bool:
+        """True while the active deck is paused (never raises)."""
         try:
             player, _ = self._deck_pair()
             return player.playbackState() == QMediaPlayer.PlaybackState.PausedState
         except Exception:
+            logger.debug("[LIVE] is_paused() probe failed", exc_info=True)
             return False
 
     def duration_seconds(self) -> float:
+        """Total duration in seconds, falling back to the live Qt probe if unknown."""
         if self._duration_sec > 0:
             return self._duration_sec
         try:
@@ -597,12 +666,15 @@ class LivePlayer(QObject):
             dur_ms = player.duration()
             return dur_ms / 1000.0 if dur_ms > 0 else 0.0
         except Exception:
+            logger.debug("[LIVE] duration_seconds() probe failed", exc_info=True)
             return 0.0
 
     def stop(self) -> None:
         """Stop all active/standby decks cleanly."""
         try:
             self._manual_fade_active = False
+            self._boundary_armed = True
+            self._finished = False
             self._driver_timer.stop()
             if self._fade_timer is not None and self._fade_timer.isActive():
                 self._fade_timer.stop()
@@ -619,19 +691,25 @@ class LivePlayer(QObject):
             logger.error("[LIVE] stop() failed: %s", exc, exc_info=True)
 
     def seek(self, position: float) -> None:
+        """Jump to *position* seconds, re-aligning the section index and envelope.
+
+        Scrubbing into a skipped section snaps forward to the next playable one,
+        so a section mode is honoured in every navigation path.
+        """
         try:
             player, _ = self._deck_pair()
             ms = max(0, int(position * 1000))
             if self._sequencer.active:
-                for idx, sec in enumerate(self._sequencer.sections):
-                    s_end = sec.end if sec.end is not None else self._sequencer.eff_end
-                    if sec.start <= position <= s_end:
-                        self._sequencer.current_index = idx
-                        self._sequencer.iteration = 0
-                        self.signals.section_changed.emit(idx)
-                        break
+                idx = self._sequencer.section_index_for_time(position)
+                if idx is not None:
+                    target = self._sequencer.jump_to(idx)
+                    if target is not None and target > position:
+                        ms = int(round(target * 1000))
+                    self.signals.section_changed.emit(idx)
+            self._finished = False
+            self._boundary_armed = True
             player.setPosition(ms)
-            self._apply_envelope_at(position)
+            self._apply_envelope_at(ms / 1000.0)
             self._pre_cue_next_target()
         except Exception as exc:
             logger.error("[LIVE] seek() failed: %s", exc, exc_info=True)
@@ -670,14 +748,20 @@ class LivePlayer(QObject):
         except Exception as exc:
             logger.error("[LIVE] set_loop() failed: %s", exc)
 
-    def set_aspect_ratio(self, aspect: Optional[str]) -> None:
-        pass
+    def set_aspect_ratio(self, aspect: str | None) -> None:
+        """No-op on purpose.
+
+        Video geometry (aspect, scale, crop) is owned by ``OutputWindow``: the
+        scene applies ``compute_media_frame_geometry`` to the ``QGraphicsVideoItem``
+        so that surfaces and calibration stay authoritative.  The method is kept
+        so ``main.py`` can configure images and videos through the same call.
+        """
 
     def set_scale(self, scale: float) -> None:
-        pass
+        """No-op: see :meth:`set_aspect_ratio` (geometry lives in ``OutputWindow``)."""
 
-    def set_crop(self, crop: Optional[dict]) -> None:
-        pass
+    def set_crop(self, crop: dict | None) -> None:
+        """No-op: see :meth:`set_aspect_ratio` (crop is applied by the output scene)."""
 
     def fade_in(self, target_volume: int, duration_sec: float) -> None:
         """Direct manual fade-in helper (also preserved for standalone callers)."""
@@ -714,7 +798,7 @@ class LivePlayer(QObject):
             self.set_volume(target_volume)
 
     def fade_out(self, duration_sec: float = 0.2, stop_after: bool = False,
-                 callback: Optional[Callable[[], None]] = None) -> None:
+                 callback: Callable[[], None] | None = None) -> None:
         """Smooth manual fade-out (e.g. Cut/Blackout) down to 0 and optional stop."""
         try:
             if self._fade_timer is not None and self._fade_timer.isActive():
@@ -762,6 +846,11 @@ class LivePlayer(QObject):
                 callback()
 
     def shutdown(self) -> None:
+        """Stop every timer and release the media player (called on exit).
+
+        Safe to call more than once: a failed shutdown must never prevent the
+        application from closing after a show.
+        """
         try:
             self._driver_timer.stop()
             if self._fade_timer is not None:

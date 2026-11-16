@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -36,7 +35,8 @@ class ShowScheduler(QObject):
     tick_updated = Signal(object)       # ScheduledWindow (on ~30fps tick during active wait)
     window_finished = Signal(object)    # ScheduledWindow (when elapsed >= total)
 
-    def __init__(self, parent: Optional[QObject] = None) -> None:
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Create the scheduler and its 33 ms (~30 fps) control tick."""
         super().__init__(parent)
         self._windows: dict[tuple[str, int], ScheduledWindow] = {}
         self._paused: bool = False
@@ -47,12 +47,15 @@ class ShowScheduler(QObject):
         self._timer.timeout.connect(self._on_tick)
 
     def is_paused(self) -> bool:
+        """True while Global Pause is freezing every countdown."""
         return self._paused
 
     def has_pending(self) -> bool:
+        """True when at least one Pre/Post wait window is counting down."""
         return bool(self._windows)
 
-    def pending_for_layer(self, layer: int, phase: Optional[str] = None) -> Optional[ScheduledWindow]:
+    def pending_for_layer(self, layer: int, phase: str | None = None) -> ScheduledWindow | None:
+        """Return the active wait window for *layer*, optionally for one phase only."""
         if phase is not None:
             return self._windows.get((phase, layer))
         return self._windows.get(("PRE", layer)) or self._windows.get(("POST", layer))
@@ -74,7 +77,7 @@ class ShowScheduler(QObject):
         self.tick_updated.emit(win)
         return win
 
-    def cancel_layer(self, layer: int, phase: Optional[str] = None) -> None:
+    def cancel_layer(self, layer: int, phase: str | None = None) -> None:
         """Cancel pending wait windows for *layer* (both phases unless specified)."""
         if phase is not None:
             self._windows.pop((phase, layer), None)

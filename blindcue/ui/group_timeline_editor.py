@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass
-from typing import Optional
 
 from PySide6.QtCore import QPoint, QPointF, QRect, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
@@ -70,7 +69,7 @@ class TimelineClip:
     start_sec: float  # Equivalent to cue.pre_delay
     duration_sec: float  # Visual duration on track
     in_point: float = 0.0
-    out_point: Optional[float] = None
+    out_point: float | None = None
     volume: float = 1.0
     opacity: float = 1.0
     fade_in: float = 0.0
@@ -91,14 +90,15 @@ class GroupTimelineCanvas(QWidget):
     RULER_HEIGHT = 28
     HEADER_WIDTH = 130
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the 3-lane timeline canvas (ruler plus zoomable tracks)."""
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setMinimumHeight(self.RULER_HEIGHT + 3 * self.TRACK_HEIGHT + 20)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
         self.clips: list[TimelineClip] = []
-        self.selected_cue_id: Optional[int] = None
+        self.selected_cue_id: int | None = None
 
         self.pixels_per_sec: float = 40.0  # Zoom level (20 to 120 px/s)
         self.playhead_sec: float = 0.0
@@ -107,7 +107,7 @@ class GroupTimelineCanvas(QWidget):
 
         # Mouse interaction states: "NONE", "SCRUB", "MOVE_CLIP", "TRIM_IN", "TRIM_OUT"
         self._interaction_mode: str = "NONE"
-        self._active_clip: Optional[TimelineClip] = None
+        self._active_clip: TimelineClip | None = None
         self._drag_start_pos = QPoint()
         self._clip_original_start: float = 0.0
         self._clip_original_layer: int = 1
@@ -117,17 +117,21 @@ class GroupTimelineCanvas(QWidget):
     # ── Coordinates Conversion Helpers ────────────────────────────────
 
     def sec_to_x(self, sec: float) -> float:
+        """Convert a time in seconds to a horizontal pixel coordinate."""
         return self.HEADER_WIDTH + max(0.0, sec) * self.pixels_per_sec
 
     def x_to_sec(self, x: float) -> float:
+        """Convert a horizontal pixel coordinate to a time in seconds."""
         return max(0.0, (x - self.HEADER_WIDTH) / max(1.0, self.pixels_per_sec))
 
     def layer_to_y(self, layer: int) -> int:
+        """Vertical pixel of the track row for *layer* (3 on top, 1 at bottom)."""
         # Visual stacking: Layer 3 (top) -> Layer 2 (middle) -> Layer 1 (bottom)
         row_idx = 3 - layer  # 3->0, 2->1, 1->2
         return self.RULER_HEIGHT + row_idx * self.TRACK_HEIGHT
 
     def y_to_layer(self, y: int) -> int:
+        """Inverse of :meth:`layer_to_y`: track layer under pixel *y*."""
         if y < self.RULER_HEIGHT:
             return 3
         rel_y = y - self.RULER_HEIGHT
@@ -135,6 +139,7 @@ class GroupTimelineCanvas(QWidget):
         return 3 - row_idx
 
     def total_composition_duration(self) -> float:
+        """Timeline length in seconds: last clip end + a 4 s tail (min 10 s)."""
         if not self.clips:
             return 10.0
         return max(10.0, max(c.start_sec + c.duration_sec for c in self.clips) + 4.0)
@@ -142,14 +147,17 @@ class GroupTimelineCanvas(QWidget):
     # ── Zoom Controls ─────────────────────────────────────────────────
 
     def zoom_in(self) -> None:
+        """Increase the horizontal zoom (more pixels per second)."""
         self.pixels_per_sec = min(150.0, self.pixels_per_sec * 1.25)
         self._update_geometry()
 
     def zoom_out(self) -> None:
+        """Decrease the horizontal zoom (more seconds on screen)."""
         self.pixels_per_sec = max(15.0, self.pixels_per_sec / 1.25)
         self._update_geometry()
 
     def zoom_reset(self) -> None:
+        """Return to the default timeline zoom (40 px per second)."""
         self.pixels_per_sec = 40.0
         self._update_geometry()
 
@@ -159,17 +167,19 @@ class GroupTimelineCanvas(QWidget):
         self.update()
 
     def set_playhead(self, sec: float) -> None:
+        """Move the timeline playhead to *sec* seconds."""
         self.playhead_sec = max(0.0, float(sec))
         self.update()
 
-    def select_clip(self, cue_id: Optional[int]) -> None:
+    def select_clip(self, cue_id: int | None) -> None:
+        """Highlight the timeline clip of *cue_id* (``None`` clears selection)."""
         if self.selected_cue_id != cue_id:
             self.selected_cue_id = cue_id
             self.update()
 
     # ── Mouse Interaction ─────────────────────────────────────────────
 
-    def _hit_test(self, pt: QPoint) -> tuple[Optional[TimelineClip], str]:
+    def _hit_test(self, pt: QPoint) -> tuple[TimelineClip | None, str]:
         """Returns (clip, hit_part) where hit_part is 'BODY', 'TRIM_IN', or 'TRIM_OUT'."""
         if pt.x() < self.HEADER_WIDTH:
             return None, "NONE"
@@ -190,6 +200,7 @@ class GroupTimelineCanvas(QWidget):
         return None, "NONE"
 
     def mousePressEvent(self, event: QMouseEvent) -> None:
+        """Start a scrub, clip move or trim depending on the hit test."""
         if event.button() == Qt.MouseButton.LeftButton:
             pt = event.position().toPoint()
 
@@ -238,6 +249,7 @@ class GroupTimelineCanvas(QWidget):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:
+        """Track hover cursors and apply the active scrub/move/trim gesture."""
         pt = event.position().toPoint()
 
         # Update cursor when hovering over trim edges
@@ -308,6 +320,7 @@ class GroupTimelineCanvas(QWidget):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+        """End the timeline gesture and clear the active clip."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._interaction_mode = "NONE"
             self._active_clip = None
@@ -318,6 +331,7 @@ class GroupTimelineCanvas(QWidget):
     # ── Custom Painting ───────────────────────────────────────────────
 
     def paintEvent(self, event: QPaintEvent) -> None:
+        """Paint the ruler, the three track lanes, clips and the playhead."""
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         w = self.width()
@@ -482,8 +496,9 @@ class GroupTimelineStudioDialog(QDialog):
         self,
         group_cue: Cue,
         child_cues: list[Cue],
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
     ) -> None:
+        """Open the timeline studio for a group cue and its children."""
         super().__init__(parent)
         self.setWindowTitle(f"🎬 Studio Timeline Compositore Gruppo — '{group_cue.name}'")
         self.resize(1300, 780)

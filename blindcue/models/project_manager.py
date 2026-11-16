@@ -32,6 +32,7 @@ class ProjectManager:
     """Manages saving, loading, autosaving, and crash recovery for show files."""
 
     def __init__(self, autosave_dir: Path | None = None) -> None:
+        """Create the project manager and make sure the autosave folder exists."""
         self.autosave_dir = autosave_dir or DEFAULT_AUTOSAVE_DIR
         self.autosave_file = self.autosave_dir / AUTOSAVE_FILENAME
         self._ensure_dirs()
@@ -128,7 +129,7 @@ class ProjectManager:
             raise FileNotFoundError(f"Project file not found: {path}")
 
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
 
             if not isinstance(data, dict):
@@ -140,10 +141,22 @@ class ProjectManager:
                 logger.warning("[PROJECT] File app tag '%s' differs from '%s'", app_id, APP_NAME)
 
             current_index = data.get("current_cue_index", -1)
+            try:
+                current_index = int(current_index)
+            except (TypeError, ValueError):
+                logger.warning("[PROJECT] Invalid current_cue_index %r, defaulting to -1", current_index)
+                current_index = -1
+
             settings = data.get("settings", {})
+            if not isinstance(settings, dict):
+                logger.warning("[PROJECT] Invalid settings block (%s), ignoring", type(settings).__name__)
+                settings = {}
             if "surfaces" in data and "surfaces" not in settings:
                 settings["surfaces"] = data["surfaces"]
             raw_cues = data.get("cues", [])
+            if not isinstance(raw_cues, list):
+                logger.warning("[PROJECT] Invalid cues block (%s), ignoring", type(raw_cues).__name__)
+                raw_cues = []
 
             loaded_cues: list[Cue] = []
             proj_dir = path.parent.resolve()
@@ -165,9 +178,8 @@ class ProjectManager:
                     # Reset LIVE or PREVIZ runtime status to OFFLINE or LOADED
                     cue.status = CueStatus.LOADED if Path(cue.file_path).is_file() else CueStatus.OFFLINE
                     loaded_cues.append(cue)
-                except ValueError:
-                    raise
                 except Exception as cue_exc:
+                    # A single corrupted/traversal cue must never abort the whole show load
                     logger.warning("[PROJECT] Skipping invalid cue item: %s (%s)", item, cue_exc)
 
             logger.info("[PROJECT] Loaded %d cues from %s", len(loaded_cues), path)
@@ -182,6 +194,47 @@ class ProjectManager:
 
     # ── Autosave & Crash Recovery ─────────────────────────────────────
 
+    def build_autosave_payload(
+        self,
+        cues: list[Cue],
+        current_index: int = -1,
+        active_project_path: str | None = None,
+        settings: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Build the crash-recovery payload in memory.
+
+        This must be called from the GUI thread: it reads the live ``cues``
+        objects (which are mutated by the GUI thread) and produces a plain,
+        deeply-serialized ``dict`` snapshot with no disk I/O.  The returned
+        payload can then be handed to a worker thread for the actual write.
+        """
+        return {
+            "app": APP_NAME,
+            "schema_version": SCHEMA_VERSION,
+            "saved_at": datetime.now().isoformat(),
+            "clean_exit": False,  # Marked as false during runtime; set to true on clean shutdown
+            "active_project_path": active_project_path,
+            "current_cue_index": current_index,
+            "cues_count": len(cues),
+            "settings": settings or {},
+            "cues": [cue.to_dict() for cue in cues],
+        }
+
+    def write_autosave_payload(self, payload: dict[str, Any]) -> bool:
+        """Atomically persist a pre-built recovery payload.
+
+        Safe to call from any thread: it only touches the filesystem (atomic
+        write via ``_atomic_write_json``) and never reads GUI state.
+        """
+        try:
+            self._ensure_dirs()
+            self._atomic_write_json(self.autosave_file, payload)
+            logger.debug("[AUTOSAVE] Saved %d cues to %s", payload.get("cues_count", 0), self.autosave_file)
+            return True
+        except Exception as exc:
+            logger.warning("[AUTOSAVE] Autosave failed: %s", exc)
+            return False
+
     def autosave(
         self,
         cues: list[Cue],
@@ -189,32 +242,24 @@ class ProjectManager:
         active_project_path: str | None = None,
         settings: dict[str, Any] | None = None,
     ) -> bool:
-        """Perform an automatic background save with recovery metadata."""
+        """Perform a synchronous automatic save with recovery metadata."""
         try:
-            self._ensure_dirs()
-            recovery_data: dict[str, Any] = {
-                "app": APP_NAME,
-                "schema_version": SCHEMA_VERSION,
-                "saved_at": datetime.now().isoformat(),
-                "clean_exit": False,  # Marked as false during runtime; set to true on clean shutdown
-                "active_project_path": active_project_path,
-                "current_cue_index": current_index,
-                "cues_count": len(cues),
-                "settings": settings or {},
-                "cues": [cue.to_dict() for cue in cues],
-            }
-            self._atomic_write_json(self.autosave_file, recovery_data)
-            logger.debug("[AUTOSAVE] Saved %d cues to %s", len(cues), self.autosave_file)
-            return True
+            payload = self.build_autosave_payload(
+                cues,
+                current_index=current_index,
+                active_project_path=active_project_path,
+                settings=settings,
+            )
         except Exception as exc:
-            logger.warning("[AUTOSAVE] Autosave failed: %s", exc)
+            logger.warning("[AUTOSAVE] Autosave payload build failed: %s", exc, exc_info=True)
             return False
+        return self.write_autosave_payload(payload)
 
     def mark_clean_exit(self) -> None:
         """Mark the autosave state as cleanly closed so no crash prompt is shown next time."""
         try:
             if self.autosave_file.is_file():
-                with open(self.autosave_file, "r", encoding="utf-8") as f:
+                with open(self.autosave_file, encoding="utf-8") as f:
                     data = json.load(f)
                 data["clean_exit"] = True
                 data["exit_at"] = datetime.now().isoformat()
@@ -233,7 +278,7 @@ class ProjectManager:
             return None
 
         try:
-            with open(self.autosave_file, "r", encoding="utf-8") as f:
+            with open(self.autosave_file, encoding="utf-8") as f:
                 data = json.load(f)
 
             # If clean_exit is explicitly True, no crash occurred

@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import math
 from pathlib import Path
-from typing import List, Optional
+from typing import Any
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal, Slot
 from PySide6.QtGui import (
@@ -52,6 +52,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from models.output_config import OutputMode
 from models.surface import (
     DEFAULT_SURFACE_ID,
     PRESET_DEFINITIONS,
@@ -80,7 +81,8 @@ class SurfaceCanvasWidget(QWidget):
     surface_modified = Signal(SurfaceDefinition)
     active_corner_changed = Signal(int)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the interactive canvas used to warp projection surfaces."""
         super().__init__(parent)
         self.setMinimumSize(480, 270)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -92,7 +94,7 @@ class SurfaceCanvasWidget(QWidget):
         self._active_corner: int = 0  # 0: TL, 1: TR, 2: BR, 3: BL
 
         # Hover & visual feedback state
-        self._hovered_corner: Optional[int] = None
+        self._hovered_corner: int | None = None
         self._hovered_surface: bool = False
         self._hovered_hole: bool = False
         self._output_res: tuple[int, int] = (1920, 1080)
@@ -100,9 +102,9 @@ class SurfaceCanvasWidget(QWidget):
         self._last_mouse_pos = QPointF()
 
         # Interaction drag state
-        self._drag_mode: Optional[str] = None  # "corner_0".."corner_3", "move_surface", "move_hole", "resize_hole"
+        self._drag_mode: str | None = None  # "corner_0".."corner_3", "move_surface", "move_hole", "resize_hole"
         self._drag_start_mouse = QPointF()
-        self._drag_start_surface: Optional[SurfaceDefinition] = None
+        self._drag_start_surface: SurfaceDefinition | None = None
         self._aspect_ratio: float = 16.0 / 9.0
 
         # Snapping thresholds
@@ -110,34 +112,41 @@ class SurfaceCanvasWidget(QWidget):
         self._snap_threshold = 0.015
 
     def set_canvas_aspect_ratio(self, ratio: float) -> None:
+        """Set the aspect ratio used to draw the mapping canvas."""
         if ratio > 0.1:
             self._aspect_ratio = ratio
             self.update()
 
     def set_output_resolution(self, w: int, h: int) -> None:
+        """Set the projector resolution used to express pixel coordinates."""
         self._output_res = (max(1, w), max(1, h))
         self.set_canvas_aspect_ratio(self._output_res[0] / self._output_res[1])
         self.update()
 
     def set_unit_mode(self, mode: str) -> None:
+        """Switch the editor between percentage and pixel units."""
         self._unit_mode = mode
         self.update()
 
     def set_surfaces(self, surfaces: list[SurfaceDefinition], active_id: str) -> None:
+        """Load the surfaces to edit and select *active_id* as current."""
         self._surfaces = surfaces
         self._active_surface_id = active_id
         self.update()
 
     def set_active_surface_id(self, active_id: str) -> None:
+        """Select the surface whose handles are being edited."""
         self._active_surface_id = active_id
         self.update()
 
     def set_active_corner(self, corner_idx: int) -> None:
+        """Highlight one of the four corner handles (0-3) of the active surface."""
         if 0 <= corner_idx < 4:
             self._active_corner = corner_idx
             self.update()
 
-    def get_active_surface(self) -> Optional[SurfaceDefinition]:
+    def get_active_surface(self) -> SurfaceDefinition | None:
+        """Surface currently selected in the editor (``None`` if unknown)."""
         for s in self._surfaces:
             if s.surface_id == self._active_surface_id:
                 return s
@@ -185,6 +194,7 @@ class SurfaceCanvasWidget(QWidget):
     # ── Mouse Interaction ─────────────────────────────────────────────
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Select the surface/corner under the cursor and start dragging it."""
         if event.button() != Qt.MouseButton.LeftButton:
             super().mousePressEvent(event)
             return
@@ -269,6 +279,7 @@ class SurfaceCanvasWidget(QWidget):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Move the dragged corner or surface inside the output bounds."""
         mpos = event.position()
         self._last_mouse_pos = mpos
         active_surf = self.get_active_surface()
@@ -426,6 +437,7 @@ class SurfaceCanvasWidget(QWidget):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Commit the drag and notify listeners that the surface changed."""
         if self._drag_mode:
             self._drag_mode = None
             self._drag_start_surface = None
@@ -436,6 +448,7 @@ class SurfaceCanvasWidget(QWidget):
         super().mouseReleaseEvent(event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
+        """1-4 select a corner; arrow keys nudge it (Shift = coarse step)."""
         active_surf = self.get_active_surface()
         if not active_surf:
             super().keyPressEvent(event)
@@ -484,6 +497,7 @@ class SurfaceCanvasWidget(QWidget):
     # ── Paint Engine ──────────────────────────────────────────────────
 
     def paintEvent(self, event) -> None:  # noqa: N802
+        """Paint the output canvas and the editable projection surfaces."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
 
@@ -675,11 +689,14 @@ class SurfaceMappingDialog(QDialog):
     def __init__(
         self,
         output_window: OutputWindow,
-        surfaces: Optional[List[SurfaceDefinition]] = None,
-        parent: Optional[QWidget] = None,
+        surfaces: list[SurfaceDefinition] | None = None,
+        parent: QWidget | None = None,
+        device_manager: Any | None = None,
     ) -> None:
+        """Edit a working copy of the output surfaces (committed when accepted)."""
         super().__init__(parent)
         self._output = output_window
+        self._device_mgr = device_manager
         self._surfaces: list[SurfaceDefinition] = [
             s.clone() for s in (surfaces or self._output.get_surfaces())
         ]
@@ -1715,7 +1732,12 @@ class SurfaceMappingDialog(QDialog):
 
     @Slot()
     def _span_displays(self) -> None:
-        success = self._output.span_all_screens()
+        # Route through the DeviceManager when available so the mode is persisted
+        # and stays consistent with the Device & Hardware dialog.
+        if self._device_mgr is not None:
+            success = self._device_mgr.set_output_mode(OutputMode.SPAN.value)
+        else:
+            success = self._output.span_all_screens()
         if success:
             w, h = self._output.get_output_resolution()
             self._output_res = (w, h)
@@ -1738,12 +1760,14 @@ class SurfaceMappingDialog(QDialog):
 
     def closeEvent(self, event) -> None:  # noqa: N802
         # Automatically disable temporary mask guides on close
+        """Drop temporary mask guides and flush the edits to the output."""
         for s in self._surfaces:
             s.mask_show_guide = False
         self._sync_to_output()
         super().closeEvent(event)
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
+        """F7 toggles the live calibration guides."""
         if event.key() == Qt.Key.Key_F7:
             self.btn_live_guides.setChecked(not self.btn_live_guides.isChecked())
             self._toggle_live_guides()

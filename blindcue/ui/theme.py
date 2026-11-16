@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
+from collections.abc import Mapping
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
-DEFAULT_LOGO_PATH = PROJECT_ROOT / "immagini di progetto" / "BlindCue-logo.jpeg"
+# Asset di runtime: vivono dentro il pacchetto, così l'installazione li copia
+# insieme al codice (una cartella esterna al pacchetto non arriverebbe mai
+# sul computer dell'utente).
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+DEFAULT_LOGO_PATH = ASSETS_DIR / "BlindCue-logo.jpeg"
 
 
 @dataclass(frozen=True)

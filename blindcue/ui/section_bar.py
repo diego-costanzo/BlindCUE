@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QPushButton, QWidget
@@ -39,7 +39,8 @@ class _SectionCell(QWidget):
     mode_changed = Signal(int, int, bool)  # index, loops, skip
     remove_clicked = Signal(int)
 
-    def __init__(self, index: int, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, index: int, parent: QWidget | None = None) -> None:
+        """Create one section cell (label, loop mode and remove buttons)."""
         super().__init__(parent)
         self.index = index
 
@@ -81,6 +82,10 @@ class _SectionCell(QWidget):
             self.mode_changed.emit(self.index, int(data[0]), bool(data[1]))
 
     def sync(self, sec: CueSection, is_active: bool) -> None:
+        """Refresh this bar from a cue section model.
+
+        *is_active* highlights the section the playback head is currently in.
+        """
         accent, bg, active_bg = SECTION_PALETTE[self.index % len(SECTION_PALETTE)]
         self.btn_label.setText(sec.label)
         end_lbl = f"{sec.end:.2f}s" if sec.end is not None else "OUT/Fine"
@@ -133,7 +138,8 @@ class SectionControlBar(QWidget):
     section_mode_changed = Signal(int, int, bool)  # idx, loops, skip
     section_remove_requested = Signal(int)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the section bar; it stays hidden until two sections exist."""
         super().__init__(parent)
         self._sections: list[CueSection] = []
         self._duration_sec: float = 0.0
@@ -157,6 +163,7 @@ class SectionControlBar(QWidget):
         duration_sec: float,
         active_index: int = -1,
     ) -> None:
+        """Show the cue sections; hides the bar when fewer than two are defined."""
         self._sections = [CueSection(**s.to_dict()) for s in sections]
         self._duration_sec = max(0.0, float(duration_sec))
         self._active_index = active_index
@@ -186,6 +193,7 @@ class SectionControlBar(QWidget):
         self._relayout_cells()
 
     def set_active_index(self, active_index: int) -> None:
+        """Highlight the section at *active_index* (``-1`` clears highlighting)."""
         if self._active_index == active_index:
             return
         self._active_index = active_index
@@ -194,6 +202,7 @@ class SectionControlBar(QWidget):
                 self._cells[i].sync(sec, is_active=(i == active_index))
 
     def resizeEvent(self, event) -> None:  # noqa: N802
+        """Re-flow the section cells when the bar is resized."""
         super().resizeEvent(event)
         self._relayout_cells()
 

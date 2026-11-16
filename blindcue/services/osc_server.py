@@ -14,16 +14,21 @@ Supports theater automation standards (QLab, ETC Eos, TouchOSC, Stream Deck, Rea
 
 from __future__ import annotations
 
+import hmac
 import logging
+import math
 import re
-from typing import Any, Optional
+from typing import Any
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, QTimer, Signal
 from PySide6.QtNetwork import QHostAddress, QNetworkDatagram, QUdpSocket
 
 from services.osc_protocol import build_osc_message, parse_osc_message
 
 logger = logging.getLogger("blindcue.osc")
+
+# Hard cap on datagrams processed per event-loop turn (anti-flood / GUI starvation)
+_MAX_DATAGRAMS_PER_TICK = 256
 
 
 class OscServer(QObject):
@@ -41,9 +46,10 @@ class OscServer(QObject):
     cue_select_requested = Signal(object)       # cue index or identifier (int or str)
     volume_change_requested = Signal(float)     # 0.0 .. 1.0
 
-    def __init__(self, parent: Optional[QObject] = None) -> None:
+    def __init__(self, parent: QObject | None = None) -> None:
+        """Create the OSC UDP server (not listening until ``start`` is called)."""
         super().__init__(parent)
-        self._socket: Optional[QUdpSocket] = None
+        self._socket: QUdpSocket | None = None
         self._port: int = 53000
         self._is_running: bool = False
         self._last_sender_ip: str = ""
@@ -54,7 +60,7 @@ class OscServer(QObject):
         self._allowed_ips: set[str] = set()
         self._authenticated_ips: set[str] = set()
 
-    def set_security(self, pin_required: bool = False, pin: str = "4821", allowed_ips: Optional[list[str]] = None) -> None:
+    def set_security(self, pin_required: bool = False, pin: str = "4821", allowed_ips: list[str] | None = None) -> None:
         """Configure OSC authentication and optional IP whitelist."""
         self._pin_required = bool(pin_required)
         self._pin = str(pin).strip()
@@ -65,12 +71,15 @@ class OscServer(QObject):
         self._authenticated_ips.clear()
 
     def is_running(self) -> bool:
+        """True while the OSC listener thread is active."""
         return self._is_running
 
     def get_port(self) -> int:
+        """UDP port the OSC listener is bound to."""
         return self._port
 
     def get_last_command_info(self) -> str:
+        """Description of the last OSC message received (for the status bar)."""
         if not self._last_command:
             return "Nessun comando ricevuto"
         return f"{self._last_command} da {self._last_sender_ip} (tot: {self._packet_count})"
@@ -102,40 +111,50 @@ class OscServer(QObject):
                 self._socket.close()
                 self._socket.deleteLater()
             except Exception:
-                pass
+                logger.debug("[OSC] Error while closing UDP socket", exc_info=True)
             self._socket = None
         self._is_running = False
         logger.info("[OSC] Server stopped")
 
     def __del__(self) -> None:
+        """Best-effort socket cleanup; never raises during interpreter shutdown."""
         try:
             self.stop()
         except Exception:
-            pass
+            logger.debug("[OSC] Error during destructor cleanup", exc_info=True)
 
     def _on_ready_read(self) -> None:
         if not self._socket:
             return
 
+        processed = 0
         while self._socket.hasPendingDatagrams():
-            datagram: QNetworkDatagram = self._socket.receiveDatagram()
-            raw_data = bytes(datagram.data())
-            sender_addr = datagram.senderAddress().toString()
-            # Clean IPv6-mapped IPv4 address if present (e.g. "::ffff:192.168.1.10" -> "192.168.1.10")
-            if sender_addr.startswith("::ffff:"):
-                sender_addr = sender_addr[7:]
+            if processed >= _MAX_DATAGRAMS_PER_TICK:
+                # Defer the backlog to the next event-loop turn to avoid GUI starvation
+                QTimer.singleShot(0, self._on_ready_read)
+                break
+            processed += 1
+            try:
+                datagram: QNetworkDatagram = self._socket.receiveDatagram()
+                raw_data = bytes(datagram.data())
+                sender_addr = datagram.senderAddress().toString()
+                # Clean IPv6-mapped IPv4 address if present (e.g. "::ffff:192.168.1.10" -> "192.168.1.10")
+                if sender_addr.startswith("::ffff:"):
+                    sender_addr = sender_addr[7:]
 
-            address, args = parse_osc_message(raw_data)
-            if not address:
-                continue
+                address, args = parse_osc_message(raw_data)
+                if not address:
+                    continue
 
-            self._packet_count += 1
-            self._last_sender_ip = sender_addr
-            self._last_command = f"{address} {args if args else ''}".strip()
-            logger.debug("[OSC] Received '%s' %s from %s", address, args, sender_addr)
+                self._packet_count += 1
+                self._last_sender_ip = sender_addr
+                self._last_command = f"{address} {args if args else ''}".strip()
+                logger.debug("[OSC] Received '%s' %s from %s", address, args, sender_addr)
 
-            self.command_received.emit(address, args, sender_addr)
-            self._dispatch_command(address, args, sender_addr)
+                self.command_received.emit(address, args, sender_addr)
+                self._dispatch_command(address, args, sender_addr)
+            except Exception:
+                logger.debug("[OSC] Dropped malformed datagram", exc_info=True)
 
     def _dispatch_command(self, address: str, args: list[Any], sender_addr: str = "") -> None:
         """Route OSC address patterns to the corresponding playback action."""
@@ -148,7 +167,7 @@ class OscServer(QObject):
 
         # Check authentication handshake (/auth <pin>)
         if addr in ("/auth", "/login", "/blindcue/auth") and args:
-            if str(args[0]).strip() == self._pin:
+            if hmac.compare_digest(str(args[0]).strip(), self._pin):
                 self._authenticated_ips.add(sender_addr)
                 logger.info("[OSC] Host %s authenticated successfully with PIN", sender_addr)
             else:
@@ -225,9 +244,13 @@ class OscServer(QObject):
         if addr in ("/volume", "/master/volume") and args:
             try:
                 vol = float(args[0])
-                self.volume_change_requested.emit(max(0.0, min(1.0, vol)))
             except (ValueError, TypeError):
-                pass
+                logger.debug("[OSC] Ignored non-numeric volume argument: %r", args[0])
+                return
+            if not math.isfinite(vol):
+                logger.debug("[OSC] Ignored non-finite volume argument: %r", vol)
+                return
+            self.volume_change_requested.emit(max(0.0, min(1.0, vol)))
 
     def send_feedback(self, ip: str, port: int, address: str, *args: Any) -> bool:
         """Send an OSC response or feedback datagram to a remote controller."""

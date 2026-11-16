@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QDragEnterEvent, QDropEvent
@@ -20,7 +19,8 @@ class DropZone(QLabel):
 
     file_dropped = Signal(str)  # absolute path of dropped file
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the drag-and-drop target shown when the rundown is empty."""
         super().__init__(parent)
         self.setText("Trascina qui file multimediali\n(Video, Audio, Immagini)\nper aggiungerli alla regia")
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -39,10 +39,12 @@ class DropZone(QLabel):
         self.setAcceptDrops(True)
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
+        """Accept the drag only when the payload carries file URLs."""
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
+        """Emit one ``file_dropped`` per existing local file."""
         for url in event.mimeData().urls():
             path = url.toLocalFile()
             if path and os.path.isfile(path):

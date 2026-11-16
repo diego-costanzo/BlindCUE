@@ -12,7 +12,7 @@ from __future__ import annotations
 import copy
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class SurfaceMode(str, Enum):
@@ -72,7 +72,7 @@ class SurfaceDefinition:
     h: float = 1.0
 
     # QUAD mode normalized 4 corners: [Top-Left, Top-Right, Bottom-Right, Bottom-Left]
-    corners: List[List[float]] = field(default_factory=lambda: [
+    corners: list[list[float]] = field(default_factory=lambda: [
         [0.0, 0.0],  # C1: Top-Left
         [1.0, 0.0],  # C2: Top-Right
         [1.0, 1.0],  # C3: Bottom-Right
@@ -91,10 +91,13 @@ class SurfaceDefinition:
     hole_y: float = 0.25                        # Inner hole Y relative to surface (0.0..1.0)
     hole_w: float = 0.50                        # Inner hole W relative to surface (0.0..1.0)
     hole_h: float = 0.50                        # Inner hole H relative to surface (0.0..1.0)
-    mask_image_path: Optional[str] = None       # File path to custom PNG mask
+    mask_image_path: str | None = None          # File path to custom PNG mask
     mask_show_guide: bool = False               # High-visibility optical guide projected on stage
 
     def __post_init__(self) -> None:
+        # Keep the quad and the rectangle consistent: a surface loaded from an
+        # old project (rectangle only) must still produce valid corners.
+        """Keep rectangle and quad corners consistent for old or hand-edited files."""
         if self.mode not in (SurfaceMode.RECTANGLE.value, SurfaceMode.QUAD.value):
             self.mode = SurfaceMode.RECTANGLE.value
         default_corners = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]
@@ -154,7 +157,7 @@ class SurfaceDefinition:
         self.y = round(ny, 6)
         self.sync_quad_from_rect()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize surface definition to dictionary."""
         return {
             "surface_id": self.surface_id,
@@ -183,7 +186,7 @@ class SurfaceDefinition:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> SurfaceDefinition:
+    def from_dict(cls, data: dict[str, Any]) -> SurfaceDefinition:
         """Deserialize surface definition from dictionary."""
         raw_corners = data.get("corners")
         if not raw_corners or len(raw_corners) != 4:
@@ -226,7 +229,7 @@ class SurfaceDefinition:
             mask_show_guide=bool(data.get("mask_show_guide", False)),
         )
 
-    def clone(self, new_id: Optional[str] = None, new_name: Optional[str] = None) -> SurfaceDefinition:
+    def clone(self, new_id: str | None = None, new_name: str | None = None) -> SurfaceDefinition:
         """Create a deep clone with optional new ID and name."""
         c = copy.deepcopy(self)
         if new_id:

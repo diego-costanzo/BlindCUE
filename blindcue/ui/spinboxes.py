@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from PySide6.QtCore import QLocale, QSize
 from PySide6.QtGui import QColor, QPainter, QPen, QValidator
@@ -16,7 +15,8 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
     resilient to suffixes (% / px / s), deferred tracking, and crisp vector '+' / '-' buttons.
     """
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Use the C locale so typed decimals always parse with a dot."""
         super().__init__(parent)
         self.setLocale(QLocale.c())
         self.setKeyboardTracking(False)
@@ -26,10 +26,12 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
             le.setTextMargins(8, 0, 2, 0)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
+        """Keep the box narrow: four numeric fields often share one row."""
         sh = super().minimumSizeHint()
         return QSize(min(sh.width(), 76), max(26, sh.height()))
 
     def _strip_affixes(self, text: str) -> str:
+        """Normalise ',' to '.', then remove the configured prefix/suffix."""
         clean = text.replace(",", ".")
         prefix = self.prefix()
         suffix = self.suffix()
@@ -40,6 +42,7 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
         return clean.strip()
 
     def validate(self, input_text: str, pos: int):  # noqa: N802
+        """Accept both '.' and ',' while typing; reject out-of-range values."""
         clean_text = input_text.replace(",", ".")
         special = self.specialValueText()
         if special and (input_text == special or clean_text == special):
@@ -57,6 +60,7 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
             return (QValidator.State.Invalid, input_text, pos)
 
     def valueFromText(self, text: str) -> float:  # noqa: N802
+        """Parse the edited text, falling back to the minimum on invalid input."""
         special = self.specialValueText()
         if special and text == special:
             return self.minimum()
@@ -109,7 +113,8 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
 class InPointSpinBox(SmartDoubleSpinBox):
     """High-precision (centesimi) spinbox for Cue IN point."""
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """In point in seconds with 1/20 s steps."""
         super().__init__(parent)
         self.setRange(0.0, 99999.0)
         self.setDecimals(2)
@@ -120,7 +125,8 @@ class InPointSpinBox(SmartDoubleSpinBox):
 class OutPointSpinBox(SmartDoubleSpinBox):
     """Smart Out Point SpinBox with centesimi precision and end-of-file down-stepping."""
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Out point in seconds; the minimum value means "end of file"."""
         super().__init__(parent)
         self.setRange(0.0, 99999.0)
         self.setDecimals(2)
@@ -130,9 +136,11 @@ class OutPointSpinBox(SmartDoubleSpinBox):
         self._media_duration: float = 0.0
 
     def set_media_duration(self, duration_sec: float) -> None:
+        """Update the upper bound of the time spinbox from the media length."""
         self._media_duration = max(0.0, duration_sec)
 
     def stepBy(self, steps: int) -> None:  # noqa: N802
+        """Step by seconds, clamping at the media duration instead of the sentinel."""
         cur = self.value()
         if cur == 0.0 and steps < 0 and self._media_duration > 0:
             target = max(0.05, self._media_duration + (steps * self.singleStep()))

@@ -8,7 +8,8 @@ envelopes, and virtual sections A/B/C while strictly honoring the preview mute s
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Optional, Sequence
+from typing import Any
+from collections.abc import Callable, Sequence
 
 from PySide6.QtCore import QObject, QTimer, QUrl, Signal
 from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
@@ -31,19 +32,20 @@ class _TestSignals(QObject):
 class TestPlayer(QObject):
     """Multimedia player for PRE-VIZ / TEST preview (silent by default)."""
 
-    def __init__(self, video_widget: Optional[Any] = None,
-                 video_output: Optional[Any] = None,
-                 parent: Optional[QObject] = None) -> None:
+    def __init__(self, video_widget: Any | None = None,
+                 video_output: Any | None = None,
+                 parent: QObject | None = None) -> None:
+        """Create the pre-viz player bound to the sandbox video widget."""
         super().__init__(parent)
         self.signals = _TestSignals()
         self._video_output = video_output or video_widget
-        self._opacity_cb: Optional[Callable[[float], None]] = None
-        self._audio_device: Optional[QAudioDevice] = None
+        self._opacity_cb: Callable[[float], None] | None = None
+        self._audio_device: QAudioDevice | None = None
 
         self._is_muted: bool = True
         self._preview_volume: float = 0.8
         self._start_ms: int = 0
-        self._end_ms: Optional[int] = None
+        self._end_ms: int | None = None
         self._duration_sec: float = 0.0
         self._is_looping: bool = False
         self._loop_count: int = 0
@@ -59,8 +61,12 @@ class TestPlayer(QObject):
         self._opacity_points: list[list[float]] = []
         self._sections_cfg: list[CueSection] = []
         self._is_video_cue: bool = False
-        self._last_emitted_opacity: Optional[float] = None
+        self._last_emitted_opacity: float | None = None
         self._sequencer = SectionSequencer()
+        # Same boundary latch as the live player: never react twice to the same
+        # section edge while a seek is still landing (stale position reports).
+        self._boundary_armed: bool = True
+        self._finished: bool = False
 
         self._driver_timer = QTimer(self)
         self._driver_timer.setInterval(20)
@@ -92,16 +98,19 @@ class TestPlayer(QObject):
             self.signals.error_occurred.emit(f"Test Player init failed: {exc}")
 
     def set_video_output(self, video_output: Any) -> None:
+        """Route preview video to *video_output* (QGraphicsVideoItem or widget)."""
         self._video_output = video_output
         self._player.setVideoOutput(video_output)
 
     def set_video_widget(self, video_widget: Any) -> None:
+        """Alias of :meth:`set_video_output` kept for widget-oriented callers."""
         self.set_video_output(video_widget)
 
-    def set_opacity_callback(self, callback: Optional[Callable[[float], None]]) -> None:
+    def set_opacity_callback(self, callback: Callable[[float], None] | None) -> None:
+        """Register the callback that applies the preview opacity envelope."""
         self._opacity_cb = callback
 
-    def set_audio_device(self, device: Optional[QAudioDevice]) -> None:
+    def set_audio_device(self, device: QAudioDevice | None) -> None:
         """Assign preview / pre-viz audio device (e.g. Headphones / PFL monitor)."""
         self._audio_device = device
         if self._audio is not None and device is not None and not device.isNull():
@@ -109,6 +118,7 @@ class TestPlayer(QObject):
         logger.info("[TEST] Preview audio device assigned: %s", device.description() if device and not device.isNull() else "Default")
 
     def set_mute(self, is_muted: bool) -> None:
+        """Mute/unmute the preview. Muted is the safe default in a live room."""
         self._is_muted = is_muted
         if is_muted:
             self._enforce_mute()
@@ -117,6 +127,7 @@ class TestPlayer(QObject):
         logger.info("[TEST] Preview mute set to: %s", is_muted)
 
     def is_muted(self) -> bool:
+        """True when the preview is currently muted."""
         return self._is_muted
 
     def _enforce_mute(self) -> None:
@@ -128,7 +139,7 @@ class TestPlayer(QObject):
                 self._audio.setMuted(False)
                 self._audio.setVolume(self._preview_volume * self._base_volume)
         except Exception:
-            pass
+            logger.debug("[TEST] Could not enforce preview mute state", exc_info=True)
 
     # ── Automation & Sections ─────────────────────────────────────────
 
@@ -145,6 +156,7 @@ class TestPlayer(QObject):
         sections: Sequence[CueSection] = (),
         is_video: bool = False,
     ) -> None:
+        """Configure preview fades, envelope points and virtual sections."""
         self._base_volume = max(0.0, min(1.0, float(base_volume)))
         self._base_opacity = max(0.0, min(1.0, float(base_opacity)))
         self._fade_in_sec = max(0.0, float(fade_in))
@@ -156,21 +168,24 @@ class TestPlayer(QObject):
         self._is_video_cue = is_video
         self._last_emitted_opacity = None
         self._sequencer.configure(self._sections_cfg, self._start_ms / 1000.0, self._effective_end_sec())
+        self._boundary_armed = True
+        self._finished = False
         self._apply_envelope_at(self._player.position() / 1000.0)
         self._ensure_driver_timer()
 
     def hot_update_automation(
         self,
         *,
-        base_volume: Optional[float] = None,
-        base_opacity: Optional[float] = None,
-        fade_in: Optional[float] = None,
-        fade_out: Optional[float] = None,
-        fade_curve: Optional[str] = None,
-        volume_points: Optional[Sequence[Sequence[float]]] = None,
-        opacity_points: Optional[Sequence[Sequence[float]]] = None,
-        sections: Optional[Sequence[CueSection]] = None,
+        base_volume: float | None = None,
+        base_opacity: float | None = None,
+        fade_in: float | None = None,
+        fade_out: float | None = None,
+        fade_curve: str | None = None,
+        volume_points: Sequence[Sequence[float]] | None = None,
+        opacity_points: Sequence[Sequence[float]] | None = None,
+        sections: Sequence[CueSection] | None = None,
     ) -> None:
+        """Update preview envelope/sections on the fly without stopping playback."""
         if base_volume is not None:
             self._base_volume = max(0.0, min(1.0, float(base_volume)))
         if base_opacity is not None:
@@ -187,11 +202,23 @@ class TestPlayer(QObject):
             self._opacity_points = [list(p) for p in opacity_points]
         if sections is not None:
             self._sections_cfg = [CueSection(**s.to_dict()) for s in sections]
-            self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
+            self._refresh_sections()
         self._apply_envelope_at(self._player.position() / 1000.0)
         self._ensure_driver_timer()
 
-    def jump_to_section(self, section_index: int) -> Optional[float]:
+    def _refresh_sections(self) -> None:
+        """Re-normalise sections mid-preview and leave a section just marked as skip."""
+        before = self._sequencer.current_index
+        self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
+        if self._sequencer.active and self._sequencer.current_index != before:
+            target_ms = int(round(self._sequencer.active_start_sec() * 1000))
+            self._boundary_armed = False
+            self._player.setPosition(target_ms)
+        elif self._sequencer.active:
+            self._boundary_armed = True
+
+    def jump_to_section(self, section_index: int) -> float | None:
+        """Seek the preview to *section_index*; returns the new time or ``None``."""
         if not self._sequencer.active:
             return None
         target_sec = self._sequencer.jump_to(section_index)
@@ -201,7 +228,8 @@ class TestPlayer(QObject):
         self.signals.section_changed.emit(self._sequencer.current_index)
         return target_sec
 
-    def break_section_loop(self) -> Optional[float]:
+    def break_section_loop(self) -> float | None:
+        """Leave a repeated section for the next one; ``None`` when the cue ends."""
         if not self._sequencer.active:
             return None
         action, _idx, target_sec = self._sequencer.break_loop_to_next()
@@ -280,13 +308,22 @@ class TestPlayer(QObject):
                 self._opacity_cb(op)
 
     def _check_boundaries(self, pos_ms: int) -> None:
-        if not self.is_playing():
+        if not self.is_playing() or self._finished:
             return
 
         if self._sequencer.active:
             cur_end = self._sequencer.active_end_sec()
-            if cur_end > 0 and pos_ms >= int(cur_end * 1000) - 18:
+            end_ms = int(cur_end * 1000)
+            if not self._boundary_armed:
+                # A jump was just issued: ignore the stale position report of
+                # the section we already left, or the sequencer would advance
+                # twice and silently skip one iteration/section.
+                if pos_ms >= end_ms - 18:
+                    return
+                self._boundary_armed = True
+            if cur_end > 0 and pos_ms >= end_ms - 18:
                 action, next_idx, target_sec = self._sequencer.advance_at_boundary()
+                self._boundary_armed = False
                 if action == "EOF":
                     self._handle_eof()
                     return
@@ -304,18 +341,25 @@ class TestPlayer(QObject):
                         self._handle_eof()
                         return
                 self._player.setPosition(self._start_ms)
+                self._boundary_armed = False
             else:
                 self._handle_eof()
 
     def _handle_eof(self) -> None:
+        self._finished = True
         self._driver_timer.stop()
         self._player.pause()
+        if self._sequencer.active:
+            # Rewind the sequencer to the first playable section: the next play
+            # must start from the cue top, never from the last section played.
+            self._sequencer.restart()
         target = (
             int(round(self._sequencer.active_start_sec() * 1000))
             if self._sequencer.active
             else self._start_ms
         )
         self._player.setPosition(target)
+        self._boundary_armed = True
         self.signals.eof_reached.emit()
 
     # ── Signal Handlers ───────────────────────────────────────────────
@@ -339,27 +383,38 @@ class TestPlayer(QObject):
         if dur_ms > 0:
             self._duration_sec = dur_ms / 1000.0
             if self._sections_cfg:
-                self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
+                self._refresh_sections()
             self.signals.duration_changed.emit(self._duration_sec)
 
     def _on_media_status_changed(self, status: QMediaPlayer.MediaStatus) -> None:
+        if self._finished:
+            return
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
-            if self._start_ms > 0:
-                self._player.setPosition(self._start_ms)
+            # Honour a skipped leading section instead of starting on its audio.
+            target = (
+                int(round(self._sequencer.active_start_sec() * 1000))
+                if self._sequencer.active
+                else self._start_ms
+            )
+            if target > 0:
+                self._player.setPosition(target)
         elif status == QMediaPlayer.MediaStatus.EndOfMedia:
+            # A stale end-of-media report can arrive right after a jump issued at
+            # the same edge: honour the latch or the sequencer advances twice.
+            if not self._boundary_armed:
+                return
             if self._sequencer.active:
                 action, next_idx, target_sec = self._sequencer.advance_at_boundary()
+                self._boundary_armed = False
                 if action == "EOF":
-                    self._driver_timer.stop()
-                    self.signals.eof_reached.emit()
+                    self._handle_eof()
                 elif target_sec is not None:
                     if next_idx is not None:
                         self.signals.section_changed.emit(next_idx)
                     self._player.setPosition(int(round(target_sec * 1000)))
                     self._player.play()
             elif not self._is_looping:
-                self._driver_timer.stop()
-                self.signals.eof_reached.emit()
+                self._handle_eof()
 
     def _on_error_occurred(self, error: QMediaPlayer.Error, msg: str) -> None:
         logger.error("[TEST] Preview error (%s): %s", error, msg)
@@ -368,7 +423,7 @@ class TestPlayer(QObject):
     # ── Public API ────────────────────────────────────────────────────
 
     def load(self, file_path: str, start: float = 0.0,
-             end: Optional[float] = None, pause: bool = False) -> None:
+             end: float | None = None, pause: bool = False) -> None:
         """Load a media file for preview."""
         self._enforce_mute()
         self._driver_timer.stop()
@@ -378,6 +433,8 @@ class TestPlayer(QObject):
             self._duration_sec = 0.0
             self._current_loop_iteration = 0
             self._last_emitted_opacity = None
+            self._boundary_armed = True
+            self._finished = False
 
             url = QUrl.fromLocalFile(file_path)
             self._player.setSource(url)
@@ -396,13 +453,33 @@ class TestPlayer(QObject):
             self._enforce_mute()
 
     def play(self) -> None:
+        """Start or resume the preview from the IN point when it was at the end."""
         self._enforce_mute()
         try:
             pos_ms = self._player.position()
             if (self._end_ms is not None and pos_ms >= self._end_ms) or \
                self._player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
-                self._player.setPosition(self._start_ms)
-                pos_ms = self._start_ms
+                # Replay from the cue top, never from the last section played.
+                if self._sequencer.active:
+                    self._sequencer.restart()
+                target = (
+                    int(round(self._sequencer.active_start_sec() * 1000))
+                    if self._sequencer.active
+                    else self._start_ms
+                )
+                self._player.setPosition(target)
+                pos_ms = target
+            elif self._sequencer.active:
+                # The playhead may sit outside the indexed section (stop/scrub):
+                # re-align so skip/loop settings are honoured from the first frame.
+                idx = self._sequencer.section_index_for_time(pos_ms / 1000.0)
+                if idx is not None and idx != self._sequencer.current_index:
+                    target = self._sequencer.jump_to(idx)
+                    if target is not None and target * 1000.0 > pos_ms + 20:
+                        pos_ms = int(round(target * 1000))
+                        self._player.setPosition(pos_ms)
+            self._finished = False
+            self._boundary_armed = True
             self._apply_envelope_at(pos_ms / 1000.0)
             self._player.play()
             self._ensure_driver_timer()
@@ -413,6 +490,7 @@ class TestPlayer(QObject):
             logger.error("[TEST] play() failed: %s", exc, exc_info=True)
 
     def pause(self) -> None:
+        """Pause the preview, keeping mute enforced."""
         self._driver_timer.stop()
         self._enforce_mute()
         try:
@@ -422,8 +500,11 @@ class TestPlayer(QObject):
             logger.error("[TEST] pause() failed: %s", exc, exc_info=True)
 
     def stop(self) -> None:
+        """Stop the preview and reset it to the beginning."""
         self._driver_timer.stop()
         self._enforce_mute()
+        self._finished = False
+        self._boundary_armed = True
         try:
             self._player.stop()
             logger.debug("[TEST] stop()")
@@ -431,20 +512,35 @@ class TestPlayer(QObject):
             logger.error("[TEST] stop() failed: %s", exc, exc_info=True)
 
     def seek(self, position: float) -> None:
+        """Move the preview to *position* seconds, re-applying the envelope.
+
+        Scrubbing into a skipped section snaps forward to the next playable one,
+        exactly like the live engine, so the preview never contradicts the show.
+        """
         self._enforce_mute()
         try:
             pos_ms = max(0, int(position * 1000))
+            if self._sequencer.active:
+                idx = self._sequencer.section_index_for_time(position)
+                if idx is not None:
+                    target = self._sequencer.jump_to(idx)
+                    if target is not None and target > position:
+                        pos_ms = int(round(target * 1000))
+                    self.signals.section_changed.emit(idx)
+            self._finished = False
+            self._boundary_armed = True
             if (
                 self._player.playbackState() == QMediaPlayer.PlaybackState.StoppedState
                 and self._player.source().isValid()
             ):
                 self._player.pause()
             self._player.setPosition(pos_ms)
-            self._apply_envelope_at(position)
+            self._apply_envelope_at(pos_ms / 1000.0)
         except Exception as exc:
             logger.error("[TEST] seek() failed: %s", exc, exc_info=True)
 
     def set_loop(self, loop: bool, loop_count: int = 0) -> None:
+        """Enable/disable preview looping (0 iterations means infinite)."""
         self._enforce_mute()
         try:
             self._is_looping = loop
@@ -462,35 +558,46 @@ class TestPlayer(QObject):
         except Exception as exc:
             logger.error("[TEST] set_loop() failed: %s", exc)
 
-    def set_aspect_ratio(self, aspect: Optional[str]) -> None:
-        self._aspect = aspect
+    def set_aspect_ratio(self, aspect: str | None) -> None:
+        """No-op on purpose: preview geometry is applied by ``PreviewMonitor``."""
 
     def set_scale(self, scale: float) -> None:
-        self._scale = scale
+        """No-op on purpose: see :meth:`set_aspect_ratio`."""
 
-    def set_crop(self, crop: Optional[dict]) -> None:
-        self._crop = crop
+    def set_crop(self, crop: dict | None) -> None:
+        """No-op on purpose: see :meth:`set_aspect_ratio`."""
 
     def is_paused(self) -> bool:
+        """True while the preview is paused."""
         return self._player.playbackState() == QMediaPlayer.PlaybackState.PausedState
 
     def is_playing(self) -> bool:
+        """True while the preview is playing."""
         return self._player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
 
     def is_idle(self) -> bool:
+        """True while the preview is stopped."""
         return self._player.playbackState() == QMediaPlayer.PlaybackState.StoppedState
 
-    def set_in_out(self, start: float, end: Optional[float] = None,
+    def set_in_out(self, start: float, end: float | None = None,
                    seek_to_start: bool = True) -> None:
         """Update IN/OUT points dynamically; seek to start only when requested."""
         self._start_ms = max(0, int(start * 1000))
         self._end_ms = int(end * 1000) if (end is not None and end > 0) else None
         if self._sections_cfg:
             self._sequencer.configure(self._sections_cfg, start, self._effective_end_sec())
+        self._boundary_armed = True
+        self._finished = False
         if seek_to_start:
-            self._player.setPosition(self._start_ms)
+            target = (
+                int(round(self._sequencer.active_start_sec() * 1000))
+                if self._sequencer.active
+                else self._start_ms
+            )
+            self._player.setPosition(target)
 
     def shutdown(self) -> None:
+        """Stop the rehearsal timers and the underlying player (idempotent)."""
         try:
             self._driver_timer.stop()
             self._player.stop()

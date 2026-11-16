@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtWidgets import (
@@ -58,18 +57,21 @@ class CueListPanel(QGroupBox):
     go_live_mode_requested = Signal()
     follow_mode_selected = Signal(str)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the rundown panel with its follow-mode buttons and hints."""
         super().__init__("SCALETTA CUE (Sequence List)", parent)
         self.setMinimumWidth(260)
         self._follow_buttons: dict[str, QPushButton] = {}
         self._follow_hints: dict[str, str] = {}
-        self._active_follow_mode: Optional[str] = FollowMode.MANUAL.value
+        self._active_follow_mode: str | None = FollowMode.MANUAL.value
         self._build_ui()
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
+        """Minimum size that keeps the cue list and its columns readable."""
         return QSize(260, 240)
 
     def sizeHint(self) -> QSize:  # noqa: N802
+        """Preferred size of the cue list panel."""
         return QSize(330, 560)
 
     def _build_ui(self) -> None:
@@ -185,7 +187,7 @@ class CueListPanel(QGroupBox):
 
         follow_row = QHBoxLayout()
         follow_row.setSpacing(4)
-        for mode_val, label, hint, chk_bg, chk_border in _FOLLOW_SPECS:
+        for mode_val, label, hint, *_ in _FOLLOW_SPECS:
             btn = QPushButton(label)
             btn.setCheckable(True)
             btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -277,6 +279,7 @@ class CueListPanel(QGroupBox):
                 )
 
     def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        """Show the follow-mode hint while hovering a follow button."""
         if event.type() == QEvent.Type.Enter:
             for m, btn in self._follow_buttons.items():
                 if obj is btn:
@@ -295,7 +298,12 @@ class CueListPanel(QGroupBox):
             self.lbl_follow_hint.setText("Selezione multipla mista — clicca una modalità per applicarla a tutte")
             self.lbl_follow_hint.setStyleSheet("color: #f59e0b; font-size: 9px; border: none; background: transparent;")
 
-    def set_follow_mode_checked(self, mode: Optional[str], *, enabled: bool = True) -> None:
+    def set_follow_mode_checked(self, mode: str | None, *, enabled: bool = True) -> None:
+        """Highlight the follow-mode button matching *mode*, without emitting.
+
+        ``None`` shows the mixed-selection state; *enabled* disables the row
+        when the current cue cannot auto-follow.
+        """
         self._active_follow_mode = mode if mode in self._follow_buttons else None
         for m, btn in self._follow_buttons.items():
             btn.blockSignals(True)

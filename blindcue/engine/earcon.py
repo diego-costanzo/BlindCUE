@@ -12,7 +12,6 @@ import math
 import struct
 import wave
 from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import QByteArray, QTemporaryFile, QUrl
 from PySide6.QtMultimedia import QSoundEffect
@@ -46,7 +45,8 @@ def _generate_sine_wav(frequency_hz: float, duration_ms: float, volume: float = 
 class EarconManager:
     """Manages low-latency auditory confirmation cues for show operator accessibility."""
 
-    def __init__(self, temp_dir: Optional[Path] = None) -> None:
+    def __init__(self, temp_dir: Path | None = None) -> None:
+        """Create the earcon manager; audio assets are loaded only when ``enabled`` is set."""
         self._enabled: bool = False
         self._temp_files: list[QTemporaryFile] = []
         self._sounds: dict[str, QSoundEffect] = {}
@@ -78,10 +78,12 @@ class EarconManager:
 
     @property
     def enabled(self) -> bool:
+        """True when auditory feedback is active (off by default: silent shows)."""
         return self._enabled
 
     @enabled.setter
     def enabled(self, value: bool) -> None:
+        """Enable/disable the earcons without recreating the audio effects."""
         self._enabled = bool(value)
 
     def play_go(self) -> None:

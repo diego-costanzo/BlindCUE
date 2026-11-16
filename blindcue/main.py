@@ -18,31 +18,55 @@ import argparse
 import locale
 import logging
 import os
+import shutil
 import signal
 import sys
+import threading
 import time
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 # Ensure C locale for robust numeric parsing
 os.environ["LC_NUMERIC"] = "C"
+
+# ── Console encoding ──────────────────────────────────────────────────
+# Windows consoles default to a legacy code page (cp850/cp1252) that cannot
+# encode the box-drawing/emoji characters used in log messages; an encoding
+# error inside a log handler is noise at best and a hard failure at worst.
+# Force UTF-8 with a lossless fallback on every platform.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        if _stream is not None and hasattr(_stream, "reconfigure"):
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+# ── Logging ───────────────────────────────────────────────────────────
+# INFO by default: DEBUG-level chatter is written synchronously by the console
+# handler and can stall the GUI thread, which is unacceptable live.  Use
+# ``--debug`` when troubleshooting.
+_LOG_LEVEL = logging.DEBUG if "--debug" in sys.argv else logging.INFO
+_LOG_HANDLERS: list[logging.Handler] = [
+    logging.StreamHandler(sys.stderr) if sys.stderr is not None else logging.NullHandler()
+]
+logging.basicConfig(
+    level=_LOG_LEVEL,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%H:%M:%S",
+    handlers=_LOG_HANDLERS,
+)
+logger = logging.getLogger("blindcue")
+
 try:
     locale.setlocale(locale.LC_NUMERIC, "C")
 except Exception:
-    pass
-
-# ── Logging ───────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    datefmt="%H:%M:%S",
-)
-logger = logging.getLogger("blindcue")
+    logger.debug("[MAIN] Could not force C numeric locale; using system default", exc_info=True)
 
 # ── Ensure package imports work when running from the project root ────
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QStandardPaths, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -52,10 +76,68 @@ from engine.envelope import evaluate_cue_level
 from engine.player_live import LivePlayer
 from engine.player_test import TestPlayer
 from engine.show_scheduler import ScheduledWindow, ShowScheduler
-from models.cue import Cue, CueStatus, FollowMode, MediaType
+from models.cue import (
+    Cue,
+    CueStatus,
+    FollowMode,
+    MediaType,
+    resolve_output_target,
+    runtime_layer,
+)
 
-_PROJECT_ROOT = _HERE.parent
-_LOGO_PATH = _PROJECT_ROOT / "immagini di progetto" / "BlindCue-logo.jpeg"
+# Logo di finestra: vive dentro il pacchetto, quindi è presente anche
+# nell'installazione (dove la cartella "immagini di progetto" non esiste).
+_LOGO_PATH = _HERE / "assets" / "BlindCue-logo.jpeg"
+
+
+def _install_file_logging() -> Path | None:
+    """Mirror the log to a rotating file and record uncaught exceptions.
+
+    A live show can crash days after the fact: without a persistent log there is
+    nothing to diagnose.  Everything here is best-effort and must never prevent
+    the application from starting.
+    """
+    try:
+        base = QStandardPaths.writableLocation(
+            QStandardPaths.StandardLocation.GenericDataLocation
+        )
+        if not base:
+            return None
+        log_dir = Path(base) / "BlindCue"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        log_file = log_dir / "blindcue.log"
+        handler = RotatingFileHandler(
+            log_file, maxBytes=2_000_000, backupCount=3, encoding="utf-8"
+        )
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+        )
+        logging.getLogger().addHandler(handler)
+    except Exception:
+        logger.debug("[MAIN] Could not open the log file", exc_info=True)
+        return None
+
+    def _log_uncaught(exc_type, exc_value, exc_tb) -> None:
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_tb)
+            return
+        logger.critical(
+            "[MAIN] Uncaught exception", exc_info=(exc_type, exc_value, exc_tb)
+        )
+
+    def _log_thread_uncaught(args) -> None:
+        if args.exc_type is SystemExit:
+            return
+        logger.critical(
+            "[MAIN] Uncaught exception in thread %s",
+            getattr(args.thread, "name", "?"),
+            exc_info=(args.exc_type, args.exc_value, args.exc_traceback),
+        )
+
+    sys.excepthook = _log_uncaught
+    threading.excepthook = _log_thread_uncaught
+    logger.info("[MAIN] Log file: %s", log_file)
+    return log_file
 
 
 def _parse_args() -> argparse.Namespace:
@@ -65,10 +147,34 @@ def _parse_args() -> argparse.Namespace:
         "--output-screen", type=int, default=-1,
         help="Index of the screen for the live output (0-based). "
              "Default: auto-detect (first non-primary screen).")
+    parser.add_argument(
+        "--debug", action="store_true",
+        help="Enable verbose DEBUG logging (for troubleshooting only; "
+             "INFO is the default for live shows).")
     return parser.parse_args()
 
 
 def main() -> int:
+    """Bootstrap BlindCue and run the Qt event loop.
+
+    Boot order matters; each step depends on the previous one:
+
+    1. ``QApplication`` + rotating file log (so a later failure is recorded).
+    2. Preflight of optional FFmpeg tools (waveforms, loudness, normalisation).
+    3. Screen detection: projectors are the external screens, never the
+       director monitor. No projector → windowed output on the primary screen.
+    4. Output windows A/B and the six live players (runtime layers 1-3 → A,
+       4-6 → B).
+    5. Director ``MainWindow``, then the ``DeviceManager`` that owns audio
+       routing, screen assignment and the single/span/dual output mode.
+    6. Remote control (HTTP + SSE and OSC), disabled until activated.
+    7. Signal wiring: GO, scheduler, live position/duration/EOF, layer
+       controls, autosave, shutdown.
+
+    Everything that touches live playback lives in closures below so it can
+    reach the players, the windows and the scheduler without global state.
+    ``_perform_shutdown`` is the single exit path.
+    """
     args = _parse_args()
 
     # ── Qt Application (100% Native Wayland) ───────────────────────────
@@ -77,10 +183,26 @@ def main() -> int:
     app.setOrganizationName("BlindCue")
     app.setApplicationVersion("0.1")
 
+    _install_file_logging()
+
     if _LOGO_PATH.is_file():
         app.setWindowIcon(QIcon(str(_LOGO_PATH)))
 
     logger.info("Running on native platform: '%s'", app.platformName())
+
+    # ── Runtime dependency preflight ──────────────────────────────────
+    # FFmpeg is optional for pure playback but mandatory for waveforms,
+    # EBU R128 loudness analysis and audio normalisation.  Detect it once
+    # at startup so a missing install is visible instead of silently
+    # disabling features mid-show.
+    _missing_tools = [tool for tool in ("ffmpeg", "ffprobe") if shutil.which(tool) is None]
+    if _missing_tools:
+        logger.warning(
+            "[MAIN] Missing optional media tool(s): %s. Waveforms, loudness "
+            "analysis and audio normalisation will be unavailable. Install "
+            "FFmpeg and restart BlindCue.", ", ".join(_missing_tools))
+    else:
+        logger.info("[MAIN] FFmpeg/FFprobe detected – full audio analysis available")
 
     # ── Screen detection ──────────────────────────────────────────────
     screens = app.screens()
@@ -89,6 +211,15 @@ def main() -> int:
                 len(screens), primary.name())
 
     is_external = False
+    external_screens = [s for s in screens if s != primary]
+    if external_screens:
+        logger.info(
+            "External projector(s) detected: %s",
+            ", ".join(f"'{s.name()}'" for s in external_screens),
+        )
+    else:
+        logger.info("No external projector detected – director screen is the only output.")
+
     if args.output_screen >= 0:
         if args.output_screen < len(screens):
             output_screen = screens[args.output_screen]
@@ -97,10 +228,9 @@ def main() -> int:
             logger.error("Screen index %d out of range (0–%d)",
                          args.output_screen, len(screens) - 1)
             return 1
-    elif len(screens) > 1:
-        # Pick first non-primary screen
-        output_screen = next(
-            (s for s in screens if s != primary), screens[-1])
+    elif external_screens:
+        # Projection always prefers an external display over the director one.
+        output_screen = external_screens[0]
         is_external = True
     else:
         output_screen = primary
@@ -110,14 +240,57 @@ def main() -> int:
     logger.info("Output screen: '%s' (%s, is_external=%s)",
                 output_screen.name(), output_screen.geometry(), is_external)
 
-    # ── Output window (Layer 0 + live rendering, bound after MainWindow) ─
+    # ── Output windows (Layer 0 + live rendering) ─────────────────────
+    # Window A is always in use. Window B drives a second independent
+    # projector and stays hidden unless the operator selects the dual mode.
     output_win = OutputWindow()
+    output_win_b = OutputWindow()
 
-    # ── Live Native Wayland players (one independent player per Layer 1-3) ─
-    live_players: dict[int, LivePlayer] = {}
-    for layer in (1, 2, 3):
+    # Live players: runtime layers 1-3 → output A, 4-6 → output B.
+    _ALL_RUNTIME_LAYERS = (1, 2, 3, 4, 5, 6)
+
+    def _out_window(layer: int) -> OutputWindow:
+        """Return the projector window (A or B) that owns a runtime layer 1-6."""
+        return output_win_b if int(layer) > 3 else output_win
+
+    def _local_layer(layer: int) -> int:
+        """Map a runtime layer 1-6 to the 1-3 layer index inside its window."""
+        return int(layer) - 3 if int(layer) > 3 else int(layer)
+
+    def _set_layer_opacity(layer: int, opacity: float) -> None:
+        _out_window(layer).set_layer_opacity(_local_layer(layer), opacity)
+
+    def _clear_layer(layer: int) -> None:
+        _out_window(layer).clear_layer(_local_layer(layer))
+
+    def _dual_output_active() -> bool:
+        """True when the two independent projector outputs are currently active."""
         try:
-            live_players[layer] = LivePlayer(video_widget=output_win.get_video_widget(layer))
+            return device_mgr.get_output_mode() == "dual"
+        except (NameError, AttributeError):
+            return False
+
+    def _effective_layer(cue: Cue) -> int:
+        """Runtime layer 1-6 actually used by *cue* for the active output mode.
+
+        A cue assigned to output B while the dual mode is off would land on the
+        hidden second window and never reach the audience, so it is projected
+        on output A instead.
+        """
+        return runtime_layer(
+            cue.layer,
+            resolve_output_target(cue.output_target, _dual_output_active()),
+        )
+
+    def _cue_window(cue: Cue) -> OutputWindow:
+        return _out_window(_effective_layer(cue))
+
+    live_players: dict[int, LivePlayer] = {}
+    for layer in _ALL_RUNTIME_LAYERS:
+        try:
+            live_players[layer] = LivePlayer(
+                video_widget=_out_window(layer).get_video_widget(_local_layer(layer))
+            )
             logger.info("[MAIN] Live player L%d initialised", layer)
         except Exception as exc:
             logger.critical("[MAIN] Could not create live player L%d: %s", layer, exc)
@@ -127,7 +300,7 @@ def main() -> int:
                     f"Cannot initialise the live multimedia player:\n{exc}")
 
     # ── Main window (director panel) ALWAYS on primary monitor ────────
-    main_win = MainWindow(output_window=output_win)
+    main_win = MainWindow(output_window=output_win, secondary_output_window=output_win_b)
     main_win.bind_to_primary_screen(primary)
     main_win.show()
 
@@ -150,9 +323,14 @@ def main() -> int:
     device_mgr = DeviceManager()
     device_mgr.register_live_players(list(live_players.values()))
     device_mgr.register_test_player(test_player)
-    device_mgr.register_output_window(output_win)
-    if output_screen is not None:
+    # An explicit --screen on the command line always wins; otherwise the
+    # projector assignment restored by DeviceManager is kept untouched.
+    if args.output_screen >= 0 and output_screen is not None:
         device_mgr.set_target_screen(output_screen)
+    device_mgr.register_output_window(output_win)
+    device_mgr.register_secondary_output_window(output_win_b)
+    # Keep both projectors on the same surface calibration set
+    output_win_b.set_surfaces(output_win.get_surfaces())
     main_win.set_device_manager(device_mgr)
 
     # ── LAN Remote Control (Web Server & OSC UDP Automation) ──────────
@@ -163,15 +341,17 @@ def main() -> int:
 
     # ── Wire per-layer video deck swap + real-time opacity callbacks ──
     for layer, lp in live_players.items():
-        lp.set_secondary_video_output(output_win.get_secondary_video_item(layer))
-        lp.set_deck_switch_callback(lambda deck, l_idx=layer: output_win.activate_video_deck(l_idx, deck))
-        lp.set_opacity_callback(lambda op, l_idx=layer: output_win.set_layer_opacity(l_idx, op))
+        win = _out_window(layer)
+        local = _local_layer(layer)
+        lp.set_secondary_video_output(win.get_secondary_video_item(local))
+        lp.set_deck_switch_callback(lambda deck, w=win, l_idx=local: w.activate_video_deck(l_idx, deck))
+        lp.set_opacity_callback(lambda op, w=win, l_idx=local: w.set_layer_opacity(l_idx, op))
 
     # ── Connect GO signal to per-layer live engine & Timing Scheduler ─
     active_live_cues: dict[int, Cue] = {}
     known_file_durations: dict[str, float] = {}
-    layer_fire_gen: dict[int, int] = {1: 0, 2: 0, 3: 0}
-    live_positions: dict[int, float] = {1: 0.0, 2: 0.0, 3: 0.0}
+    layer_fire_gen: dict[int, int] = {layer: 0 for layer in _ALL_RUNTIME_LAYERS}
+    live_positions: dict[int, float] = {layer: 0.0 for layer in _ALL_RUNTIME_LAYERS}
     live_image_envelopes: dict[int, dict] = {}
     live_img_timer = QTimer(main_win)
     live_img_timer.setInterval(33)
@@ -230,7 +410,7 @@ def main() -> int:
             if cue_item.hold_time > 0 and elapsed >= cue_item.hold_time:
                 done_layers.append(l_idx)
                 op_end = _eval_image_opacity(cue_item, cue_item.hold_time)
-                output_win.set_layer_opacity(l_idx, op_end)
+                _set_layer_opacity(l_idx, op_end)
                 _enter_post_delay_or_finalize(
                     cue_item, l_idx, layer_fire_gen.get(l_idx, 0)
                 )
@@ -238,7 +418,7 @@ def main() -> int:
                 continue
 
             op = _eval_image_opacity(cue_item, elapsed)
-            output_win.set_layer_opacity(l_idx, op)
+            _set_layer_opacity(l_idx, op)
             if cue_item.hold_time > 0:
                 main_win.update_live_layer_progress(
                     l_idx,
@@ -285,7 +465,7 @@ def main() -> int:
                     lp.pause()
                     paused_layers_by_global.add(l_idx)
                     main_win.set_live_layer_paused(l_idx, True)
-            for l_idx in (1, 2, 3):
+            for l_idx in _ALL_RUNTIME_LAYERS:
                 if scheduler.pending_for_layer(l_idx) is not None:
                     main_win.set_live_layer_paused(l_idx, True)
             main_win.set_global_paused(True)
@@ -302,7 +482,7 @@ def main() -> int:
                     live_players[l_idx].play()
                     main_win.set_live_layer_paused(l_idx, False)
             paused_layers_by_global.clear()
-            for l_idx in (1, 2, 3):
+            for l_idx in _ALL_RUNTIME_LAYERS:
                 if scheduler.pending_for_layer(l_idx) is not None:
                     main_win.set_live_layer_paused(l_idx, False)
             main_win.set_global_paused(False)
@@ -315,7 +495,7 @@ def main() -> int:
         lp = live_players.get(layer)
         if lp is not None:
             lp.stop()
-        output_win.clear_layer(layer)
+        _clear_layer(layer)
         live_image_envelopes.pop(layer, None)
         if active_live_cues.get(layer) is cue:
             active_live_cues.pop(layer, None)
@@ -387,15 +567,16 @@ def main() -> int:
                     init_op = 0.0 if cue.fade_in > 0 else (
                         cue.opacity_points[0][1] if cue.opacity_points else cue.opacity
                     )
-                    output_win.show_video_widget(
+                    _out_window(layer).show_video_widget(
                         scale=cue.scale,
                         crop=cue.crop,
                         pos_x=cue.position_x,
                         pos_y=cue.position_y,
                         opacity=init_op,
-                        layer=layer,
+                        layer=_local_layer(layer),
                         aspect_ratio=cue.aspect_ratio,
                         surface_id=cue.surface_id,
+                        rotation=cue.rotation,
                     )
                     lp.load(
                         cue.file_path,
@@ -413,7 +594,7 @@ def main() -> int:
             elif cue.media_type == MediaType.AUDIO:
                 if lp is not None:
                     # Clear visual elements ONLY on this target layer; other layers stay live!
-                    output_win.clear_layer(layer)
+                    _clear_layer(layer)
                     lp.load(
                         cue.file_path,
                         start=cue.in_point,
@@ -429,8 +610,8 @@ def main() -> int:
                 if lp is not None:
                     lp.stop()
                 init_op = _eval_image_opacity(cue, 0.0)
-                output_win.show_image(
-                    layer=layer,
+                _out_window(layer).show_image(
+                    layer=_local_layer(layer),
                     file_path=cue.file_path,
                     opacity=init_op,
                     crop=cue.crop,
@@ -439,6 +620,9 @@ def main() -> int:
                     pos_y=cue.position_y,
                     aspect_ratio=cue.aspect_ratio,
                     surface_id=cue.surface_id,
+                    rotation=cue.rotation,
+                    mask_polygon=cue.mask_polygon,
+                    mask_feather=cue.mask_feather,
                 )
                 anim_end = max(
                     cue.fade_in,
@@ -457,7 +641,7 @@ def main() -> int:
         except Exception as exc:
             logger.error("[MAIN] Error firing cue on L%d: %s", layer, exc, exc_info=True)
             live_image_envelopes.pop(layer, None)
-            output_win.clear_layer(layer)
+            _clear_layer(layer)
             active_live_cues.pop(layer, None)
 
     def _on_scheduler_tick(win: ScheduledWindow) -> None:
@@ -481,7 +665,7 @@ def main() -> int:
 
     def _on_cue_fired(cue: Cue) -> None:
         """Handle GO: schedule Pre-Delay if set or immediately start cue on its target layer."""
-        layer = cue.layer if cue.layer in (1, 2, 3) else 1
+        layer = _effective_layer(cue)
         if scheduler.is_paused():
             _set_global_paused(False)
         scheduler.cancel_layer(layer)
@@ -511,7 +695,7 @@ def main() -> int:
             else:
                 if layer in live_players:
                     live_players[layer].stop()
-                output_win.hide_video_widget(layer=layer)
+                _out_window(layer).hide_video_widget(layer=_local_layer(layer))
             logger.info("[MAIN] Live media finished on Layer %d (EOF)", layer)
         except Exception as exc:
             logger.error("[MAIN] Error on live L%d EOF: %s", layer, exc)
@@ -522,7 +706,7 @@ def main() -> int:
         try:
             if layer in live_players:
                 live_players[layer].stop()
-            output_win.clear_layer(layer)
+            _clear_layer(layer)
             c = active_live_cues.pop(layer, None)
             if c is not None:
                 c.status = CueStatus.LOADED
@@ -532,7 +716,7 @@ def main() -> int:
         except Exception as exc:
             logger.error("[MAIN] Error during live fallback recovery on L%d: %s", layer, exc)
 
-    live_durations: dict[int, float] = {1: 0.0, 2: 0.0, 3: 0.0}
+    live_durations: dict[int, float] = {layer: 0.0 for layer in _ALL_RUNTIME_LAYERS}
     preview_manual_position = False
 
     def _live_effective_bounds(cue: Cue, dur_sec: float) -> tuple[float, float, bool]:
@@ -641,7 +825,7 @@ def main() -> int:
                 if cue.media_type in (MediaType.VIDEO, MediaType.AUDIO) and l_idx in live_players:
                     _apply_cue_automation(live_players[l_idx], cue, hot=True)
                 elif cue.media_type == MediaType.IMAGE and l_idx not in live_image_envelopes:
-                    output_win.set_layer_opacity(l_idx, cue.opacity)
+                    _set_layer_opacity(l_idx, cue.opacity)
 
     def _on_section_jump_requested(cue: Cue, idx: int, is_live_jump: bool) -> None:
         nonlocal preview_manual_position
@@ -689,8 +873,9 @@ def main() -> int:
                 selected.volume = vol / 100.0
                 logger.debug("[MAIN] Live L%d volume adjusted to %d%% (eff %d%%) for cue '%s'", layer, vol, effective_vol_int, selected.name)
                 return
-        if getattr(main_win, "_live_mirror_active", False) and selected.layer in live_players:
-            live_players[selected.layer].set_volume(effective_vol_int)
+        mirror_layer = _effective_layer(selected)
+        if getattr(main_win, "_live_mirror_active", False) and mirror_layer in live_players:
+            live_players[mirror_layer].set_volume(effective_vol_int)
 
     main_win.live_volume_changed.connect(_on_live_volume_changed)
 
@@ -719,7 +904,7 @@ def main() -> int:
             if cue and cue.media_type == MediaType.VIDEO:
                 if lp is not None:
                     lp.fade_out(fade_time, stop_after=True)
-                output_win.fade_out_video(fade_time, callback=_clear_active_if_same, layer=layer)
+                _out_window(layer).fade_out_video(fade_time, callback=_clear_active_if_same, layer=_local_layer(layer))
             elif cue and cue.media_type == MediaType.AUDIO:
                 if lp is not None:
                     lp.fade_out(fade_time, stop_after=True, callback=_clear_active_if_same)
@@ -727,10 +912,10 @@ def main() -> int:
                     _clear_active_if_same()
             elif cue and cue.media_type == MediaType.IMAGE:
                 live_image_envelopes.pop(layer, None)
-                output_win.fade_out_layer(layer, fade_time, callback=_clear_active_if_same)
+                _out_window(layer).fade_out_layer(_local_layer(layer), fade_time, callback=_clear_active_if_same)
             else:
                 live_image_envelopes.pop(layer, None)
-                output_win.clear_layer(layer)
+                _clear_layer(layer)
                 active_live_cues.pop(layer, None)
             logger.info("[MAIN] Layer %d cleared (fade %.2fs)", layer, fade_time)
         except Exception as exc:
@@ -745,15 +930,16 @@ def main() -> int:
             main_win.set_global_paused(False)
             live_image_envelopes.clear()
             live_img_timer.stop()
-            for l_idx in (1, 2, 3):
+            for l_idx in _ALL_RUNTIME_LAYERS:
                 layer_fire_gen[l_idx] = layer_fire_gen.get(l_idx, 0) + 1
                 live_durations[l_idx] = 0.0
                 live_positions[l_idx] = 0.0
             for lp in live_players.values():
                 lp.fade_out(0.2, stop_after=True)
             output_win.show_fallback(fade_duration_sec=0.2)
+            output_win_b.show_fallback(fade_duration_sec=0.2)
             active_live_cues.clear()
-            logger.info("[MAIN] Master Blackout executed across all 3 layers (0.2s micro-fade)")
+            logger.info("[MAIN] Master Blackout executed across all layers (0.2s micro-fade)")
         except Exception as exc:
             logger.error("[MAIN] Error executing blackout: %s", exc)
 
@@ -765,7 +951,7 @@ def main() -> int:
             paused_layers_by_global.clear()
             live_image_envelopes.clear()
             live_img_timer.stop()
-            for l_idx in (1, 2, 3):
+            for l_idx in _ALL_RUNTIME_LAYERS:
                 layer_fire_gen[l_idx] = layer_fire_gen.get(l_idx, 0) + 1
                 live_durations[l_idx] = 0.0
                 live_positions[l_idx] = 0.0
@@ -834,7 +1020,7 @@ def main() -> int:
             if sel is not None and sel.media_type == MediaType.VIDEO:
                 main_win._preview_monitor.set_opacity(op)
                 if main_win._live_mirror_active and sel.status != CueStatus.LIVE:
-                    output_win.set_layer_opacity(sel.layer, op)
+                    _cue_window(sel).set_layer_opacity(sel.layer, op)
 
         test_player.set_opacity_callback(_on_test_video_opacity)
 
@@ -896,7 +1082,7 @@ def main() -> int:
             if cue is not None:
                 main_win._preview_monitor.set_opacity(cue.opacity)
                 if main_win._live_mirror_active and cue.status != CueStatus.LIVE:
-                    output_win.set_layer_opacity(cue.layer, cue.opacity)
+                    _cue_window(cue).set_layer_opacity(cue.layer, cue.opacity)
 
         def _on_preview_seek(sec: float) -> None:
             nonlocal preview_manual_position
@@ -935,12 +1121,25 @@ def main() -> int:
                 preview_manual_position = False
                 main_win.set_preview_time(0.0, 0.0)
                 main_win.set_preview_audio_playing(False)
+                if cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
+                    # Prime the waveform section toolbar with a duration measured
+                    # earlier: QMediaPlayer emits durationChanged only once per
+                    # source, so re-selecting a file may never re-emit it and the
+                    # split/zoom controls would stay disabled until another cue
+                    # forced the chain.
+                    known_dur = known_file_durations.get(cue.file_path, 0.0)
+                    if known_dur <= 0:
+                        known_dur = main_win._known_file_durations.get(cue.file_path, 0.0)
+                    if known_dur > 0:
+                        test_duration = known_dur
+                        main_win.update_waveform_duration(known_dur)
                 if cue.media_type == MediaType.VIDEO:
                     # Load video paused at in_point so first frame appears in preview
                     main_win.show_preview_video(
                         scale=cue.scale, crop=cue.crop,
                         pos_x=cue.position_x, pos_y=cue.position_y,
                         opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+                        rotation=cue.rotation,
                     )
                     test_player.load(cue.file_path, start=cue.in_point, end=cue.out_point, pause=True)
                     _apply_cue_automation(test_player, cue, hot=False)
@@ -958,6 +1157,8 @@ def main() -> int:
                         cue.file_path, scale=cue.scale, crop=cue.crop,
                         pos_x=cue.position_x, pos_y=cue.position_y,
                         opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+                        rotation=cue.rotation, mask_polygon=cue.mask_polygon,
+                        mask_feather=cue.mask_feather,
                     )
                     dur_img = cue.hold_time if cue.hold_time > 0 else cue.image_timeline_sec
                     main_win.set_preview_time(0.0, dur_img)
@@ -982,6 +1183,7 @@ def main() -> int:
                         scale=cue.scale, crop=cue.crop,
                         pos_x=cue.position_x, pos_y=cue.position_y,
                         opacity=cue.opacity, aspect_ratio=cue.aspect_ratio,
+                        rotation=cue.rotation,
                     )
                 elif cue.media_type == MediaType.AUDIO:
                     mw.show_preview_audio()
@@ -1017,9 +1219,48 @@ def main() -> int:
         main_win._btn_test_pause.clicked.connect(_on_test_pause)
         main_win._btn_test_stop.clicked.connect(_on_test_stop)
 
+    # ── Output mode safety: never leave media running on a hidden projector ──
+    def _on_output_mode_changed(mode: str) -> None:
+        """Stop whatever is still playing on output B when dual mode is left.
+
+        The second projector window is hidden as soon as dual mode is disabled:
+        keeping a cue live there would leave audio running with no visible
+        layer to control it.
+        """
+        if str(mode) == "dual":
+            return
+        stopped: list[str] = []
+        for layer in (4, 5, 6):
+            cue = active_live_cues.pop(layer, None)
+            layer_fire_gen[layer] = layer_fire_gen.get(layer, 0) + 1
+            live_durations[layer] = 0.0
+            live_positions[layer] = 0.0
+            live_image_envelopes.pop(layer, None)
+            player = live_players.get(layer)
+            if player is not None:
+                player.stop()
+            _clear_layer(layer)
+            main_win._reset_live_label(layer)
+            if cue is not None:
+                cue.status = CueStatus.LOADED
+                stopped.append(cue.name)
+                logger.warning(
+                    "[MAIN] Output B disabled – stopped live layer %d ('%s')",
+                    layer, cue.name,
+                )
+        if stopped:
+            main_win._refresh_cue_list()
+            main_win._status_label.setText(
+                "Uscita B disattivata: interrotti " + ", ".join(stopped)
+            )
+
+    device_mgr.output_mode_changed.connect(_on_output_mode_changed)
+
     # ── Graceful shutdown on SIGINT / SIGTERM ──────────────────────────
-    def _shutdown(*_args) -> None:
-        logger.info("[MAIN] Shutdown signal received")
+    _shutdown_state = {"done": False}
+
+    def _perform_shutdown() -> None:
+        logger.info("[MAIN] Performing graceful shutdown")
         remote_mgr.stop_all()
         scheduler.cancel_all()
         live_img_timer.stop()
@@ -1029,8 +1270,18 @@ def main() -> int:
         if test_player is not None:
             test_player.shutdown()
         output_win.force_close()
+        output_win_b.force_close()
         main_win.close()
         app.quit()
+
+    def _shutdown(*_args) -> None:
+        # Python signal handlers run in the main thread, but may fire mid-slot
+        # (re-entrant). Defer the teardown to the next event-loop turn and run once.
+        if _shutdown_state["done"]:
+            return
+        _shutdown_state["done"] = True
+        logger.info("[MAIN] Shutdown signal received")
+        QTimer.singleShot(0, _perform_shutdown)
 
     signal.signal(signal.SIGINT, _shutdown)
     signal.signal(signal.SIGTERM, _shutdown)

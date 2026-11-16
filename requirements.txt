@@ -1,7 +1,6 @@
 # BlindCue — Core Runtime Dependencies
-# 100% Cross-Platform (Windows, macOS, Linux)
-PySide6>=6.6.0
-numpy>=1.24.0
-qrcode>=7.4.2
-
-
+# 100% Cross-Platform (Windows, macOS, Linux) — Open Source only
+# Upper bounds prevent an unexpected major release from breaking a live show.
+PySide6>=6.6.0,<7
+numpy>=1.24.0,<3
+qrcode>=7.4.2,<9

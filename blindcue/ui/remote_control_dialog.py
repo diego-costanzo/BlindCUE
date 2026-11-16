@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from PySide6.QtCore import Qt, QUrl
 from PySide6.QtGui import QDesktopServices
@@ -32,7 +31,8 @@ logger = logging.getLogger("blindcue.remote_ui")
 class RemoteControlDialog(QDialog):
     """Setup, PIN Security, and Live Monitor dialog for LAN Web Remote, Director Monitor, and OSC automation."""
 
-    def __init__(self, remote_mgr: RemoteManager, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, remote_mgr: RemoteManager, parent: QWidget | None = None) -> None:
+        """Build the LAN remote control dialog for the given remote manager."""
         super().__init__(parent)
         self._remote_mgr = remote_mgr
         self.setWindowTitle("📡 Controllo Remoto LAN (Web & OSC) — BlindCUE")

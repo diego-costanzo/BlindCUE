@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtGui import QFontMetrics
@@ -26,7 +26,16 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from models.cue import Cue, FollowMode, GroupMode, MediaType, _sanitize_hex_color
+from models.cue import (
+    Cue,
+    FollowMode,
+    GroupMode,
+    MediaType,
+    _sanitize_hex_color,
+    normalize_output_target,
+    normalize_rotation,
+    sanitize_mask_polygon,
+)
 from ui.cue_table import format_cue_ref
 from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
 from ui.theme import CLR_ACCENT, CUE_COLOR_PALETTE, NUDGE_BTN_STYLE, get_active_theme
@@ -36,7 +45,7 @@ _LOOP_PRESET_COUNTS = (0, 2, 3, 4, 5, 10)
 _COUNT_TO_PRESET_IDX = {count: idx for idx, count in enumerate(_LOOP_PRESET_COUNTS)}
 _LOOP_CUSTOM_IDX = len(_LOOP_PRESET_COUNTS)
 
-_ASPECT_OPTIONS: list[tuple[str, Optional[str]]] = [
+_ASPECT_OPTIONS: list[tuple[str, str | None]] = [
     ("Native (Automatico)", None),
     ("16:9 (Widescreen)", "16:9"),
     ("4:3 (Standard)", "4:3"),
@@ -182,6 +191,7 @@ class CueInspectorPanel(QGroupBox):
     value_changed = Signal()
     batch_field_edited = Signal(str)
     layer_selected = Signal(int)
+    output_target_selected = Signal(str)
     in_out_reset_requested = Signal()
     color_selected = Signal(str)
     follow_mode_selected = Signal(str)
@@ -196,8 +206,10 @@ class CueInspectorPanel(QGroupBox):
     optimize_dynamics_requested = Signal()
     restore_original_requested = Signal()
     open_surface_mapping_requested = Signal()
+    mask_edit_requested = Signal()
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the cue inspector in its empty (no selection) state."""
         super().__init__("ISPETTORE CUE (Nessuna cue selezionata)", parent)
         self._updating: bool = False
         self._multi_mode: bool = False
@@ -205,7 +217,10 @@ class CueInspectorPanel(QGroupBox):
         self._crop_ref_w: int = 1920
         self._crop_ref_h: int = 1080
         self._norm_crop: tuple[float, float, float, float] = (0.0, 0.0, 0.0, 0.0)
+        self._mask_polygon: list[list[float]] = []
+        self._current_media_type: MediaType | None = None
         self._layer_buttons: dict[int, QPushButton] = {}
+        self._output_buttons: dict[str, QPushButton] = {}
         self._color_buttons: dict[str, QPushButton] = {}
         self._follow_buttons: dict[str, QPushButton] = {}
         self._group_color_buttons: dict[str, QPushButton] = {}
@@ -217,9 +232,11 @@ class CueInspectorPanel(QGroupBox):
         self._connect_signals()
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
+        """Smallest size where the inspector controls stay usable."""
         return QSize(360, 240)
 
     def sizeHint(self) -> QSize:  # noqa: N802
+        """Preferred size of the inspector panel."""
         return QSize(400, 560)
 
     def _set_elided_title(self, full_title: str) -> None:
@@ -231,6 +248,7 @@ class CueInspectorPanel(QGroupBox):
         super().setTitle(elided)
 
     def setTitle(self, title: str) -> None:  # noqa: N802
+        """Set the panel title, eliding it when it does not fit."""
         self._set_elided_title(title)
 
     # ── UI Construction Helpers ───────────────────────────────────────
@@ -451,6 +469,31 @@ class CueInspectorPanel(QGroupBox):
         self.btn_layer2 = self._layer_buttons[2]
         self.btn_layer3 = self._layer_buttons[3]
         l2.addLayout(layer_row)
+
+        # Output routing (A = first projector, B = optional second projector).
+        # Hidden unless the operator enables the "two independent outputs" mode.
+        self.frame_output_target = QWidget()
+        out_row = QHBoxLayout(self.frame_output_target)
+        out_row.setContentsMargins(0, 0, 0, 0)
+        out_row.setSpacing(4)
+        lbl_out = QLabel("Proiettore:")
+        lbl_out.setStyleSheet("color: #94a3b8; font-size: 10px; border: none; background: transparent;")
+        out_row.addWidget(lbl_out)
+        for target, text, tip in (
+            ("A", "A · Schermo 1", "Questa cue viene proiettata dall'uscita A (primo proiettore)."),
+            ("B", "B · Schermo 2", "Questa cue viene proiettata dall'uscita B (secondo proiettore indipendente)."),
+        ):
+            btn = QPushButton(text)
+            btn.setToolTip(tip)
+            btn.setCheckable(True)
+            btn.setFixedHeight(24)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.setStyleSheet(_make_layer_btn_style("#1e3a5f", "#38bdf8").replace("font-size: 11px;", "font-size: 10px;"))
+            btn.clicked.connect(lambda _=False, t=target: self._on_output_target_clicked(t))
+            out_row.addWidget(btn, 1)
+            self._output_buttons[target] = btn
+        self.frame_output_target.setVisible(False)
+        l2.addWidget(self.frame_output_target)
 
         self.lbl_layer_conflict = QLabel()
         self.lbl_layer_conflict.setWordWrap(True)
@@ -706,6 +749,56 @@ class CueInspectorPanel(QGroupBox):
         crop_grid.setColumnStretch(3, 1)
         l2.addLayout(crop_grid)
         lay.addWidget(c2)
+
+        c3, l3 = self._make_card(
+            "3 · ROTAZIONE",
+            "Ruota immagine o video. Per le immagini compare anche il ritaglio poligonale.",
+        )
+        rot_row = QHBoxLayout()
+        rot_row.setSpacing(6)
+        lbl_rot = self._make_field_label("Rotazione:")
+        lbl_rot.setFixedWidth(56)
+        rot_row.addWidget(lbl_rot)
+        self.spin_rotation = SmartDoubleSpinBox()
+        self.spin_rotation.setRange(-180.0, 180.0)
+        self.spin_rotation.setSingleStep(1.0)
+        self.spin_rotation.setDecimals(1)
+        self.spin_rotation.setSuffix(" °")
+        self.spin_rotation.setToolTip(
+            "Rotazione in gradi attorno al centro del riquadro (-180° … +180°). 0° = dritto."
+        )
+        rot_row.addWidget(self.spin_rotation, 1)
+        self.btn_rot_left = self._make_nudge_btn("⟲ 90°", "Ruota di 90° in senso antiorario")
+        self.btn_rot_zero = self._make_nudge_btn("0°", "Riporta l'immagine dritta (0°)")
+        self.btn_rot_right = self._make_nudge_btn("90° ⟳", "Ruota di 90° in senso orario")
+        rot_row.addWidget(self.btn_rot_left)
+        rot_row.addWidget(self.btn_rot_zero)
+        rot_row.addWidget(self.btn_rot_right)
+        l3.addLayout(rot_row)
+
+        # The polygon mask only makes sense for still images: the whole row is
+        # wrapped in a widget so it can be hidden for video cues (crop is enough).
+        self.mask_row_widget = QWidget()
+        mask_row = QHBoxLayout(self.mask_row_widget)
+        mask_row.setContentsMargins(0, 0, 0, 0)
+        mask_row.setSpacing(6)
+        self.btn_mask_edit = self._make_nudge_btn(
+            "✂ Disegna maschera…",
+            "Ritaglia l'immagine lungo un percorso poligonale disegnato a mano",
+        )
+        self.btn_mask_edit.setEnabled(False)  # enabled only for IMAGE cues
+        self.btn_mask_clear = self._make_nudge_btn(
+            "✖ Rimuovi", "Rimuove la maschera poligonale e mostra l'immagine intera"
+        )
+        self.lbl_mask_info = QLabel("Nessuna maschera")
+        self.lbl_mask_info.setStyleSheet(
+            "color: #64748b; font-size: 10px; font-family: monospace; background: transparent;"
+        )
+        mask_row.addWidget(self.btn_mask_edit, 1)
+        mask_row.addWidget(self.btn_mask_clear)
+        mask_row.addWidget(self.lbl_mask_info)
+        l3.addWidget(self.mask_row_widget)
+        lay.addWidget(c3)
         lay.addStretch()
 
         self.tab_visual = self._wrap_tab_scroll(page)
@@ -1385,6 +1478,11 @@ class CueInspectorPanel(QGroupBox):
         self.slider_opacity.valueChanged.connect(lambda v: self.lbl_opacity.setText(f"{v}%"))
         self.btn_opacity_reset.clicked.connect(lambda: self.slider_opacity.setValue(100))
         self.btn_crop_reset.clicked.connect(self.reset_crop)
+        self.btn_rot_left.clicked.connect(lambda: self.nudge_rotation(-90.0))
+        self.btn_rot_zero.clicked.connect(self.reset_rotation)
+        self.btn_rot_right.clicked.connect(lambda: self.nudge_rotation(90.0))
+        self.btn_mask_edit.clicked.connect(self.mask_edit_requested.emit)
+        self.btn_mask_clear.clicked.connect(self.clear_mask)
         self.slider_volume.valueChanged.connect(lambda v: self.lbl_volume.setText(f"{v}%"))
         self.btn_volume_reset.clicked.connect(lambda: self.slider_volume.setValue(100))
         self.btn_io_reset.clicked.connect(self.reset_in_out)
@@ -1392,6 +1490,7 @@ class CueInspectorPanel(QGroupBox):
         field_widgets = (
             (self.spin_pos_x.valueChanged, "pos_x"),
             (self.spin_pos_y.valueChanged, "pos_y"),
+            (self.spin_rotation.valueChanged, "rotation"),
             (self.spin_crop_l.valueChanged, "crop_l"),
             (self.spin_crop_r.valueChanged, "crop_r"),
             (self.spin_crop_t.valueChanged, "crop_t"),
@@ -1428,9 +1527,14 @@ class CueInspectorPanel(QGroupBox):
         self.group_mode_selected.emit(mode_key)
 
     def set_group_mode_checked(self, mode_key: str) -> None:
+        """Highlight *mode_key* in the group playback-mode selector.
+
+        Called when loading a group cue: it updates the buttons and the help
+        text without emitting ``group_mode_selected`` (no feedback loop).
+        """
         for mk, btn in self._group_mode_buttons.items():
             btn.setChecked(mk == mode_key)
-        for mk, label, desc, _, _ in _GROUP_MODE_SPECS:
+        for mk, _label, desc, _, _ in _GROUP_MODE_SPECS:
             if mk == mode_key:
                 self.lbl_group_mode_desc.setText(f"💡 {desc}")
                 break
@@ -1442,7 +1546,13 @@ class CueInspectorPanel(QGroupBox):
             if child_id is not None:
                 self.remove_child_requested.emit(int(child_id))
 
-    def load_group_children(self, children: list[Cue], group_cue: Optional[Cue] = None) -> None:
+    def load_group_children(self, children: list[Cue], group_cue: Cue | None = None) -> None:
+        """Fill the child-cue list shown when a group cue is selected.
+
+        Each row shows media type, Q reference, name and estimated duration;
+        the total is displayed below so the operator can judge the group even
+        when its children use manual (hold-time) durations.
+        """
         self.list_group_children.clear()
         tot_dur = 0.0
         for child in children:
@@ -1568,30 +1678,93 @@ class CueInspectorPanel(QGroupBox):
     # ── Public Helpers & State Sync ───────────────────────────────────
 
     def nudge_position(self, dx: float, dy: float) -> None:
+        """Move the video/image position by *dx*/*dy* normalised units.
+
+        Used by the arrow-key shortcuts: the clamp is applied by the spinboxes
+        so the value can never leave the valid range.
+        """
         nx = round(max(-2.0, min(2.0, self.spin_pos_x.value() + dx)), 2)
         ny = round(max(-2.0, min(2.0, self.spin_pos_y.value() + dy)), 2)
         self.set_position_silent(nx, ny)
         self._emit_change("position")
 
     def reset_position(self) -> None:
+        """Centre the media on screen (position 0,0)."""
         self.set_position_silent(0.0, 0.0)
         self._emit_change("position")
 
     def reset_scale(self) -> None:
+        """Restore the scale slider to 100 %."""
         self.slider_scale.setValue(100)
 
     def reset_crop(self) -> None:
+        """Remove every crop margin (left/right/top/bottom = 0)."""
         self.set_crop_silent(0.0, 0.0, 0.0, 0.0)
         self._emit_change("crop_reset")
 
+    def nudge_rotation(self, delta: float) -> None:
+        """Rotate by *delta* degrees (buttons use ±90°) and notify the controller."""
+        self.spin_rotation.setValue(normalize_rotation(self.spin_rotation.value() + delta))
+
+    def reset_rotation(self) -> None:
+        """Bring the media back upright (0°)."""
+        self.spin_rotation.setValue(0.0)
+
+    def clear_mask(self) -> None:
+        """Drop the polygon mask and restore the full rectangular image."""
+        if not self._mask_polygon:
+            return
+        self._mask_polygon = []
+        self._refresh_mask_label()
+        self._emit_change("mask_polygon")
+
+    def set_mask_silent(self, points: list[list[float]] | None) -> None:
+        """Replace the mask polygon without emitting a change (used when loading a cue)."""
+        self._mask_polygon = sanitize_mask_polygon(points)
+        self._refresh_mask_label()
+
+    def _refresh_mask_label(self) -> None:
+        """Show the vertex count so the operator can tell a mask is active."""
+        count = len(self._mask_polygon)
+        self.btn_mask_clear.setEnabled(
+            count >= 3 and self._current_media_type == MediaType.IMAGE
+        )
+        if count >= 3:
+            self.lbl_mask_info.setText(f"Maschera: {count} punti")
+            self.lbl_mask_info.setStyleSheet(
+                "color: #7dd3fc; font-size: 10px; font-family: monospace; background: transparent;"
+            )
+        else:
+            self.lbl_mask_info.setText("Nessuna maschera")
+            self.lbl_mask_info.setStyleSheet(
+                "color: #64748b; font-size: 10px; font-family: monospace; background: transparent;"
+            )
+
     def reset_in_out(self) -> None:
+        """Ask the controller to clear the in/out points of the selected cue."""
         self.in_out_reset_requested.emit()
 
-    def set_layer_checked(self, layer: Optional[int]) -> None:
+    def set_layer_checked(self, layer: int | None) -> None:
+        """Highlight the layer button matching *layer* (``None`` clears all)."""
         for idx, btn in self._layer_buttons.items():
             btn.setChecked(layer == idx)
 
-    def set_layer_conflict(self, conflict: Optional[Any] = None) -> None:
+    def _on_output_target_clicked(self, target: str) -> None:
+        self.set_output_target_checked(target)
+        self.output_target_selected.emit(target)
+
+    def set_output_target_checked(self, target: str | None) -> None:
+        """Check the A or B projector button; ``None`` clears both (mixed selection)."""
+        for key, btn in self._output_buttons.items():
+            btn.blockSignals(True)
+            btn.setChecked(key == target)
+            btn.blockSignals(False)
+
+    def set_dual_mode(self, enabled: bool) -> None:
+        """Show the A/B projector selector only when two independent outputs are in use."""
+        self.frame_output_target.setVisible(bool(enabled))
+
+    def set_layer_conflict(self, conflict: Any | None = None) -> None:
         """Display or hide visual pre-flight layer collision alert in Card 2 and Group Tab."""
         if conflict:
             reason = conflict.reason if hasattr(conflict, "reason") else str(conflict)
@@ -1616,7 +1789,11 @@ class CueInspectorPanel(QGroupBox):
             "border-radius: 4px; font-family: monospace; font-size: 10px; padding: 4px 6px;"
         )
 
-    def set_color_silent(self, color_hex: Optional[str]) -> None:
+    def set_color_silent(self, color_hex: str | None) -> None:
+        """Set the cue colour without emitting a change signal.
+
+        ``None`` selects the neutral (no colour) swatch.
+        """
         clean = _sanitize_hex_color(color_hex) if color_hex is not None else "__MIXED__"
         for hv, btn in self._color_buttons.items():
             btn.blockSignals(True)
@@ -1627,7 +1804,12 @@ class CueInspectorPanel(QGroupBox):
             btn.setChecked(color_hex is not None and hv == clean)
             btn.blockSignals(False)
 
-    def set_follow_mode_silent(self, mode: Optional[str], *, enabled: bool = True) -> None:
+    def set_follow_mode_silent(self, mode: str | None, *, enabled: bool = True) -> None:
+        """Set the follow-mode combo without emitting a change.
+
+        ``None`` shows the mixed-selection state; *enabled* greys the control
+        out when the selected cue cannot auto-follow (e.g. an image).
+        """
         for m, btn in self._follow_buttons.items():
             btn.blockSignals(True)
             btn.setEnabled(enabled)
@@ -1635,12 +1817,14 @@ class CueInspectorPanel(QGroupBox):
             btn.blockSignals(False)
 
     def set_position_silent(self, pos_x: float, pos_y: float) -> None:
+        """Move the position spinboxes without emitting a change signal."""
         for w, val in ((self.spin_pos_x, pos_x), (self.spin_pos_y, pos_y)):
             w.blockSignals(True)
             w.setValue(val)
             w.blockSignals(False)
 
     def set_crop_silent(self, crop_l: float, crop_r: float, crop_t: float, crop_b: float) -> None:
+        """Set the four crop margins without emitting a change signal."""
         self._norm_crop = (
             max(0.0, min(0.99, crop_l)),
             max(0.0, min(0.99, crop_r)),
@@ -1658,16 +1842,23 @@ class CueInspectorPanel(QGroupBox):
             w.blockSignals(False)
 
     def set_in_silent(self, new_in: float) -> None:
+        """Update the in-point control without emitting a change signal."""
         self.spin_in.blockSignals(True)
         self.spin_in.setValue(new_in)
         self.spin_in.blockSignals(False)
 
     def set_out_silent(self, new_out: float) -> None:
+        """Update the out-point control without emitting a change signal."""
         self.spin_out.blockSignals(True)
         self.spin_out.setValue(new_out)
         self.spin_out.blockSignals(False)
 
-    def set_fades_silent(self, fade_in: Optional[float] = None, fade_out: Optional[float] = None) -> None:
+    def set_fades_silent(self, fade_in: float | None = None, fade_out: float | None = None) -> None:
+        """Update the fade controls without emitting a change signal.
+
+        A ``None`` argument leaves the corresponding control untouched, so
+        callers can sync just one of the two fades.
+        """
         if fade_in is not None:
             self.spin_fade_in.blockSignals(True)
             self.spin_fade_in.setValue(max(0.0, float(fade_in)))
@@ -1697,6 +1888,11 @@ class CueInspectorPanel(QGroupBox):
         self.combo_surface.blockSignals(False)
 
     def sync_header_and_text(self, row: int, cue: Cue) -> None:
+        """Refresh the header (Q/name/type) without reloading every control.
+
+        Cheap path used while the cue list is being scrolled or reordered:
+        the inspector must follow the selection without flickering.
+        """
         ref = format_cue_ref(row, cue)
         self._updating = True
         try:
@@ -1718,9 +1914,16 @@ class CueInspectorPanel(QGroupBox):
         finally:
             self._updating = False
 
-    def set_enabled_for_cue(self, enabled: bool, media_type: Optional[MediaType] = None,
+    def set_enabled_for_cue(self, enabled: bool, media_type: MediaType | None = None,
                             multi_mode: bool = False) -> None:
+        """Enable only the controls that make sense for *media_type*.
+
+        Images hide the audio/automation tabs, groups hide the geometry
+        controls, and *multi_mode* (mixed selection) disables the fields whose
+        value differs between the selected cues.
+        """
         is_group = (media_type == MediaType.GROUP)
+        self._current_media_type = media_type if enabled else None
 
         # Tab visibility: when GROUP, show tab 3 (Gruppo), hide tabs 0, 1, 2
         # when NOT GROUP, show tabs 0, 1, 2, hide tab 3
@@ -1774,6 +1977,8 @@ class CueInspectorPanel(QGroupBox):
             self.btn_crop_pct, self.btn_crop_px,
             self.spin_crop_l, self.spin_crop_r, self.spin_crop_t, self.spin_crop_b,
             self.btn_crop_reset, self.spin_fade_in, self.spin_fade_out,
+            self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
+            self.btn_mask_edit, self.btn_mask_clear,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset,
             self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
             self.spin_in, self.spin_out, self.btn_io_reset, self.spin_hold_time,
@@ -1796,6 +2001,8 @@ class CueInspectorPanel(QGroupBox):
             self.list_group_children.clear()
             self.lbl_group_stats.setText("📁 0 cue nel gruppo")
             self.lbl_hold_hint.setText("Seleziona una cue")
+            self.set_mask_silent(None)
+            self.mask_row_widget.setVisible(False)
             for w in all_media_controls:
                 w.setEnabled(False)
             return
@@ -1820,6 +2027,8 @@ class CueInspectorPanel(QGroupBox):
             self.btn_crop_pct, self.btn_crop_px,
             self.spin_crop_l, self.spin_crop_r, self.spin_crop_t, self.spin_crop_b,
             self.btn_crop_reset, self.combo_aspect,
+            self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
+            self.btn_mask_edit, self.btn_mask_clear,
         )
         time_controls = (
             self.slider_volume, self.btn_volume_reset,
@@ -1832,6 +2041,11 @@ class CueInspectorPanel(QGroupBox):
 
         for w in visual_controls:
             w.setEnabled(is_visual)
+        # The polygon mask only makes sense for still images: a video mask
+        # would have to be re-composited on every frame.
+        self.mask_row_widget.setVisible(media_type == MediaType.IMAGE)
+        self.btn_mask_edit.setEnabled(media_type == MediaType.IMAGE)
+        self.btn_mask_clear.setEnabled(media_type == MediaType.IMAGE and bool(self._mask_polygon))
         for w in time_controls:
             w.setEnabled(is_timed)
         self.card_loudness.setVisible(is_timed)
@@ -1894,6 +2108,8 @@ class CueInspectorPanel(QGroupBox):
 
         self.spin_pos_x.setValue(cue.position_x)
         self.spin_pos_y.setValue(cue.position_y)
+        self.spin_rotation.setValue(cue.rotation)
+        self.set_mask_silent(cue.mask_polygon)
         self.slider_scale.setValue(int(cue.scale * 100))
         self.lbl_scale.setText(f"{cue.scale:.1f}x")
         self.slider_opacity.setValue(int(cue.opacity * 100))
@@ -1965,7 +2181,7 @@ class CueInspectorPanel(QGroupBox):
         has_orig = bool(getattr(cue, "original_file_path", None))
         self.btn_restore_original.setVisible(has_orig)
 
-    def load_cue(self, cue: Optional[Cue], row: int = -1) -> None:
+    def load_cue(self, cue: Cue | None, row: int = -1) -> None:
         """Load a single cue into the inspector, or disable when *cue* is None."""
         self._multi_mode = False
         self.lbl_multi_banner.setVisible(False)
@@ -2006,13 +2222,14 @@ class CueInspectorPanel(QGroupBox):
                 self.edit_cue_name.setText(cue.name)
                 self.edit_cue_notes.setText(cue.notes)
                 self.set_layer_checked(cue.layer)
+                self.set_output_target_checked(getattr(cue, "output_target", "A"))
                 self.set_color_silent(getattr(cue, "color", ""))
                 self.set_follow_mode_silent(cue.follow_mode, enabled=True)
                 self._populate_media_fields(cue)
         finally:
             self._updating = False
 
-    def load_selection(self, cues: list[Cue], anchor_cue: Optional[Cue] = None,
+    def load_selection(self, cues: list[Cue], anchor_cue: Cue | None = None,
                        anchor_row: int = -1) -> None:
         """Load 0, 1, or N selected cues with same-type batch editing support."""
         self.lbl_layer_conflict.setVisible(False)
@@ -2046,10 +2263,12 @@ class CueInspectorPanel(QGroupBox):
         lead = anchor_cue if (anchor_cue in cues) else cues[0]
         layers = {c.layer for c in cues}
         common_layer = next(iter(layers)) if len(layers) == 1 else None
+        targets = {normalize_output_target(getattr(c, "output_target", "A")) for c in cues}
+        common_target: str | None = next(iter(targets)) if len(targets) == 1 else None
         colors = {getattr(c, "color", "") for c in cues}
-        common_color: Optional[str] = next(iter(colors)) if len(colors) == 1 else None
+        common_color: str | None = next(iter(colors)) if len(colors) == 1 else None
         modes = {c.follow_mode for c in cues}
-        common_mode: Optional[str] = next(iter(modes)) if len(modes) == 1 else None
+        common_mode: str | None = next(iter(modes)) if len(modes) == 1 else None
 
         self._multi_mode = True
         self._updating = True
@@ -2075,6 +2294,7 @@ class CueInspectorPanel(QGroupBox):
             self.edit_cue_name.setText(f"[{len(cues)} file {mtype.value} selezionati]")
             self.edit_cue_notes.setText("")
             self.set_layer_checked(common_layer)
+            self.set_output_target_checked(common_target)
             self.set_color_silent(common_color)
             self.set_follow_mode_silent(common_mode, enabled=True)
             self._populate_media_fields(lead)
@@ -2099,8 +2319,15 @@ class CueInspectorPanel(QGroupBox):
             cue.name = new_name
         cue.notes = self.edit_cue_notes.text().strip()
 
+        checked_target = next(
+            (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
+        )
+        cue.output_target = normalize_output_target(checked_target)
+
         cue.position_x = round(self.spin_pos_x.value(), 3)
         cue.position_y = round(self.spin_pos_y.value(), 3)
+        cue.rotation = normalize_rotation(self.spin_rotation.value())
+        cue.mask_polygon = list(self._mask_polygon)
         cue.scale = round(self.slider_scale.value() / 100.0, 2)
         cue.opacity = round(self.slider_opacity.value() / 100.0, 2)
 
@@ -2198,6 +2425,10 @@ class CueInspectorPanel(QGroupBox):
                 cue.position_y = round(self.spin_pos_y.value(), 3)
             elif field_key == "scale":
                 cue.scale = round(self.slider_scale.value() / 100.0, 2)
+            elif field_key == "rotation":
+                cue.rotation = normalize_rotation(self.spin_rotation.value())
+            elif field_key == "mask_polygon":
+                cue.mask_polygon = list(self._mask_polygon)
             elif field_key == "opacity":
                 cue.opacity = round(self.slider_opacity.value() / 100.0, 2)
             elif field_key in crop_edge_spins:

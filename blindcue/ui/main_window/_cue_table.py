@@ -1,0 +1,303 @@
+"""Helpers & Table Population mixin for MainWindow."""
+
+from __future__ import annotations
+
+from ui.main_window._common import *  # noqa: F403,F401,F405
+from ui.main_window._common import (  # noqa: F401
+    _AutosaveWorker,
+    _DEFAULT_TOP_RATIOS,
+    _MEDIA_ICONS,
+    _demote_live_on_layer,
+)
+
+
+class _CueTableMixin:
+    @staticmethod
+    def _detect_media_type(file_path: str) -> MediaType | None:
+        ext = Path(file_path).suffix.lower()
+        if ext in VIDEO_EXT:
+            return MediaType.VIDEO
+        if ext in AUDIO_EXT:
+            return MediaType.AUDIO
+        if ext in IMAGE_EXT:
+            return MediaType.IMAGE
+        return None
+
+    def set_preview_time(self, current_sec: float, total_sec: float) -> None:
+        """Forward the rehearsal playhead to the preview monitor."""
+        if hasattr(self, "_preview_panel"):
+            self._preview_panel.set_time(current_sec, total_sec)
+
+    def _cue_tooltip(self, row: int, cue: Cue) -> str:
+        parts = []
+        if cue.cue_id in self._layer_conflicts:
+            parts.append(f"⚠️ ATTENZIONE: {self._layer_conflicts[cue.cue_id].reason}\n")
+        parts.append(f"Posizione: #{row + 1}")
+        if cue.q_label:
+            parts.append(f"Q (Copione): {cue.q_label}")
+        parts.append(f"Nome: {cue.name}")
+        link_lbl = {
+            FollowMode.MANUAL.value: "Blocco manuale",
+            FollowMode.AUTO_FOLLOW.value: "Auto-GO a fine cue",
+            FollowMode.SIMULTANEOUS.value: "Simultanea con successiva",
+        }.get(cue.follow_mode, cue.follow_mode)
+        timing_bits = []
+        if cue.pre_delay > 0:
+            timing_bits.append(f"Pre +{cue.pre_delay:.1f}s")
+        if cue.media_type == MediaType.IMAGE:
+            timing_bits.append(f"Durata {'∞' if cue.hold_time <= 0 else f'{cue.hold_time:.1f}s'}")
+        if cue.post_delay > 0:
+            timing_bits.append(f"Post +{cue.post_delay:.1f}s")
+        timing_bits.append(link_lbl)
+        parts.append("Tempi: " + " | ".join(timing_bits))
+        if cue.notes:
+            parts.append(f"Note di Regia: {cue.notes}")
+        parts.append(f"File: {cue.file_path}")
+        return "\n".join(parts)
+
+    def _update_cue_readouts(self, row: int, cue: Cue) -> None:
+        ref = format_cue_ref(row, cue)
+        icon = _MEDIA_ICONS.get(cue.media_type, "🖼")
+        self._lbl_preview_info.setText(f"{icon} {ref}  {cue.name}")
+        self._lbl_preview_info.setToolTip(f"File: {cue.file_path}")
+        self._lbl_cue_standby.setText(f"Standby: {ref} [{cue.media_type.value}]")
+
+    def _reset_idle_preview_ui(self) -> None:
+        self._img_previz_timer.stop()
+        self._active_test_duration = 0.0
+        self._active_section_idx = -1
+        self._waveform.set_peaks(np.array([]))
+        self._waveform.set_media_context(None)
+        self._waveform.set_in_out_seconds(0.0, None, 0.0)
+        self._waveform.set_sections([], -1)
+        self._waveform_panel.section_bar.set_sections([], 0.0, -1)
+        self._waveform_panel.sync_controls_for_cue(media_type=None)
+        self.set_waveform_playhead_seconds(None, 0.0)
+        self._lbl_preview_info.setText("— Nessun file selezionato —")
+        self.set_preview_time(0.0, 0.0)
+        self.clear_preview()
+
+    def _populate_cue_row(self, row: int, cue: Cue, is_standby: bool) -> None:
+        """Populate or update the 3 table cells (#, Q, Nome / Media) for a row."""
+        status_txt = ""
+        colour = CLR_TEXT
+        if cue.status == CueStatus.LIVE:
+            status_txt, colour = "LIVE", CLR_LIVE
+        elif is_standby:
+            status_txt, colour = "STANDBY", CLR_PREVIZ
+        elif cue.status == CueStatus.PREVIZ:
+            status_txt, colour = "PRE-VIZ", CLR_PREVIZ
+
+        tooltip = self._cue_tooltip(row, cue)
+
+        is_group = (cue.media_type == MediaType.GROUP)
+        child_count = 0
+        if is_group:
+            child_count = sum(1 for c in self._cues if c.parent_id == cue.cue_id)
+
+        is_last_child = False
+        if cue.parent_id is not None:
+            siblings = [c for c in self._cues if c.parent_id == cue.parent_id]
+            if siblings and siblings[-1].cue_id == cue.cue_id:
+                is_last_child = True
+
+        item_num = self._cue_list.item(row, 0)
+        if item_num is None:
+            item_num = QTableWidgetItem()
+            item_num.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item_num.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
+            self._cue_list.setItem(row, 0, item_num)
+        item_num.setText(f"#{row + 1}")
+        item_num.setForeground(QColor(colour if status_txt in ("LIVE", "STANDBY") else CLR_TEXT_MUTED))
+        item_num.setToolTip(tooltip)
+        item_num.setData(ROLE_IS_GROUP, is_group)
+        item_num.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
+
+        item_q = self._cue_list.item(row, 1)
+        if item_q is None:
+            item_q = QTableWidgetItem()
+            item_q.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            item_q.setFlags(
+                Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable
+            )
+            self._cue_list.setItem(row, 1, item_q)
+        item_q.setText(cue.q_label)
+        item_q.setToolTip(tooltip)
+
+        item_name = self._cue_list.item(row, 2)
+        if item_name is None:
+            item_name = QTableWidgetItem()
+            item_name.setFlags(
+                Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable
+            )
+            self._cue_list.setItem(row, 2, item_name)
+        item_name.setText(cue.name)
+        cue_color = getattr(cue, "color", "") or ""
+        prev_color = (getattr(self._cues[row - 1], "color", "") or "") if row > 0 else ""
+        incoming_link = self._cues[row - 1].follow_mode if row > 0 else ""
+
+        conflict = self._layer_conflicts.get(cue.cue_id)
+        conflict_txt = conflict.reason if conflict else ""
+
+        item_name.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
+        item_name.setData(ROLE_LAYER, cue.layer)
+        item_name.setData(ROLE_OUTPUT_TARGET, getattr(cue, "output_target", "A"))
+        item_name.setData(ROLE_LAYER_CONFLICT, conflict_txt)
+        item_name.setData(ROLE_HAS_NOTES, bool(cue.notes))
+        item_name.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
+        item_name.setData(ROLE_TIMING_BADGE, "⏱" if (cue.pre_delay > 0 or cue.post_delay > 0) else "")
+        item_name.setData(ROLE_STATUS_TXT, status_txt)
+        item_name.setData(ROLE_STATUS_CLR, colour)
+        item_name.setData(ROLE_PARENT_ID, cue.parent_id)
+        item_name.setData(ROLE_IS_GROUP, is_group)
+        item_name.setData(ROLE_GROUP_MODE, getattr(cue, "group_mode", "STEP"))
+        item_name.setData(ROLE_GROUP_COLLAPSED, getattr(cue, "collapsed", False))
+        item_name.setData(ROLE_CHILD_COUNT, child_count)
+        item_name.setData(ROLE_IS_LAST_CHILD, is_last_child)
+        item_name.setData(ROLE_TIMELINE_COMPOSED, bool(getattr(cue, "timeline_composed", False)))
+        item_name.setToolTip(tooltip)
+
+        for cell in (item_num, item_q, item_name):
+            cell.setData(ROLE_CUE_COLOR, cue_color)
+            cell.setData(ROLE_PREV_COLOR, prev_color)
+            cell.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
+            cell.setData(ROLE_INCOMING_LINK, incoming_link)
+
+        # Set row visibility based on parent collapse state
+        if cue.parent_id is not None:
+            parent_cue = next((c for c in self._cues if c.cue_id == cue.parent_id), None)
+            is_hidden = bool(parent_cue and parent_cue.collapsed)
+            self._cue_list.setRowHidden(row, is_hidden)
+            if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+                self._live_show_panel.live_table.setRowHidden(row, is_hidden)
+        else:
+            self._cue_list.setRowHidden(row, False)
+            if hasattr(self, "_live_show_panel") and self._live_show_panel is not None:
+                self._live_show_panel.live_table.setRowHidden(row, False)
+
+    def _sync_inspector_header_and_text(self, row: int, cue: Cue) -> None:
+        if 0 <= row < len(self._cues) and row == self._cue_list.currentRow():
+            self._inspector.sync_header_and_text(row, cue)
+            self._update_cue_readouts(row, cue)
+
+    def _for_each_status_panel(self):
+        return getattr(self, "_status_panels", [self._live_status])
+
+    def is_live_mode(self) -> bool:
+        """True when the UI is in LIVE Show mode (large, simplified console)."""
+        return self._live_mode
+
+    @Slot(bool)
+    def set_live_mode(self, enabled: bool) -> None:
+        """Switch between design mode and LIVE Show mode."""
+        enabled = bool(enabled)
+        if self._live_mode == enabled:
+            return
+        self._live_mode = enabled
+        if hasattr(self, "_act_live_mode"):
+            self._act_live_mode.blockSignals(True)
+            self._act_live_mode.setChecked(enabled)
+            self._act_live_mode.blockSignals(False)
+        self._central_stack.setCurrentIndex(1 if enabled else 0)
+        if enabled:
+            prof = self._device_mgr.get_effective_profile() if self._device_mgr else "auto"
+            ShowRuntimeGuard.on_live_mode_enter(prof)
+            self._sync_live_view()
+            self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]")
+        else:
+            ShowRuntimeGuard.on_live_mode_exit()
+            QTimer.singleShot(0, self._apply_top_splitter_ratios)
+            self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
+
+    @Slot()
+    def toggle_live_mode(self) -> None:
+        """Flip between design mode and LIVE Show mode."""
+        self.set_live_mode(not self._live_mode)
+
+    def set_device_manager(self, mgr: Any) -> None:
+        """Register the central DeviceManager and wire its signals to the UI."""
+        self._device_mgr = mgr
+        if mgr is not None:
+            mgr.profile_changed.connect(self._update_hardware_status_bar)
+            mgr.master_device_changed.connect(self._update_hardware_status_bar)
+            mgr.target_screen_changed.connect(self._update_hardware_status_bar)
+            mgr.audio_devices_changed.connect(self._update_hardware_status_bar)
+            mgr.output_mode_changed.connect(self._on_output_mode_changed)
+            mgr.screens_changed.connect(self._refresh_output_monitors)
+            self._on_output_mode_changed(getattr(mgr, "_output_mode", "single"))
+            self._refresh_output_monitors()
+            self._update_hardware_status_bar()
+
+    @Slot()
+    def _refresh_output_monitors(self) -> None:
+        """Fill the projector pickers in the layer panels.
+
+        The pickers stay hidden unless two external displays are connected:
+        with a single projector everything goes there automatically.
+        """
+        if self._device_mgr is None:
+            return
+        screens = self._device_mgr.get_external_screens()
+        screen_a = self._device_mgr.get_output_screen("A")
+        screen_b = self._device_mgr.get_output_screen("B")
+        name_a = screen_a.name() if screen_a is not None else ""
+        name_b = screen_b.name() if screen_b is not None else ""
+        for sp in self._for_each_status_panel():
+            setter = getattr(sp, "set_output_monitors", None)
+            if setter is not None:
+                setter(screens, name_a, name_b)
+
+    @Slot(str, str)
+    def _on_output_screen_selected(self, output: str, screen_name: str) -> None:
+        """Route output A or B to the projector chosen in the layer panel."""
+        if self._device_mgr is None:
+            return
+        screen = next(
+            (s for s in self._device_mgr.get_external_screens() if s.name() == screen_name),
+            None,
+        )
+        if screen is None:
+            self._refresh_output_monitors()
+            return
+        if not self._device_mgr.set_output_screen(output, screen):
+            self._status_label.setText(
+                f"Proiettore '{screen_name}' non disponibile per l'uscita {output}"
+            )
+        self._refresh_output_monitors()
+
+    @Slot(str)
+    def _on_output_mode_changed(self, mode: str) -> None:
+        """Show the output-B layer rows only when dual routing is active."""
+        is_dual = str(mode) == "dual"
+        self._dual_output_active = is_dual
+        for sp in self._for_each_status_panel():
+            setter = getattr(sp, "set_dual_mode", None)
+            if setter is not None:
+                setter(is_dual)
+        if hasattr(self, "_inspector"):
+            self._inspector.set_dual_mode(is_dual)
+        self._refresh_output_monitors()
+        # Layer collisions depend on the mode: with one projector, A·L2 and B·L2
+        # really do overlap, so the badges must be recalculated.
+        if self._cues:
+            self._refresh_rows_in_place(list(range(len(self._cues))))
+
+    def open_device_settings_dialog(self) -> None:
+        """Open the Device & Hardware configuration dialog."""
+        if self._device_mgr is None:
+            return
+        from ui.device_settings_dialog import DeviceSettingsDialog
+        dlg = DeviceSettingsDialog(self._device_mgr, self)
+        dlg.exec()
+        self._update_hardware_status_bar()
+
+    def _update_hardware_status_bar(self, *args: Any) -> None:
+        """Refresh the hardware and device brief in the status bar."""
+        if hasattr(self, "_lbl_hw_info"):
+            pref = self._device_mgr.get_profile_preference() if self._device_mgr else "auto"
+            self._lbl_hw_info.setText(detect_hardware_brief(pref))
+
+    def _show_hw_info(self) -> None:
+        """Open detailed hardware information dialog."""
+        pref = self._device_mgr.get_profile_preference() if self._device_mgr else "auto"
+        show_hardware_info_dialog(self, pref)

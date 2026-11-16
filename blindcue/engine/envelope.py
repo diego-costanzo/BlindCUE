@@ -7,7 +7,7 @@ section transitions stay lightweight, deterministic, and easily testable.
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 from models.cue import CueSection
 
@@ -21,6 +21,7 @@ MIN_SECTION_SEC = 0.15
 
 
 def clamp01(val: float) -> float:
+    """Clamp a level into the 0.0-1.0 range used by volume and opacity envelopes."""
     return 0.0 if val <= 0.0 else (1.0 if val >= 1.0 else float(val))
 
 
@@ -85,7 +86,7 @@ def evaluate_cue_level(
     t_sec: float,
     *,
     start_sec: float,
-    end_sec: Optional[float],
+    end_sec: float | None,
     duration_sec: float,
     fade_in: float,
     fade_out: float,
@@ -300,6 +301,7 @@ class SectionSequencer:
     """Tracks section iterations, infinite vamps, skip cuts, and lookahead jump targets."""
 
     def __init__(self) -> None:
+        """Create an empty section sequencer (call ``configure`` before use)."""
         self.sections: list[CueSection] = []
         self.cue_in: float = 0.0
         self.eff_end: float = 0.0
@@ -312,6 +314,7 @@ class SectionSequencer:
         cue_in: float,
         eff_end: float,
     ) -> None:
+        """Install a section list, clamping it to the cue IN/OUT window."""
         self.cue_in = max(0.0, float(cue_in))
         self.eff_end = max(self.cue_in, float(eff_end))
         self.sections = normalize_sections(sections, self.cue_in, self.eff_end)
@@ -323,42 +326,100 @@ class SectionSequencer:
 
     @property
     def active(self) -> bool:
+        """True when the cue really has sections (one section is just the whole cue)."""
         return len(self.sections) >= 2
 
-    def update_live_sections(self, sections: Sequence[CueSection], eff_end: Optional[float] = None) -> None:
-        """Hot-reload loop/skip flags mid-playback without losing current index."""
+    def update_live_sections(self, sections: Sequence[CueSection], eff_end: float | None = None) -> None:
+        """Hot-reload loop/skip flags mid-playback without losing current index.
+
+        If the operator marks the playing section as *skip*, the sequencer leaves it
+        at once (next playable section, or the last playable one so the cue closes
+        at its boundary).  A skipped section must never keep playing just because it
+        was already active when the flag changed.
+        """
         if eff_end is not None and eff_end > self.cue_in:
             self.eff_end = float(eff_end)
         norm = normalize_sections(sections, self.cue_in, self.eff_end)
         self.sections = norm
-        if self.sections:
-            self.current_index = min(self.current_index, len(self.sections) - 1)
-        else:
+        if not self.sections:
             self.current_index = 0
             self.iteration = 0
+            return
+        self.current_index = min(self.current_index, len(self.sections) - 1)
+        cur = self.sections[self.current_index]
+        if cur.skip:
+            nxt = self._next_playable_index(self.current_index + 1)
+            if nxt is None:
+                nxt = self._previous_playable_index(self.current_index - 1)
+            if nxt is None:
+                # Nothing playable at all: park on the last section so the
+                # boundary logic closes the cue instead of looping forever.
+                self.current_index = len(self.sections) - 1
+                self.iteration = 0
+                return
+            self.current_index = nxt
+            self.iteration = 0
+        elif cur.loops > 0:
+            # Never keep an iteration counter beyond the current loop count.
+            self.iteration = min(self.iteration, cur.loops - 1)
 
-    def _next_playable_index(self, from_idx: int) -> Optional[int]:
+    def _next_playable_index(self, from_idx: int) -> int | None:
         for i in range(max(0, from_idx), len(self.sections)):
             if not self.sections[i].skip:
                 return i
         return None
 
-    def current_section(self) -> Optional[CueSection]:
+    def _previous_playable_index(self, from_idx: int) -> int | None:
+        for i in range(min(from_idx, len(self.sections) - 1), -1, -1):
+            if not self.sections[i].skip:
+                return i
+        return None
+
+    def restart(self) -> None:
+        """Rewind the sequencer to the first playable section (EOF / replay)."""
+        self.iteration = 0
+        first = self._next_playable_index(0)
+        self.current_index = first if first is not None else 0
+
+    def section_index_for_time(self, position: float) -> int | None:
+        """First playable section at or after *position* (``None`` if none remains).
+
+        Used when scrubbing: dropping the playhead inside a skipped section must
+        not make that section audible again.
+        """
+        if not self.sections:
+            return None
+        for idx, sec in enumerate(self.sections):
+            sec_end = sec.end if sec.end is not None else self.eff_end
+            if sec_end >= position:
+                nxt = self._next_playable_index(idx)
+                if nxt is not None:
+                    return nxt
+        return self.last_playable_index()
+
+    def last_playable_index(self) -> int | None:
+        """Index of the last section that is not skipped, or ``None``."""
+        return self._previous_playable_index(len(self.sections) - 1)
+
+    def current_section(self) -> CueSection | None:
+        """The section playing right now, or ``None`` when out of range."""
         if 0 <= self.current_index < len(self.sections):
             return self.sections[self.current_index]
         return None
 
     def active_start_sec(self) -> float:
+        """Start time of the current section (cue IN when there are none)."""
         sec = self.current_section()
         return sec.start if sec is not None else self.cue_in
 
     def active_end_sec(self) -> float:
+        """End time of the current section (cue OUT when the section is open)."""
         sec = self.current_section()
         if sec is None:
             return self.eff_end
         return sec.end if sec.end is not None else self.eff_end
 
-    def _compute_transition(self) -> tuple[str, Optional[int], Optional[float], int]:
+    def _compute_transition(self) -> tuple[str, int | None, float | None, int]:
         """Compute (action, next_idx, jump_start_sec, next_iter) without mutating self."""
         sec = self.current_section()
         if sec is None:
@@ -381,7 +442,7 @@ class SectionSequencer:
             return ("CONTINUE", nxt, None, 0)
         return ("JUMP", nxt, nxt_sec.start, 0)
 
-    def peek_next_jump_target(self) -> Optional[float]:
+    def peek_next_jump_target(self) -> float | None:
         """Return future jump start time in seconds ONLY if next transition needs a seek."""
         if not self.active:
             return None
@@ -390,25 +451,38 @@ class SectionSequencer:
             return target_sec
         return None
 
-    def advance_at_boundary(self) -> tuple[str, Optional[int], Optional[float]]:
+    def advance_at_boundary(self) -> tuple[str, int | None, float | None]:
         """Commit boundary transition and return (action, target_idx, target_start_sec)."""
         action, target_idx, target_sec, next_iter = self._compute_transition()
         if action == "EOF":
             return ("EOF", None, None)
-        assert target_idx is not None
+        if target_idx is None:
+            raise RuntimeError("Section transition produced no target index")
         self.current_index = target_idx
         self.iteration = next_iter
         return (action, target_idx, target_sec)
 
-    def jump_to(self, target_idx: int) -> Optional[float]:
-        """Manually jump directly to section *target_idx*."""
+    def jump_to(self, target_idx: int) -> float | None:
+        """Jump directly to section *target_idx*.
+
+        A manual jump onto a skipped section moves forward to the next playable
+        one, so the section mode is honoured in every navigation path.
+        """
         if not (0 <= target_idx < len(self.sections)):
             return None
-        self.current_index = target_idx
+        playable = target_idx
+        if self.sections[playable].skip:
+            nxt = self._next_playable_index(target_idx)
+            if nxt is None:
+                nxt = self._previous_playable_index(target_idx - 1)
+            if nxt is None:
+                return None
+            playable = nxt
+        self.current_index = playable
         self.iteration = 0
-        return self.sections[target_idx].start
+        return self.sections[playable].start
 
-    def break_loop_to_next(self) -> tuple[str, Optional[int], Optional[float]]:
+    def break_loop_to_next(self) -> tuple[str, int | None, float | None]:
         """Exit current repeating section cleanly onto the next playable section."""
         if not self.active:
             return ("EOF", None, None)

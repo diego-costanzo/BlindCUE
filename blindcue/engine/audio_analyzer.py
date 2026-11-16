@@ -14,22 +14,52 @@ import hashlib
 import logging
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from PySide6.QtCore import QObject, QRunnable, QStandardPaths, Signal, Slot
+
+from engine.runtime_limits import (
+    child_process_kwargs,
+    ffmpeg_thread_args,
+    low_priority_prefix,
+)
 
 logger = logging.getLogger(__name__)
 
 # Decoding sample rate – low enough for fast extraction, high enough
 # for a visually accurate waveform.
 _DECODE_SAMPLE_RATE = 8000
+_DECODE_TIMEOUT_SEC = 60.0
+
+
+def _resolve_binary(name: str) -> str | None:
+    """Return the absolute path of a required CLI tool, or None if missing."""
+    return shutil.which(name)
+
+
+def _no_window_kwargs() -> dict[str, object]:
+    """Platform flags that keep child processes invisible and low priority.
+
+    On Windows a GUI application spawning ``ffmpeg``/``ffprobe`` via a console
+    shows a black window for the duration of the child process; that window
+    steals keyboard focus from the operator, which is unacceptable during a
+    live show.  On Linux/macOS this is a no-op.
+    """
+    return child_process_kwargs()
+
+
+def _ffmpeg_cmd(ffmpeg: str) -> list[str]:
+    """Start an ffmpeg command with a low OS priority and a capped thread count."""
+    return [*low_priority_prefix(), ffmpeg, *ffmpeg_thread_args()]
 
 
 class _AnalyzerSignals(QObject):
     """Signals emitted from the background runnable."""
+    duration_ready = Signal(str, float)  # (file_path, duration_sec)
     finished = Signal(str, object)   # (file_path, np.ndarray | None)
     error = Signal(str, str)         # (file_path, error_message)
 
@@ -46,6 +76,7 @@ class WaveformAnalyzer(QRunnable):
     """
 
     def __init__(self, file_path: str, target_width: int = 800) -> None:
+        """Prepare a waveform peak-extraction job for ``file_path``."""
         super().__init__()
         self.file_path = file_path
         self.target_width = max(1, target_width)
@@ -54,29 +85,43 @@ class WaveformAnalyzer(QRunnable):
 
     # ── Helpers ───────────────────────────────────────────────────────
 
-    def _get_duration(self) -> Optional[float]:
+    def _get_duration(self) -> float | None:
         """Return file duration in seconds via ffprobe, or None."""
+        ffprobe = _resolve_binary("ffprobe")
+        if ffprobe is None:
+            logger.debug("[WAVEFORM] ffprobe not available in PATH")
+            return None
         try:
             result = subprocess.run(
                 [
-                    "ffprobe", "-v", "quiet",
+                    *low_priority_prefix(), ffprobe, "-v", "quiet",
                     "-show_entries", "format=duration",
                     "-of", "csv=p=0",
                     self.file_path,
                 ],
                 capture_output=True, text=True, timeout=15,
+                stdin=subprocess.DEVNULL,
+                **child_process_kwargs(),
             )
             return float(result.stdout.strip())
         except Exception as exc:
             logger.warning("[WAVEFORM] ffprobe duration failed: %s", exc)
             return None
 
-    def _decode_pcm(self) -> Optional[np.ndarray]:
+    def _decode_pcm(self) -> np.ndarray | None:
         """Decode mono f32le PCM via ffmpeg and return as numpy array."""
+        ffmpeg = _resolve_binary("ffmpeg")
+        if ffmpeg is None:
+            logger.warning("[WAVEFORM] ffmpeg not found in PATH; waveform unavailable")
+            return None
+
+        proc: subprocess.Popen | None = None
+        raw = b""
         try:
-            proc = subprocess.Popen(
+            with subprocess.Popen(
                 [
-                    "ffmpeg", "-v", "quiet",
+                    *_ffmpeg_cmd(ffmpeg),
+                    "-v", "quiet", "-nostdin",
                     "-i", self.file_path,
                     "-ac", "1",
                     "-ar", str(_DECODE_SAMPLE_RATE),
@@ -86,26 +131,60 @@ class WaveformAnalyzer(QRunnable):
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
-            )
-            try:
-                raw, _ = proc.communicate(timeout=60)
-            except subprocess.TimeoutExpired:
-                proc.kill()
-                raw, _ = proc.communicate()
-                logger.warning("[WAVEFORM] ffmpeg timed out and was killed for %s", self.file_path)
-
-            if not raw:
-                return None
-            return np.frombuffer(raw, dtype=np.float32)
+                stdin=subprocess.DEVNULL,
+            ) as proc:
+                try:
+                    raw, _ = proc.communicate(timeout=_DECODE_TIMEOUT_SEC)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    try:
+                        raw, _ = proc.communicate(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        raw = b""
+                    logger.warning("[WAVEFORM] ffmpeg timed out and was killed for %s", self.file_path)
+                except BaseException:
+                    proc.kill()
+                    raise
         except Exception as exc:
             logger.warning("[WAVEFORM] ffmpeg decode failed: %s", exc)
+            return None
+        finally:
+            if proc is not None and proc.poll() is None:
+                try:
+                    proc.kill()
+                    proc.wait(timeout=5)
+                except Exception:
+                    logger.debug("[WAVEFORM] Could not reap ffmpeg child", exc_info=True)
+
+        if not raw:
+            return None
+        try:
+            return np.frombuffer(raw, dtype=np.float32)
+        except ValueError as exc:
+            logger.warning("[WAVEFORM] Malformed PCM buffer: %s", exc)
             return None
 
     # ── QRunnable entry point ─────────────────────────────────────────
 
     @Slot()
     def run(self) -> None:  # noqa: D102 (QRunnable override)
+        """Decode the media audio on a worker thread and emit the peaks.
+
+        Runs inside the QThreadPool so a long file never freezes the UI; the
+        result is delivered through ``signals.finished`` on the GUI thread.
+        """
         try:
+            # Report the container duration as soon as it is known: the waveform
+            # toolbar must enable split/zoom on first selection even when
+            # QMediaPlayer does not (re-)emit durationChanged for the file, or
+            # when the file carries no audio track at all.
+            duration_sec = self._get_duration()
+            if duration_sec is not None and duration_sec > 0:
+                try:
+                    self.signals.duration_ready.emit(self.file_path, duration_sec)
+                except RuntimeError:
+                    pass  # Window or signal source already closed/deleted
+
             samples = self._decode_pcm()
             if samples is None or len(samples) == 0:
                 try:
@@ -167,22 +246,29 @@ def scan_file_loudness(
     target_lufs: float = -16.0,
     peak_ceiling_db: float = -1.0,
     timeout_sec: float = 25.0,
-) -> Optional[tuple[float, float, float]]:
+) -> tuple[float, float, float] | None:
     """Scan file loudness using ffmpeg ebur128 (ITU-R BS.1770-4).
 
     Returns (integrated_lufs, true_peak_dbfs, auto_gain_db) or None if analysis fails.
     """
     if not os.path.isfile(file_path):
         return None
+    ffmpeg = _resolve_binary("ffmpeg")
+    if ffmpeg is None:
+        logger.debug("[LOUDNESS] ffmpeg not available in PATH")
+        return None
 
     try:
         cmd = [
-            "ffmpeg", "-nostats", "-i", file_path,
+            *_ffmpeg_cmd(ffmpeg),
+            "-nostats", "-nostdin", "-i", file_path,
             "-filter_complex", "ebur128=peak=true",
             "-f", "null", "-",
         ]
         proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout_sec
+            cmd, capture_output=True, text=True, timeout=timeout_sec,
+            stdin=subprocess.DEVNULL,
+            **_no_window_kwargs(),
         )
         stderr = proc.stderr
 
@@ -218,6 +304,7 @@ class LoudnessScanner(QRunnable):
     """Asynchronous EBU R128 loudness scanner running on QThreadPool."""
 
     def __init__(self, file_path: str, target_lufs: float = -16.0) -> None:
+        """Prepare a LUFS measurement job aiming at ``target_lufs``."""
         super().__init__()
         self.file_path = file_path
         self.target_lufs = target_lufs
@@ -226,6 +313,7 @@ class LoudnessScanner(QRunnable):
 
     @Slot()
     def run(self) -> None:
+        """Measure LUFS/peak on a worker thread and emit the gain suggestion."""
         res = scan_file_loudness(self.file_path, self.target_lufs)
         if res is not None:
             lufs, peak, gain = res
@@ -246,7 +334,7 @@ def render_normalized_media(
     peak_ceiling_db: float = -1.5,
     lra_target: float = 11.0,
     timeout_sec: float = 120.0,
-) -> Optional[str]:
+) -> str | None:
     """Render a dynamic-range compressed / normalized media copy using ffmpeg loudnorm.
 
     For video files: video stream is copied lossless (-c:v copy), audio is compressed.
@@ -255,10 +343,29 @@ def render_normalized_media(
     """
     if not os.path.isfile(file_path):
         return None
+    ffmpeg = _resolve_binary("ffmpeg")
+    if ffmpeg is None:
+        logger.warning("[LOUDNORM] ffmpeg not available in PATH")
+        return None
 
     # Cross-platform standard cache path (Linux ~/.cache, macOS ~/Library/Caches, Windows %LOCALAPPDATA%)
-    cache_dir = Path(QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation)) / "audio"
-    cache_dir.mkdir(parents=True, exist_ok=True)
+    # QStandardPaths can return an empty string if the application name was not
+    # set yet: never fall back to a relative path (it would end up in the CWD,
+    # which may be read-only, e.g. Program Files on Windows).
+    cache_root = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.CacheLocation) or ""
+    if not cache_root:
+        cache_root = tempfile.gettempdir()
+    cache_dir = Path(cache_root) / "audio"
+    try:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        logger.warning("[LOUDNORM] Cache directory not writable (%s): using temp dir", exc)
+        cache_dir = Path(tempfile.gettempdir()) / "blindcue_audio"
+        try:
+            cache_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as exc2:
+            logger.error("[LOUDNORM] No writable cache directory: %s", exc2)
+            return None
 
     stem = Path(file_path).stem
     ext = Path(file_path).suffix.lower()
@@ -276,7 +383,8 @@ def render_normalized_media(
 
     if is_video:
         cmd = [
-            "ffmpeg", "-y", "-nostats", "-i", file_path,
+            *_ffmpeg_cmd(ffmpeg),
+            "-y", "-nostats", "-nostdin", "-i", file_path,
             "-c:v", "copy",
             "-af", filter_str,
             "-c:a", "aac", "-b:a", "256k",
@@ -284,18 +392,25 @@ def render_normalized_media(
         ]
     else:
         cmd = [
-            "ffmpeg", "-y", "-nostats", "-i", file_path,
+            *_ffmpeg_cmd(ffmpeg),
+            "-y", "-nostats", "-nostdin", "-i", file_path,
             "-af", filter_str,
             "-c:a", "pcm_s16le",
             out_path,
         ]
 
     try:
-        subprocess.run(cmd, capture_output=True, check=True, timeout=timeout_sec)
+        subprocess.run(cmd, capture_output=True, check=True, timeout=timeout_sec,
+                       stdin=subprocess.DEVNULL, **_no_window_kwargs())
         if os.path.isfile(out_path):
             return out_path
     except Exception as exc:
         logger.error("[LOUDNORM] Rendering failed for %s: %s", file_path, exc)
+        try:
+            if os.path.isfile(out_path):
+                os.remove(out_path)
+        except OSError:
+            logger.debug("[LOUDNORM] Could not remove partial output %s", out_path, exc_info=True)
     return None
 
 
@@ -308,6 +423,7 @@ class DynamicsOptimizer(QRunnable):
     """Asynchronous loudnorm dynamics compressor running on QThreadPool."""
 
     def __init__(self, file_path: str, target_lufs: float = -16.0) -> None:
+        """Prepare a loudness-normalisation render job for ``file_path``."""
         super().__init__()
         self.file_path = file_path
         self.target_lufs = target_lufs
@@ -316,6 +432,7 @@ class DynamicsOptimizer(QRunnable):
 
     @Slot()
     def run(self) -> None:
+        """Render a loudness-normalised copy of the media on a worker thread."""
         out_path = render_normalized_media(self.file_path, self.target_lufs)
         if out_path is not None:
             try:

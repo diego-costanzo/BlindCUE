@@ -21,7 +21,8 @@ import logging
 import queue
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 from PySide6.QtCore import QObject, Signal
 
@@ -1886,7 +1887,8 @@ class WebRemoteBridge(QObject):
 class _ThreadingHttpServer(http.server.ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, server_address, RequestHandlerClass, controller: "WebRemoteServer"):
+    def __init__(self, server_address, RequestHandlerClass, controller: WebRemoteServer):
+        """Threaded HTTP server keeping a reference to the remote controller."""
         super().__init__(server_address, RequestHandlerClass)
         self.controller = controller
 
@@ -1895,12 +1897,23 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
     """Handles HTTP requests, REST actions, and SSE (Server-Sent Events) live streaming."""
 
     @property
-    def controller(self) -> "WebRemoteServer":
-        return getattr(self.server, "controller")
+    def controller(self) -> WebRemoteServer:
+        """Return the server instance this request handler belongs to."""
+        return self.server.controller
 
     def log_message(self, format: str, *args: Any) -> None:
+        """Silence the default stderr access log; BlindCue logs via ``logger``."""
         # Keep console clean; log only at debug level
         logger.debug("[WEB] " + (format % args))
+
+    def _write_body(self, data: bytes) -> bool:
+        """Write a response body tolerating clients that vanish mid-response."""
+        try:
+            self.wfile.write(data)
+            return True
+        except OSError as exc:
+            logger.debug("[WEB] Client disconnected during response: %s", exc)
+            return False
 
     def _is_authenticated(self) -> tuple[bool, str]:
         if not self.controller.is_pin_required():
@@ -1923,6 +1936,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         return False, "PIN di regia richiesto"
 
     def do_GET(self) -> None:  # noqa: N802
+        """Serve the remote page, the REST state snapshot and the SSE stream."""
         path = self.path.split("?")[0].rstrip("/")
         if path in ("", "/"):
             self._serve_html()
@@ -1936,6 +1950,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(404, "Not Found")
 
     def do_POST(self) -> None:  # noqa: N802
+        """Handle remote commands (GO, PANIC, cue selection) sent by the web UI."""
         path = self.path.split("?")[0].rstrip("/")
         if path == "/api/action":
             self._handle_action()
@@ -1949,7 +1964,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.end_headers()
-        self.wfile.write(content)
+        self._write_body(content)
 
     def _serve_monitor_html(self) -> None:
         content = _HTML_MONITOR_PAGE.encode("utf-8")
@@ -1958,7 +1973,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.end_headers()
-        self.wfile.write(content)
+        self._write_body(content)
 
     def _serve_status(self) -> None:
         is_auth, err_msg = self._is_authenticated()
@@ -1983,7 +1998,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
-        self.wfile.write(data)
+        self._write_body(data)
 
     def _serve_sse(self) -> None:
         """Stream real-time updates to mobile clients via Server-Sent Events."""
@@ -2007,10 +2022,11 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             init_state = self.controller.get_state_snapshot()
             init_state["authenticated"] = True
             init_state["pin_required"] = self.controller.is_pin_required()
-            msg = f"data: {json.dumps(init_state)}\n\n".encode("utf-8")
+            msg = f"data: {json.dumps(init_state)}\n\n".encode()
             self.wfile.write(msg)
             self.wfile.flush()
         except Exception:
+            logger.debug("[WEB] SSE handshake failed for %s", self.client_address[0], exc_info=True)
             self.controller.unregister_sse_client(client_queue)
             return
 
@@ -2018,15 +2034,16 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             while self.controller.is_running():
                 try:
                     payload = client_queue.get(timeout=10.0)
-                    chunk = f"data: {json.dumps(payload)}\n\n".encode("utf-8")
-                    self.wfile.write(chunk)
-                    self.wfile.flush()
                 except queue.Empty:
                     # Heartbeat comment to keep connection alive across mobile NAT/Wi-Fi
                     self.wfile.write(b": heartbeat\n\n")
                     self.wfile.flush()
-        except (BrokenPipeError, ConnectionResetError):
-            pass
+                    continue
+                body = payload if isinstance(payload, str) else json.dumps(payload)
+                self.wfile.write(f"data: {body}\n\n".encode())
+                self.wfile.flush()
+        except OSError as exc:
+            logger.debug("[WEB] SSE client %s disconnected: %s", self.client_address[0], exc)
         finally:
             self.controller.unregister_sse_client(client_queue)
 
@@ -2039,18 +2056,25 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(resp_err)))
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(resp_err)
+            self._write_body(resp_err)
             return
 
         try:
-            length = int(self.headers.get("Content-Length", 0))
-            if length > MAX_BODY_SIZE:
-                self.send_error(413, "Payload Too Large")
-                return
+            length = int(self.headers.get("Content-Length", 0) or 0)
+        except (TypeError, ValueError):
+            self.send_error(400, "Invalid Content-Length")
+            return
+        if length < 0 or length > MAX_BODY_SIZE:
+            self.send_error(413, "Payload Too Large")
+            return
+        try:
             raw_body = self.rfile.read(min(length, MAX_BODY_SIZE))
             data = json.loads(raw_body.decode("utf-8"))
         except Exception as exc:
             self.send_error(400, f"Malformed JSON: {exc}")
+            return
+        if not isinstance(data, dict):
+            self.send_error(400, "JSON payload must be an object")
             return
 
         action = str(data.get("action", "")).lower()
@@ -2083,19 +2107,21 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(resp)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-        self.wfile.write(resp)
+        self._write_body(resp)
 
 
 class WebRemoteServer:
     """Threaded HTTP and SSE server managing the smartphone/tablet live remote."""
 
     def __init__(self, port: int = 8080) -> None:
+        """Create the HTTP/SSE remote server (started later with ``start``)."""
         self.port = port
         self.bridge = WebRemoteBridge()
-        self._httpd: Optional[_ThreadingHttpServer] = None
-        self._thread: Optional[threading.Thread] = None
+        self._httpd: _ThreadingHttpServer | None = None
+        self._thread: threading.Thread | None = None
+        self._serve_started = threading.Event()
         self._running = False
-        self._state_provider: Optional[Callable[[], dict[str, Any]]] = None
+        self._state_provider: Callable[[], dict[str, Any]] | None = None
         self._sse_clients: set[queue.Queue] = set()
         self._clients_lock = threading.Lock()
 
@@ -2109,16 +2135,28 @@ class WebRemoteServer:
         self._last_client_ip: str = ""
 
     def set_pin_protection(self, enabled: bool, pin: str = "4821") -> None:
+        """Require a PIN before a remote client can send commands.
+
+        The PIN is checked per session: a successful pairing is remembered for
+        the client IP so the operator is not asked again during the show.
+        """
         self._pin_required = bool(enabled)
         self._pin = str(pin).strip()
 
     def is_pin_required(self) -> bool:
+        """True when remote commands must present the PIN."""
         return self._pin_required
 
     def get_pin(self) -> str:
+        """Return the PIN currently shown to the operator (QR / dialog)."""
         return self._pin
 
     def check_pin(self, candidate: str, client_ip: str) -> tuple[bool, str]:
+        """Validate a PIN sent by a remote client.
+
+        Returns ``(ok, reason)``; on success the client IP is remembered so
+        subsequent requests from the same device skip the PIN prompt.
+        """
         if not self._pin_required:
             return True, ""
         now = time.time()
@@ -2145,48 +2183,65 @@ class WebRemoteServer:
             self._sse_clients.clear()
 
     def set_state_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
+        """Register the callback that builds the JSON state snapshot.
+
+        The callback is invoked from the HTTP threads, so it must be
+        thread-safe: BlindCue reads the state through Qt signals/locks.
+        """
         self._state_provider = provider
 
     def is_running(self) -> bool:
+        """True while the HTTP server thread is accepting connections."""
         return self._running
 
     def get_connected_clients_count(self) -> int:
+        """Number of remote clients currently subscribed to the SSE stream."""
         with self._clients_lock:
             return len(self._sse_clients)
 
     def get_last_action_info(self) -> str:
+        """Human-readable description of the last remote command received."""
         if not self._last_action:
             return "Nessuna azione web ricevuta"
         return f"{self._last_action} da {self._last_client_ip}"
 
     def register_sse_client(self, client_queue: queue.Queue) -> None:
+        """Subscribe a browser client to the state stream (Server-Sent Events)."""
         with self._clients_lock:
             self._sse_clients.add(client_queue)
         logger.info("[WEB] Mobile client connected (Active: %d)", self.get_connected_clients_count())
 
     def unregister_sse_client(self, client_queue: queue.Queue) -> None:
+        """Drop a browser client that disconnected or timed out."""
         with self._clients_lock:
             self._sse_clients.discard(client_queue)
         logger.info("[WEB] Mobile client disconnected (Active: %d)", self.get_connected_clients_count())
 
-    def broadcast_state(self, state: Optional[dict[str, Any]] = None) -> None:
+    def broadcast_state(self, state: dict[str, Any] | None = None) -> None:
         """Push real-time state update to all currently connected mobile phones and tablets."""
-        if state is None:
-            state = self.get_state_snapshot()
-        state["authenticated"] = True
-        state["pin_required"] = self._pin_required
+        payload_src = state if state is not None else self.get_state_snapshot()
+        snapshot = dict(payload_src)
+        snapshot["authenticated"] = True
+        snapshot["pin_required"] = self._pin_required
+        try:
+            # Pre-serialise once: the payload is immutable, so worker threads never race
+            payload = json.dumps(snapshot)
+        except (TypeError, ValueError):
+            logger.debug("[WEB] State snapshot is not JSON serialisable", exc_info=True)
+            return
 
         with self._clients_lock:
             dead: list[queue.Queue] = []
             for q in self._sse_clients:
                 try:
-                    q.put_nowait(state)
+                    q.put_nowait(payload)
                 except queue.Full:
                     dead.append(q)
             for d in dead:
                 self._sse_clients.discard(d)
 
     def get_state_snapshot(self) -> dict[str, Any]:
+        """Return the latest state dictionary without invoking the provider again."""
         if self._state_provider:
             try:
                 return self._state_provider()
@@ -2195,11 +2250,12 @@ class WebRemoteServer:
         return {"show_title": "BlindCue", "is_live": False, "cues": []}
 
     def notify_action_received(self, action: str, cue_id: Any, client_ip: str) -> None:
+        """Record the last command for the status line and the logs."""
         self._last_action = f"{action}" + (f" #{cue_id}" if cue_id is not None else "")
         self._last_client_ip = client_ip
         logger.info("[WEB] Received action '%s' from %s", self._last_action, client_ip)
 
-    def start(self, port: Optional[int] = None) -> bool:
+    def start(self, port: int | None = None) -> bool:
         """Start the threaded HTTP server on the specified port."""
         self.stop()
         if port is not None:
@@ -2221,21 +2277,39 @@ class WebRemoteServer:
             return False
 
     def _run_server(self) -> None:
-        if self._httpd:
-            try:
-                self._httpd.serve_forever()
-            except Exception:
-                pass
+        if not self._httpd:
+            return
+        self._serve_started.set()
+        try:
+            self._httpd.serve_forever()
+        except Exception:
+            logger.debug("[WEB] HTTP server loop terminated unexpectedly", exc_info=True)
 
     def stop(self) -> None:
         """Stop HTTP server and unblock all worker threads."""
         self._running = False
         if self._httpd:
-            try:
-                self._httpd.shutdown()
-                self._httpd.server_close()
-            except Exception:
-                pass
+            if (self._thread is not None
+                    and threading.current_thread() is not self._thread):
+                # shutdown() deadlocks unless serve_forever() is already running
+                self._serve_started.wait(timeout=2.0)
+                try:
+                    self._httpd.shutdown()
+                except Exception:
+                    logger.debug("[WEB] Error shutting down HTTP server", exc_info=True)
+                try:
+                    self._httpd.server_close()
+                except Exception:
+                    logger.debug("[WEB] Error closing HTTP socket", exc_info=True)
+                # Join the server loop so no orphan thread survives stop()
+                self._thread.join(timeout=3.0)
+                if self._thread.is_alive():
+                    logger.warning("[WEB] HTTP server thread did not terminate within timeout")
+            else:
+                try:
+                    self._httpd.server_close()
+                except Exception:
+                    logger.debug("[WEB] Error closing HTTP socket", exc_info=True)
             self._httpd = None
         self._thread = None
         with self._clients_lock:
@@ -2243,7 +2317,8 @@ class WebRemoteServer:
         logger.info("[WEB] Remote Web Server stopped")
 
     def __del__(self) -> None:
+        """Best-effort server shutdown; never raises during interpreter shutdown."""
         try:
             self.stop()
         except Exception:
-            pass
+            logger.debug("[WEB] Error during destructor cleanup", exc_info=True)

@@ -5,7 +5,6 @@ accidental clicks on critical actions (Jam Mode global gain, layer unlock, layer
 """
 
 import time
-from typing import Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
@@ -31,11 +30,11 @@ class HoldProgressButton(QPushButton):
         self,
         text_idle: str,
         hold_ms: int = 3000,
-        parent: Optional[QWidget] = None,
+        parent: QWidget | None = None,
         *,
         is_toggle: bool = True,
         initial_state: bool = False,
-        text_active: Optional[str] = None,
+        text_active: str | None = None,
         color_idle: str = "#16202e",
         border_idle: str = "#2d3e56",
         text_color_idle: str = "#94a3b8",
@@ -46,6 +45,7 @@ class HoldProgressButton(QPushButton):
         deactivate_hold_ms: int = 0,  # 0 = instantaneous click to deactivate/relock
         fill_orientation: str = "horizontal",  # "horizontal" or "vertical"
     ) -> None:
+        """Create a hold-to-confirm button; ``hold_ms`` is the time needed to trigger."""
         super().__init__("", parent)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
         self.setAttribute(Qt.WidgetAttribute.WA_Hover, True)
@@ -82,18 +82,23 @@ class HoldProgressButton(QPushButton):
     # ── State Accessors & Compatibility Helpers ───────────────────────
 
     def is_active(self) -> bool:
+        """True while the button is held (or latched active)."""
         return self._is_active
 
     def isChecked(self) -> bool:  # noqa: N802
+        """QAbstractButton-compatible accessor for the latched state."""
         return self._is_active
 
     def setChecked(self, checked: bool) -> None:  # noqa: N802
+        """QAbstractButton-compatible setter (emits ``toggled_state``)."""
         self.set_active(checked, silent=False)
 
     def text(self) -> str:
+        """Label currently drawn (active or idle variant)."""
         return self._text_active if self._is_active else self._text_idle
 
     def setText(self, text: str) -> None:  # noqa: N802
+        """Update the label of the currently visible state."""
         if self._is_active:
             self._text_active = text
         else:
@@ -101,6 +106,7 @@ class HoldProgressButton(QPushButton):
         self.update()
 
     def set_active(self, active: bool, silent: bool = False) -> None:
+        """Latch/unlatch the button; *silent* skips the ``toggled_state`` signal."""
         if self._is_active != active:
             self._is_active = active
             self._progress = 0.0
@@ -109,24 +115,27 @@ class HoldProgressButton(QPushButton):
                 self.toggled_state.emit(self._is_active)
 
     def set_idle_text(self, text: str) -> None:
+        """Label shown while the button is not active."""
         self._text_idle = text
         self.update()
 
     def set_active_text(self, text: str) -> None:
+        """Label shown while the button is active."""
         self._text_active = text
         self.update()
 
     def set_palette_colors(
         self,
         *,
-        color_idle: Optional[str] = None,
-        border_idle: Optional[str] = None,
-        text_color_idle: Optional[str] = None,
-        color_active: Optional[str] = None,
-        border_active: Optional[str] = None,
-        text_color_active: Optional[str] = None,
-        fill_color: Optional[str] = None,
+        color_idle: str | None = None,
+        border_idle: str | None = None,
+        text_color_idle: str | None = None,
+        color_active: str | None = None,
+        border_active: str | None = None,
+        text_color_active: str | None = None,
+        fill_color: str | None = None,
     ) -> None:
+        """Override the theme palette; ``None`` keeps the current value."""
         if color_idle is not None:
             self._color_idle = QColor(color_idle)
         if border_idle is not None:
@@ -146,16 +155,19 @@ class HoldProgressButton(QPushButton):
     # ── Mouse & Timer Event Handlers ──────────────────────────────────
 
     def enterEvent(self, event) -> None:  # noqa: N802
+        """Track hover to paint the subtle hover ring."""
         self._hover = True
         self.update()
         super().enterEvent(event)
 
     def leaveEvent(self, event) -> None:  # noqa: N802
+        """Clear the hover state when the pointer leaves the button."""
         self._hover = False
         self._cancel_hold()
         super().leaveEvent(event)
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
+        """Start the hold countdown (or relock an already active toggle instantly)."""
         if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
             # If toggle button is already active and deactivate requires no hold (instant click to relock):
             if self._is_toggle and self._is_active and self._deactivate_hold_ms == 0:
@@ -180,6 +192,7 @@ class HoldProgressButton(QPushButton):
         super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event) -> None:  # noqa: N802
+        """Abort the hold when the button is released before completion."""
         if event.button() == Qt.MouseButton.LeftButton:
             self._cancel_hold()
             event.accept()
@@ -217,6 +230,7 @@ class HoldProgressButton(QPushButton):
     # ── Custom Painting ───────────────────────────────────────────────
 
     def paintEvent(self, event: QPaintEvent) -> None:  # noqa: N802
+        """Paint the hold progress fill and the button label."""
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         rect = QRectF(self.rect()).adjusted(0.5, 0.5, -0.5, -0.5)

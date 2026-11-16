@@ -159,6 +159,7 @@ def encode_qr_matrix(text: str) -> list[list[int]]:
     reserved = [[False] * size for _ in range(size)]
 
     def set_finder(r: int, c: int) -> None:
+        """Reserve the quiet zone and draw one 7x7 finder pattern."""
         for dr in range(-1, 8):
             for dc in range(-1, 8):
                 nr, nc = r + dr, c + dc

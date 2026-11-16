@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any
 
 from PySide6.QtCore import QDateTime, QRect, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from models.cue import Cue, CueStatus, FollowMode, MediaType
+from models.cue import Cue, CueStatus, FollowMode, MediaType, normalize_output_target
 from ui.cue_table import (
     ROLE_CHILD_COUNT,
     ROLE_CUE_COLOR,
@@ -44,6 +44,7 @@ from ui.cue_table import (
     ROLE_LOOP,
     ROLE_MEDIA_TYPE,
     ROLE_NOTES_TXT,
+    ROLE_OUTPUT_TARGET,
     ROLE_PARENT_ID,
     ROLE_PHASE_TXT,
     ROLE_POST_DELAY,
@@ -119,12 +120,14 @@ class LiveCueTable(QTableWidget):
     fire_row_requested = Signal(int)
     group_collapse_toggled = Signal(int)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the high-contrast live rundown table."""
         super().__init__(0, 6, parent)
         self.setAccessibleName("Scaletta Regia LIVE Show")
         self.setAccessibleDescription("Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.")
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
+        """Keyboard shortcuts on the live list (GO, arrows, stop)."""
         key = event.key()
         if key == Qt.Key.Key_Space:
             self.go_requested.emit()
@@ -141,6 +144,7 @@ class LiveCueTable(QTableWidget):
                 self.standby_selected.emit(curr)
 
     def contextMenuEvent(self, event) -> None:  # noqa: N802
+        """Right-click menu on a live cue (go, stop, jump, edit notes)."""
         row = self.rowAt(event.pos().y())
         if row < 0 or row >= self.rowCount():
             return
@@ -182,10 +186,12 @@ class LiveCueRowDelegate(QStyledItemDelegate):
     )
 
     def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        """Attach the live-state colour computed by :meth:`paint`."""
         super().initStyleOption(option, index)
         option.state &= ~QStyle.StateFlag.State_HasFocus
 
     def paint(self, painter: QPainter, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
+        """Draw a cue in the live view with LIVE/STANDBY colouring."""
         col = index.column()
         opt = QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
@@ -601,6 +607,8 @@ class LiveCueRowDelegate(QStyledItemDelegate):
         # ── Col 5: Layer · Stato LIVE ─────────────────────────────────────────
         if col == 5:
             layer = int(index.data(ROLE_LAYER) or 1)
+            out_target = normalize_output_target(index.data(ROLE_OUTPUT_TARGET))
+            layer_prefix = "B·" if out_target == "B" else ""
             phase_txt = str(index.data(ROLE_PHASE_TXT) or "")
 
             opt.text = ""
@@ -611,13 +619,13 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             rect = opt.rect.adjusted(6, 3, -6, -3)
 
-            layer_txt = "GRP" if is_group else f"L{layer}"
+            layer_txt = "GRP" if is_group else f"{layer_prefix}L{layer}"
             layer_font = QFont(opt.font)
             layer_font.setPointSize(8)
             layer_font.setBold(True)
             painter.setFont(layer_font)
 
-            lw = 32 if is_group else 26
+            lw = 32 if is_group else (38 if layer_prefix else 26)
             lh = 18
             ly = rect.top() + (rect.height() - lh) // 2
             l_rect = QRect(rect.left(), ly, lw, lh)
@@ -715,7 +723,8 @@ class LiveShowPanel(QWidget):
     panic_requested = Signal()
     break_loop_requested = Signal()
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the live show panel with its drift-free show stopwatch."""
         super().__init__(parent)
         self._is_paused_all: bool = False
         self._updating_table: bool = False
@@ -919,9 +928,9 @@ class LiveShowPanel(QWidget):
 
         # Safety Lock Button: Protects Layer controls against accidental touches in crowded control booths
         self.btn_layer_lock = HoldProgressButton(
-            text_idle="🔒\nBLOCCO\nLAYER\n(Tieni 3s)",
+            text_idle="🔒\nBLOCCO\nLAYER\n(Tieni 1,2s)",
             text_active="🔓\nLAYER\nATTIVI\n(Click = 🔒)",
-            hold_ms=3000,
+            hold_ms=1200,
             deactivate_hold_ms=0,  # 1 immediate click to re-lock
             is_toggle=True,
             initial_state=False,   # Starts LOCKED by default
@@ -940,11 +949,11 @@ class LiveShowPanel(QWidget):
         self.btn_layer_lock.setToolTip(
             "🔒 CONTROLLI LAYER BLOCCATI (Protezione di Sicurezza Regia)\n"
             "Di default le barre e i controlli dei layer sono protetti per evitare spostamenti o tagli accidentali.\n"
-            "Per sbloccare scrub, riavvolgimento e pausa dei singoli layer: tieni premuto per 3 secondi.\n"
+            "Per sbloccare scrub, riavvolgimento e pausa dei singoli layer: tieni premuto per 1,2 secondi.\n"
             "Quando sbloccato, un singolo click istantaneo riattiva subito il blocco."
         )
         self.btn_layer_lock.setAccessibleName("Blocco di Sicurezza Layer")
-        self.btn_layer_lock.setAccessibleDescription("Protezione controlli layer Live. Tieni premuto 3 secondi per sbloccare, tocca per ribloccare.")
+        self.btn_layer_lock.setAccessibleDescription("Protezione controlli layer Live. Tieni premuto 1,2 secondi per sbloccare, tocca per ribloccare.")
         self.btn_layer_lock.toggled_state.connect(lambda active: self.live_status.set_locked(not active))
         dock.addWidget(self.btn_layer_lock, stretch=0)
 
@@ -1382,6 +1391,7 @@ class LiveShowPanel(QWidget):
             self.live_status.refresh_theme_styles()
 
     def set_global_paused(self, paused: bool) -> None:
+        """Show the global pause/panic banner over the live view."""
         self._is_paused_all = paused
         self._apply_pause_btn_style(paused=paused)
 
@@ -1390,9 +1400,9 @@ class LiveShowPanel(QWidget):
         cues: list[Cue],
         standby_row: int,
         known_durations: dict[str, float],
-        phase_tags: Optional[dict[int, str]] = None,
+        phase_tags: dict[int, str] | None = None,
         show_break_loop: bool = False,
-        layer_conflicts: Optional[dict[int, Any]] = None,
+        layer_conflicts: dict[int, Any] | None = None,
     ) -> None:
         """Refresh the extended Live Scaletta table, standby banner, and GO target label."""
         self._updating_table = True
@@ -1473,6 +1483,7 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_TIMELINE_COMPOSED, bool(getattr(cue, "timeline_composed", False)))
                     it.setData(ROLE_MEDIA_TYPE, cue.media_type.value)
                     it.setData(ROLE_LAYER, cue.layer)
+                    it.setData(ROLE_OUTPUT_TARGET, getattr(cue, "output_target", "A"))
                     it.setData(ROLE_HAS_NOTES, bool(cue.notes))
                     it.setData(ROLE_NOTES_TXT, cue.notes or "")
                     it.setData(ROLE_IS_LIVE, is_live)
@@ -1506,7 +1517,11 @@ class LiveShowPanel(QWidget):
                 ref = format_cue_ref(standby_row, sb_cue)
 
                 q_badge = f"[{sb_cue.q_label.strip()}] " if (sb_cue.q_label and sb_cue.q_label.strip()) else ""
-                layer_badge = f"[L{sb_cue.layer}]" if sb_cue.media_type != MediaType.GROUP else "[SCENA]"
+                if sb_cue.media_type == MediaType.GROUP:
+                    layer_badge = "[SCENA]"
+                else:
+                    sb_prefix = "B·" if normalize_output_target(getattr(sb_cue, "output_target", "A")) == "B" else ""
+                    layer_badge = f"[{sb_prefix}L{sb_cue.layer}]"
                 type_map = {
                     MediaType.VIDEO: "VID",
                     MediaType.AUDIO: "AUD",

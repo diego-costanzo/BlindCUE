@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Optional
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import (
@@ -22,7 +21,7 @@ from PySide6.QtGui import (
 from ui.theme import CLR_LIVE, CLR_PREVIZ, DEFAULT_LOGO_PATH
 
 
-def is_default_tappo_path(file_path: Optional[str | Path]) -> bool:
+def is_default_tappo_path(file_path: str | Path | None) -> bool:
     """Return True when *file_path* refers to the built-in BlindCue Layer 0 Tappo."""
     if not file_path:
         return True

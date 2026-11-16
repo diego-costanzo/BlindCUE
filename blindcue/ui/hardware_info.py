@@ -13,6 +13,8 @@ from PySide6.QtCore import QThreadPool
 from PySide6.QtGui import QGuiApplication, QOffscreenSurface, QOpenGLContext
 from PySide6.QtWidgets import QMessageBox, QWidget
 
+from engine.runtime_limits import worker_thread_limit
+
 logger = logging.getLogger(__name__)
 
 PROFILE_AUTO = "auto"
@@ -29,7 +31,7 @@ def get_memory_details() -> dict:
     # 1. Linux (/proc/meminfo)
     if sys.platform.startswith("linux"):
         try:
-            with open("/proc/meminfo", "r", encoding="utf-8") as f:
+            with open("/proc/meminfo", encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("MemTotal:"):
                         total_mb = int(line.split()[1]) // 1024
@@ -89,13 +91,13 @@ def get_hardware_details() -> dict:
     if not cpu_model.strip() or "x86" in cpu_model or "AMD64" in cpu_model:
         if sys.platform.startswith("linux"):
             try:
-                with open("/proc/cpuinfo", "r", encoding="utf-8") as f:
+                with open("/proc/cpuinfo", encoding="utf-8") as f:
                     for line in f:
                         if "model name" in line:
                             cpu_model = line.split(":", 1)[1].strip()
                             break
             except Exception:
-                pass
+                logger.debug("[HW] Could not read /proc/cpuinfo", exc_info=True)
         elif sys.platform.startswith("win"):
             cpu_model = os.environ.get("PROCESSOR_IDENTIFIER", cpu_model)
     if not cpu_model.strip():
@@ -219,6 +221,7 @@ class ShowRuntimeGuard:
         """Called when entering LIVE show mode to secure zero-stutter playback."""
         if cls._active:
             return
+        logger.debug("[RUNTIME-GUARD] Entering LIVE mode with profile '%s'", profile)
         try:
             cls._original_thresholds = gc.get_threshold()
             # Perform a deep generational GC sweep BEFORE show execution starts
@@ -246,20 +249,18 @@ class ShowRuntimeGuard:
 
     @classmethod
     def configure_thread_pool(cls, profile: str) -> None:
-        """Configure QThreadPool limits according to hardware profile to prevent UI thread lock."""
+        """Configure QThreadPool limits according to hardware profile to prevent UI thread lock.
+
+        The cap always leaves at least one core (two on 4+ core CPUs) free for
+        the OS, the compositor and the real-time media threads.
+        """
         pool = QThreadPool.globalInstance()
-        cores = os.cpu_count() or 2
-        if profile == PROFILE_ECO:
-            # Low-spec / dual-core: strictly limit background analysis to 2 threads
-            # so UI (thread 0) and Audio/Video (thread 1) have 100% CPU priority
-            pool.setMaxThreadCount(min(2, max(1, cores)))
-            logger.info("[RUNTIME-GUARD] Thread pool capped at %d workers (ECO mode)", pool.maxThreadCount())
-        elif profile == PROFILE_PERFORMANCE:
-            pool.setMaxThreadCount(max(4, cores))
-            logger.info("[RUNTIME-GUARD] Thread pool set to %d workers (PERFORMANCE mode)", pool.maxThreadCount())
-        else:
-            pool.setMaxThreadCount(max(2, min(4, cores)))
-            logger.info("[RUNTIME-GUARD] Thread pool set to %d workers (STANDARD mode)", pool.maxThreadCount())
+        workers = worker_thread_limit(profile)
+        pool.setMaxThreadCount(workers)
+        logger.info(
+            "[RUNTIME-GUARD] Thread pool set to %d worker(s) (%s mode, %d cores detected)",
+            workers, profile.upper(), os.cpu_count() or 1,
+        )
 
 
 def detect_hardware_brief(custom_profile: str = PROFILE_AUTO) -> str:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence
+from collections.abc import Sequence
 
 import numpy as np
 from PySide6.QtCore import QPoint, QPointF, QRect, Qt, Signal
@@ -34,13 +34,15 @@ from PySide6.QtWidgets import (
 class _ZoomStepButton(QPushButton):
     """Square zoom +/- button drawing symmetrical crisp vector strokes instead of font glyphs."""
 
-    def __init__(self, is_plus: bool, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, is_plus: bool, parent: QWidget | None = None) -> None:
+        """Create a cached +/- zoom button (``is_plus`` selects the glyph)."""
         super().__init__("", parent)
         self._is_plus = is_plus
         self.setFixedSize(22, 22)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def paintEvent(self, event) -> None:  # noqa: N802
+        """Draw the cached +/- glyph instead of relying on OS font symbols."""
         super().paintEvent(event)
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
@@ -98,24 +100,25 @@ class WaveformWidget(QWidget):
     sections_changed = Signal(list)               # list[CueSection]
     view_changed = Signal(float, float, float)    # zoom_factor, view_start_sec, view_span_sec
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the interactive waveform (peaks, envelopes, in/out and sections)."""
         super().__init__(parent)
-        self._peaks: Optional[np.ndarray] = None
-        self._media_type: Optional[MediaType] = MediaType.AUDIO
+        self._peaks: np.ndarray | None = None
+        self._media_type: MediaType | None = MediaType.AUDIO
         self._envelope_mode: str = "volume"  # "volume" or "opacity"
 
         self._in_point: float = 0.0
         self._out_point: float = 1.0  # normalized 0-1
         self._in_sec: float = 0.0
-        self._out_sec: Optional[float] = None
+        self._out_sec: float | None = None
         self._duration_sec: float = 0.0
 
         self._zoom: float = 1.0
         self._view_start_sec: float = 0.0
-        self._pan_drag_last_x: Optional[float] = None
+        self._pan_drag_last_x: float | None = None
 
-        self._playhead: Optional[float] = None
-        self._playhead_sec: Optional[float] = None
+        self._playhead: float | None = None
+        self._playhead_sec: float | None = None
 
         self._fade_in_sec: float = 0.0
         self._fade_out_sec: float = 0.0
@@ -129,9 +132,9 @@ class WaveformWidget(QWidget):
         self._sections: list[CueSection] = []
         self._active_section_idx: int = -1
 
-        self._dragging_kind: Optional[str] = None
+        self._dragging_kind: str | None = None
         self._dragging_idx: int = -1
-        self._hover_kind: Optional[str] = None
+        self._hover_kind: str | None = None
         self._hover_idx: int = -1
         self._last_emitted_seek: float = -1.0
 
@@ -142,27 +145,43 @@ class WaveformWidget(QWidget):
     # ── State Configuration API ───────────────────────────────────────
 
     def set_peaks(self, peaks: np.ndarray) -> None:
+        """Attach the pre-computed min/max peak pairs used by the painter.
+
+        Peaks are produced asynchronously by the audio analyser: the widget
+        only stores the array and repaints, so decoding never blocks the UI.
+        """
         self._peaks = peaks
         self.update()
 
     def set_media_context(
         self,
-        media_type: Optional[MediaType],
+        media_type: MediaType | None,
         envelope_mode: str = "volume",
         show_fade_out: bool = True,
     ) -> None:
+        """Tell the widget what kind of media it is drawing.
+
+        Images have no audio peaks, so they always use the opacity envelope;
+        audio and video use the volume envelope unless explicitly overridden.
+        """
         self._media_type = media_type
         self._envelope_mode = "opacity" if (envelope_mode == "opacity" or media_type == MediaType.IMAGE) else "volume"
         self._show_fade_out = show_fade_out
         self.update()
 
     def set_envelope_mode(self, mode: str) -> None:
+        """Switch between the volume envelope and the opacity envelope."""
         target = "opacity" if mode == "opacity" else "volume"
         if self._envelope_mode != target:
             self._envelope_mode = target
             self.update()
 
     def set_fades(self, fade_in: float, fade_out: float, fade_curve: str = "log") -> None:
+        """Draw the fade-in/fade-out triangles on the waveform.
+
+        The curve is only used to shape the visual ramp: the actual audio
+        envelope is applied by the player, the widget just mirrors it.
+        """
         self._fade_in_sec = max(0.0, float(fade_in))
         self._fade_out_sec = max(0.0, float(fade_out))
         self._fade_curve = fade_curve if fade_curve in FADE_CURVE_LABELS else "log"
@@ -176,6 +195,12 @@ class WaveformWidget(QWidget):
         volume_points: Sequence[Sequence[float]],
         opacity_points: Sequence[Sequence[float]],
     ) -> None:
+        """Replace the automation curves drawn over the waveform.
+
+        Points are ``(position, value)`` pairs normalised 0-1; the widget
+        normalises and clones them so later edits of the cue cannot mutate the
+        arrays already handed to the painter.
+        """
         self._base_volume = max(0.0, min(1.0, float(base_volume)))
         self._base_opacity = max(0.0, min(1.0, float(base_opacity)))
         self._volume_points = normalize_points(volume_points)
@@ -183,6 +208,11 @@ class WaveformWidget(QWidget):
         self.update()
 
     def set_sections(self, sections: Sequence[CueSection], active_idx: int = -1) -> None:
+        """Draw the cue sections (loops/pre-delay zones) behind the waveform.
+
+        Sections are clipped against the effective in/out range, and are
+        ignored for images because a still has no timeline.
+        """
         eff_end = self._effective_end_sec()
         if eff_end > 0 and self._media_type in (MediaType.VIDEO, MediaType.AUDIO):
             self._sections = normalize_sections(sections, self._in_sec, eff_end)
@@ -192,16 +222,22 @@ class WaveformWidget(QWidget):
         self.update()
 
     def set_active_section_index(self, active_idx: int) -> None:
+        """Highlight the section currently being played (``-1`` = none)."""
         if self._active_section_idx != active_idx:
             self._active_section_idx = active_idx
             self.update()
 
     def set_in_out(self, in_norm: float, out_norm: float) -> None:
+        """Set the in/out points as normalised 0-1 fractions of the media."""
         self._in_point = in_norm
         self._out_point = out_norm
         self.update()
 
-    def set_in_out_seconds(self, in_sec: float, out_sec: Optional[float], duration_sec: float) -> None:
+    def set_in_out_seconds(self, in_sec: float, out_sec: float | None, duration_sec: float) -> None:
+        """Set in/out points in seconds, converting them to normalised values.
+
+        A ``None`` or zero out point means "end of media".
+        """
         self._in_sec = max(0.0, in_sec)
         self._out_sec = out_sec
         self._duration_sec = max(0.001, duration_sec) if duration_sec > 0 else 0.0
@@ -221,7 +257,8 @@ class WaveformWidget(QWidget):
         self.view_changed.emit(self._zoom, self._view_start_sec, self._view_span_sec())
         self.update()
 
-    def set_playhead(self, norm_pos: Optional[float]) -> None:
+    def set_playhead(self, norm_pos: float | None) -> None:
+        """Move the playhead to a normalised position (``None`` hides it)."""
         if norm_pos is None:
             if self._playhead is not None or self._playhead_sec is not None:
                 self._playhead = None
@@ -236,8 +273,13 @@ class WaveformWidget(QWidget):
             self.update()
 
     def set_playhead_seconds(
-        self, sec: Optional[float], duration_sec: Optional[float] = None
+        self, sec: float | None, duration_sec: float | None = None
     ) -> None:
+        """Move the playhead using absolute seconds, refreshing the duration.
+
+        Passing ``None`` hides the playhead; *duration_sec* is refreshed when
+        the media metadata arrives asynchronously after the first paint.
+        """
         if duration_sec is not None and duration_sec > 0:
             self._duration_sec = max(0.001, duration_sec)
         if sec is None or self._duration_sec <= 0:
@@ -251,7 +293,8 @@ class WaveformWidget(QWidget):
             self._playhead_sec = rounded_sec
             self.update()
 
-    def playhead_seconds(self) -> Optional[float]:
+    def playhead_seconds(self) -> float | None:
+        """Playhead position in seconds (``None`` when no media is loaded)."""
         if self._playhead is None or self._duration_sec <= 0:
             return None
         if self._playhead_sec is not None:
@@ -259,17 +302,21 @@ class WaveformWidget(QWidget):
         return round(self._playhead * self._duration_sec, 2)
 
     def duration_seconds(self) -> float:
+        """Media duration in seconds known by the widget (0 if unknown)."""
         return self._duration_sec
 
     # ── Zoom & Viewport Helpers ───────────────────────────────────────
 
     def zoom_factor(self) -> float:
+        """Current horizontal zoom factor (1.0 = fit the whole media)."""
         return self._zoom
 
     def view_start_sec(self) -> float:
+        """Left edge of the visible window, in seconds."""
         return self._view_start_sec
 
     def view_span_sec(self) -> float:
+        """Width of the visible window, in seconds."""
         return self._view_span_sec()
 
     def _view_span_sec(self) -> float:
@@ -287,7 +334,7 @@ class WaveformWidget(QWidget):
         max_start = max(0.0, self._duration_sec - span)
         self._view_start_sec = max(0.0, min(max_start, float(self._view_start_sec)))
 
-    def set_zoom(self, factor: float, anchor_sec: Optional[float] = None) -> None:
+    def set_zoom(self, factor: float, anchor_sec: float | None = None) -> None:
         """Zoom horizontally [1.0..32.0], keeping *anchor_sec* anchored in place."""
         new_zoom = max(1.0, min(32.0, float(factor)))
         if new_zoom <= 1.02:
@@ -327,6 +374,7 @@ class WaveformWidget(QWidget):
         self.update()
 
     def reset_zoom(self) -> None:
+        """Restore 1x zoom."""
         self.set_zoom(1.0)
 
     # ── Coordinate & Mode Helpers ─────────────────────────────────────
@@ -456,6 +504,7 @@ class WaveformWidget(QWidget):
         return ("PLAYHEAD", -1)
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Create/remove envelope points, seek, or open the context menu."""
         if self._duration_sec <= 0:
             return
         pos = event.position()
@@ -497,6 +546,7 @@ class WaveformWidget(QWidget):
         self.update()
 
     def mouseDoubleClickEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Add or move an envelope point at the cursor position."""
         if event.button() != Qt.MouseButton.LeftButton or self._duration_sec <= 0:
             return
         pos = event.position()
@@ -511,6 +561,7 @@ class WaveformWidget(QWidget):
         self.update()
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Pan the view, drag an envelope element, or update the hover cursor."""
         pos = event.position()
         if self._pan_drag_last_x is not None:
             dx = pos.x() - self._pan_drag_last_x
@@ -544,6 +595,7 @@ class WaveformWidget(QWidget):
             self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        """Finish the active drag and emit the final seek."""
         if self._pan_drag_last_x is not None:
             self._pan_drag_last_x = None
             self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
@@ -582,6 +634,7 @@ class WaveformWidget(QWidget):
         event.accept()
 
     def leaveEvent(self, _event) -> None:  # noqa: N802
+        """Clear hover feedback when the pointer leaves the waveform."""
         self._hover_kind, self._hover_idx = None, -1
         if not self._dragging_kind and self._pan_drag_last_x is None:
             self.setCursor(QCursor(Qt.CursorShape.ArrowCursor))
@@ -688,6 +741,7 @@ class WaveformWidget(QWidget):
     # ── Custom Painter ────────────────────────────────────────────────
 
     def paintEvent(self, _event) -> None:  # noqa: N802
+        """Paint peaks, envelopes, in/out markers, sections and the playhead."""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
@@ -1130,7 +1184,8 @@ class WaveformPanel(QGroupBox):
     section_remove_requested = Signal(int)
     sections_changed = Signal(list)
 
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, parent: QWidget | None = None) -> None:
+        """Create the waveform panel: timecode strip, canvas and zoom controls."""
         super().__init__("Forma d'Onda e Automazioni (Timeline)", parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(6, 10, 6, 6)
@@ -1404,7 +1459,7 @@ class WaveformPanel(QGroupBox):
     def sync_controls_for_cue(
         self,
         *,
-        media_type: Optional[MediaType],
+        media_type: MediaType | None,
         fade_curve: str = "log",
         has_points: bool = False,
         has_sections: bool = False,
@@ -1460,6 +1515,7 @@ class WaveformPanel(QGroupBox):
         self._refresh_zoom_controls()
 
     def reset_zoom(self) -> None:
+        """Reset the waveform zoom to 1x and refresh the zoom controls."""
         self.waveform.reset_zoom()
 
     def _refresh_zoom_controls(self) -> None:
@@ -1498,12 +1554,13 @@ class WaveformPanel(QGroupBox):
 
     def set_playhead_display(
         self,
-        sec: Optional[float],
+        sec: float | None,
         duration_sec: float = 0.0,
         source_tag: str = "PRE-VIZ",
-        snap_enabled: Optional[bool] = None,
-        reset_enabled: Optional[bool] = None,
+        snap_enabled: bool | None = None,
+        reset_enabled: bool | None = None,
     ) -> None:
+        """Update the playhead timecode label and the snap/reset controls."""
         has_valid = sec is not None and duration_sec > 0
         if snap_enabled is None:
             snap_enabled = has_valid

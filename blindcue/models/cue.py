@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import itertools
 import logging
+import math
 import os
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Optional, Sequence
+from typing import Any, ClassVar
 
 logger = logging.getLogger(__name__)
 
@@ -49,14 +51,120 @@ class GroupMode(Enum):
     LOOP = "LOOP"                  # Loop continuo: cicla gli elementi interni della scena
 
 
-def _default_crop() -> Dict[str, float]:
+def _default_crop() -> dict[str, float]:
     """Return default full-frame crop rectangle."""
     return {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
+
+
+# A polygon mask is only useful when it actually encloses an area: two points
+# are a line, one point is a dot. 64 vertices is far more than any hand-drawn
+# cut-out needs and keeps the JSON project file readable.
+MASK_MIN_POINTS = 3
+MASK_MAX_POINTS = 64
+# Edge softness of the mask, expressed as a fraction of the frame's longest
+# side (0 = hard cut). Normalised so the feather looks identical on the
+# projector, in Pre-Viz and at any output resolution.
+MASK_MAX_FEATHER = 0.05
+
+
+def sanitize_mask_feather(value: object) -> float:
+    """Return a mask feather in ``0.0 .. MASK_MAX_FEATHER``.
+
+    Invalid input degrades to a hard edge instead of raising: a damaged project
+    must still open and project something.
+    """
+    try:
+        feather = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(feather):
+        return 0.0
+    return round(min(MASK_MAX_FEATHER, max(0.0, feather)), 4)
+
+
+def normalize_rotation(value: object) -> float:
+    """Return a rotation angle in the supported (-180, 180] degree range.
+
+    The value is wrapped instead of clamped so that "270" (a common phone
+    recording) becomes "-90" and keeps working. Invalid or non-finite input
+    degrades to 0.0 rather than raising: a damaged project must still open.
+    """
+    try:
+        deg = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0.0
+    if not math.isfinite(deg):
+        return 0.0
+    deg = (deg + 180.0) % 360.0 - 180.0
+    if deg <= -180.0:
+        deg += 360.0
+    return round(deg, 2)
+
+
+def sanitize_mask_polygon(points: object) -> list[list[float]]:
+    """Return a clean polygon mask, or an empty list when the input is unusable.
+
+    Points are normalised coordinates (0.0–1.0) of the **visible frame** (the
+    cropped area, not the source file), so the mask stays glued to what the
+    operator actually sees when the crop changes. Points outside the frame are
+    clamped to the border rather than rejected; fewer than 3 valid points mean
+    "no mask".
+    """
+    if not isinstance(points, (list, tuple)):
+        return []
+    clean: list[list[float]] = []
+    for raw in points[:MASK_MAX_POINTS]:
+        if not isinstance(raw, (list, tuple)) or len(raw) < 2:
+            return []
+        try:
+            x = float(raw[0])
+            y = float(raw[1])
+        except (TypeError, ValueError):
+            return []
+        if not (math.isfinite(x) and math.isfinite(y)):
+            return []
+        clean.append([round(min(1.0, max(0.0, x)), 4), round(min(1.0, max(0.0, y)), 4)])
+    return clean if len(clean) >= MASK_MIN_POINTS else []
 
 
 _VALID_FADE_CURVES = ("log", "scurve", "linear")
 _VALID_FOLLOW_MODES = tuple(m.value for m in FollowMode)
 _VALID_GROUP_MODES = tuple(m.value for m in GroupMode)
+_VALID_OUTPUT_TARGETS = ("A", "B")
+
+
+def normalize_output_target(value: object) -> str:
+    """Return ``A`` or ``B``; unknown/empty values fall back to ``A``."""
+    text = str(value or "").strip().upper()
+    return text if text in _VALID_OUTPUT_TARGETS else "A"
+
+
+def layer_label(layer: int, output_target: str = "A") -> str:
+    """Human-readable layer label, e.g. ``Layer 1`` or ``Layer 1 · Uscita B``."""
+    if normalize_output_target(output_target) == "B":
+        return f"Layer {layer} · Uscita B"
+    return f"Layer {layer}"
+
+
+def runtime_layer(layer: int, output_target: str = "A") -> int:
+    """Map a cue layer (1-3) to its live runtime slot.
+
+    Output A uses runtime layers 1-3, output B uses 4-6 (``layer + 3``).
+    """
+    if normalize_output_target(output_target) == "B":
+        return int(layer) + 3
+    return int(layer)
+
+
+def resolve_output_target(value: object, dual_active: bool) -> str:
+    """Return the output that will actually show the cue.
+
+    With dual independent outputs inactive there is only one projector, so a
+    cue assigned to output B is projected on output A instead of vanishing
+    into a hidden window.
+    """
+    target = normalize_output_target(value)
+    return target if dual_active else "A"
 
 
 def _sanitize_hex_color(value: object) -> str:
@@ -77,11 +185,12 @@ class CueSection:
 
     label: str
     start: float
-    end: Optional[float] = None
+    end: float | None = None
     loops: int = 1   # 1 = once (default), >=2 = N repeats, 0 = infinite vamp
     skip: bool = False
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
+        """Serialise the section (times rounded to 0.1 ms to keep projects small)."""
         return {
             "label": self.label,
             "start": round(float(self.start), 4),
@@ -91,7 +200,8 @@ class CueSection:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> CueSection:
+    def from_dict(cls, data: dict[str, Any]) -> CueSection:
+        """Rebuild a section, clamping corrupt times instead of failing the show."""
         end_raw = data.get("end")
         return cls(
             label=str(data.get("label", "A")),
@@ -119,6 +229,9 @@ class Cue:
         fade_in:     Fade-in duration in seconds.
         fade_out:    Fade-out duration in seconds.
         crop:        Crop rectangle as percentages {x, y, w, h} in 0.0 – 1.0.
+        rotation:    Clockwise rotation in degrees, (-180, 180]; 0 = upright.
+        mask_polygon: Optional polygon mask for images, as normalised [[x, y], ...]
+                     points of the visible frame; empty list = no mask.
         aspect_ratio: Override aspect ratio string (e.g. "16:9") or None.
         status:      Current lifecycle status.
         position_x:  Horizontal position offset.
@@ -144,11 +257,14 @@ class Cue:
     loop: bool = False
     loop_count: int = 0  # 0 = infinite loop; N >= 1 = repeat N times
     in_point: float = 0.0
-    out_point: Optional[float] = None
+    out_point: float | None = None
     fade_in: float = 0.0
     fade_out: float = 0.0
-    crop: Dict[str, float] = field(default_factory=_default_crop)
-    aspect_ratio: Optional[str] = None
+    crop: dict[str, float] = field(default_factory=_default_crop)
+    rotation: float = 0.0  # Degrees clockwise; applied to images and videos
+    mask_polygon: list[list[float]] = field(default_factory=list)  # Images only
+    mask_feather: float = 0.0  # Images only; soft mask edge (0 = hard cut)
+    aspect_ratio: str | None = None
     status: CueStatus = CueStatus.OFFLINE
     position_x: float = 0.0
     position_y: float = 0.0
@@ -161,7 +277,7 @@ class Cue:
     post_delay: float = 0.0
     follow_mode: str = FollowMode.MANUAL.value
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
-    parent_id: Optional[int] = None  # None = root cue; int = belongs to parent Group cue
+    parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
     collapsed: bool = False  # UI collapse state for GROUP cues
     fade_curve: str = "log"  # "log" (perceptual), "scurve" (cosine), "linear"
@@ -170,12 +286,22 @@ class Cue:
     image_timeline_sec: float = 10.0  # Virtual timeline horizon (s) for infinite-hold images
     sections: list[CueSection] = field(default_factory=list)         # Contiguous virtual playback sections
     normalize_audio: bool = False  # EBU R128 (-16 LUFS) normalization active for this cue
-    loudness_lufs: Optional[float] = None  # Measured integrated loudness (LUFS)
-    true_peak_dbfs: Optional[float] = None  # Measured true peak (dBFS)
+    loudness_lufs: float | None = None  # Measured integrated loudness (LUFS)
+    true_peak_dbfs: float | None = None  # Measured true peak (dBFS)
     auto_gain_db: float = 0.0  # Computed gain adjustment in dB to reach target (-16 LUFS)
-    original_file_path: Optional[str] = None  # Backup of original path if dynamics-optimized copy is used
+    original_file_path: str | None = None  # Backup of original path if dynamics-optimized copy is used
     timeline_composed: bool = False  # GROUP cue configured/synced via multi-track studio timeline
     surface_id: str = "default"  # Target virtual screen / mapping surface ID ("default" = full screen)
+    output_target: str = "A"  # Physical projector output: "A" (default) or "B" (second independent output)
+
+    def __post_init__(self) -> None:
+        """Normalise the routing target, rotation and mask once, at construction."""
+        # Every consumer downstream (routing, conflict detection, live badges,
+        # output window) can then trust these values without re-validating.
+        self.output_target = normalize_output_target(self.output_target)
+        self.rotation = normalize_rotation(self.rotation)
+        self.mask_polygon = sanitize_mask_polygon(self.mask_polygon)
+        self.mask_feather = sanitize_mask_feather(self.mask_feather)
 
     # ── Path Resolution & Security ────────────────────────────────────
     def resolve_media_path(self, project_root: str | Path) -> str:
@@ -218,6 +344,7 @@ class Cue:
         - fade values >= 0
         - crop values in 0.0 – 1.0
         - scale > 0
+        - rotation in (-180, 180] and a polygon mask has at least 3 points
         """
         errors: list[str] = []
 
@@ -229,6 +356,11 @@ class Cue:
 
         if self.layer not in (1, 2, 3):
             errors.append(f"Layer must be 1, 2, or 3 – got {self.layer}")
+
+        if self.output_target not in _VALID_OUTPUT_TARGETS:
+            errors.append(
+                f"output_target must be one of {_VALID_OUTPUT_TARGETS} – got {self.output_target}"
+            )
 
         if not 0.0 <= self.volume <= 1.0:
             errors.append(f"Volume must be 0.0–1.0 – got {self.volume}")
@@ -266,6 +398,14 @@ class Cue:
         if self.scale <= 0.0:
             errors.append(f"scale must be > 0 – got {self.scale}")
 
+        if not -180.0 < self.rotation <= 180.0:
+            errors.append(f"rotation must be in (-180, 180] – got {self.rotation}")
+
+        if self.mask_polygon and len(self.mask_polygon) < MASK_MIN_POINTS:
+            errors.append(
+                f"mask_polygon needs at least {MASK_MIN_POINTS} points – got {len(self.mask_polygon)}"
+            )
+
         if self.fade_curve not in _VALID_FADE_CURVES:
             errors.append(f"fade_curve must be one of {_VALID_FADE_CURVES} – got {self.fade_curve}")
 
@@ -278,7 +418,7 @@ class Cue:
         return errors
 
     # ── Serialization ─────────────────────────────────────────────────
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize the cue to a plain dict suitable for JSON storage."""
         return {
             "cue_id": self.cue_id,
@@ -295,6 +435,9 @@ class Cue:
             "fade_in": self.fade_in,
             "fade_out": self.fade_out,
             "crop": dict(self.crop),
+            "rotation": self.rotation,
+            "mask_polygon": [list(pt) for pt in self.mask_polygon],
+            "mask_feather": self.mask_feather,
             "aspect_ratio": self.aspect_ratio,
             "status": self.status.value,
             "position_x": self.position_x,
@@ -323,10 +466,11 @@ class Cue:
             "original_file_path": self.original_file_path,
             "timeline_composed": self.timeline_composed,
             "surface_id": self.surface_id,
+            "output_target": self.output_target,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any], project_root: str | Path | None = None) -> Cue:
+    def from_dict(cls, data: dict[str, Any], project_root: str | Path | None = None) -> Cue:
         """Deserialize a cue from a plain dict.
 
         The class-level counter is advanced past the loaded ID so that
@@ -347,6 +491,9 @@ class Cue:
             fade_in=data.get("fade_in", 0.0),
             fade_out=data.get("fade_out", 0.0),
             crop=data.get("crop", _default_crop()),
+            rotation=normalize_rotation(data.get("rotation", 0.0)),
+            mask_polygon=sanitize_mask_polygon(data.get("mask_polygon")),
+            mask_feather=sanitize_mask_feather(data.get("mask_feather", 0.0)),
             aspect_ratio=data.get("aspect_ratio"),
             status=CueStatus(data.get("status", "OFFLINE")),
             position_x=data.get("position_x", 0.0),
@@ -399,6 +546,7 @@ class Cue:
             original_file_path=data.get("original_file_path"),
             timeline_composed=bool(data.get("timeline_composed", False)),
             surface_id=str(data.get("surface_id", "default") or "default"),
+            output_target=normalize_output_target(data.get("output_target", "A")),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)
@@ -410,6 +558,7 @@ class Cue:
 
     # ── Helpers ───────────────────────────────────────────────────────
     def __str__(self) -> str:
+        """Compact one-line description used in logs and status messages."""
         return (
             f"Cue #{self.cue_id} '{self.name}' "
             f"[{self.media_type.value}] L{self.layer} "
@@ -446,7 +595,7 @@ def _record_conflict(
         )
     else:
         existing = conflicts[cue_id]
-        for cid, cname in zip(conflicting_ids, conflicting_names):
+        for cid, cname in zip(conflicting_ids, conflicting_names, strict=True):
             if cid not in existing.conflicting_with_ids:
                 existing.conflicting_with_ids.append(cid)
                 existing.conflicting_with_names.append(cname)
@@ -454,7 +603,9 @@ def _record_conflict(
             existing.reason += f"\n• {reason}"
 
 
-def detect_layer_conflicts(cues: Sequence[Cue]) -> dict[int, LayerConflict]:
+def detect_layer_conflicts(
+    cues: Sequence[Cue], dual_active: bool = True
+) -> dict[int, LayerConflict]:
     """Scan cues and detect simultaneous layer collisions (non-blocking pre-flight check).
 
     Collisions occur when two or more playable cues (VIDEO, AUDIO, IMAGE) share the
@@ -462,12 +613,20 @@ def detect_layer_conflicts(cues: Sequence[Cue]) -> dict[int, LayerConflict]:
       1. Direct children of a Group in SIMULTANEOUS mode.
       2. Chained cues where preceding cues use FollowMode.SIMULTANEOUS.
 
+    ``dual_active`` mirrors the current output mode: when the two independent
+    outputs are off, every cue ends up on output A, so ``A·L2`` and ``B·L2``
+    do collide and must be reported.
+
     Returns a dict mapping cue_id -> LayerConflict for all affected cues (including
     groups that contain collisions).
     """
     conflicts: dict[int, LayerConflict] = {}
     if not cues:
         return conflicts
+
+    def target_of(cue: Cue) -> str:
+        """Resolve the physical output (A/B) a cue will actually use."""
+        return resolve_output_target(cue.output_target, dual_active)
 
     # 1. Group simultaneous collisions (GroupMode.SIMULTANEOUS)
     for group in cues:
@@ -477,19 +636,20 @@ def detect_layer_conflicts(cues: Sequence[Cue]) -> dict[int, LayerConflict]:
             continue
 
         children = [c for c in cues if c.parent_id == group.cue_id and c.media_type != MediaType.GROUP]
-        by_layer: dict[int, list[Cue]] = {}
+        by_layer: dict[tuple[str, int], list[Cue]] = {}
         for ch in children:
-            by_layer.setdefault(ch.layer, []).append(ch)
+            by_layer.setdefault((target_of(ch), ch.layer), []).append(ch)
 
-        for layer, layer_children in by_layer.items():
+        for (target, layer), layer_children in by_layer.items():
             if len(layer_children) > 1:
+                layer_txt = layer_label(layer, target)
                 # Flag each colliding child
                 for child in layer_children:
                     others = [c for c in layer_children if c.cue_id != child.cue_id]
                     other_names = ", ".join(f"'{o.name}'" for o in others)
                     reason = (
-                        f"Conflitto Layer {layer}: Viene attivato in simultanea con {other_names} "
-                        f"nel gruppo '{group.name}' sullo stesso Layer {layer}. "
+                        f"Conflitto {layer_txt}: Viene attivato in simultanea con {other_names} "
+                        f"nel gruppo '{group.name}' sullo stesso {layer_txt}. "
                         f"Assegna un layer differente (L1, L2, L3)."
                     )
                     _record_conflict(
@@ -503,8 +663,8 @@ def detect_layer_conflicts(cues: Sequence[Cue]) -> dict[int, LayerConflict]:
                 # Flag the group container itself
                 all_names = ", ".join(f"'{c.name}'" for c in layer_children)
                 grp_reason = (
-                    f"Conflitto Layer {layer}: {len(layer_children)} elementi ({all_names}) "
-                    f"condividono il Layer {layer} in modalità simultanea. Assegna layer differenti (L1, L2, L3)."
+                    f"Conflitto {layer_txt}: {len(layer_children)} elementi ({all_names}) "
+                    f"condividono il {layer_txt} in modalità simultanea. Assegna layer differenti (L1, L2, L3)."
                 )
                 _record_conflict(
                     conflicts,
@@ -530,18 +690,19 @@ def detect_layer_conflicts(cues: Sequence[Cue]) -> dict[int, LayerConflict]:
                         break
 
             playable = [c for c in chain if c.media_type != MediaType.GROUP]
-            by_layer: dict[int, list[Cue]] = {}
+            by_layer: dict[tuple[str, int], list[Cue]] = {}
             for c in playable:
-                by_layer.setdefault(c.layer, []).append(c)
+                by_layer.setdefault((target_of(c), c.layer), []).append(c)
 
-            for layer, layer_cues in by_layer.items():
+            for (target, layer), layer_cues in by_layer.items():
                 if len(layer_cues) > 1:
+                    layer_txt = layer_label(layer, target)
                     for cue in layer_cues:
                         others = [c for c in layer_cues if c.cue_id != cue.cue_id]
                         other_names = ", ".join(f"'{o.name}'" for o in others)
                         reason = (
-                            f"Conflitto Layer {layer}: Avvio simultaneo (Follow Simultaneo) "
-                            f"con {other_names} sullo stesso Layer {layer}. "
+                            f"Conflitto {layer_txt}: Avvio simultaneo (Follow Simultaneo) "
+                            f"con {other_names} sullo stesso {layer_txt}. "
                             f"Assegna un layer differente (L1, L2, L3)."
                         )
                         _record_conflict(

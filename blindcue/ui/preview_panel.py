@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
 
 from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
@@ -26,7 +25,8 @@ class PreviewControlPanel(QGroupBox):
     live_mirror_toggled = Signal(bool)
     preview_mute_toggled = Signal(bool)
 
-    def __init__(self, layer0_path: Optional[str] = None, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, layer0_path: str | None = None, parent: QWidget | None = None) -> None:
+        """Create the preview control panel (pre-viz + live mirror)."""
         super().__init__("ANTEPRIMA PRE-VIZ (Sandbox)", parent)
         self.setMinimumWidth(380)
         self._build_ui(layer0_path)
@@ -36,9 +36,10 @@ class PreviewControlPanel(QGroupBox):
         return QSize(380, 240)
 
     def sizeHint(self) -> QSize:  # noqa: N802
+        """Preferred size: wide enough for the preview plus its control strips."""
         return QSize(680, 560)
 
-    def _build_ui(self, layer0_path: Optional[str]) -> None:
+    def _build_ui(self, layer0_path: str | None) -> None:
         preview_layout = QVBoxLayout(self)
         preview_layout.setContentsMargins(6, 4, 6, 6)
         preview_layout.setSpacing(4)
@@ -182,6 +183,7 @@ class PreviewControlPanel(QGroupBox):
         preview_layout.addWidget(transport_frame, stretch=0)
 
     def set_live_mirror_style(self, active: bool) -> None:
+        """Apply the LIVE-mirror styling when the panel mirrors a projector."""
         if active:
             self.btn_live_mirror.setText("🔴 MIRROR: ON")
             self.btn_live_mirror.setStyleSheet("""
@@ -214,6 +216,7 @@ class PreviewControlPanel(QGroupBox):
             """)
 
     def update_mute_style(self) -> None:
+        """Refresh the mute button icon/label after a state change."""
         if self.btn_mute.isChecked():
             self.btn_mute.setText("🔒 MUTE: ON")
             self.btn_mute.setStyleSheet(f"""

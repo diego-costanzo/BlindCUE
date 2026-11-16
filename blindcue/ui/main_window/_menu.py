@@ -1,0 +1,468 @@
+"""Menu bar & UI Composition mixin for MainWindow."""
+
+from __future__ import annotations
+
+from ui.main_window._common import *  # noqa: F403,F401,F405
+from ui.main_window._common import (  # noqa: F401
+    _AutosaveWorker,
+    _DEFAULT_TOP_RATIOS,
+    _MEDIA_ICONS,
+    _demote_live_on_layer,
+)
+
+
+class _MenuMixin:
+    def _build_menu_bar(self) -> None:
+        mb = self.menuBar()
+
+        file_menu = mb.addMenu("&File")
+        file_menu.addAction(
+            QAction("&New Show", self, shortcut=QKeySequence.StandardKey.New, triggered=self._on_new_show)
+        )
+        file_menu.addAction(
+            QAction("&Open Show…", self, shortcut=QKeySequence.StandardKey.Open, triggered=self._on_open_show)
+        )
+        # Recent projects: the list is rebuilt on open so it always reflects
+        # what was saved/loaded during this session and in previous ones.
+        self._recent_menu = file_menu.addMenu("Apri &recenti")
+        self._recent_menu.setToolTipsVisible(True)
+        self._recent_menu.aboutToShow.connect(self._rebuild_recent_menu)
+        file_menu.addAction(
+            QAction("&Save Show", self, shortcut=QKeySequence.StandardKey.Save, triggered=self._on_save_show)
+        )
+        file_menu.addAction(
+            QAction("Save Show &As…", self, shortcut=QKeySequence("Ctrl+Shift+S"), triggered=self._on_save_as_show)
+        )
+        file_menu.addSeparator()
+        file_menu.addAction(
+            QAction("&Quit", self, shortcut=QKeySequence.StandardKey.Quit, triggered=self._on_quit)
+        )
+
+        edit_menu = mb.addMenu("&Modifica")
+        self._act_undo = QAction("↶ &Annulla", self, triggered=self._on_undo)
+        self._act_undo.setShortcut(QKeySequence.StandardKey.Undo)
+        self._act_undo.setEnabled(False)
+        self._act_redo = QAction("↷ &Ripeti", self, triggered=self._on_redo)
+        self._act_redo.setShortcuts([
+            QKeySequence.StandardKey.Redo,
+            QKeySequence("Ctrl+Y"),
+            QKeySequence("Ctrl+Shift+Z"),
+        ])
+        self._act_redo.setEnabled(False)
+        edit_menu.addAction(self._act_undo)
+        edit_menu.addAction(self._act_redo)
+
+        show_menu = mb.addMenu("&Show")
+        show_menu.addAction(
+            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go)
+        )
+        show_menu.addAction(
+            QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"), triggered=self._on_blackout)
+        )
+        show_menu.addSeparator()
+        show_menu.addAction(
+            QAction("Imposta Immagine di &Tappo (Layer 0)…", self, triggered=self._on_choose_layer0)
+        )
+        show_menu.addAction(
+            QAction("&Ripristina Tappo Predefinito", self, triggered=self._on_reset_layer0)
+        )
+        show_menu.addSeparator()
+        self._act_jam_mode = QAction("🎚 Modalità &Jam / Contest (Auto-Gain EBU R128)", self, checkable=True)
+        self._act_jam_mode.setToolTip("Abilita il livellamento automatico EBU R128 (-16 LUFS) per contest, jam session e file non calibrati.")
+        self._act_jam_mode.toggled.connect(self._set_jam_mode)
+        show_menu.addAction(self._act_jam_mode)
+        show_menu.addAction(
+            QAction("⚙️ &Dispositivi & Hardware (Audio / Video / Profilo)…", self, triggered=self.open_device_settings_dialog)
+        )
+        show_menu.addAction(
+            QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
+        )
+
+        view_menu = mb.addMenu("&View")
+        self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)
+        self._act_live_mode.setShortcut(QKeySequence(Qt.Key.Key_F5))
+        self._act_live_mode.toggled.connect(self.set_live_mode)
+        view_menu.addAction(self._act_live_mode)
+        view_menu.addSeparator()
+
+        # Theme Submenu
+        theme_menu = view_menu.addMenu("🎨 &Tema Interfaccia")
+        self._theme_action_group = QActionGroup(self)
+        self._theme_action_group.setExclusive(True)
+        self._theme_actions: dict[str, QAction] = {}
+        for tid, t_def in THEMES.items():
+            if tid != t_def.theme_id:
+                continue
+            act = QAction(t_def.name, self, checkable=True)
+            act.setToolTip(t_def.description)
+            act.triggered.connect(lambda checked=False, theme_key=tid: self.apply_theme(theme_key))
+            self._theme_action_group.addAction(act)
+            theme_menu.addAction(act)
+            self._theme_actions[tid] = act
+
+        active_tid = get_active_theme().theme_id
+        if active_tid in self._theme_actions:
+            self._theme_actions[active_tid].setChecked(True)
+
+        self._act_earcons = QAction("🔔 &Segnali Acustici Operatore (Earcons)", self, checkable=True)
+        self._act_earcons.setToolTip(
+            "Accessibilità Regia: Emette un discreto segnale sonoro di conferma ad ogni GO, STOP e PAUSA.\n"
+            "Utile per operatori non vedenti o per chi guarda il palco senza guardare il monitor."
+        )
+        self._act_earcons.setChecked(self._earcon_mgr.enabled)
+        self._act_earcons.toggled.connect(self._set_earcons_enabled)
+        view_menu.addAction(self._act_earcons)
+
+        view_menu.addSeparator()
+        self._act_surface_mapping = QAction("📐 &Studio Superfici di Proiezione & Mapping…", self)
+        self._act_surface_mapping.setShortcut(QKeySequence(Qt.Key.Key_F7))
+        self._act_surface_mapping.setToolTip("Gestisci schermi virtuali, keystone a 4 angoli e configurazioni multi-proiettore")
+        self._act_surface_mapping.triggered.connect(self._open_surface_mapping_dialog)
+        view_menu.addAction(self._act_surface_mapping)
+
+        self._act_calib_guides = QAction("👁 &Mostra Guide sul Proiettore Live", self, checkable=True)
+        self._act_calib_guides.setShortcut(QKeySequence("Shift+F7"))
+        self._act_calib_guides.setToolTip("Proietta mire ottiche, griglia di precisione e contorni delle superfici sul palco")
+        self._act_calib_guides.setChecked(self._output.is_calibration_guides_visible())
+        self._act_calib_guides.toggled.connect(self._toggle_calibration_guides)
+        view_menu.addAction(self._act_calib_guides)
+
+        view_menu.addSeparator()
+        self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
+        self._act_lock_layout.setChecked(True)
+        self._act_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
+        view_menu.addAction(self._act_lock_layout)
+        view_menu.addAction(
+            QAction("↺ &Ripristina Larghezze Standard", self, triggered=self._reset_standard_layout)
+        )
+
+        help_menu = mb.addMenu("&Help")
+        help_menu.addAction(
+            QAction("&Info Hardware & Accelerazione…", self, triggered=self._show_hw_info)
+        )
+        help_menu.addSeparator()
+        help_menu.addAction(
+            QAction("&About BlindCue", self, triggered=lambda: show_about_dialog(self))
+        )
+
+    def _build_ui(self) -> None:
+        self._central_stack = QStackedWidget()
+        self.setCentralWidget(self._central_stack)
+
+        self._design_page = QWidget()
+        root_layout = QVBoxLayout(self._design_page)
+        root_layout.setContentsMargins(6, 6, 6, 6)
+        root_layout.setSpacing(6)
+
+        # Top splitter: Cue List | Preview + GO | Inspector
+        top_splitter = QSplitter(Qt.Orientation.Horizontal)
+        self._top_splitter = top_splitter
+
+        self._cue_list_panel = CueListPanel()
+        self._cue_list = self._cue_list_panel.table
+        self._lbl_cue_count = self._cue_list_panel.lbl_count
+        self._lbl_cue_standby = self._cue_list_panel.lbl_standby
+        self._cue_list.currentRowChanged.connect(self._on_cue_selected)
+        self._cue_list.itemSelectionChanged.connect(self._on_cue_selection_changed)
+        self._cue_list.cellDoubleClicked.connect(self._on_cue_cell_double_clicked)
+        self._cue_list.itemChanged.connect(self._on_cue_item_changed)
+        self._cue_list.color_selected.connect(self._set_cue_color)
+        self._cue_list_panel.add_media_requested.connect(self._on_add_media)
+        self._cue_list_panel.add_group_requested.connect(self._on_add_group)
+        self._cue_list_panel.ungroup_requested.connect(self._ungroup_selected)
+        self._cue_list_panel.extract_child_requested.connect(self._extract_selected_from_group)
+        self._cue_list.open_timeline_requested.connect(self._on_open_group_timeline)
+        self._cue_list.group_collapse_toggled.connect(self._toggle_group_collapsed)
+        self._cue_list_panel.move_up_requested.connect(self._on_move_up)
+        self._cue_list_panel.move_down_requested.connect(self._on_move_down)
+        self._cue_list_panel.delete_requested.connect(self._on_delete_cue)
+        self._cue_list_panel.go_live_mode_requested.connect(lambda: self.set_live_mode(True))
+        self._cue_list_panel.follow_mode_selected.connect(self._set_follow_mode)
+        top_splitter.addWidget(self._cue_list_panel)
+
+        # Center column: Pre-Viz sandbox + GO trigger
+        center_panel = QWidget()
+        center_panel.setMinimumWidth(380)
+        center_layout = QVBoxLayout(center_panel)
+        center_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._preview_panel = PreviewControlPanel(self._output.get_layer0_path())
+        self._preview_monitor = self._preview_panel.monitor
+        self._btn_live_mirror = self._preview_panel.btn_live_mirror
+        self._lbl_preview_info = self._preview_panel.lbl_info
+        self._lbl_preview_time = self._preview_panel.lbl_time
+        self._btn_test_play = self._preview_panel.btn_play
+        self._btn_test_pause = self._preview_panel.btn_pause
+        self._btn_test_stop = self._preview_panel.btn_stop
+        self._btn_preview_mute = self._preview_panel.btn_mute
+
+        self._preview_panel.live_mirror_toggled.connect(self._on_live_mirror_toggled)
+        self._preview_panel.preview_mute_toggled.connect(self._on_preview_mute_toggled)
+        self._preview_monitor.position_changed.connect(self._on_preview_position_changed)
+        self._preview_monitor.crop_changed.connect(self._on_preview_crop_changed)
+        self._preview_monitor.video_resolution_detected.connect(self._on_video_resolution_detected)
+        self._preview_monitor.video_frame_changed.connect(self._on_preview_video_frame_for_mirror)
+        center_layout.addWidget(self._preview_panel, stretch=1)
+
+        self._btn_go = QPushButton("GO (Next Cue) — [ SPAZIO ]")
+        self._btn_go.setMinimumHeight(48)
+        self._btn_go.setMaximumHeight(54)
+        self._btn_go.setFont(QFont("sans-serif", 18, QFont.Weight.Bold))
+        self._update_go_button_style()
+        self._btn_go.clicked.connect(self._on_go)
+        center_layout.addWidget(self._btn_go, stretch=0)
+        top_splitter.addWidget(center_panel)
+
+        # Right: Cue Inspector
+        self._inspector = CueInspectorPanel()
+        self._inspector.value_changed.connect(self._on_inspector_value_changed)
+        self._inspector.batch_field_edited.connect(self._on_batch_field_edited)
+        self._inspector.layer_selected.connect(self._set_layer)
+        self._inspector.output_target_selected.connect(self._set_output_target)
+        self._inspector.color_selected.connect(self._set_cue_color)
+        self._inspector.follow_mode_selected.connect(self._set_follow_mode)
+        self._inspector.in_out_reset_requested.connect(self._on_reset_in_out)
+        self._inspector.group_mode_selected.connect(self._set_group_mode)
+        self._inspector.group_collapse_toggled.connect(self._toggle_group_collapse_from_inspector)
+        self._inspector.ungroup_requested.connect(self._ungroup_selected)
+        self._inspector.remove_child_requested.connect(self._on_remove_child_from_group)
+        self._inspector.extract_child_requested.connect(self._extract_selected_from_group)
+        self._inspector.open_group_timeline_requested.connect(self._on_open_group_timeline)
+        self._inspector.scan_loudness_requested.connect(self._on_scan_loudness_requested)
+        self._inspector.normalize_cue_toggled.connect(self._on_normalize_cue_toggled)
+        self._inspector.optimize_dynamics_requested.connect(self._on_optimize_dynamics_requested)
+        self._inspector.restore_original_requested.connect(self._on_restore_original_requested)
+        self._inspector.open_surface_mapping_requested.connect(self._open_surface_mapping_dialog)
+        self._inspector.mask_edit_requested.connect(self._on_mask_edit_requested)
+        self._inspector.set_available_surfaces(self._surfaces)
+        self._bind_inspector_aliases()
+        top_splitter.addWidget(self._inspector)
+
+        top_splitter.setChildrenCollapsible(False)
+        top_splitter.setStretchFactor(0, 25)
+        top_splitter.setStretchFactor(1, 45)
+        top_splitter.setStretchFactor(2, 30)
+        top_splitter.setSizes([350, 630, 420])
+        top_splitter.splitterMoved.connect(self._on_top_splitter_moved)
+        root_layout.addWidget(top_splitter, stretch=7)
+
+        # Bottom splitter: Waveform | Live Output Status | Drop Zone
+        bottom_splitter = QSplitter(Qt.Orientation.Horizontal)
+        bottom_splitter.setChildrenCollapsible(False)
+        self._bottom_splitter = bottom_splitter
+
+        self._waveform_panel = WaveformPanel()
+        self._waveform = self._waveform_panel.waveform
+        self._waveform_panel.in_changed.connect(self._on_waveform_in_changed)
+        self._waveform_panel.out_changed.connect(self._on_waveform_out_changed)
+        self._waveform_panel.seek_requested.connect(self._on_waveform_seek_requested)
+        self._waveform_panel.snap_in_requested.connect(self._on_snap_in_to_playhead)
+        self._waveform_panel.snap_out_requested.connect(self._on_snap_out_to_playhead)
+        self._waveform_panel.reset_in_out_requested.connect(self._on_reset_in_out)
+        self._waveform_panel.fade_in_changed.connect(self._on_waveform_fade_in_changed)
+        self._waveform_panel.fade_out_changed.connect(self._on_waveform_fade_out_changed)
+        self._waveform_panel.fade_curve_changed.connect(self._on_waveform_fade_curve_changed)
+        self._waveform_panel.envelope_mode_changed.connect(self._on_envelope_mode_changed)
+        self._waveform_panel.envelope_points_changed.connect(self._on_envelope_points_changed)
+        self._waveform_panel.reset_envelope_points_requested.connect(self._on_reset_envelope_points)
+        self._waveform_panel.image_horizon_changed.connect(self._on_image_horizon_changed)
+        self._waveform_panel.split_section_requested.connect(self._on_split_section)
+        self._waveform_panel.break_loop_requested.connect(self._on_break_section_loop)
+        self._waveform_panel.reset_sections_requested.connect(self._on_reset_sections)
+        self._waveform_panel.section_jump_requested.connect(self._on_section_jump_clicked)
+        self._waveform_panel.section_mode_changed.connect(self._on_section_mode_changed)
+        self._waveform_panel.section_remove_requested.connect(self._on_remove_section)
+        self._waveform_panel.sections_changed.connect(self._on_sections_resized)
+        bottom_splitter.addWidget(self._waveform_panel)
+
+        self._live_status = LiveStatusPanel()
+        self._lbl_tappo_info = self._live_status.lbl_tappo_info
+        self._live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
+        self._live_status.blackout_clicked.connect(self._on_blackout)
+        self._live_status.choose_layer0_clicked.connect(self._on_choose_layer0)
+        self._live_status.reset_layer0_clicked.connect(self._on_reset_layer0)
+        self._live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
+        self._live_status.layer_seek_requested.connect(self.layer_seek_requested.emit)
+        bottom_splitter.addWidget(self._live_status)
+
+        drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
+        drop_layout = QVBoxLayout(drop_group)
+        self._drop_zone = DropZone()
+        self._drop_zone.file_dropped.connect(self._on_file_dropped)
+        drop_layout.addWidget(self._drop_zone)
+        bottom_splitter.addWidget(drop_group)
+
+        bottom_splitter.setSizes([460, 320, 220])
+        root_layout.addWidget(bottom_splitter, stretch=2)
+
+        # Dedicated distraction-free LIVE Show Mode page
+        self._live_show_panel = LiveShowPanel()
+        self._live_show_panel.exit_live_mode_requested.connect(lambda: self.set_live_mode(False))
+        self._live_show_panel.go_requested.connect(self._on_go)
+        self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))
+        self._live_show_panel.cue_row_double_clicked.connect(self._on_live_row_double_clicked)
+        self._live_show_panel.group_collapse_toggled.connect(self._toggle_group_collapsed)
+        self._live_show_panel.pause_all_toggled.connect(self.pause_all_toggled.emit)
+        self._live_show_panel.panic_requested.connect(self._on_panic)
+        self._live_show_panel.break_loop_requested.connect(self._on_break_section_loop)
+        self._live_show_panel.live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
+        self._live_show_panel.live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
+        self._live_show_panel.live_status.layer_seek_requested.connect(self.layer_seek_requested.emit)
+
+        self._status_panels: list[LiveStatusPanel] = [
+            self._live_status,
+            self._live_show_panel.live_status,
+        ]
+        for status_panel in self._status_panels:
+            status_panel.output_screen_changed.connect(self._on_output_screen_selected)
+
+        self._central_stack.addWidget(self._design_page)
+        self._central_stack.addWidget(self._live_show_panel)
+        self._central_stack.setCurrentIndex(0)
+
+    def _rebuild_recent_menu(self) -> None:
+        """Rebuild the "Apri recenti" submenu from QSettings.
+
+        Rebuilding on ``aboutToShow`` (instead of keeping actions in sync while
+        the app runs) means the menu is always correct after an open/save and
+        costs nothing during a show.
+        """
+        menu = getattr(self, "_recent_menu", None)
+        if menu is None:
+            return
+        menu.clear()
+        recent = self._recent_projects()
+        if not recent:
+            empty = menu.addAction("Nessun progetto recente")
+            empty.setEnabled(False)
+            return
+
+        for idx, path in enumerate(recent, start=1):
+            name = Path(path).stem or Path(path).name
+            act = QAction(f"{idx}. {name}", self)
+            act.setToolTip(path)
+            # Missing files stay visible: clicking explains what happened and
+            # removes the stale entry instead of failing silently.
+            if not os.path.isfile(path):
+                act.setText(f"{idx}. {name}  (non trovato)")
+            act.triggered.connect(lambda _checked=False, p=path: self._open_recent_project(p))
+            menu.addAction(act)
+
+        menu.addSeparator()
+        menu.addAction(QAction("Svuota elenco recenti", self, triggered=self._clear_recent_projects))
+
+    def _bind_inspector_aliases(self) -> None:
+        """Expose direct references to inspector inputs for convenient integration."""
+        insp = self._inspector
+        self._grp_inspector = insp
+        self._edit_cue_q = insp.edit_cue_q
+        self._edit_cue_name = insp.edit_cue_name
+        self._edit_cue_notes = insp.edit_cue_notes
+        self._btn_layer1 = insp.btn_layer1
+        self._btn_layer2 = insp.btn_layer2
+        self._btn_layer3 = insp.btn_layer3
+        self._spin_pos_x = insp.spin_pos_x
+        self._spin_pos_y = insp.spin_pos_y
+        self._spin_x = insp.spin_pos_x
+        self._spin_y = insp.spin_pos_y
+        self._slider_scale = insp.slider_scale
+        self._slider_opacity = insp.slider_opacity
+        self._slider_volume = insp.slider_volume
+        self._spin_crop_l = insp.spin_crop_l
+        self._spin_crop_r = insp.spin_crop_r
+        self._spin_crop_t = insp.spin_crop_t
+        self._spin_crop_b = insp.spin_crop_b
+        self._spin_w = insp.spin_crop_r
+        self._spin_h = insp.spin_crop_b
+        self._spin_fade_in = insp.spin_fade_in
+        self._spin_fade_out = insp.spin_fade_out
+        self._spin_hold_time = insp.spin_hold_time
+        self._chk_loop = insp.chk_loop
+        self._combo_loop_mode = insp.combo_loop_mode
+        self._spin_loop_count = insp.spin_loop_count
+        self._combo_aspect = insp.combo_aspect
+        self._spin_in = insp.spin_in
+        self._spin_out = insp.spin_out
+
+    def _build_status_bar(self) -> None:
+        sb = QStatusBar()
+        self._lbl_hw_info = QLabel(detect_hardware_brief())
+        self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
+        sb.addWidget(self._lbl_hw_info)
+
+        self._btn_device_settings = QPushButton("⚙ Dispositivi · Uscite")
+        self._btn_device_settings.setFixedHeight(22)
+        self._btn_device_settings.setMinimumWidth(152)
+        self._btn_device_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_device_settings.setToolTip(
+            "Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro)."
+        )
+        self._btn_device_settings.setAccessibleName("Dispositivi e Uscite Hardware")
+        self._btn_device_settings.setAccessibleDescription("Apre il pannello di configurazione delle uscite audio sala, monitor cuffia, schermo video live e profili prestazionali.")
+        self._btn_device_settings.clicked.connect(self.open_device_settings_dialog)
+        sb.addWidget(self._btn_device_settings)
+
+        self._btn_lock_layout = QPushButton("🔒 Layout: Bloccato")
+        self._btn_lock_layout.setCheckable(True)
+        self._btn_lock_layout.setChecked(True)
+        self._btn_lock_layout.setFixedHeight(22)
+        self._btn_lock_layout.setMinimumWidth(142)
+        self._btn_lock_layout.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_lock_layout.setToolTip(
+            "Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\n"
+            "Di default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere."
+        )
+        self._btn_lock_layout.setAccessibleName("Blocca Larghezza Pannelli")
+        self._btn_lock_layout.setAccessibleDescription("Attiva o disattiva il blocco delle larghezze dei pannelli di regia per prevenire spostamenti accidentali.")
+        self._btn_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
+        sb.addWidget(self._btn_lock_layout)
+
+        self._btn_jam_mode = HoldProgressButton(
+            text_idle="🎚 Jam: OFF (Tieni 5s)",
+            text_active="🎚 Jam Mode: ATTIVO",
+            hold_ms=5000,
+            deactivate_hold_ms=1500,
+            is_toggle=True,
+            initial_state=False,
+            color_idle="#16202e",
+            border_idle="#2d3e56",
+            text_color_idle="#94a3b8",
+            color_active="#064e3b",
+            border_active="#10b981",
+            text_color_active="#34d399",
+            fill_color="#10b981",
+        )
+        self._btn_jam_mode.setFixedHeight(22)
+        self._btn_jam_mode.setMinimumWidth(160)
+        self._btn_jam_mode.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
+        self._btn_jam_mode.setToolTip(
+            "Modalità Jam / Contest (Default: OFF).\n"
+            "PROTEZIONE REGIA: Tieni premuto per 5 secondi per attivare.\n"
+            "Quando attiva, applica automaticamente il livellamento sonoro EBU R128 (-16 LUFS)\n"
+            "su tutti i media per evitare salti improvvisi di volume durante contest o jam session.\n"
+            "Per disattivare: tieni premuto 1.5 secondi."
+        )
+        self._btn_jam_mode.setAccessibleName("Modalità Jam e Contest Livellamento Audio")
+        self._btn_jam_mode.setAccessibleDescription("Attiva o disattiva il livellamento automatico EBU R128 a -16 LUFS. Richiede una pressione continua di 5 secondi per attivare.")
+        self._btn_jam_mode.toggled_state.connect(self._set_jam_mode)
+        sb.addWidget(self._btn_jam_mode)
+
+        self._btn_remote_status = QPushButton("📡 Remoto: OFF")
+        self._btn_remote_status.setFixedHeight(22)
+        self._btn_remote_status.setMinimumWidth(168)
+        self._btn_remote_status.setStyleSheet("color: #64748b;")
+        self._btn_remote_status.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_remote_status.setToolTip(
+            "Controllo Remoto LAN per Smartphone/Tablet (Web) e OSC.\n"
+            "Clicca per mostrare il QR Code, l'indirizzo IP e le opzioni di comando."
+        )
+        self._btn_remote_status.setAccessibleName("Controllo Remoto LAN Web e OSC")
+        self._btn_remote_status.setAccessibleDescription("Mostra il codice QR per smartphone e la configurazione del server web e OSC.")
+        self._btn_remote_status.clicked.connect(self.open_remote_control_dialog)
+        sb.addWidget(self._btn_remote_status)
+
+        self._status_label = QLabel("Ready — No show loaded")
+        self._status_label.setMinimumWidth(0)
+        self._status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        sb.addPermanentWidget(self._status_label, stretch=1)
+        self.setStatusBar(sb)

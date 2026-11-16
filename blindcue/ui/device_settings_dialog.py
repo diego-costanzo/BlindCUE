@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
@@ -13,12 +12,14 @@ from PySide6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
     QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from engine.device_manager import DeviceManager
+from models.output_config import OutputMode
 from ui.hardware_info import (
     PROFILE_AUTO,
     PROFILE_ECO,
@@ -33,7 +34,8 @@ logger = logging.getLogger(__name__)
 class DeviceSettingsDialog(QDialog):
     """Modal dialog for selecting Audio Master/PFL devices, Video Screen, and Hardware Profile."""
 
-    def __init__(self, device_mgr: DeviceManager, parent: Optional[QWidget] = None) -> None:
+    def __init__(self, device_mgr: DeviceManager, parent: QWidget | None = None) -> None:
+        """Build the hardware dialog (screens + audio) for the given device manager."""
         super().__init__(parent)
         self.device_mgr = device_mgr
         self.setWindowTitle("Configurazione Hardware & Uscite di Regia")
@@ -124,6 +126,15 @@ class DeviceSettingsDialog(QDialog):
         row_monitor.addWidget(self._combo_monitor)
         l_audio.addLayout(row_monitor)
 
+        self._lbl_audio_capability = QLabel("")
+        self._lbl_audio_capability.setWordWrap(True)
+        self._lbl_audio_capability.setStyleSheet(
+            "color: #f59e0b; font-size: 11px; background: #1a1410; "
+            "padding: 6px; border-radius: 4px; border: 1px solid #7c2d12;"
+        )
+        self._lbl_audio_capability.setVisible(False)
+        l_audio.addWidget(self._lbl_audio_capability)
+
         lbl_audio_note = QLabel(
             "💡 <i>Suggerimento:</i> Assegna la Cuffia per ascoltare in anteprima i brani nell'Ispettore o nella Scaletta "
             "senza che il pubblico in sala senta nulla. Se usi una sola scheda, entrambi usano l'uscita predefinita."
@@ -151,13 +162,37 @@ class DeviceSettingsDialog(QDialog):
         btn_refresh_screens.setFixedWidth(80)
         btn_refresh_screens.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_refresh_screens.clicked.connect(self._populate_screens)
+        self._btn_refresh_screens = btn_refresh_screens
         row_scr.addWidget(lbl_scr)
         row_scr.addWidget(self._combo_screen, 1)
         row_scr.addWidget(btn_refresh_screens)
         l_video.addLayout(row_scr)
 
+        row_mode = QHBoxLayout()
+        lbl_mode = QLabel("Modalità Uscita:")
+        lbl_mode.setStyleSheet("color: #ffffff; font-weight: bold;")
+        self._combo_output_mode = QComboBox()
+        self._combo_output_mode.addItem(
+            "🖥️ Singolo schermo (una sola uscita)", OutputMode.SINGLE.value)
+        self._combo_output_mode.addItem(
+            "🖥️🖥️ Superficie unica — span su più proiettori", OutputMode.SPAN.value)
+        self._combo_output_mode.addItem(
+            "🖥️ ⇄ 🖥️ Due uscite indipendenti (contenuti diversi)", OutputMode.DUAL.value)
+        self._combo_output_mode.currentIndexChanged.connect(self._on_output_mode_changed)
+        row_mode.addWidget(lbl_mode)
+        row_mode.addWidget(self._combo_output_mode, 1)
+        l_video.addLayout(row_mode)
+
+        self._lbl_span_info = QLabel("")
+        self._lbl_span_info.setWordWrap(True)
+        self._lbl_span_info.setStyleSheet("color: #f59e0b; font-size: 11px;")
+        self._lbl_span_info.setVisible(False)
+        l_video.addWidget(self._lbl_span_info)
+
         lbl_video_hint = QLabel(
-            "💡 Seleziona il monitor o proiettore collegato. Se c'è un solo schermo, l'uscita si apre in modalità finestra simulata per le prove."
+            "💡 BlindCue proietta solo sugli schermi esterni al monitor di regia. "
+            "Con un solo proiettore tutto va lì; con due proiettori puoi scegliere "
+            "quale alimenta l'uscita A e quale l'uscita B dal pannello dei layer."
         )
         lbl_video_hint.setWordWrap(True)
         lbl_video_hint.setStyleSheet("color: #78909c; font-size: 11px;")
@@ -202,6 +237,45 @@ class DeviceSettingsDialog(QDialog):
         # 3. Screens
         self._populate_screens()
 
+        # 4. Output routing mode
+        mode_idx = self._combo_output_mode.findData(self.device_mgr.get_output_mode())
+        self._combo_output_mode.setCurrentIndex(mode_idx if mode_idx >= 0 else 0)
+        self._on_output_mode_changed()
+
+    def _on_output_mode_changed(self) -> None:
+        """Explain the selected mode and disable the single-screen picker for multi-output modes."""
+        mode = self._combo_output_mode.currentData() or OutputMode.SINGLE.value
+        is_span = mode == OutputMode.SPAN.value
+        is_dual = mode == OutputMode.DUAL.value
+
+        self._combo_screen.setEnabled(not (is_span or is_dual))
+        self._btn_refresh_screens.setEnabled(not (is_span or is_dual))
+
+        if not (is_span or is_dual):
+            self._lbl_span_info.setVisible(False)
+            return
+
+        if is_dual:
+            screens = self.device_mgr.get_dual_screens()
+            names = ", ".join(f"{s.name()} ({s.geometry().width()}x{s.geometry().height()})" for s in screens)
+            parts = [
+                "Due uscite separate e indipendenti: ogni proiettore ha i propri 3 layer. "
+                "Assegna ogni cue all'uscita A o B nell'Ispettore."
+            ]
+            parts.append(f"Proiettori coinvolti: {names}." if names else "Nessun proiettore esterno rilevato.")
+            warning = self.device_mgr.dual_warning()
+        else:
+            screens = self.device_mgr.get_external_screens()
+            names = ", ".join(f"{s.name()} ({s.geometry().width()}x{s.geometry().height()})" for s in screens)
+            parts = ["I proiettori esterni saranno uniti in un'unica tela continua."]
+            parts.append(f"Schermi coinvolti: {names}." if names else "Nessuno schermo esterno rilevato.")
+            warning = self.device_mgr.span_warning()
+
+        if warning:
+            parts.append(warning)
+        self._lbl_span_info.setText(" ".join(parts))
+        self._lbl_span_info.setVisible(True)
+
     def _populate_audio_devices(self) -> None:
         self._combo_master.clear()
         self._combo_monitor.clear()
@@ -216,6 +290,12 @@ class DeviceSettingsDialog(QDialog):
         if not devs:
             self._combo_master.addItem("Nessun dispositivo rilevato (Default)", None)
             self._combo_monitor.addItem("Nessun dispositivo rilevato (Default)", None)
+            self._combo_monitor.setEnabled(False)
+            self._lbl_audio_capability.setText(
+                "⚠️ Nessuna uscita audio rilevata dal sistema operativo: "
+                "l'audio userà l'impianto predefinito."
+            )
+            self._lbl_audio_capability.setVisible(True)
             return
 
         master_idx = 0
@@ -242,6 +322,20 @@ class DeviceSettingsDialog(QDialog):
 
         self._combo_master.setCurrentIndex(master_idx)
         self._combo_monitor.setCurrentIndex(monitor_idx)
+
+        # Without a second sound card the PFL preview would play on the same
+        # speakers as the audience, so the headphone routing is disabled.
+        has_split = len(devs) > 1
+        self._combo_monitor.setEnabled(has_split)
+        if has_split:
+            self._lbl_audio_capability.setVisible(False)
+        else:
+            self._lbl_audio_capability.setText(
+                "⚠️ Una sola uscita audio rilevata: il pre-ascolto in cuffia richiede "
+                "una seconda scheda audio collegata (USB/DAC). Senza di essa il monitor "
+                "PFL userebbe lo stesso impianto del pubblico."
+            )
+            self._lbl_audio_capability.setVisible(True)
 
     def _populate_screens(self) -> None:
         self._combo_screen.clear()
@@ -293,9 +387,19 @@ class DeviceSettingsDialog(QDialog):
         self.device_mgr.set_master_audio_device(master_dev)
         self.device_mgr.set_monitor_audio_device(monitor_dev)
 
-        # 3. Apply screen
-        screen = self._combo_screen.currentData()
-        if screen is not None:
-            self.device_mgr.set_target_screen(screen)
+        # 3. Apply output routing
+        mode = self._combo_output_mode.currentData() or OutputMode.SINGLE.value
+        if mode == OutputMode.SINGLE.value:
+            screen = self._combo_screen.currentData()
+            if screen is not None:
+                self.device_mgr.set_target_screen(screen)
+        if not self.device_mgr.set_output_mode(mode):
+            QMessageBox.warning(
+                self,
+                "Uscita video non applicata",
+                "La modalità selezionata non è applicabile con gli schermi attuali.\n"
+                "Collega il proiettore esterno richiesto e riprova.",
+            )
+            return
 
         self.accept()
