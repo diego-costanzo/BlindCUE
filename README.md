@@ -145,8 +145,8 @@ L'installer verifica automaticamente Python, RAM, spazio disco, rete, server aud
 Un solo comando, uguale su tutti e tre i sistemi: `setup.py` riconosce il sistema operativo e delega l'installazione alla cartella giusta (`setup/linux`, `setup/macos`, `setup/windows`).
 
 ```bash
-git clone https://github.com/diego-costanzo/BlinCUE.git
-cd BlinCUE
+git clone https://github.com/diego-costanzo/BlindCUE.git
+cd BlindCUE
 python3 setup.py            # apre la finestra di installazione
 ```
 

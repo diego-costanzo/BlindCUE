@@ -61,8 +61,8 @@ Nel sistema operativo imposta sempre **"Estendi schermo"** (desktop esteso). **M
 ### Un solo comando per tutti i sistemi
 
 ```bash
-git clone https://github.com/diego-costanzo/BlinCUE.git
-cd BlinCUE
+git clone https://github.com/diego-costanzo/BlindCUE.git
+cd BlindCUE
 python3 setup.py
 ```
 
