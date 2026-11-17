@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://diego-costanzo.github.io/BlindCUE/sitemap.xml

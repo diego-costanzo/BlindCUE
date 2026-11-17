@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>BlindCUE — Open-Source Audio/Video Cue Player for Live Shows (QLab Alternative)</title>
+  <meta name="description" content="BlindCUE is a free, open-source audio/video cue player for theatre, dance and concerts. A QLab alternative for Linux, Windows and macOS: separate director console and stage output, 3 projection layers, LAN remote control (web + OSC).">
+  <meta name="keywords" content="cue player, audio video cue player, live show software, QLab alternative, open source QLab, theatre software, projection mapping, live performance, Linux, Wayland, stage, dance, concert">
+  <meta name="author" content="Diego Costanzo">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+
+  <link rel="canonical" href="https://diego-costanzo.github.io/BlindCUE/">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="BlindCUE">
+  <meta property="og:title" content="BlindCUE — Open-Source Audio/Video Cue Player for Live Shows">
+  <meta property="og:description" content="A free, open-source QLab alternative for Linux, Windows and macOS. Cue-based playback for theatre, dance and concerts with separate stage output and LAN remote.">
+  <meta property="og:url" content="https://diego-costanzo.github.io/BlindCUE/">
+  <meta property="og:image" content="https://diego-costanzo.github.io/BlindCUE/assets/screenshot-work.jpg">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="BlindCUE — Open-Source Audio/Video Cue Player for Live Shows">
+  <meta name="twitter:description" content="A free, open-source QLab alternative for Linux, Windows and macOS.">
+  <meta name="twitter:image" content="https://diego-costanzo.github.io/BlindCUE/assets/screenshot-work.jpg">
+
+  <!-- Structured data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "BlindCUE",
+    "alternateName": "BlindCue",
+    "description": "Open-source audio/video cue player for live shows: theatre, dance, concerts. Separate director console and stage output, three projection layers, LAN remote control (web + OSC).",
+    "applicationCategory": "MultimediaApplication",
+    "operatingSystem": "Linux, Windows, macOS",
+    "url": "https://diego-costanzo.github.io/BlindCUE/",
+    "image": "https://diego-costanzo.github.io/BlindCUE/assets/logo.jpg",
+    "license": "https://opensource.org/licenses/MIT",
+    "codeRepository": "https://github.com/diego-costanzo/BlindCUE",
+    "softwareRequirements": "Python 3.10+, Qt 6",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "author": { "@type": "Person", "name": "Diego Costanzo" },
+    "featureList": [
+      "Separate director console and stage output",
+      "Three projection layers (six with dual projectors)",
+      "Cue list for audio, video, images and groups",
+      "Groups: simultaneous, sequential, step, random, loop",
+      "Sections with loops, vamp, jump and skip",
+      "Projection mapping with keystone and masks",
+      "LAN remote control: web remote and OSC",
+      "EBU R128 loudness and non-destructive normalisation"
+    ]
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "BlindCUE",
+    "url": "https://diego-costanzo.github.io/BlindCUE/",
+    "description": "Open-source audio/video cue player for live shows."
+  }
+  </script>
+
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --fg: #e6edf3;
+      --muted: #8b949e;
+      --accent: #41CD52;
+      --accent2: #3776AB;
+      --border: #30363d;
+      --maxw: 1020px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+    header.hero {
+      text-align: center;
+      padding: 72px 24px 48px;
+      background: radial-gradient(1200px 500px at 50% -10%, #1c2a1e 0%, var(--bg) 60%);
+      border-bottom: 1px solid var(--border);
+    }
+    header.hero img.logo { width: 128px; height: 128px; border-radius: 24px; }
+    h1 { font-size: 2.6rem; margin: 20px 0 12px; line-height: 1.15; }
+    .tagline { font-size: 1.2rem; color: var(--muted); max-width: 720px; margin: 0 auto; }
+    .cta { margin-top: 28px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      display: inline-block; padding: 12px 22px; border-radius: 8px;
+      font-weight: 600; border: 1px solid var(--border); color: var(--fg);
+    }
+    .btn.primary { background: var(--accent); color: #041f07; border-color: var(--accent); }
+    .btn:hover { text-decoration: none; filter: brightness(1.1); }
+    section { padding: 48px 0; border-bottom: 1px solid var(--border); }
+    h2 { font-size: 1.7rem; margin: 0 0 16px; }
+    p.lead { color: var(--muted); }
+    p.note { margin-top: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 24px; }
+    .card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 20px;
+    }
+    .card h3 { margin: 0 0 8px; font-size: 1.05rem; }
+    .card p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+    .screenshots { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-top: 24px; }
+    .screenshots figure { margin: 0; }
+    .screenshots img { width: 100%; border-radius: 10px; border: 1px solid var(--border); }
+    .screenshots figcaption { color: var(--muted); font-size: 0.85rem; margin-top: 8px; text-align: center; }
+    pre {
+      background: #010409; border: 1px solid var(--border);
+      border-radius: 8px; padding: 16px; overflow-x: auto;
+      font-size: 0.95rem;
+    }
+    code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+    ul.features { columns: 2; column-gap: 32px; color: var(--muted); }
+    ul.features li { margin-bottom: 8px; break-inside: avoid; }
+    footer {
+      text-align: center; padding: 32px 24px; color: var(--muted); font-size: 0.9rem;
+    }
+    .badges { margin-top: 20px; }
+    .badges img { margin: 2px; }
+    @media (max-width: 600px) {
+      h1 { font-size: 2rem; }
+      ul.features { columns: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="hero">
+    <div class="wrap">
+      <img class="logo" src="assets/logo.jpg" alt="BlindCUE logo" width="128" height="128">
+      <h1>BlindCUE</h1>
+      <p class="tagline">
+        Open-source audio/video <strong>cue player for live shows</strong> — theatre, dance, concerts.
+        A <strong>QLab alternative</strong> for Linux, Windows and macOS, with a separate director
+        console, a clean stage output and LAN remote control.
+      </p>
+      <div class="cta">
+        <a class="btn primary" href="https://github.com/diego-costanzo/BlindCUE">View on GitHub</a>
+        <a class="btn" href="#install">Install</a>
+        <a class="btn" href="#features">Features</a>
+      </div>
+      <div class="badges">
+        <img src="https://img.shields.io/badge/Linux-Wayland%20%7C%20X11-FCC624?logo=linux&logoColor=black" alt="Linux Wayland and X11">
+        <img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel">
+        <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white" alt="Windows 10 and 11">
+        <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="what">
+      <div class="wrap">
+        <h2>What is BlindCUE</h2>
+        <p class="lead">
+          BlindCUE lets you build a cue list of audio, video and image cues and fire them on stage
+          with fail-safe, panic-ready controls. The audience never sees a desktop, a system window
+          or a technical manoeuvre: the director works on one screen, the audience sees only the
+          clean stage output on the projector.
+        </p>
+        <div class="grid">
+          <div class="card">
+            <h3>Director console</h3>
+            <p>Cue list, inspector, preview and waveform on the operator's monitor — everything needed to run a show.</p>
+          </div>
+          <div class="card">
+            <h3>Stage output</h3>
+            <p>Only the live video layers, full screen, on the projector or stage display. Dual output for two independent screens.</p>
+          </div>
+          <div class="card">
+            <h3>Built for panic</h3>
+            <p>Global pause, blackout and Panic keys, atomic saves, autosave and crash recovery — designed for live pressure.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="why">
+      <div class="wrap">
+        <h2>A QLab alternative for Linux and Windows</h2>
+        <p class="lead">
+          <a href="https://qlab.app">QLab</a>, the reference tool for live cueing, is macOS-only and
+          commercial. BlindCUE is the open-source alternative for the machines QLab does not cover.
+        </p>
+        <ul class="features">
+          <li><strong>Linux first</strong>: native Wayland and X11, PipeWire/PulseAudio, VA-API hardware video decoding.</li>
+          <li><strong>Also Windows and macOS</strong>: one codebase, no platform lock-in.</li>
+          <li><strong>Lightweight</strong>: no web runtime, no database, no external service. Python + Qt + FFmpeg.</li>
+          <li><strong>Open source only</strong>: no proprietary dependency, no paid API, no account, no cloud.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="features">
+      <div class="wrap">
+        <h2>Features</h2>
+        <div class="grid">
+          <div class="card"><h3>Three projection layers</h3><p>Background, main and overlay, stackable in real time. Six with two independent projectors.</p></div>
+          <div class="card"><h3>Cue list</h3><p>Video, audio, images and groups (scenes) with pre/post-delay, fades and auto-follow.</p></div>
+          <div class="card"><h3>Groups</h3><p>Simultaneous, sequential, step, random and loop — for scenes and multi-device cues.</p></div>
+          <div class="card"><h3>Sections</h3><p>Virtual A/B/C sections with N-time loops or infinite vamp, jump and skip.</p></div>
+          <div class="card"><h3>Envelopes</h3><p>Keyframed volume and opacity with logarithmic, S-curve or linear fades.</p></div>
+          <div class="card"><h3>Audio routing</h3><p>Separate room master and headphone PFL, EBU R128 loudness, non-destructive normalisation.</p></div>
+          <div class="card"><h3>Projection mapping</h3><p>Automatic projector detection, span, dual outputs, surfaces, masks and keystone.</p></div>
+          <div class="card"><h3>LAN remote</h3><p>Mobile-first web remote with QR + PIN, a director monitor and a native OSC server.</p></div>
+          <div class="card"><h3>Failsafes</h3><p>Atomic saves, autosave + crash recovery, 40-step undo/redo, dedicated CPU budget.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="screenshots">
+      <div class="wrap">
+        <h2>Screenshots</h2>
+        <div class="screenshots">
+          <figure>
+            <img src="assets/screenshot-work.jpg" alt="BlindCUE cue player main window during a live show" loading="lazy" width="1280" height="715">
+            <figcaption>The director console during a show</figcaption>
+          </figure>
+          <figure>
+            <img src="assets/screenshot-ux.jpg" alt="BlindCUE user interface with cue list and preview" loading="lazy" width="1280" height="715">
+            <figcaption>The user interface</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="install">
+      <div class="wrap">
+        <h2>Install</h2>
+        <p class="lead">One command on Linux, macOS and Windows. Installs per-user, no <code>sudo</code>, no UAC.</p>
+        <pre><code>git clone https://github.com/diego-costanzo/BlindCUE.git
+cd BlindCUE
+python3 setup.py   # opens the installer window</code></pre>
+        <p class="lead note">
+          Full requirements, per-system commands and the Italian user guide are in the
+          <a href="https://github.com/diego-costanzo/BlindCUE#readme">README</a> and in
+          <a href="https://github.com/diego-costanzo/BlindCUE/blob/main/docs/MANUAL.md">docs/MANUAL.md</a>.
+        </p>
+      </div>
+    </section>
+
+    <section id="tested">
+      <div class="wrap">
+        <h2>Tested and transparent</h2>
+        <p class="lead">
+          Every release passes about 210 automated checks on Linux — 130 <code>pytest</code> tests plus
+          harnesses that drive the real application with real media (functional, sections, live groups,
+          integration, mixin fuzz). Deep testing is on Linux (Wayland/X11); codecs beyond H.264, 4K/10-bit
+          files and 5.1/7.1 audio are not yet verified. Before a real show, run a full dress rehearsal —
+          that applies to any live software.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>
+        BlindCUE is free software under the <a href="https://github.com/diego-costanzo/BlindCUE/blob/main/LICENSE">MIT License</a>,
+        developed by Diego Costanzo with AI pair programming.
+        <a href="https://github.com/diego-costanzo/BlindCUE">Source on GitHub</a> ·
+        <a href="https://github.com/diego-costanzo/BlindCUE/blob/main/docs/TEST_FINDINGS.md">Test findings</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>
