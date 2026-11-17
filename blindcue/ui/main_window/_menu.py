@@ -390,6 +390,12 @@ class _MenuMixin:
         self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
         sb.addWidget(self._lbl_hw_info)
 
+        self._lbl_perf_hint = QLabel("")
+        self._lbl_perf_hint.setStyleSheet(
+            "color: #f59e0b; font-size: 11px; font-weight: 600; padding-left: 8px;")
+        self._lbl_perf_hint.setVisible(False)
+        sb.addWidget(self._lbl_perf_hint)
+
         self._btn_device_settings = QPushButton("⚙ Dispositivi · Uscite")
         self._btn_device_settings.setFixedHeight(22)
         self._btn_device_settings.setMinimumWidth(152)
@@ -466,3 +472,18 @@ class _MenuMixin:
         self._status_label.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         sb.addPermanentWidget(self._status_label, stretch=1)
         self.setStatusBar(sb)
+
+    def set_performance_hint(self, text: str | None) -> None:
+        """Show or clear the persistent live-load warning in the status bar.
+
+        The warning is advisory only: it never blocks the operator. It stays
+        visible until explicitly cleared so an overloaded projector cannot be
+        forgotten while working on other cues.
+        """
+        hint = (text or "").strip()
+        # Called once per second by the live-load guard: skip the work when
+        # nothing changed, so an idle show pays no repaint cost.
+        if self._lbl_perf_hint.text() == hint and self._lbl_perf_hint.isHidden() == (not hint):
+            return
+        self._lbl_perf_hint.setText(hint)
+        self._lbl_perf_hint.setVisible(bool(hint))

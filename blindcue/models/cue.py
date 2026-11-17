@@ -56,6 +56,30 @@ def _default_crop() -> dict[str, float]:
     return {"x": 0.0, "y": 0.0, "w": 1.0, "h": 1.0}
 
 
+def sanitize_crop(value: object) -> dict[str, float]:
+    """Return a valid crop rectangle, falling back to the full frame.
+
+    A damaged project file may contain a crop of the wrong type or with
+    non-numeric fields. Downstream the crop is read as a mapping, so an
+    unsanitised value makes the cue fail to draw *silently* during the show:
+    the safe degradation is to project the whole frame.
+    """
+    if not isinstance(value, dict):
+        return _default_crop()
+    out: dict[str, float] = {}
+    for key, default in (("x", 0.0), ("y", 0.0), ("w", 1.0), ("h", 1.0)):
+        try:
+            num = float(value.get(key, default))  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            return _default_crop()
+        if not math.isfinite(num):
+            return _default_crop()
+        out[key] = min(1.0, max(0.0, num))
+    if out["w"] <= 0.0 or out["h"] <= 0.0:
+        return _default_crop()
+    return out
+
+
 # A polygon mask is only useful when it actually encloses an area: two points
 # are a line, one point is a dot. 64 vertices is far more than any hand-drawn
 # cut-out needs and keeps the JSON project file readable.
@@ -295,10 +319,11 @@ class Cue:
     output_target: str = "A"  # Physical projector output: "A" (default) or "B" (second independent output)
 
     def __post_init__(self) -> None:
-        """Normalise the routing target, rotation and mask once, at construction."""
+        """Normalise routing target, crop, rotation and mask once, at construction."""
         # Every consumer downstream (routing, conflict detection, live badges,
         # output window) can then trust these values without re-validating.
         self.output_target = normalize_output_target(self.output_target)
+        self.crop = sanitize_crop(self.crop)
         self.rotation = normalize_rotation(self.rotation)
         self.mask_polygon = sanitize_mask_polygon(self.mask_polygon)
         self.mask_feather = sanitize_mask_feather(self.mask_feather)

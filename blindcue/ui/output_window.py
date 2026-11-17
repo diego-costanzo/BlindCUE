@@ -568,11 +568,25 @@ class OutputWindow(QWidget):
         """Reset Layer 0 to the bundled BlindCue official logo."""
         self.set_layer0_image(str(_DEFAULT_LOGO))
 
+    def _has_active_media(self) -> bool:
+        """Return True only if Layers 1-3 really show a video or a non-empty image.
+
+        The per-layer dicts are created once at init, so their truthiness says
+        nothing about content: a cleared layer keeps its (empty) pixmap item.
+        """
+        if any(c.isVisible() for c in self._video_containers.values()):
+            return True
+        for layer, item in self._layer_pixmaps.items():
+            if item.pixmap().isNull():
+                continue
+            container = self._image_containers.get(layer)
+            if container is not None and container.isVisible():
+                return True
+        return False
+
     def _update_tappo_visibility(self) -> None:
         """Ensure Layer 0 (Tappo) is visible ONLY when no media is active and not in Panic Black."""
-        has_active_media = bool(self._layer_pixmaps) or any(
-            c.isVisible() for c in self._video_containers.values()
-        )
+        has_active_media = self._has_active_media()
         if has_active_media:
             self._panic_black = False
         if self._logo_item is not None:
@@ -1436,7 +1450,7 @@ class OutputWindow(QWidget):
         All live media across Layers 1-3 is removed and the logo is displayed."""
         self._panic_black = False
         visible_videos = [l for l, c in self._video_containers.items() if c.isVisible()]
-        has_media = bool(visible_videos) or bool(self._layer_pixmaps)
+        has_media = bool(visible_videos) or self._has_active_media()
         if not has_media or fade_duration_sec <= 0:
             self.clear_all_layers()
             if self._logo_item is not None:
