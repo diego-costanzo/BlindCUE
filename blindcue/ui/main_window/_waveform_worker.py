@@ -12,9 +12,25 @@ from ui.main_window._common import (  # noqa: F401
 
 
 class _WaveformWorkerMixin:
+    _WAVEFORM_CACHE_MAX = 32
+
     def _request_waveform(self, cue: Cue) -> None:
-        if cue.media_type == MediaType.IMAGE:
+        # Group containers and broken/offline cues have no media of their own:
+        # running ffprobe on an empty path only spams the log with decode
+        # errors and wastes a worker slot on every selection.
+        if cue.media_type in (MediaType.IMAGE, MediaType.GROUP) or not cue.file_path:
             self._waveform.set_peaks(np.array([]))
+            return
+        path = os.path.abspath(cue.file_path)
+        cached = self._waveform_cache.get(path)
+        if isinstance(cached, np.ndarray):
+            self._waveform.set_peaks(cached)
+            return
+        if any(os.path.abspath(a.file_path) == path for a in self._active_analyzers):
+            # Already decoding this exact file in the background.  One job per
+            # selection change floods the worker pool (a GO storm queues
+            # hundreds of full-file decodes) and the cue that is finally
+            # selected would see its waveform only seconds later.
             return
         try:
             analyzer = WaveformAnalyzer(cue.file_path, max(3200, self._waveform.width() * 6))
@@ -45,10 +61,17 @@ class _WaveformWorkerMixin:
 
     def _on_analyzer_ready(self, analyzer, path: str, peaks: object) -> None:
         self._active_analyzers.discard(analyzer)
-        cue = self._selected_cue()
-        if cue and os.path.abspath(cue.file_path) == os.path.abspath(path):
-            if isinstance(peaks, np.ndarray):
+        if isinstance(peaks, np.ndarray):
+            self._cache_waveform(path, peaks)
+            cue = self._selected_cue()
+            if cue and os.path.abspath(cue.file_path) == os.path.abspath(path):
                 self._waveform.set_peaks(peaks)
+
+    def _cache_waveform(self, path: str, peaks: np.ndarray) -> None:
+        """Keep the decoded peaks so re-selecting a cue does not re-decode it."""
+        self._waveform_cache[os.path.abspath(path)] = peaks
+        while len(self._waveform_cache) > self._WAVEFORM_CACHE_MAX:
+            self._waveform_cache.pop(next(iter(self._waveform_cache)))
 
     def _on_analyzer_failed(self, analyzer, path: str, msg: str) -> None:
         self._active_analyzers.discard(analyzer)

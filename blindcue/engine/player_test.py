@@ -214,6 +214,8 @@ class TestPlayer(QObject):
             target_ms = int(round(self._sequencer.active_start_sec() * 1000))
             self._boundary_armed = False
             self._player.setPosition(target_ms)
+            # Keep the section bar in sync when a section is skipped mid-preview.
+            self.signals.section_changed.emit(self._sequencer.current_index)
         elif self._sequencer.active:
             self._boundary_armed = True
 
@@ -435,6 +437,13 @@ class TestPlayer(QObject):
             self._last_emitted_opacity = None
             self._boundary_armed = True
             self._finished = False
+
+            # Sections describe the cue being replaced: left installed, the
+            # LoadedMedia handler would seek the fresh file to the previous
+            # cue's section start.  main.py re-applies the new cue's sections
+            # right after load().
+            self._sections_cfg.clear()
+            self._sequencer.configure([], 0.0, 0.0)
 
             url = QUrl.fromLocalFile(file_path)
             self._player.setSource(url)

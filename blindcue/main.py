@@ -556,7 +556,12 @@ def main() -> int:
                 source_tag="PRE-VIZ",
             )
 
-        if cue.follow_mode == FollowMode.AUTO_FOLLOW.value:
+        if cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(
+            main_win._cues, cue
+        ) in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value):
+            # SEQUENCE ("Cascata") and LOOP ("Loop Scena") containers advance
+            # their children on their own: the operator picked the mode, so the
+            # single child does not need to be marked AUTO-GO as well.
             main_win.trigger_auto_follow_from(cue)
 
     def _enter_post_delay_or_finalize(cue: Cue, layer: int, expected_gen: int) -> None:

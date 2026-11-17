@@ -54,7 +54,17 @@ progetti salvati.
 | Gruppi e ShowEngine (SIMULTANEOUS/RANDOM/SEQUENCE/STEP-LOOP, catene, standby) | 7 | 7 PASS |
 | Persistenza (round-trip progetto, corruzione, file mancanti) | 4 | 4 PASS |
 | Doppia uscita (routing A/B, indipendenza, span) | 4 | 4 PASS |
-| **Totale** | **49** | **49 PASS** |
+| **Totale suite** | **49** | **49 PASS** |
+
+Due harness aggiuntivi coprono ciò che la suite verifica solo come logica:
+
+| Harness | Area | Casi | Esito |
+|---|---|---|---|
+| `suite_sections.py` | sezioni (loop, skip, vampiro, salti) e rotazione/crop **su audio e video reali** | 11 | 11 PASS |
+| `suite_groups_playback.py` | gruppi SEQUENCE/STEP/LOOP/SIMULTANEOUS **con playback reale** | 6 | 6 PASS |
+
+Test unitari interni: **125 passed** (`pytest`), di cui 14 sulla sola macchina a
+stati `show_engine`.
 
 ### Cosa è stato verificato, in pratica
 
@@ -70,6 +80,7 @@ progetti salvati.
 - **Envelope**: interpolazione dei punti di automazione volume/opacità.
 - **Scheduler**: pre-delay, pausa/ripresa, cancellazione.
 - **Gruppi**: elenco figli, SIMULTANEOUS, collisione sullo stesso layer, SEQUENCE che avanza lo standby figlio per figlio, catena `follow` che raccoglie più cue in un solo GO, mini-editor timeline (flag `timeline_composed` persistito).
+- **Gruppi in scena (playback reale)**: un solo GO fa partire tutta la cascata SEQUENCE (anche con figli video e sezioni), STEP avanza a ogni GO, Loop Scena torna al primo figlio e cicla da solo, SIMULTANEOUS mantiene i sequencer di sezione indipendenti fra i figli.
 - **Persistenza**: round-trip di 13 campi + maschera + sezioni + gruppo; progetto corrotto degradato senza eccezioni; file mancante conservato con badge OFFLINE.
 - **Doppia uscita**: routing layer A 1-3 / B 4-6 con fallback su A, due scene indipendenti, due video simultanei su A e B, modalità span su due schermi.
 - **Tappo/failsafe**: visibile all'avvio, nascosto durante i media, **restituito dopo lo svuotamento** e dopo il panico.
@@ -172,6 +183,67 @@ a ogni cue costruita (da file o da codice). Un crop invalido degrada al frame
 intero, che è il comportamento sicuro in scena.
 
 Verifica: `P2b` falliva prima, passa ora; suite a 49/49.
+
+### 5.3 ALTA — La cue nuova partiva a metà (sezioni della cue precedente)
+
+`engine/player_live.py` e `engine/player_test.py`, `load()`
+
+`load()` non azzerava `_sections_cfg`/`_sequencer`. L'handler `LoadedMedia`
+faceva quindi seek all'`active_start_sec()` della **cue precedente**: facendo GO
+su un layer che stava ancora suonando, la cue nuova partiva minuti dentro il
+file (misurato: 3.00 s invece di 0.00 s). Invisibile finché non si cambia cue
+sullo stesso layer con sezioni attive.
+
+Correzione: `load()` svuota le sezioni; ogni chiamante riapplica subito le
+sezioni della cue corretta.
+
+Verifica: `GP2` e `GP4` (gruppi su playback reale) controllano che il figlio
+successivo parta da < 0.6 s; prima fallivano.
+
+### 5.4 MEDIA — Skip in diretta: il pannello restava sulla sezione vecchia
+
+`engine/player_live.py` / `player_test.py`, `_refresh_live_sections()`
+
+Marcando "skip" la sezione in riproduzione, il player saltava correttamente ma
+non emetteva `section_changed`: l'indicatore di sezione restava sulla A mentre
+si stava già suonando la B, con il rischio di un salto sbagliato a mano.
+
+Correzione: emissione del segnale quando uno skip live cambia sezione.
+
+Verifica: `SV3` (sezioni video reali) — salto entro 1 s e segnale `1`.
+
+### 5.5 ALTA — Gruppi SEQUENCE e LOOP non facevano quello che promette l'UI
+
+`engine/show_engine.py` + `main.py` + `ui/main_window/_transport.py`
+
+- **SEQUENCE ("Cascata: un solo GO lancia tutta la sequenza")**: il contenitore
+  lanciava solo il primo figlio. La catena partiva soltanto se **ogni figlio**
+  era marcato manualmente `AUTO-GO`, cosa che l'operatore non ha motivo di
+  scoprire in prova generale.
+- **LOOP ("Cicla continuamente gli elementi interni")**: trattato come STEP,
+  nessun ciclo automatico e lo standby cadeva fuori dal gruppo.
+
+Correzione:
+- `ShowEngine.auto_follow_target()` ora guarda il **modo del contenitore**: i
+  figli di un gruppo SEQUENCE avanzano al successivo, quelli di un LOOP tornano
+  al primo.
+- `main.py::_finalize_cue_exit()` considera il modo del gruppo oltre al flag
+  `AUTO-GO` del singolo figlio.
+- `_fire_cue_chain()` riporta lo standby sul primo figlio quando l'ultimo di un
+  Loop Scena è stato lanciato.
+
+Verifica: nuovo harness `suite_groups_playback.py`, **6/6 PASS** su playback
+reale — cascata SEQUENCE con 3 figli senza AUTO-GO, cascata video con sezioni,
+SIMULTANEOUS con sezioni indipendenti, STEP manuale, standby LOOP, ciclo LOOP
+automatico (`LA0 → LA1 → LA0` senza altri GO).
+
+### 5.6 Nota — Le sezioni coprono sempre tutta la cue
+
+`normalize_sections()` rende **aperta l'ultima sezione** (fino a cue OUT o fine
+file). Non è un bug: le sezioni sono sempre contigue e coprono l'intera cue,
+quindi un ultimo taglio anticipato non esiste. Per far finire una cue a 2 s
+serve `out_point = 2.0`, non una sezione che finisce a 2 s. Da tenere presente
+quando si spiegano le sezioni agli operatori.
 
 ---
 
@@ -323,6 +395,20 @@ l'operatore non la vede).
 # suite funzionale completa (49 casi)
 QT_QPA_PLATFORM=offscreen .venv/bin/python ~/.cache/blindcue-stress/suite.py
 
+# sezioni e trasformazioni su playback audio/video reale (11 casi)
+.venv/bin/python ~/.cache/blindcue-stress/suite_sections.py
+
+# gruppi su playback reale (6 casi) + integrazione/casi limite (12 casi)
+.venv/bin/python ~/.cache/blindcue-stress/suite_groups_playback.py
+.venv/bin/python ~/.cache/blindcue-stress/suite_integration.py
+
+# fuzz dei mixin della MainWindow: 400 operazioni UI casuali (5 casi)
+.venv/bin/python ~/.cache/blindcue-stress/suite_mixins.py
+STEPS=2000 SEED=7 .venv/bin/python ~/.cache/blindcue-stress/suite_mixins.py
+
+# test logici (pytest)
+.venv/bin/python -m pytest tests -q
+
 # carico video su due uscite con telemetria al secondo
 VPO=1 .venv/bin/python ~/.cache/blindcue-stress/stress6.py 30   # 1 video per uscita
 VPO=3 .venv/bin/python ~/.cache/blindcue-stress/stress6.py 30   # 3 video per uscita
@@ -350,8 +436,8 @@ Da mettere in programma prima di considerare il collaudo concluso:
 - Edge blending reale tra due proiettori sovrapposti (le superfici sono state
   verificate pixel per pixel, ma su uno schermo solo per volta).
 - Rete: controllo remoto, OSC, web server.
-- Undo/redo, autosave, recupero dopo crash (verificati solo indirettamente dalla
-  suite).
+- Autosave e recupero dopo crash: verificati solo indirettamente (scrittura
+  periodica su directory temporanea, nessun test di riapertura post-crash).
 - Sessioni continue oltre i 10 minuti.
 - Proiettore cinese reale: è stato usato come uscita B, ma non ne è stata
   verificata la fedeltà cromatica né la latenza di scaling interno.
@@ -364,8 +450,130 @@ Da mettere in programma prima di considerare il collaudo concluso:
 |---|---|
 | `blindcue/ui/output_window.py` | Tappo: nuovo `_has_active_media()`, usato da `_update_tappo_visibility()` e `show_fallback()` |
 | `blindcue/models/cue.py` | nuova `sanitize_crop()`, applicata in `__post_init__` |
-| `blindcue/main.py` | `gc.collect()` + `gc.freeze()` dopo il bootstrap; guardia del carico video con avviso nella barra di stato (controllo ogni secondo) |
+| `blindcue/main.py` | `gc.collect()` + `gc.freeze()` dopo il bootstrap; guardia del carico video con avviso nella barra di stato (controllo ogni secondo); cascata dei gruppi SEQUENCE/LOOP in `_finalize_cue_exit()` |
 | `blindcue/ui/main_window/_menu.py` | nuova etichetta `_lbl_perf_hint` e metodo `set_performance_hint()` |
+| `blindcue/engine/player_live.py` | `load()` azzera le sezioni; `_refresh_live_sections()` emette `section_changed` dopo uno skip live |
+| `blindcue/engine/player_test.py` | stesse due correzioni dell'anteprima |
+| `blindcue/engine/show_engine.py` | `group_parent()`, `group_mode_of()`, `auto_follow_target()` con avanzamento/ciclo dei gruppi |
+| `blindcue/ui/main_window/_transport.py` | standby del Loop Scena riportato sul primo figlio |
+| `tests/test_show_engine_pure.py` | 3 test nuovi su modo gruppo e auto-follow |
 
-Nessun commit è stato creato: le modifiche sono da rivedere e committare quando
-si decide.
+I primi quattro file sono nel commit `da56b68`. Le correzioni successive
+(player, gruppi, test) **non sono ancora committate**: attendono la revisione.
+
+---
+
+## 12. Seconda tornata: harness ripetitivi e fuzz dei mixin
+
+Obiettivo: cercare i bug che non si vedono provando una funzione alla volta, ma
+solo dove due file si incontrano (mixin della `MainWindow`, doppio deck,
+persistenza, pool di thread di Qt Multimedia).
+
+### 12.1 Bug trovato: starvation del `QThreadPool` globale (corretto)
+
+Sintomo: dopo ~300 GO consecutivi con cue video, il player restava per sempre in
+`LoadingMedia`; CPU in salita costante, watchdog a 3 tentativi falliti, nessun
+errore esplicito. Gli esperimenti hanno escluso audio, autosave, numero di cue e
+numero di player (knob `GI11_NOAUDIO`, `NOAUTOSAVE`, `GI10_CUES`).
+
+Causa reale, individuata campionando `/proc/self/task/*/stat` durante il blocco:
+`WaveformAnalyzer`/`LoudnessScanner` venivano lanciati su
+`QThreadPool.globalInstance()` (lo stesso pool in cui Qt Multimedia accoda
+caricamento e decodifica dei media) e `configure_thread_pool()` lo riduceva a
+1-4 thread. Un burst di decodifiche complete affamava il backend: la cue
+successiva non trovava piu' un worker per uscire da `LoadingMedia`.
+
+Correzione (`ui/hardware_info.py`, `ui/main_window/window.py`,
+`ui/main_window/_waveform_worker.py`): pool dedicato
+`ShowRuntimeGuard.analysis_pool()` per le analisi di forma
+d'onda/loudness/dinamica, pool globale riportato a
+`QThread.idealThreadCount()`, deduplica delle richieste (una sola decodifica
+per file) e cache LRU delle forme d'onda (`_WAVEFORM_CACHE_MAX = 32`).
+
+Esito: `suite_integration.py` GI10/GI11/GI12 da FAIL a PASS; GI11 (100 salti di
+sezione) si chiude in 0,62 s.
+
+### 12.2 Bug trovato: durata mai ripubblicata quando la sorgente viene riusata (corretto)
+
+Per non stressare il demuxer, `LivePlayer.load()` non riemette `setSource` se
+l'URL e' gia' quello caricato. Effetto collaterale scoperto da
+`suite_sections.py`: `durationChanged` non viene piu' emesso dal backend, quindi
+chi aspetta i metadati (griglia sezioni, inspector, harness) resta bloccato:
+7 casi su 11 fallivano con "durata non rilevata".
+
+Correzione in `engine/player_live.py`: quando la sorgente viene riusata, la
+durata gia' nota viene ripubblicata (`duration_changed`). `suite_sections.py`
+torna 11/11.
+
+### 12.3 Bug trovato: analisi della forma d'onda su cue di gruppo / path vuoto (corretto)
+
+Scoperto dalla fuzz dei mixin (log: `ffprobe duration failed: could not convert
+string to float: ''`): selezionando un cue di tipo `GROUP` (o un cue offline
+senza percorso) partiva comunque un `ffprobe` su stringa vuota, sprecando un
+worker e sporcando il log. Correzione in `_waveform_worker.py`: nessuna
+richiesta per `GROUP`, `IMAGE` o `file_path` vuoto.
+
+### 12.4 Salvataggio: archivio portatile
+
+Al "Salva con nome" viene chiesto se copiare i media dentro la cartella dello
+show (`<nome>_media/`, percorsi relativi nel file di progetto). Default = "No"
+(solo collegamenti, comportamento storico). La copia e' atomica, non tocca mai
+gli originali, disambigua i nomi uguali (`clip.mp4` -> `clip_2.mp4`) e, se un
+file non e' copiabile, lo show viene salvato comunque e l'utente vede l'elenco
+dei file rimasti collegati al percorso originale. In apertura i media mancanti
+sono elencati esplicitamente.
+
+### 12.5 Nuova harness: `suite_mixins.py`
+
+Guida la vera `MainWindow` con 250-400 operazioni casuali in sequenza
+(selezione, creazione/scioglimento gruppi, sposta, elimina, undo/redo, split
+sezione, GO, BLACKOUT, PANIC, modifica inspector, salva+apri) e dopo ogni
+operazione verifica:
+
+- `cue_id` unici;
+- nessun `parent_id` orfano, nessun figlio di un non-gruppo, nessun ciclo di
+  gruppi;
+- tabella e lista cue allineate, `_current_index` valido;
+- round-trip salva/apri senza perdita o alterazione di cue, sezioni, padri;
+- stato stazionario delle risorse: fra due misure "a riposo" (meta' e fine
+  fuzz) file descriptor e thread non devono crescere oltre soglia;
+- nessuna eccezione dalle funzioni dei mixin (i dialoghi modali vengono
+  intercettati e registrati, cosi' non bloccano l'harness).
+
+Casi: MX1 fuzz 400 operazioni casuali; MX2 100 cicli gruppo/undo/redo/ungroup
+senza orfani; MX3 30 salvataggi/aperture; MX4 cancella tutto e annulla -> show
+identico; MX5 scioglimento dell'unica cue (indice pendente).
+
+Nota: in sandbox il rendering e' software (`llvmpipe`) e Qt crea un pool di
+thread di decodifica H.264 per ogni player: i thread totali crescono al primo
+uso e poi restano stabili. Per questo la verifica confronta due stati a riposo,
+non il valore assoluto.
+
+### 12.6 Bug trovato: indice pendente dopo lo scioglimento dell'ultima cue (corretto)
+
+Scoperto da MX1 con `SEED=99` dopo 435 operazioni: `_ungroup_selected()`
+rimuoveva il gruppo ma, se la lista restava vuota, non riportava
+`_current_index` a `-1` (a differenza di `_on_delete_cue`, che lo fa gia').
+L'indice continuava a puntare a una cue inesistente: inspector e anteprima
+mostravano la cue rimossa e il GO successivo lavorava su un indice fantasma.
+
+Correzione in `ui/main_window/_groups.py`: nel ramo "lista vuota" si azzera
+l'indice e si svuotano inspector/anteprima. Nuovo caso deterministico **MX5**
+(gruppo unico, scioglimento, indice `-1`, tabella vuota, GO ancora funzionante).
+
+### 12.7 Misura dei thread: due stati a riposo
+
+Prime versioni di MX1 segnalavano "thread cresciuti" anche senza alcun leak:
+Qt crea i worker dei pool in modo pigro e li ricicla dopo ~30 s. La versione
+finale:
+
+- imposta `QThreadPool.setExpiryTimeout(200)` solo nell'harness, cosi' i worker
+  inattivi spariscono subito;
+- attende uno stato stabile (conteggi invariati per 3 campioni) a meta' e alla
+  fine della corsa, e confronta solo quei due stati;
+- risultato con 400 operazioni casuali: `fd 89 -> 89`, `thread 56 -> 56`;
+  con 600 operazioni (seed diverso): `fd 90 -> 90`, `thread 56 -> 56`.
+
+La stessa misura su 6 player conferma che i thread `av:h264:dfN` sono pool di
+decodifica per player (creati al primo video, poi stabili), non un accumulo.
+

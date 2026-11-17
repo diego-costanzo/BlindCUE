@@ -15,7 +15,7 @@ and reused by non-GUI tooling (CLI preview, exporters, headless schedulers).
 
 from __future__ import annotations
 
-from models.cue import Cue, CueStatus, FollowMode, MediaType, resolve_output_target
+from models.cue import Cue, CueStatus, FollowMode, GroupMode, MediaType, resolve_output_target
 
 
 def demote_live_on_layer(
@@ -137,8 +137,46 @@ class ShowEngine:
             cue.status = CueStatus.LOADED
 
     @staticmethod
+    def group_parent(cues: list[Cue], cue: Cue) -> Cue | None:
+        """Return the GROUP container that owns *cue*, if any."""
+        parent_id = getattr(cue, "parent_id", None)
+        if parent_id is None:
+            return None
+        return next(
+            (c for c in cues
+             if c.cue_id == parent_id and c.media_type == MediaType.GROUP),
+            None,
+        )
+
+    @staticmethod
+    def group_mode_of(cues: list[Cue], cue: Cue) -> str:
+        """Return the container mode (SEQUENCE/LOOP/…) or '' for a plain cue."""
+        parent = ShowEngine.group_parent(cues, cue)
+        return getattr(parent, "group_mode", "") if parent is not None else ""
+
+    @staticmethod
     def auto_follow_target(cues: list[Cue], finished_cue: Cue) -> int:
-        """Return the index to fire after *finished_cue*, or -1 if none."""
+        """Return the index to fire after *finished_cue*, or -1 if none.
+
+        The container mode wins over the single child's follow flag: a
+        SEQUENCE group cascades to the next child and a LOOP group wraps back
+        to the first one, because that is what the operator selected
+        ("Cascata" / "Loop Scena") in the inspector.
+        """
+        parent = ShowEngine.group_parent(cues, finished_cue)
+        if parent is not None:
+            kids = ShowEngine.children_of(cues, parent.cue_id)
+            pos = next(
+                (i for i, k in enumerate(kids) if k.cue_id == finished_cue.cue_id),
+                -1,
+            )
+            mode = getattr(parent, "group_mode", "")
+            if pos >= 0 and mode == GroupMode.SEQUENCE.value and pos < len(kids) - 1:
+                target = kids[pos + 1]
+                return next((i for i, c in enumerate(cues) if c is target), -1)
+            if pos >= 0 and mode == GroupMode.LOOP.value and kids:
+                target = kids[(pos + 1) % len(kids)]
+                return next((i for i, c in enumerate(cues) if c is target), -1)
         try:
             idx = cues.index(finished_cue)
         except ValueError:

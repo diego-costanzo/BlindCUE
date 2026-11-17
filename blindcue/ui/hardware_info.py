@@ -9,7 +9,7 @@ import platform
 import subprocess
 import sys
 
-from PySide6.QtCore import QThreadPool
+from PySide6.QtCore import QThread, QThreadPool
 from PySide6.QtGui import QGuiApplication, QOffscreenSurface, QOpenGLContext
 from PySide6.QtWidgets import QMessageBox, QWidget
 
@@ -215,6 +215,22 @@ class ShowRuntimeGuard:
 
     _active: bool = False
     _original_thresholds: tuple[int, int, int] = (2000, 10, 10)
+    _analysis_pool: QThreadPool | None = None
+
+    @classmethod
+    def analysis_pool(cls) -> QThreadPool:
+        """Return the dedicated pool used by BlindCue background analysis.
+
+        Waveform/loudness/normalisation jobs must never share the *global*
+        QThreadPool: Qt Multimedia schedules its own media loading and decoding
+        tasks there, and a burst of full-file decodes (e.g. holding GO and
+        flapping the cue selection) can starve it for tens of seconds, leaving
+        the next cue stuck in ``LoadingMedia``.
+        """
+        if cls._analysis_pool is None:
+            cls._analysis_pool = QThreadPool()
+            cls._analysis_pool.setMaxThreadCount(worker_thread_limit())
+        return cls._analysis_pool
 
     @classmethod
     def on_live_mode_enter(cls, profile: str = PROFILE_AUTO) -> None:
@@ -249,16 +265,19 @@ class ShowRuntimeGuard:
 
     @classmethod
     def configure_thread_pool(cls, profile: str) -> None:
-        """Configure QThreadPool limits according to hardware profile to prevent UI thread lock.
+        """Cap BlindCue's background pool according to the hardware profile.
 
         The cap always leaves at least one core (two on 4+ core CPUs) free for
-        the OS, the compositor and the real-time media threads.
+        the OS, the compositor and the real-time media threads.  The *global*
+        QThreadPool is deliberately left at its default size: Qt Multimedia
+        runs its own media loading/decoding tasks there, and shrinking it (or
+        handing it our analysis jobs) starves cue loading on stage.
         """
-        pool = QThreadPool.globalInstance()
         workers = worker_thread_limit(profile)
-        pool.setMaxThreadCount(workers)
+        cls.analysis_pool().setMaxThreadCount(workers)
+        QThreadPool.globalInstance().setMaxThreadCount(QThread.idealThreadCount())
         logger.info(
-            "[RUNTIME-GUARD] Thread pool set to %d worker(s) (%s mode, %d cores detected)",
+            "[RUNTIME-GUARD] Analysis pool set to %d worker(s) (%s mode, %d cores detected)",
             workers, profile.upper(), os.cpu_count() or 1,
         )
 

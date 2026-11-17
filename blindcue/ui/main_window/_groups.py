@@ -96,6 +96,13 @@ class _GroupsMixin:
         self._refresh_cue_list(keep_selection=False)
         if 0 <= target_row < len(self._cues):
             self._cue_list.setCurrentRow(target_row)
+        else:
+            # The group was the only cue left: without this the stale index
+            # kept pointing at a cue that no longer exists, so the inspector
+            # and the preview still showed it and the next GO used it.
+            self._current_index = -1
+            self._reset_idle_preview_ui()
+            self._update_inspector(None)
         self._commit_undo_point()
         self._mark_modified(True)
         self._status_label.setText(f"Sciolto Gruppo: '{target_group.name}'")

@@ -73,6 +73,16 @@ class _TransportMixin:
         first_cue = self._cues[start_idx]
         ref = format_cue_ref(start_idx, first_cue)
         next_idx = last_fired_idx + 1
+        fired_cue = self._cues[last_fired_idx]
+        if ShowEngine.group_mode_of(self._cues, fired_cue) == GroupMode.LOOP.value:
+            # Loop Scena: the standby returns to the first element instead of
+            # falling past the container once the last child has fired.
+            kids = ShowEngine.children_of(self._cues, fired_cue.parent_id)
+            inside = next_idx < len(self._cues) and any(
+                kid is self._cues[next_idx] for kid in kids)
+            if kids and not inside:
+                next_idx = next(
+                    (i for i, c in enumerate(self._cues) if c is kids[0]), next_idx)
         if next_idx < len(self._cues):
             self._cue_list.setCurrentRow(next_idx)
             next_ref = format_cue_ref(next_idx, self._cues[next_idx])
@@ -88,15 +98,19 @@ class _TransportMixin:
         self._sync_live_view()
         self._auto_save()
 
-    def _fire_group_cue(self, group_idx: int, group_cue: Cue) -> None:
+    def _fire_group_cue(self, group_idx: int, group_cue: Cue, depth: int = 0) -> None:
         """Execute a MediaType.GROUP container cue according to its group_mode."""
         children = ShowEngine.children_of(self._cues, group_cue.cue_id)
+        # The container is "executed" even when empty: keeping it LOADED made
+        # the operator think the GO was swallowed.
+        group_cue.status = CueStatus.LIVE
         if not children:
-            next_idx = group_idx + 1
             self._refresh_cue_list(keep_selection=False)
+            next_idx = group_idx + 1
             if next_idx < len(self._cues):
                 self._cue_list.setCurrentRow(next_idx)
             self._sync_live_view()
+            self._auto_save()
             return
 
         self._live_show_panel.notify_first_go()
@@ -105,15 +119,9 @@ class _TransportMixin:
         if group_cue.collapsed:
             self._toggle_group_collapsed(group_idx)
 
-        group_cue.status = CueStatus.LIVE
-
         if mode == GroupMode.SIMULTANEOUS.value:
             for child in children:
-                if child.pre_delay <= 0.02:
-                    ShowEngine.promote_to_live(self._cues, child)
-                    self._update_live_layer_label(child)
-                self.cue_fired.emit(child)
-                logger.info("[GO-GROUP-SIMUL] Fired child #%d '%s'", child.cue_id, child.name)
+                self._fire_group_child(child, depth)
 
             self._refresh_cue_list(keep_selection=False)
             last_child_idx = self._cues.index(children[-1])
@@ -123,11 +131,17 @@ class _TransportMixin:
 
         elif mode == GroupMode.RANDOM.value:
             import random
-            chosen = random.choice(children)  # noqa: S311  # Non-cryptographic cue shuffle
-            if chosen.pre_delay <= 0.02:
-                ShowEngine.promote_to_live(self._cues, chosen)
-                self._update_live_layer_label(chosen)
-            self.cue_fired.emit(chosen)
+            pool = children
+            if len(children) > 1:
+                # The inspector promises "senza ripetere due volte di fila lo
+                # stesso elemento": draw from the other children only.
+                last_id = getattr(group_cue, "_last_random_child_id", None)
+                fresh = [c for c in children if c.cue_id != last_id]
+                if fresh:
+                    pool = fresh
+            chosen = random.choice(pool)  # noqa: S311  # Non-cryptographic cue shuffle
+            group_cue._last_random_child_id = chosen.cue_id
+            self._fire_group_child(chosen, depth)
             logger.info("[GO-GROUP-RANDOM] Fired random child #%d '%s'", chosen.cue_id, chosen.name)
             self._refresh_cue_list(keep_selection=False)
             last_child_idx = self._cues.index(children[-1])
@@ -137,10 +151,7 @@ class _TransportMixin:
 
         elif mode == GroupMode.SEQUENCE.value:
             first_child = children[0]
-            if first_child.pre_delay <= 0.02:
-                ShowEngine.promote_to_live(self._cues, first_child, dual_active=self._dual_output_active)
-                self._update_live_layer_label(first_child)
-            self.cue_fired.emit(first_child)
+            self._fire_group_child(first_child, depth)
             logger.info("[GO-GROUP-SEQ] Fired child 0 #%d '%s'", first_child.cue_id, first_child.name)
             self._refresh_cue_list(keep_selection=False)
             if len(children) > 1:
@@ -152,10 +163,7 @@ class _TransportMixin:
 
         else:  # STEP or LOOP
             first_child = children[0]
-            if first_child.pre_delay <= 0.02:
-                ShowEngine.promote_to_live(self._cues, first_child, dual_active=self._dual_output_active)
-                self._update_live_layer_label(first_child)
-            self.cue_fired.emit(first_child)
+            self._fire_group_child(first_child, depth)
             logger.info("[GO-GROUP-STEP] Fired child 0 #%d '%s'", first_child.cue_id, first_child.name)
             self._refresh_cue_list(keep_selection=False)
             if len(children) > 1:
@@ -167,6 +175,24 @@ class _TransportMixin:
 
         self._sync_live_view()
         self._auto_save()
+
+    def _fire_group_child(self, child: Cue, depth: int) -> None:
+        """Launch one group child; a nested container expands recursively.
+
+        Without this, a group holding another group emitted ``cue_fired`` for
+        the container, ``main.py`` had no media branch for it, and the inner
+        media silently never played.
+        """
+        if child.media_type == MediaType.GROUP:
+            if depth >= 3:
+                logger.warning("[GO-GROUP] Annidamento troppo profondo su '%s'", child.name)
+                return
+            self._fire_group_cue(self._cues.index(child), child, depth + 1)
+            return
+        if child.pre_delay <= 0.02:
+            ShowEngine.promote_to_live(self._cues, child, dual_active=self._dual_output_active)
+            self._update_live_layer_label(child)
+        self.cue_fired.emit(child)
 
     @Slot()
     def _on_blackout(self) -> None:

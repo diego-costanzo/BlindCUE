@@ -87,6 +87,16 @@ class LivePlayer(QObject):
         self._driver_timer.setInterval(20)  # 50 Hz precision poll + envelope
         self._driver_timer.timeout.connect(self._on_driver_tick)
 
+        # Load watchdog: the Qt FFmpeg backend can leave a source stuck in
+        # LoadingMedia when sources are changed in rapid succession (operator
+        # mashing GO, or an AUTO-GO landing on the same deck).  Left alone the
+        # deck never plays again on that layer; a hard re-open recovers it.
+        self._load_watchdog = QTimer(self)
+        self._load_watchdog.setSingleShot(True)
+        self._load_watchdog.timeout.connect(self._recover_stalled_load)
+        self._watchdog_trials: int = 0
+        self._watchdog_armed: bool = False
+
         self._setup_player()
 
     def _setup_player(self) -> None:
@@ -459,6 +469,8 @@ class LivePlayer(QObject):
 
     def _handle_cue_finished(self) -> None:
         self._finished = True
+        self._load_watchdog.stop()
+        self._watchdog_armed = False
         self._driver_timer.stop()
         player, _ = self._deck_pair()
         player.pause()
@@ -500,6 +512,9 @@ class LivePlayer(QObject):
         self._sequencer.update_live_sections(self._sections_cfg, self._effective_end_sec())
         if self._sequencer.active and self._sequencer.current_index != before:
             self._execute_jump_ms(int(round(self._sequencer.active_start_sec() * 1000)))
+            # The operator just marked the playing section as skip: the panel
+            # must follow the cue to its new section, exactly as a manual jump.
+            self.signals.section_changed.emit(self._sequencer.current_index)
             return
         self._pre_cue_next_target()
 
@@ -564,6 +579,14 @@ class LivePlayer(QObject):
                 self._standby_target_ms = None
                 self._standby_ready = False
 
+            # Sections describe the cue being REPLACED, not the incoming media.
+            # Left installed, the LoadedMedia handler seeks the fresh file to the
+            # previous cue's active section start, so a direct replacement (GO on
+            # a layer that is still playing) starts the new cue minutes in.
+            # Every caller re-applies the new cue's sections right after load().
+            self._sections_cfg.clear()
+            self._sequencer.configure([], 0.0, 0.0)
+
             self._active_deck = 0
             if self._deck_switch_cb is not None and self._is_video_cue:
                 self._deck_switch_cb(0)
@@ -577,13 +600,39 @@ class LivePlayer(QObject):
 
             self._player.stop()
             url = QUrl.fromLocalFile(file_path)
-            if self._player.source() == url:
-                # Resetting source forces Qt FFmpeg backend to clear cached EOF state and re-emit durationChanged
-                self._player.setSource(QUrl())
-            self._player.setSource(url)
-            if self._start_ms > 0:
-                self._player.setPosition(self._start_ms)
+            current = self._player.source()
+            status = self._player.mediaStatus()
+            if current != url or status in (
+                QMediaPlayer.MediaStatus.EndOfMedia,
+                QMediaPlayer.MediaStatus.InvalidMedia,
+            ):
+                if current == url:
+                    # EOF/error: the source is stale, clear it so the backend
+                    # really re-opens the file from scratch.
+                    self._player.setSource(QUrl())
+                self._player.setSource(url)
+            else:
+                # Same file already loaded (GO repeated on the same cue, or a
+                # second cue pointing at the same media): re-issuing setSource
+                # churns the FFmpeg demuxer, and a few hundred of them leave
+                # the backend permanently stuck in LoadingMedia. Keep the
+                # loaded source and just re-seat the playhead below.
+                logger.debug("[LIVE] Reusing loaded source for %s", file_path)
+                # The backend keeps the decoded metadata when the source is
+                # reused, so durationChanged never fires again: publish the
+                # known duration, otherwise every listener waiting for the
+                # media to be ready (section grid, UI, harnesses) hangs.
+                reused_ms = self._player.duration()
+                if reused_ms > 0:
+                    self._duration_sec = reused_ms / 1000.0
+                    self.signals.duration_changed.emit(self._duration_sec)
+            # Re-seat the playhead explicitly: when the url is unchanged the
+            # backend keeps the previous position and would resume mid-file.
+            self._player.setPosition(self._start_ms)
 
+            self._load_watchdog.stop()
+            self._watchdog_trials = 0
+            self._watchdog_armed = False
             logger.info("[LIVE] Loaded %s (start=%.1f, end=%s)", file_path, start, end)
         except Exception as exc:
             logger.error("[LIVE] load() failed: %s", exc, exc_info=True)
@@ -623,15 +672,68 @@ class LivePlayer(QObject):
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
                 player.play()
                 logger.debug("[LIVE] play()")
+            self._arm_load_watchdog()
             self._ensure_driver_timer()
             if self._sequencer.active:
                 self.signals.section_changed.emit(self._sequencer.current_index)
         except Exception as exc:
             logger.error("[LIVE] play() failed: %s", exc, exc_info=True)
 
+    def _arm_load_watchdog(self) -> None:
+        """Watch the deck after play(): recover if the backend never starts."""
+        if self._watchdog_trials >= 3:
+            return
+        self._watchdog_armed = True
+        self._load_watchdog.start(3500)
+
+    def _recover_stalled_load(self) -> None:
+        """Hard re-open the active deck when a source stays stuck loading."""
+        try:
+            if not self._watchdog_armed:
+                # A stop()/PANIC landed after the timeout was queued: never
+                # resurrect a cue the operator has just silenced.
+                return
+            self._watchdog_armed = False
+            if not self._file_path or self._manual_fade_active:
+                return
+            player, _ = self._deck_pair()
+            if player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+                return
+            if player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+                # Legitimately finished: never restart a cue that reached its end.
+                return
+            self._watchdog_trials += 1
+            logger.warning(
+                "[LIVE] %s non parte (status=%s): riapertura forzata %d/3",
+                os.path.basename(self._file_path),
+                player.mediaStatus().name,
+                self._watchdog_trials,
+            )
+            target = (
+                int(round(self._sequencer.active_start_sec() * 1000))
+                if self._sequencer.active
+                else max(self._start_ms, player.position())
+            )
+            player.stop()
+            player.setSource(QUrl())
+            player.setSource(QUrl.fromLocalFile(self._file_path))
+            player.setPosition(target)
+            player.play()
+            if self._watchdog_trials >= 3:
+                self.signals.error_occurred.emit(
+                    f"Impossibile avviare '{os.path.basename(self._file_path)}': "
+                    "file danneggiato o codec non supportato"
+                )
+            else:
+                self._arm_load_watchdog()
+        except Exception as exc:
+            logger.error("[LIVE] watchdog recovery failed: %s", exc, exc_info=True)
+
     def pause(self) -> None:
         """Pause playback and stop the precision driver, keeping the current position."""
         try:
+            self._load_watchdog.stop()
+            self._watchdog_armed = False
             self._driver_timer.stop()
             player, _ = self._deck_pair()
             player.pause()
@@ -676,6 +778,9 @@ class LivePlayer(QObject):
             self._boundary_armed = True
             self._finished = False
             self._driver_timer.stop()
+            self._load_watchdog.stop()
+            self._watchdog_trials = 0
+            self._watchdog_armed = False
             if self._fade_timer is not None and self._fade_timer.isActive():
                 self._fade_timer.stop()
             self._player.stop()

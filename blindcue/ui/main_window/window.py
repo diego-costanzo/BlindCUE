@@ -95,10 +95,13 @@ class MainWindow(
         self._dual_output_active: bool = False
         self._jam_mode_active: bool = False
         self._current_index: int = -1
-        self._thread_pool = QThreadPool.globalInstance()
+        # Background analysis (waveform, loudness, dynamics) runs on its own
+        # pool: the global one belongs to Qt Multimedia's media loading.
+        self._thread_pool = ShowRuntimeGuard.analysis_pool()
         self._test_player = None
         self._device_mgr = None
         self._active_analyzers: set = set()
+        self._waveform_cache: dict[str, object] = {}
         self._active_test_duration: float = 0.0
         self._active_section_idx: int = -1
         self._img_previz_elapsed: float = 0.0
@@ -108,6 +111,8 @@ class MainWindow(
 
         self._project_manager = ProjectManager()
         self._current_project_path: str | None = None
+        # True when the current show was saved with its media copied next to it.
+        self._project_bundled: bool = False
         if self._output and self._output.get_surfaces():
             self._surfaces = [s.clone() for s in self._output.get_surfaces()]
         else:

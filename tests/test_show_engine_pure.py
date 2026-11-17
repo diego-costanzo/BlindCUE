@@ -165,3 +165,36 @@ def test_auto_follow_returns_next_or_negative():
     assert ShowEngine.auto_follow_target(cues, cues[0]) == 1
     assert ShowEngine.auto_follow_target(cues, cues[2]) == -1
     assert ShowEngine.auto_follow_target(cues, _cue(99, "Ghost")) == -1
+
+
+def test_group_mode_of_resolves_container():
+    group = _cue(10, "SEQ", media_type=MediaType.GROUP,
+                 group_mode=GroupMode.SEQUENCE)
+    kid = _cue(11, "k1", parent_id=10)
+    plain = _cue(12, "plain")
+    cues = [group, kid, plain]
+
+    assert ShowEngine.group_mode_of(cues, kid) == GroupMode.SEQUENCE.value
+    assert ShowEngine.group_mode_of(cues, plain) == ""
+
+
+def test_sequence_group_cascades_to_next_child():
+    group = _cue(10, "SEQ", media_type=MediaType.GROUP,
+                 group_mode=GroupMode.SEQUENCE)
+    kids = [_cue(11, "k1", parent_id=10), _cue(12, "k2", parent_id=10),
+            _cue(13, "k3", parent_id=10)]
+    cues = [group, *kids]
+
+    assert ShowEngine.auto_follow_target(cues, kids[0]) == 2
+    assert ShowEngine.auto_follow_target(cues, kids[1]) == 3
+    assert ShowEngine.auto_follow_target(cues, kids[2]) == -1
+
+
+def test_loop_group_wraps_back_to_first_child():
+    group = _cue(10, "LOOP", media_type=MediaType.GROUP,
+                 group_mode=GroupMode.LOOP)
+    kids = [_cue(11, "k1", parent_id=10), _cue(12, "k2", parent_id=10)]
+    cues = [group, *kids]
+
+    assert ShowEngine.auto_follow_target(cues, kids[0]) == 2
+    assert ShowEngine.auto_follow_target(cues, kids[1]) == 1
