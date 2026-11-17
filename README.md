@@ -25,6 +25,7 @@
 
 - [Cos'è BlindCue](#cosè-blindcue)
 - [Perché esiste](#perché-esiste)
+- [Stato del progetto](#stato-del-progetto)
 - [Caratteristiche](#caratteristiche)
 - [Screenshot](#screenshot)
 - [Requisiti](#requisiti)
@@ -62,6 +63,45 @@ BlindCue vuole essere l'alternativa che mancava:
 - **Leggero**: nessun runtime web dentro l'app, nessun database, nessun servizio esterno. Python + Qt + FFmpeg.
 - **Solo open source**: nessuna dipendenza proprietaria, nessuna API a pagamento, nessun account.
 - **Usabile anche altrove**: la stessa base gira su **macOS** (Apple Silicon e Intel) e **Windows 10/11**, perché lo spettacolo non sempre si fa sul computer giusto.
+
+---
+
+## Stato del progetto
+
+**Pronto per l'uso, in evoluzione.** La versione attuale è la `0.1.x`: le funzioni
+descritte qui sotto sono implementate e collaudate, ma il progetto è giovane e
+continua a cambiare.
+
+**Come è fatto.** BlindCue è sviluppato da Diego Costanzo con l'assistenza di
+strumenti di intelligenza artificiale (pair programming), poi verificato a mano
+su hardware reale. Non è un prodotto commerciale con supporto garantito: è un
+progetto open source che nasce dal bisogno concreto di uno spettacolo dal vivo.
+
+**Quanto è testato.** Ogni rilascio passa circa 210 verifiche automatiche su
+Linux:
+
+| Verifica | Casi | Copre |
+|---|---|---|
+| `pytest tests/` | 130 | Macchina a stati, sezioni, envelope, persistenza, robustezza, integrazione |
+| suite funzionale | 49 | Rendering pixel-level, media reali, logica, gruppi, persistenza, doppia uscita |
+| sezioni live | 11 | Sezioni, skip, vamp, salti su playback audio e video reale |
+| gruppi live | 6 | STEP, SEQUENCE, SIMULTANEOUS, LOOP, RANDOM su media veri |
+| integrazione | 12 | Gruppi annidati/vuoti, PANIC/BLACKOUT in scena, 300 GO, 100 salti |
+| fuzz dei mixin | 5 | 400-600 operazioni UI casuali con invarianti e controllo risorse |
+
+Dettaglio dei bug trovati e corretti, con il metodo usato per trovarli:
+[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
+
+**Cosa non è stato ancora verificato.** Windows e macOS sono supportati
+dall'installer ma il collaudo approfondito è stato fatto su Linux (Wayland e
+X11). Non sono stati provati: codec oltre H.264 (HEVC, VP9, ProRes), file 4K o
+10 bit, audio multicanale 5.1/7.1 su impianto esterno, edge blending tra due
+proiettori sovrapposti, sessioni continue oltre i 10 minuti.
+
+**Consiglio pratico.** Prima di uno spettacolo vero, fai una prova generale con
+il tuo computer, il tuo proiettore e i tuoi file. Vale per qualunque software
+live, non solo per questo: è l'unico test che nessuna suite automatica può
+sostituire.
 
 ---
 
@@ -111,6 +151,7 @@ BlindCue vuole essere l'alternativa che mancava:
 ### Resilienza
 
 - Salvataggio **atomico** su file JSON aperto (`.blindcue`).
+- **Archivio portatile** opzionale: al salvataggio puoi copiare i media dentro la cartella dello show e lo spettacolo si apre su qualunque computer. I file originali non vengono mai spostati né modificati.
 - **Autosave** ogni 30 secondi e **Crash Recovery** al riavvio.
 - **Pausa globale** senza drift e **Panic** a 0 ms.
 - **Undo/Redo** fino a 40 passaggi.
@@ -227,6 +268,22 @@ python blindcue/main.py
 5. Premi **`F5`** per entrare in **Modalità LIVE**.
 6. **`SPAZIO`** per il GO. **`Ctrl+B`** per il blackout. **`ESC`** per il Panic.
 
+### Salvare uno show: collegamenti o archivio portatile
+
+Con **Salva con nome** (`Ctrl+Shift+S`) BlindCue chiede come vuoi salvare:
+
+| Scelta | Cosa succede | Quando usarla |
+|---|---|---|
+| **No** (predefinito) | Salva solo i collegamenti ai file originali | I media restano dove sono e li gestisci tu |
+| **Sì** | Copia i media in `<nome>_media/` accanto al file `.blindcue` | Vuoi portare lo show su un altro computer con una chiavetta |
+
+L'archivio portatile usa percorsi relativi, quindi la cartella dello show si può
+spostare o copiare integralmente. I file originali **non vengono mai modificati
+né spostati**, i nomi uguali vengono disambiguati (`clip.mp4` → `clip_2.mp4`) e,
+se un file non è copiabile, lo show viene salvato comunque con un avviso che
+elenca i media rimasti collegati. All'apertura BlindCue segnala subito gli
+eventuali media mancanti.
+
 ---
 
 ## Scorciatoie essenziali
@@ -264,7 +321,7 @@ BlindCUE/
 │   ├── services/            # Web Remote (HTTP+SSE), OSC, QR, coordinamento remoto
 │   └── ui/                  # Widget Qt; il pacchetto main_window/ è suddiviso in mixin
 ├── tests/                   # Suite headless: robustezza, integrazione, show engine
-├── docs/                    # ARCHITECTURE.md e MANUAL.md
+├── docs/                    # ARCHITECTURE.md, MANUAL.md, TEST_FINDINGS.md
 ├── immagini di progetto/    # Screenshot per questo README
 ├── setup.py                 # installer universale: rileva l'OS e apre la GUI
 ├── uninstall.py             # disinstallazione guidata: rimuove tutto, senza tracce
@@ -286,7 +343,7 @@ Dettaglio dei moduli, flusso dati e guida all'estensione: **[docs/ARCHITECTURE.m
 La suite gira **headless** (backend Qt `offscreen`) e non richiede un display:
 
 ```bash
-# Tutta la suite
+# Tutta la suite (130 test)
 QT_QPA_PLATFORM=offscreen pytest -q tests/
 
 # Solo la macchina a stati dello show (nessuna dipendenza Qt, millisecondi)
@@ -297,8 +354,29 @@ pytest -q tests/test_show_engine_pure.py
 |---|---|
 | `test_show_engine_pure.py` | Transizioni LIVE/LOADED, catene, gruppi, auto-follow (puro Python) |
 | `test_show_engine.py` | GO, pre-delay, gruppi, sezioni, envelope con finestre reali |
-| `test_live_robustness.py` | Stress OSC, fuzz, file corrotti, zombie FFmpeg, web server |
+| `test_sections_playback.py` | Sezioni su playback reale: loop, skip, vamp, salti, break |
+| `test_media_transforms.py` | Crop, scala, posizione, rotazione, aspect ratio, colore |
+| `test_output_modes.py` | Uscita singola, span, doppia uscita indipendente |
+| `test_dual_output.py` | Deck A/B, handoff senza stutter, layer per uscita |
+| `test_live_robustness.py` | Stress OSC, fuzz, file corrotti, zombie FFmpeg, archivio portatile |
 | `test_live_integration.py` | Remote manager, segnali, cache stato, autosave, boot headless |
+
+Oltre a pytest, il collaudo include harness che guidano la vera applicazione con
+media reali e controllano il comportamento osservabile (posizione del playhead,
+stato dei player, pixel renderizzati, file JSON prodotto). Non fanno parte del
+repository perché richiedono file multimediali campione e sono stati pensati per
+girare su una macchina dedicata:
+
+| Harness | Casi | Cosa verifica |
+|---|---|---|
+| funzionale | 49 | Rendering, media reali, logica, gruppi, persistenza, doppia uscita |
+| sezioni | 11 | Sezioni su playback audio e video reale |
+| gruppi live | 6 | Le cinque modalità di gruppo su media veri |
+| integrazione | 12 | Casi limite: gruppi annidati/vuoti, PANIC/BLACKOUT, 300 GO, 100 salti |
+| fuzz mixin | 5 | 400-600 operazioni UI casuali, invarianti dopo ogni passo, fd/thread |
+
+Il resoconto completo dei bug trovati e del metodo usato è in
+[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
 
 ---
 
@@ -306,6 +384,7 @@ pytest -q tests/test_show_engine_pure.py
 
 - **[Manuale Utente](docs/MANUAL.md)** — uso quotidiano, tutte le funzioni, scorciatoie, emergenze, troubleshooting.
 - **[Architettura](docs/ARCHITECTURE.md)** — struttura interna, flusso dati, concorrenza, come estendere o fare fork.
+- **[Collaudo](docs/TEST_FINDINGS.md)** — cosa è stato testato, i bug trovati e come sono stati individuati.
 
 ---
 
