@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="blindcue/assets/BlindCue-logo.jpeg" alt="BlindCue" width="220">
+  <img src="blindcue/assets/BlindCue-logo.jpeg" alt="BlindCUE logo — open-source audio/video cue player for live shows" width="220">
 </p>
 
-<h1 align="center">BlindCue</h1>
+<h1 align="center">BlindCUE — Open-Source Audio/Video Cue Player for Live Shows</h1>
 
 <p align="center">
-  <b>Player di cue audio/video per spettacoli dal vivo, nativo Linux.</b><br>
-  Regia e uscita di scena separate, tre layer di proiezione (sei con due proiettori indipendenti), controllo remoto LAN.<br>
-  Open source, senza servizi cloud, senza dipendenze proprietarie.
+  <b>An open-source QLab alternative for Linux, Windows and macOS.</b><br>
+  Cue-based playback for theatre, dance, concerts and live events: a separate director console and a clean stage output,<br>
+  three projection layers, LAN remote control (web + OSC). No cloud, no proprietary dependencies.
 </p>
 
 <p align="center">
@@ -18,6 +18,95 @@
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white" alt="Windows">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
 </p>
+
+---
+
+## What is BlindCUE
+
+**BlindCUE** is a free, open-source **cue player** for live shows — theatre,
+dance, concerts, contests and performances. You build a cue list of **audio,
+video and image** cues, then fire them on stage with fail-safe, panic-ready
+controls.
+
+The core idea: **the audience must never see a desktop, a system window or a
+technical manoeuvre.** BlindCUE keeps two worlds physically separate:
+
+| Environment | Where | What it shows |
+|---|---|---|
+| **Director** | Operator's primary monitor | Cue list, inspector, preview, waveform |
+| **Stage output** | Projector / stage display (a second screen; a third for dual output) | Only the live video layers, full screen |
+
+## Why BlindCUE — a QLab alternative for Linux and Windows
+
+The reference tool for live cueing, [QLab](https://qlab.app), is macOS-only and
+commercial. BlindCUE is the open-source alternative for the machines QLab does
+not cover:
+
+- **Linux first**: native Wayland and X11, PipeWire/PulseAudio, VA-API hardware video decoding.
+- **Also Windows and macOS**: the same codebase runs on Windows 10/11 and on macOS (Apple Silicon and Intel).
+- **Lightweight**: no embedded web runtime, no database, no external service. Python + Qt + FFmpeg.
+- **Open source only**: no proprietary dependency, no paid API, no account, no cloud.
+
+## Project status
+
+**Ready to use, still evolving.** The current version is `0.1.x`: the features
+below are implemented and tested, but the project is young.
+
+**How it is built.** BlindCUE is developed by Diego Costanzo with AI pair
+programming and verified on real hardware. It is not a commercial product with
+guaranteed support: it is an open-source project born from a real show.
+
+**How tested.** Every release passes about 210 automated checks on Linux:
+130 `pytest` tests plus five harnesses (functional, sections, live groups,
+integration, mixin fuzz) that drive the real application with real media. See
+[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
+
+**Not verified yet.** Deep testing has been on Linux (Wayland/X11). Not yet
+covered: codecs beyond H.264 (HEVC, VP9, ProRes), 4K/10-bit files, 5.1/7.1 audio
+on an external system, projector edge blending, continuous sessions over
+10 minutes. Before a real show, run a full dress rehearsal with your own
+computer, projector and files — that applies to any live software.
+
+## Highlights
+
+- Separate **director console** and **stage output**; three projection layers, six with two independent projectors.
+- **Cue list** for video, audio, images and groups (scenes) with pre/post-delay, fades and auto-follow.
+- Groups in five modes: **simultaneous, sequential, step, random, loop**.
+- **Sections** (A/B/C…) with N-time loops or infinite vamp, jump and skip.
+- **Envelopes** for volume and opacity with keyframes and log/S-curve fades.
+- Separate **room master** and **headphone PFL** audio routing, EBU R128 loudness, non-destructive normalisation.
+- **Projection mapping**: automatic projector detection, span, dual independent outputs, surfaces, masks, keystone.
+- **LAN remote**: mobile-first web remote (QR + PIN), director monitor, native OSC server.
+- **Failsafes**: atomic saves, autosave + crash recovery, global pause, panic, 40-step undo/redo, dedicated CPU budget.
+
+## Install
+
+One command on all three systems:
+
+```bash
+git clone https://github.com/diego-costanzo/BlindCUE.git
+cd BlindCUE
+python3 setup.py            # opens the installer window
+```
+
+Installs per-user, no `sudo`, no UAC. See the Italian guide below for details
+(requirements, per-system commands, uninstall).
+
+## Quick start
+
+1. Connect the projector and set the OS to **"Extend display"** (never "Duplicate").
+2. Launch BlindCUE: the director window goes on the primary monitor, the output on the second screen.
+3. Drop audio/video/image files into the **Drop Zone**, or build cues from the cue list.
+4. Tune **pre-delay, fade, volume, layer and surface** in the inspector.
+5. Press **`F5`** to enter **LIVE mode**.
+6. **`SPACE`** for GO. **`Ctrl+B`** for blackout. **`ESC`** for Panic.
+
+---
+
+## Italiano
+
+La guida completa (installazione, scorciatoie, struttura, test, licenza) è in
+italiano qui sotto.
 
 ---
 
