@@ -287,6 +287,23 @@ class _PersistenceMixin:
             self._mark_modified(False)
             self._remember_recent_project(file_path)
             self._status_label.setText(f"Caricato: {Path(file_path).name} ({len(cues)} cue)")
+            missing = [
+                c.name for c in cues
+                if c.media_type != MediaType.GROUP
+                and c.file_path
+                and not os.path.isfile(c.file_path)
+            ]
+            if missing:
+                shown = "\n".join(f"• {name}" for name in missing[:10])
+                more = f"\n… e altre {len(missing) - 10} cue" if len(missing) > 10 else ""
+                QMessageBox.warning(
+                    self,
+                    "File media mancanti",
+                    f"{len(missing)} cue puntano a file che non esistono più "
+                    "(verranno mostrate come OFFLINE):\n\n"
+                    f"{shown}{more}\n\n"
+                    "Ricollega i file dalla Cue Inspector prima dello spettacolo.",
+                )
             self._auto_save()
         except Exception as exc:
             logger.error("[PROJECT] Error loading %s: %s", file_path, exc, exc_info=True)
@@ -311,8 +328,23 @@ class _PersistenceMixin:
             return False
         if not file_path.endswith((".blindcue", ".json")):
             file_path += ".blindcue"
+        self._project_bundled = self._ask_bundle_media()
         self._current_project_path = file_path
         return self._do_save(file_path)
+
+    def _ask_bundle_media(self) -> bool:
+        """Ask whether the media files should be copied beside the project."""
+        answer = QMessageBox.question(
+            self,
+            "Salvataggio show",
+            "Vuoi copiare i file audio/video dentro la cartella dello show?\n\n"
+            "Sì: archivio portatile, lo show si apre anche su un altro PC.\n"
+            "No: salva solo i collegamenti ai file originali (nessuna copia).\n\n"
+            "In entrambi i casi i file originali non vengono mai modificati.",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No,
+        )
+        return answer == QMessageBox.StandardButton.Yes
 
     def _do_save(self, file_path: str) -> bool:
         self._apply_inspector_to_cue()
@@ -321,17 +353,43 @@ class _PersistenceMixin:
         output = self._output_settings()
         if output:
             settings["output"] = output
-        success = self._project_manager.save_project(
-            file_path,
-            self._cues,
-            current_index=self._current_index,
-            settings=settings,
-            surfaces=self._surfaces,
-        )
+        problems: list[str] = []
+        copied = 0
+        if getattr(self, "_project_bundled", False):
+            success, problems, copied = self._project_manager.save_project_bundled(
+                file_path,
+                self._cues,
+                current_index=self._current_index,
+                settings=settings,
+                surfaces=self._surfaces,
+            )
+        else:
+            success = self._project_manager.save_project(
+                file_path,
+                self._cues,
+                current_index=self._current_index,
+                settings=settings,
+                surfaces=self._surfaces,
+            )
         if success:
             self._mark_modified(False)
             self._remember_recent_project(file_path)
-            self._status_label.setText(f"Salvato con successo: {Path(file_path).name}")
+            if copied:
+                self._status_label.setText(
+                    f"Salvato {Path(file_path).name} con {copied} file media copiati"
+                )
+            else:
+                self._status_label.setText(f"Salvato con successo: {Path(file_path).name}")
+            if problems:
+                shown = "\n".join(problems[:10])
+                more = f"\n… e altri {len(problems) - 10}" if len(problems) > 10 else ""
+                QMessageBox.warning(
+                    self,
+                    "File media non copiati",
+                    "Lo show è stato salvato, ma questi file non sono stati "
+                    "copiati (restano collegati al percorso originale):\n\n"
+                    f"{shown}{more}",
+                )
             self._auto_save()
             return True
         QMessageBox.critical(self, "Errore Salvataggio", f"Impossibile salvare il file in:\n{file_path}")

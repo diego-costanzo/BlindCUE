@@ -13,12 +13,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import shutil
 import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from models.cue import Cue, CueStatus
+from models.cue import Cue, CueStatus, MediaType
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,9 @@ SCHEMA_VERSION = "1.0"
 APP_NAME = "BlindCue"
 DEFAULT_AUTOSAVE_DIR = Path.home() / ".config" / "blindcue"
 AUTOSAVE_FILENAME = "autosave.json"
+# Folder created next to the project file when the operator wants a portable
+# archive: "<project name>_media/".
+MEDIA_DIR_SUFFIX = "_media"
 
 
 class ProjectManager:
@@ -77,6 +81,86 @@ class ProjectManager:
 
     # ── Project Save & Load ───────────────────────────────────────────
 
+    @staticmethod
+    def _absolute_media_key(file_path: str) -> str:
+        """Normalise a media path so the same file maps to one archive copy."""
+        try:
+            return str(Path(file_path).expanduser().resolve())
+        except OSError:
+            return os.path.abspath(os.path.expanduser(file_path))
+
+    def import_media(
+        self, cues: list[Cue], project_path: str | Path
+    ) -> tuple[dict[str, str], list[str]]:
+        """Copy every referenced media file next to the project file.
+
+        The archive lives in ``<project name>_media/`` beside the project and
+        the returned mapping lets the saved show reference the copies with
+        *relative* paths, so the whole folder can be moved to another machine.
+        Originals are only read: they are never moved or deleted.  Re-saving
+        the same show reuses the copies already present.
+
+        Returns ``(mapping, problems)`` where *mapping* maps the absolute
+        source path to the relative path to store in the project, and
+        *problems* lists files that could not be copied.
+        """
+        project = Path(project_path)
+        media_dir = project.parent / f"{project.stem}{MEDIA_DIR_SUFFIX}"
+        mapping: dict[str, str] = {}
+        problems: list[str] = []
+        claimed: set[str] = set()
+
+        for cue in cues:
+            if cue.media_type == MediaType.GROUP or not cue.file_path:
+                continue
+            source = Path(cue.file_path).expanduser()
+            key = self._absolute_media_key(str(source))
+            if key in mapping:
+                continue
+            if not source.is_file():
+                problems.append(f"{cue.name}: file non trovato ({source})")
+                continue
+            try:
+                media_dir.mkdir(parents=True, exist_ok=True)
+                target = self._media_target(media_dir, source, claimed)
+                claimed.add(target.name)
+                if not target.is_file() or target.stat().st_size != source.stat().st_size:
+                    temp_target = target.with_name(f".{target.name}.tmp")
+                    shutil.copy2(source, temp_target)
+                    os.replace(temp_target, target)
+                if target.stat().st_size != source.stat().st_size:
+                    raise OSError("copia incompleta")
+                mapping[key] = f"{media_dir.name}/{target.name}"
+            except Exception as exc:
+                logger.error("[PROJECT] Cannot archive media %s: %s", source, exc)
+                problems.append(f"{cue.name}: copia non riuscita ({exc})")
+
+        logger.info(
+            "[PROJECT] Archived %d media file(s) into %s", len(mapping), media_dir
+        )
+        return mapping, problems
+
+    @staticmethod
+    def _media_target(media_dir: Path, source: Path, claimed: set[str]) -> Path:
+        """Pick a free destination name, keeping same-named files side by side."""
+        name = source.name or "media"
+        target = media_dir / name
+        if name in claimed or (
+            target.is_file() and target.stat().st_size != source.stat().st_size
+        ):
+            stem, suffix = os.path.splitext(name)
+            index = 2
+            while True:
+                candidate = f"{stem}_{index}{suffix}"
+                candidate_path = media_dir / candidate
+                if candidate not in claimed and not candidate_path.is_file():
+                    return candidate_path
+                if candidate not in claimed and candidate_path.is_file() and \
+                        candidate_path.stat().st_size == source.stat().st_size:
+                    return candidate_path
+                index += 1
+        return target
+
     def save_project(
         self,
         file_path: str | Path,
@@ -84,8 +168,12 @@ class ProjectManager:
         current_index: int = -1,
         settings: dict[str, Any] | None = None,
         surfaces: list[Any] | None = None,
+        media_map: dict[str, str] | None = None,
     ) -> bool:
         """Save show cues, project state, and virtual surfaces to a .blindcue JSON file.
+
+        ``media_map`` (absolute source → relative path), when given, makes the
+        saved cues reference archived copies instead of the original paths.
 
         Returns True on success, False on error.
         """
@@ -97,6 +185,15 @@ class ProjectManager:
                     s.to_dict() if hasattr(s, "to_dict") else s for s in surfaces
                 ]
 
+            cue_dicts = [cue.to_dict() for cue in cues]
+            if media_map:
+                for cue, item in zip(cues, cue_dicts):
+                    if cue.media_type == MediaType.GROUP or not cue.file_path:
+                        continue
+                    relative = media_map.get(self._absolute_media_key(cue.file_path))
+                    if relative:
+                        item["file_path"] = relative
+
             project_data: dict[str, Any] = {
                 "app": APP_NAME,
                 "schema_version": SCHEMA_VERSION,
@@ -106,7 +203,7 @@ class ProjectManager:
                 "cues_count": len(cues),
                 "settings": eff_settings,
                 "surfaces": eff_settings.get("surfaces", []),
-                "cues": [cue.to_dict() for cue in cues],
+                "cues": cue_dicts,
             }
 
             self._atomic_write_json(path, project_data)
@@ -115,6 +212,29 @@ class ProjectManager:
         except Exception as exc:
             logger.error("[PROJECT] Failed to save show to %s: %s", path, exc, exc_info=True)
             return False
+
+    def save_project_bundled(
+        self,
+        file_path: str | Path,
+        cues: list[Cue],
+        current_index: int = -1,
+        settings: dict[str, Any] | None = None,
+        surfaces: list[Any] | None = None,
+    ) -> tuple[bool, list[str], int]:
+        """Save the show as a self-contained folder (media copied next to it).
+
+        Returns ``(saved, problems, copied)``.
+        """
+        media_map, problems = self.import_media(cues, file_path)
+        saved = self.save_project(
+            file_path,
+            cues,
+            current_index=current_index,
+            settings=settings,
+            surfaces=surfaces,
+            media_map=media_map,
+        )
+        return saved, problems, len(media_map)
 
     def load_project(
         self, file_path: str | Path

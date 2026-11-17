@@ -432,3 +432,62 @@ def test_project_manager_skips_bad_cues_without_blocking_startup(tmp_path):
     assert "traversal" not in by_name, "una cue con path traversal deve essere saltata, mai caricata"
     assert "bad-status" not in by_name
     assert "not-a-cue" not in by_name
+
+
+def test_bundled_save_copies_media_and_uses_relative_paths(tmp_path):
+    """Il salvataggio 'portatile' copia i media accanto allo show e usa percorsi relativi."""
+    from models.cue import Cue, MediaType
+
+    pm = ProjectManager(autosave_dir=tmp_path / "cfg")
+    folder_a = tmp_path / "a"
+    folder_b = tmp_path / "b"
+    folder_a.mkdir()
+    folder_b.mkdir()
+    # Same file name in two different folders: both must survive the copy.
+    clip_a = folder_a / "clip.mp4"
+    clip_b = folder_b / "clip.mp4"
+    clip_a.write_bytes(b"AAAA")
+    clip_b.write_bytes(b"BBBBBB")
+    cues = [
+        Cue(name="A", media_type=MediaType.VIDEO, file_path=str(clip_a), layer=1),
+        Cue(name="B", media_type=MediaType.VIDEO, file_path=str(clip_b), layer=2),
+        Cue(name="G", media_type=MediaType.GROUP, file_path=""),
+    ]
+
+    show = tmp_path / "show.blindcue"
+    saved, problems, copied = pm.save_project_bundled(show, cues, current_index=0)
+
+    assert saved and not problems and copied == 2
+    media_dir = tmp_path / "show_media"
+    assert sorted(p.name for p in media_dir.iterdir()) == ["clip.mp4", "clip_2.mp4"]
+    assert clip_a.read_bytes() == b"AAAA" and clip_b.exists(), "gli originali non si toccano"
+
+    data = json.loads(show.read_text(encoding="utf-8"))
+    paths = {c["name"]: c["file_path"] for c in data["cues"]}
+    assert paths["A"] == "show_media/clip.mp4"
+    assert paths["B"] == "show_media/clip_2.mp4"
+    assert not any(p.startswith("/") for p in (paths["A"], paths["B"]))
+
+    loaded, _idx, _settings = pm.load_project(show)
+    by_name = {c.name: c for c in loaded}
+    assert by_name["A"].status.value == "LOADED"
+    assert by_name["B"].status.value == "LOADED"
+    assert str(tmp_path) in by_name["A"].file_path
+
+
+def test_bundled_save_reports_missing_media_and_keeps_it_linked(tmp_path):
+    """Un media mancante non blocca il salvataggio: viene segnalato e resta assoluto."""
+    from models.cue import Cue, MediaType
+
+    pm = ProjectManager(autosave_dir=tmp_path / "cfg")
+    gone = tmp_path / "gone.mp3"
+    cues = [Cue(name="Manca", media_type=MediaType.AUDIO, file_path=str(gone), layer=1)]
+    show = tmp_path / "show.blindcue"
+
+    saved, problems, copied = pm.save_project_bundled(show, cues)
+
+    assert saved and copied == 0
+    assert problems and "Manca" in problems[0]
+    data = json.loads(show.read_text(encoding="utf-8"))
+    assert data["cues"][0]["file_path"] == str(gone)
+
