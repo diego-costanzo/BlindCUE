@@ -47,6 +47,11 @@ not cover:
 - **Lightweight**: no embedded web runtime, no database, no external service. Python + Qt + FFmpeg.
 - **Open source only**: no proprietary dependency, no paid API, no account, no cloud.
 
+> **Trademark notice.** QLab is a trademark of Figure 53, LLC. BlindCUE is an
+> independent open-source project and is **not affiliated with, endorsed by or
+> sponsored by** Figure 53, LLC. The name is used only to describe compatibility
+> and as an alternative; BlindCUE does not use the QLab logo or code.
+
 ## Project status
 
 **Ready to use, still evolving.** The current version is `0.1.x`: the features
