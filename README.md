@@ -256,7 +256,7 @@ sostituire.
 ## Screenshot
 
 <p align="center">
-  <img src="immagini%20di%20progetto/BlindCue-UX_UI.jpeg" alt="Interfaccia di regia di BlindCue" width="880">
+  <img src="docs/screenshots/director-console.jpg" alt="Console di regia di BlindCUE con scaletta, ispettore e anteprima" width="880">
 </p>
 
 ---
