@@ -150,6 +150,28 @@ def _windows_shortcuts() -> list[Path]:
     return candidates
 
 
+def _linux_desktop_shortcuts() -> list[Path]:
+    """Desktop launcher copies created by ``install.sh`` (one per desktop folder)."""
+    candidates: list[Path] = []
+    try:
+        result = subprocess.run(
+            ["xdg-user-dir", "DESKTOP"], capture_output=True, text=True, check=False
+        )
+        value = result.stdout.strip()
+        if value and Path(value) != Path.home():
+            candidates.append(Path(value) / "blindcue.desktop")
+    except OSError:
+        pass
+    for name in ("Desktop", "Scrivania", "desktop"):
+        candidates.append(Path.home() / name / "blindcue.desktop")
+
+    unique: list[Path] = []
+    for candidate in candidates:
+        if candidate not in unique:
+            unique.append(candidate)
+    return unique
+
+
 def _remove_path(path: Path) -> bool:
     """Delete a file or a directory tree if present. Never raises."""
     if path.is_dir() and not path.is_symlink():
@@ -189,6 +211,7 @@ def uninstall(
             home / ".local" / "bin" / "blindcue",
             data / "applications" / "blindcue.desktop",
             data / "icons" / "hicolor" / "256x256" / "apps" / "blindcue.png",
+            *_linux_desktop_shortcuts(),
         ]
     elif platform == "windows":
         extras = _windows_shortcuts()

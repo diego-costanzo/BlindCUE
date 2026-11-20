@@ -25,6 +25,7 @@ import os
 import shutil
 import subprocess
 import sys
+import traceback
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent
@@ -146,13 +147,68 @@ def ensure_tkinter() -> bool:
 
 
 def run_gui(argv: list[str]) -> int:
-    """Apre la finestra grafica; 2 significa "usa il terminale"."""
+    """Apre la finestra grafica; 2/3 significano "usa il terminale"."""
     try:
         import installer_ui
     except ImportError as exc:
         print(f"{YELLOW}[WARN]{RESET} tkinter non disponibile ({exc}).")
         return 2
     return installer_ui.main(argv)
+
+
+def _log_path() -> Path:
+    cache = Path(os.environ.get("XDG_CACHE_HOME") or (Path.home() / ".cache"))
+    return cache / "blindcue-setup.log"
+
+
+def _show_error(message: str) -> None:
+    """Mostra un errore anche senza terminale (avvio con doppio clic)."""
+    if sys.stderr is not None and sys.stderr.isatty():
+        print(message, file=sys.stderr, flush=True)
+        return
+    print(message, file=sys.stderr, flush=True)
+    # Senza terminale l'unico modo di far vedere qualcosa è una finestra:
+    # prima tkinter (già disponibile), poi gli helper di sistema.
+    commands = []
+    if shutil.which("zenity"):
+        commands.append(["zenity", "--error", "--title=BlindCue", f"--text={message}"])
+    if shutil.which("kdialog"):
+        commands.append(["kdialog", "--title", "BlindCue", "--error", message])
+    if shutil.which("xmessage"):
+        commands.append(["xmessage", "-center", message])
+    for command in commands:
+        try:
+            if subprocess.run(command, check=False).returncode == 0:
+                return
+        except OSError:
+            continue
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+
+        root = tk.Tk()
+        root.withdraw()
+        messagebox.showerror("BlindCue", message, parent=root)
+        root.destroy()
+    except Exception:  # noqa: BLE001 - nessun modo grafico disponibile
+        pass
+
+
+def _report_crash(exc: BaseException) -> None:
+    """Scrive il traceback su un file e lo rende visibile all'utente."""
+    log = _log_path()
+    detail = "".join(traceback.format_exception(exc))
+    try:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text(detail, encoding="utf-8")
+    except OSError:
+        pass
+    _show_error(
+        "L'installazione di BlindCue si è interrotta per un errore imprevisto.\n\n"
+        f"{exc}\n\n"
+        f"Dettagli salvati in:\n{log}\n\n"
+        "Puoi anche provare da terminale:  python3 setup.py --terminal"
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -190,11 +246,17 @@ def main(argv: list[str] | None = None) -> int:
 
     ensure_tkinter()
     code = run_gui([a for a in args if a.startswith("--")])
-    if code == 2:
-        print(f"{YELLOW}[WARN]{RESET} Installazione in modalità testuale.\n")
+    if code in (2, 3):
+        print(f"{YELLOW}[WARN]{RESET} Finestra grafica non disponibile: uso il terminale.\n")
         return run_engine(passthrough)
     return code
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except SystemExit:
+        raise
+    except BaseException as exc:  # noqa: BLE001 - l'utente deve sempre vedere qualcosa
+        _report_crash(exc)
+        raise SystemExit(1)

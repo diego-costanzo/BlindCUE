@@ -221,9 +221,10 @@ check_disk() {
 
 check_network() {
     log_info "Controllo connessione a PyPI ..."
-    if command -v curl &>/dev/null && curl -sSf --max-time 8 https://pypi.org/simple/ -o /dev/null 2>/dev/null; then
+    local probe="https://pypi.org/pypi/PySide6/json"
+    if command -v curl &>/dev/null && curl -sSfI --max-time 8 "$probe" -o /dev/null 2>/dev/null; then
         log_success "PyPI raggiungibile"
-    elif command -v wget &>/dev/null && wget -q --timeout=8 -O /dev/null https://pypi.org/simple/ 2>/dev/null; then
+    elif command -v wget &>/dev/null && wget -q --spider --timeout=8 "$probe" 2>/dev/null; then
         log_success "PyPI raggiungibile"
     elif [ -d "$VENV_DIR" ]; then
         log_warn "Controllo rete fallito, ma esiste già un ambiente virtuale: continuo."
@@ -692,6 +693,28 @@ EOF
     command -v update-desktop-database &>/dev/null && \
         update-desktop-database "$APPS_DIR" &>/dev/null || true
     log_success "Voce di menu creata: ${APPS_DIR}/blindcue.desktop"
+
+    # Collegamento sul Desktop: è quello che l'utente trova subito.
+    # La cartella si chiede a xdg-user-dir (localizzata: Desktop, Scrivania...).
+    local desktop_dir=""
+    if command -v xdg-user-dir &>/dev/null; then
+        desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null || true)"
+    fi
+    if [ -z "$desktop_dir" ] || [ "$desktop_dir" = "$HOME" ]; then
+        for candidate in "$HOME/Desktop" "$HOME/Scrivania" "$HOME/desktop"; do
+            if [ -d "$candidate" ]; then desktop_dir="$candidate"; break; fi
+        done
+    fi
+    if [ -n "$desktop_dir" ] && [ -d "$desktop_dir" ]; then
+        cp -f "${APPS_DIR}/blindcue.desktop" "${desktop_dir}/blindcue.desktop"
+        chmod +x "${desktop_dir}/blindcue.desktop"
+        # GNOME/Nautilus avvia un .desktop sul Desktop solo se è "trusted".
+        command -v gio &>/dev/null && \
+            gio set "${desktop_dir}/blindcue.desktop" metadata::trusted true &>/dev/null || true
+        log_success "Collegamento sul Desktop: ${desktop_dir}/blindcue.desktop"
+    else
+        log_info "Nessuna cartella Desktop: l'icona resta nel menu applicazioni."
+    fi
 
     # Copia "sul posto": se l'utente lancia il software dalla cartella del
     # progetto, il venv locale non deve più essere ricreato ad ogni prova.

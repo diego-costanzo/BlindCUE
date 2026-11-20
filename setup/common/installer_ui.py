@@ -16,6 +16,7 @@ import subprocess
 import sys
 import threading
 import tkinter as tk
+import traceback
 from tkinter import font as tkfont
 from tkinter import messagebox
 from tkinter import ttk
@@ -167,7 +168,7 @@ class InstallerWindow:
         self.status.pack(fill="x")
 
     def _build_log(self) -> None:
-        container = tk.Frame(self.root, bg=BG, padx=22, pady=(10, 0))
+        container = tk.Frame(self.root, bg=BG, padx=22, pady=10)
         container.pack(fill="both", expand=True)
 
         self.log = tk.Text(
