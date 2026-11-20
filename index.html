@@ -156,7 +156,7 @@
         <a class="btn" href="#features">Features</a>
       </div>
       <div class="badges">
-        <img src="https://img.shields.io/badge/Linux-Wayland%20%7C%20X11-FCC624?logo=linux&logoColor=black" alt="Linux Wayland and X11">
+        <img src="https://img.shields.io/badge/Linux-Wayland%20only-FCC624?logo=linux&logoColor=black" alt="Linux Wayland only">
         <img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS Apple Silicon and Intel">
         <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white" alt="Windows 10 and 11">
         <img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License">
@@ -199,7 +199,7 @@
           commercial. BlindCUE is the open-source alternative for the machines QLab does not cover.
         </p>
         <ul class="features">
-          <li><strong>Linux first</strong>: native Wayland and X11, PipeWire/PulseAudio, VA-API hardware video decoding.</li>
+          <li><strong>Linux first</strong>: native Wayland only (X11 is not supported), PipeWire/PulseAudio, VA-API hardware video decoding.</li>
           <li><strong>Also Windows and macOS</strong>: one codebase, no platform lock-in.</li>
           <li><strong>Lightweight</strong>: no web runtime, no database, no external service. Python + Qt + FFmpeg.</li>
           <li><strong>Open source only</strong>: no proprietary dependency, no paid API, no account, no cloud.</li>
@@ -257,7 +257,7 @@ python3 setup.py   # opens the installer window</code></pre>
         <p class="lead">
           Every release passes about 210 automated checks on Linux — 130 <code>pytest</code> tests plus
           harnesses that drive the real application with real media (functional, sections, live groups,
-          integration, mixin fuzz). Deep testing is on Linux (Wayland/X11); codecs beyond H.264, 4K/10-bit
+          integration, mixin fuzz). Deep testing is on Linux (Wayland); X11 is not supported; codecs beyond H.264, 4K/10-bit
           files and 5.1/7.1 audio are not yet verified. Before a real show, run a full dress rehearsal —
           that applies to any live software.
         </p>
