@@ -69,15 +69,26 @@ class InstallerWindow:
 
         root.title("BlindCue — Installazione")
         root.configure(bg=BG)
-        root.minsize(680, 620)
-        root.geometry("720x680")
+        # Adatta la finestra allo schermo: su un portatile 1366x768 una
+        # finestra fissa rischia di finire sotto la barra o fuori schermo.
+        try:
+            screen_w = root.winfo_screenwidth()
+            screen_h = root.winfo_screenheight()
+        except tk.TclError:
+            screen_w, screen_h = 1280, 800
+        width = max(620, min(780, screen_w - 120))
+        height = max(540, min(720, screen_h - 120))
+        root.geometry(f"{width}x{height}")
+        root.minsize(min(620, width), min(540, height))
         root.protocol("WM_DELETE_WINDOW", self._on_close)
 
+        # L'ordine di pack conta: i pulsanti vanno prenotati per primi sul
+        # fondo, altrimenti il log (che si espande) li taglia fuori.
         self._build_header()
+        self._build_buttons()
         self._build_body()
         self._build_progress()
         self._build_log()
-        self._build_buttons()
 
     # ── costruzione dell'interfaccia ─────────────────────────────────────────
     def _build_header(self) -> None:
@@ -104,41 +115,49 @@ class InstallerWindow:
         tk.Label(
             titles,
             text="Player di cue audio/video per spettacoli dal vivo",
-            bg=PANEL, fg=MUTED, font=(self.ui_font, 10),
-        ).pack(anchor="w")
-
+            bg=PANEL, fg=MUTED, font=(self.ui_font, 11),
+        ).pack(anchor="w", pady=(2, 0))
         tk.Label(
-            header,
+            titles,
             text=f"{installer_core.platform_label(self.platform)}  ·  installazione per l'utente corrente",
-            bg=PANEL, fg=ACCENT, font=(self.ui_font, 9),
-        ).pack(side="right", padx=20)
+            bg=PANEL, fg=ACCENT, font=(self.ui_font, 10),
+        ).pack(anchor="w", pady=(4, 0))
 
         tk.Frame(self.root, bg=BORDER, height=1).pack(fill="x")
 
     def _build_body(self) -> None:
         body = tk.Frame(self.root, bg=BG, padx=22, pady=16)
-        body.pack(fill="both", expand=True)
+        # Non si espande: lo spazio verticale libero spetta al log, che è
+        # l'unico elemento che cresce durante l'installazione.
+        body.pack(fill="x")
 
         self.intro = tk.Label(
             body,
             text=self._intro_text(),
             bg=BG, fg=TEXT, justify="left", anchor="w",
-            font=(self.ui_font, 10), wraplength=660,
+            font=(self.ui_font, 11), wraplength=700,
         )
         self.intro.pack(fill="x", anchor="w")
+        body.bind(
+            "<Configure>",
+            lambda event: self.intro.configure(wraplength=max(320, event.width - 12)),
+        )
 
         tk.Label(
             body, text=f"Destinazione:  {self.target}",
-            bg=BG, fg=MUTED, font=(self.mono_font, 9), anchor="w",
+            bg=BG, fg=MUTED, font=(self.mono_font, 10), anchor="w",
         ).pack(fill="x", pady=(10, 0))
 
         steps = tk.Frame(body, bg=PANEL, highlightbackground=BORDER, highlightthickness=1)
-        steps.pack(fill="x", pady=(14, 0), ipady=6)
-        for line in self._steps_text().splitlines():
+        steps.pack(fill="x", pady=(14, 0), ipady=8)
+        for index, line in enumerate(self._steps_text().splitlines()):
             tk.Label(
-                steps, text=line, bg=PANEL, fg=TEXT if not line.startswith(" ") else MUTED,
-                font=(self.ui_font, 9), anchor="w", justify="left",
-            ).pack(fill="x", padx=14, pady=1)
+                steps, text=line,
+                bg=PANEL,
+                fg=ACCENT if index == 0 else TEXT,
+                font=(self.ui_font, 10, "bold") if index == 0 else (self.ui_font, 10),
+                anchor="w", justify="left",
+            ).pack(fill="x", padx=16, pady=1)
 
     def _build_progress(self) -> None:
         frame = tk.Frame(self.root, bg=BG, padx=22)
@@ -163,7 +182,7 @@ class InstallerWindow:
 
         self.status = tk.Label(
             frame, text="Pronto per l'installazione.", bg=BG, fg=MUTED,
-            font=(self.ui_font, 9), anchor="w",
+            font=(self.ui_font, 10), anchor="w",
         )
         self.status.pack(fill="x")
 
@@ -172,9 +191,9 @@ class InstallerWindow:
         container.pack(fill="both", expand=True)
 
         self.log = tk.Text(
-            container, height=10, bg="#080d14", fg=TEXT, insertbackground=TEXT,
+            container, height=9, bg="#080d14", fg=TEXT, insertbackground=TEXT,
             relief="flat", highlightthickness=1, highlightbackground=BORDER,
-            font=(self.mono_font, 9), wrap="word", padx=10, pady=8,
+            font=(self.mono_font, 10), wrap="word", padx=12, pady=10,
         )
         scroll = ttk.Scrollbar(container, orient="vertical", command=self.log.yview)
         self.log.configure(yscrollcommand=scroll.set)
@@ -185,40 +204,50 @@ class InstallerWindow:
         self.log.tag_configure("err", foreground=ERR_COLOR)
         self.log.tag_configure("warn", foreground=WARN_COLOR)
         self.log.tag_configure("step", foreground=ACCENT)
+        self.log.tag_configure("hint", foreground=MUTED)
+        # Un riquadro completamente vuoto sembra spento: una riga guida
+        # spiega a cosa serve l'area e rende visibile il bordo.
+        self._append("Qui comparirà il dettaglio passo per passo dell'installazione.\n", "hint")
 
     def _build_buttons(self) -> None:
-        bar = tk.Frame(self.root, bg=BG, padx=22, pady=16)
+        bar = tk.Frame(self.root, bg=BG, padx=22, pady=14)
         bar.pack(fill="x", side="bottom")
 
+        installed = installer_core.is_installed(self.platform)
         self.btn_install = tk.Button(
-            bar, text="Installa BlindCue" if not installer_core.is_installed(self.platform) else "Aggiorna BlindCue",
-            command=self.start_install, bg=ACCENT, fg=BG, activebackground=ACCENT,
-            activeforeground=BG, relief="flat", bd=0, padx=22, pady=9,
-            font=(self.ui_font, 10, "bold"), cursor="hand2",
+            bar, text="Aggiorna BlindCue" if installed else "Installa BlindCue",
+            command=self.start_install, bg=ACCENT, fg=BG,
+            activebackground=ACCENT_DEEP, activeforeground=BG,
+            disabledforeground=MUTED, relief="flat", bd=0,
+            padx=24, pady=10, font=(self.ui_font, 11, "bold"), cursor="hand2",
         )
         self.btn_install.pack(side="right")
 
         self.btn_later = tk.Button(
             bar, text="Chiudi", command=self._on_close, bg=ELEVATED, fg=TEXT,
-            activebackground=BORDER, activeforeground=TEXT, relief="flat", bd=0,
-            padx=18, pady=9, font=(self.ui_font, 10), cursor="hand2",
+            activebackground=BORDER, activeforeground=TEXT,
+            disabledforeground=MUTED, relief="flat", bd=0,
+            padx=18, pady=10, font=(self.ui_font, 10), cursor="hand2",
         )
         self.btn_later.pack(side="right", padx=(0, 10))
 
         self.btn_check = tk.Button(
-            bar, text="Verifica requisiti", command=self.start_check, bg=BG, fg=MUTED,
-            activebackground=BG, activeforeground=ACCENT, relief="flat", bd=0,
-            padx=10, pady=9, font=(self.ui_font, 9), cursor="hand2",
+            bar, text="Verifica requisiti", command=self.start_check,
+            bg=ELEVATED, fg=TEXT, activebackground=BORDER, activeforeground=ACCENT,
+            disabledforeground=MUTED, relief="flat", bd=0,
+            padx=14, pady=10, font=(self.ui_font, 10), cursor="hand2",
         )
         self.btn_check.pack(side="left")
 
         self.btn_remove = tk.Button(
-            bar, text="Rimuovi", command=self.remove, bg=BG, fg=ERR_COLOR,
-            activebackground=BG, activeforeground=ERR_COLOR, relief="flat", bd=0,
-            padx=10, pady=9, font=(self.ui_font, 9), cursor="hand2",
+            bar, text="Rimuovi BlindCue", command=self.remove,
+            bg=ELEVATED, fg=ERR_COLOR, activebackground=BORDER,
+            activeforeground=ERR_COLOR, disabledforeground=MUTED,
+            relief="flat", bd=0, padx=14, pady=10,
+            font=(self.ui_font, 10), cursor="hand2",
         )
-        if installer_core.is_installed(self.platform):
-            self.btn_remove.pack(side="left", padx=(8, 0))
+        if installed:
+            self.btn_remove.pack(side="left", padx=(10, 0))
 
     # ── testi ────────────────────────────────────────────────────────────────
     def _intro_text(self) -> str:
@@ -237,12 +266,12 @@ class InstallerWindow:
     def _steps_text(self) -> str:
         return (
             "Cosa verrà fatto\n"
-            "  1. Controllo di Python, memoria, disco e connessione\n"
+            "  1. Controllo di Python, memoria, disco, Wayland e connessione\n"
             "  2. Verifica di FFmpeg e delle librerie grafiche (solo se mancano)\n"
             "  3. Copia del programma nella cartella dell'utente\n"
             "  4. Ambiente Python isolato con le dipendenze\n"
             "  5. Test automatici di moduli, audio, schermi e avvio\n"
-            "  6. Collegamento di avvio con l'icona di BlindCue"
+            "  6. Collegamento con l'icona e disinstallatore autonomo"
         )
 
     # ── azioni ───────────────────────────────────────────────────────────────
@@ -359,7 +388,7 @@ class InstallerWindow:
             self.status.configure(text="Installazione completata.", fg=OK_COLOR)
             self._append("\n[ OK ] Fatto. BlindCue è pronto.\n", "ok")
             self.btn_install.configure(
-                text="Avvia BlindCue", state="normal", bg=OK_COLOR,
+                text="Avvia BlindCue", state="normal", bg=OK_COLOR, fg=BG,
                 command=self.launch_now,
             )
             if installer_core.is_installed(self.platform):
@@ -441,7 +470,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[WARN] Interfaccia grafica non disponibile: {exc}", file=sys.stderr)
         return 2
 
-    window = InstallerWindow(root)
+    try:
+        window = InstallerWindow(root)
+    except Exception:  # noqa: BLE001 - una finestra rotta non deve sparire in silenzio
+        print("[FAIL] Impossibile costruire la finestra di installazione.", file=sys.stderr)
+        traceback.print_exc()
+        try:
+            messagebox.showerror(
+                "BlindCue — Installazione",
+                "Impossibile aprire la finestra di installazione.\n\n"
+                "Premi OK per continuare nella finestra del terminale.",
+                parent=root,
+            )
+        except tk.TclError:
+            pass
+        try:
+            root.destroy()
+        except tk.TclError:
+            pass
+        # 3 = GUI rotta: chi ci ha chiamato deve ripiegare sul terminale.
+        return 3
+
     if "--auto-start" in argv:
         root.after(300, window.start_install)
     root.mainloop()

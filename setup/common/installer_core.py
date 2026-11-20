@@ -146,7 +146,11 @@ def _windows_shortcuts() -> list[Path]:
     if onedrive:
         candidates.append(Path(onedrive) / "Desktop" / name)
     roaming = Path(os.environ.get("APPDATA") or (home / "AppData" / "Roaming"))
-    candidates.append(roaming / "Microsoft" / "Windows" / "Start Menu" / "Programs" / name)
+    programs = roaming / "Microsoft" / "Windows" / "Start Menu" / "Programs"
+    candidates.append(programs / name)
+    candidates.append(programs / "Uninstall BlindCue.lnk")
+    # Standalone uninstaller, kept next to the install folder.
+    candidates.append(install_dir("windows").parent / "BlindCue-uninstall.bat")
     return candidates
 
 
@@ -209,7 +213,9 @@ def uninstall(
         data = Path(os.environ.get("XDG_DATA_HOME") or (home / ".local" / "share"))
         extras = [
             home / ".local" / "bin" / "blindcue",
+            home / ".local" / "bin" / "blindcue-uninstall",
             data / "applications" / "blindcue.desktop",
+            data / "applications" / "blindcue-uninstall.desktop",
             data / "icons" / "hicolor" / "256x256" / "apps" / "blindcue.png",
             *_linux_desktop_shortcuts(),
         ]
@@ -218,6 +224,7 @@ def uninstall(
     elif platform == "macos":
         # Il bundle è la destinazione stessa: qui va solo la registrazione
         # nel Launchpad/Dock, senza la quale resterebbe un'icona fantasma.
+        extras = [install_dir("macos").parent / "BlindCue Uninstall.command"]
         for tool in (
             "/System/Library/Frameworks/CoreServices.framework/Frameworks/"
             "LaunchServices.framework/Support/lsregister",

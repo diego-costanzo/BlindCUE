@@ -784,12 +784,12 @@ Il log è la prima cosa da guardare dopo un blocco o un comportamento anomalo: c
 ### I due proiettori non si uniscono in una superficie unica
 
 - **Causa**: il compositore Wayland non consente a una finestra di attraversare due uscite, oppure l'opzione è attiva ma c'è un solo schermo esterno.
-- **Soluzione**: controlla l'avviso nel dialogo `⚙ Dispositivi · Uscite`; avvia la sessione in X11 se serve lo span; verifica che entrambi i proiettori siano in "Estendi schermo" e non duplicati.
+- **Soluzione**: controlla l'avviso nel dialogo `⚙ Dispositivi · Uscite`; usa un compositore che consenta lo spanning (per esempio KWin/KDE Plasma); verifica che entrambi i proiettori siano in "Estendi schermo" e non duplicati.
 
-### Su Linux non parte: `could not load the Qt platform plugin "xcb"`
+### Su Linux non parte: manca una sessione Wayland
 
-- **Causa**: mancano le librerie runtime Qt `xcb`.
-- **Soluzione**: rilancia `python3 setup.py` (le installa automaticamente), oppure installa a mano `libxcb-cursor0` e `libxkbcommon-x11-0` (nomi variabili per distribuzione).
+- **Causa**: BlindCue è nativo Wayland; X11 non è supportato.
+- **Soluzione**: riavvia la sessione scegliendo Wayland dal menu di accesso (per esempio la voce "Plasma (Wayland)" su KDE o "Ubuntu on Wayland" su GNOME). Se il display manager avvia solo X11, seleziona la sessione Wayland.
 
 ### L'app si apre ma non vedo l'uscita
 

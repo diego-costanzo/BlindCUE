@@ -10,6 +10,13 @@
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# BlindCue gira solo su Wayland: X11 non è supportato.
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    echo "BlindCue richiede una sessione Wayland. X11 non è supportato." >&2
+    exit 1
+fi
+export QT_QPA_PLATFORM=wayland
+
 if [ -x "${DIR}/.venv/bin/python" ]; then
     exec "${DIR}/.venv/bin/python" "${DIR}/blindcue/main.py" "$@"
 fi

@@ -372,6 +372,57 @@ fi
 touch "$APP_BUNDLE"
 log_success "Bundle registrato: lo trovi in ~/Applications e nel Launchpad"
 
+# Disinstallatore autonomo accanto al bundle: il repository può essere
+# cancellato subito dopo l'installazione.
+UNINSTALL_CMD="$(dirname "$APP_BUNDLE")/BlindCue Uninstall.command"
+cat > "$UNINSTALL_CMD" << EOF
+#!/bin/bash
+# BlindCue — disinstallazione autonoma (generata dall'installer).
+set -u
+APP_BUNDLE="${APP_BUNDLE}"
+EOF
+cat >> "$UNINSTALL_CMD" << 'UNINSTALL'
+
+echo "BlindCue verrà rimosso da: ${APP_BUNDLE}"
+echo "I tuoi progetti (.blindcue) non vengono toccati."
+echo
+
+ask() {
+    local prompt="$1" ans=""
+    read -r -p "$prompt [s/N] " ans || ans=""
+    case "$ans" in
+        [sS]|[sS][iI]|[yY]|[yY][eE][sS]) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+if ! ask "Rimuovere BlindCue da questo computer?"; then
+    echo "Operazione annullata."
+    exit 0
+fi
+
+purge=false
+if ask "Rimuovere anche impostazioni e autosave? (i progetti no)"; then
+    purge=true
+fi
+
+LSREGISTER="/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister"
+[ -x "$LSREGISTER" ] && "$LSREGISTER" -u "$APP_BUNDLE" &>/dev/null || true
+rm -rf "$APP_BUNDLE" && echo "rimosso $APP_BUNDLE"
+
+if [ "$purge" = true ]; then
+    for data in "$HOME/Library/Preferences/com.BlindCue.BlindCue.plist"; do
+        [ -e "$data" ] && rm -f "$data" && echo "rimosso $data"
+    done
+fi
+
+rm -f "$0"
+echo
+echo "BlindCue è stato rimosso. Grazie per averlo provato."
+UNINSTALL
+chmod +x "$UNINSTALL_CMD"
+log_success "Disinstallatore creato: ${UNINSTALL_CMD}"
+
 echo ""
 echo -e "${CLR_GREEN}${CLR_BOLD}"
 echo "======================================================================"
@@ -382,5 +433,5 @@ echo "Bundle:  ${APP_BUNDLE}"
 echo "Avvio:   doppio clic su BlindCue nel Launchpad o in ~/Applications"
 echo "         oppure: ./setup/macos/run.command"
 echo "Proiettore: ./setup/macos/run.command --output-screen 1"
-echo "Rimozione:  ./setup/macos/install.command --uninstall"
+echo "Rimozione:  \"${UNINSTALL_CMD}\""
 echo ""

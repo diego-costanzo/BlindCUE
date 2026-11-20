@@ -35,7 +35,7 @@ BlindCue è un software **real-time per il palco**. Ogni scelta architetturale r
 2. **Resta leggero?** Nessun servizio cloud obbligatorio, nessun database, nessuna dipendenza proprietaria.
 3. **È riparabile da un non-programmatore?** Log chiari, errori espliciti, recupero automatico.
 
-Il progetto è **Linux-first**: Wayland e X11 nativi, PipeWire/PulseAudio, VA-API. macOS e Windows sono supportati dalla stessa base grazie a Qt6 e ai fallback in `runtime_limits.py`, ma le ottimizzazioni e i test manuali hanno priorità Linux.
+Il progetto è **Linux-first**: Wayland nativo (X11 non è supportato), PipeWire/PulseAudio, VA-API. macOS e Windows sono supportati dalla stessa base grazie a Qt6 e ai fallback in `runtime_limits.py`, ma le ottimizzazioni e i test manuali hanno priorità Linux.
 
 **Vincolo di licenza**: solo software open source. Nessun richiamo a SDK o codec proprietari.
 

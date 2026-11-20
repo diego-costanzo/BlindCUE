@@ -67,6 +67,21 @@ except Exception:
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))
 
+# ── Wayland only on Linux ─────────────────────────────────────────────
+# X11 is not supported: BlindCUE targets native Wayland exclusively.
+# Tests and headless tools set QT_QPA_PLATFORM explicitly (offscreen),
+# and that choice must win over this default.
+if sys.platform.startswith("linux") and not os.environ.get("QT_QPA_PLATFORM"):
+    if os.environ.get("WAYLAND_DISPLAY"):
+        os.environ["QT_QPA_PLATFORM"] = "wayland"
+    else:
+        print(
+            "BlindCue richiede Wayland: nessuna sessione Wayland attiva.\n"
+            "X11 non è supportato. Avvia la sessione scegliendo Wayland.",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
+
 from PySide6.QtCore import QStandardPaths, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox

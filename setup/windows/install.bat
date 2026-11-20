@@ -103,7 +103,7 @@ if !FREE_MB! LSS 1500 (
     set "FAILED=1"
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-WebRequest -UseBasicParsing -Uri 'https://pypi.org/simple/' -TimeoutSec 8; exit 0 } catch { exit 1 }" >nul 2>nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { $r=Invoke-WebRequest -UseBasicParsing -Method Head -Uri 'https://pypi.org/pypi/PySide6/json' -TimeoutSec 8; exit 0 } catch { exit 1 }" >nul 2>nul
 if errorlevel 1 (
     if exist "%VENV_PY%" (
         echo [WARN] pypi.org non raggiungibile, ma l'ambiente virtuale esiste gia: continuo.
@@ -259,6 +259,45 @@ REM run.bat: avvio da terminale (mostra eventuali errori).
     echo "%%~dp0venv\Scripts\python.exe" "%%~dp0app\blindcue\main.py" %%*
 )
 
+REM ------------------------------------------------------------------------------
+REM Disinstallatore autonomo: sta FUORI dalla cartella del programma, cosi puo
+REM cancellarla mentre e in esecuzione. Il repository puo essere eliminato.
+REM ------------------------------------------------------------------------------
+for %%I in ("%INSTALL_DIR%\..") do (
+    set "UNINSTALL_DIR=%%~fI"
+    set "UNINSTALL_BAT=%%~fI\BlindCue-uninstall.bat"
+)
+
+> "%UNINSTALL_BAT%" echo @echo off
+>>"%UNINSTALL_BAT%" echo setlocal EnableExtensions
+>>"%UNINSTALL_BAT%" echo chcp 65001 ^>nul 2^>nul
+>>"%UNINSTALL_BAT%" echo title BlindCue - Disinstallazione
+>>"%UNINSTALL_BAT%" echo echo BlindCue verra rimosso da: %INSTALL_DIR%
+>>"%UNINSTALL_BAT%" echo echo I tuoi progetti .blindcue non vengono toccati.
+>>"%UNINSTALL_BAT%" echo echo.
+>>"%UNINSTALL_BAT%" echo choice /C SN /N /M "Rimuovere BlindCue da questo computer? [S/N] "
+>>"%UNINSTALL_BAT%" echo if errorlevel 2 goto :cancelled
+>>"%UNINSTALL_BAT%" echo set "PURGE=0"
+>>"%UNINSTALL_BAT%" echo choice /C SN /N /M "Rimuovere anche impostazioni e autosave? [S/N] "
+>>"%UNINSTALL_BAT%" echo if not errorlevel 2 set "PURGE=1"
+>>"%UNINSTALL_BAT%" echo if exist "%USERPROFILE%\Desktop\BlindCue.lnk" del /f /q "%USERPROFILE%\Desktop\BlindCue.lnk"
+>>"%UNINSTALL_BAT%" echo if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\BlindCue.lnk" del /f /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\BlindCue.lnk"
+>>"%UNINSTALL_BAT%" echo if exist "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Uninstall BlindCue.lnk" del /f /q "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Uninstall BlindCue.lnk"
+if defined OneDrive >>"%UNINSTALL_BAT%" echo if exist "%OneDrive%\Desktop\BlindCue.lnk" del /f /q "%OneDrive%\Desktop\BlindCue.lnk"
+>>"%UNINSTALL_BAT%" echo if "%PURGE%"=="1" if exist "%APPDATA%\BlindCue" rmdir /s /q "%APPDATA%\BlindCue"
+>>"%UNINSTALL_BAT%" echo if "%PURGE%"=="1" reg delete "HKCU\Software\BlindCue" /f ^>nul 2^>nul
+>>"%UNINSTALL_BAT%" echo echo.
+>>"%UNINSTALL_BAT%" echo echo Rimozione del programma in corso ...
+>>"%UNINSTALL_BAT%" echo rmdir /s /q "%INSTALL_DIR%"
+>>"%UNINSTALL_BAT%" echo echo.
+>>"%UNINSTALL_BAT%" echo echo BlindCue e stato rimosso.
+>>"%UNINSTALL_BAT%" echo if exist "%ICON_DST%" del /f /q "%ICON_DST%"
+>>"%UNINSTALL_BAT%" echo (goto) 2^>nul ^& del "%UNINSTALL_BAT%" ^& exit /b 0
+>>"%UNINSTALL_BAT%" echo :cancelled
+>>"%UNINSTALL_BAT%" echo echo Operazione annullata.
+>>"%UNINSTALL_BAT%" echo exit /b 0
+echo [ OK ] Disinstallatore creato: %UNINSTALL_BAT%
+
 REM Collegamenti: pythonw.exe = nessuna finestra di terminale.
 set "TARGET=%VENV_PYW%"
 if not exist "%TARGET%" set "TARGET=%VENV_PY%"
@@ -270,13 +309,16 @@ if errorlevel 1 (
     echo [ OK ] Collegamenti creati su Desktop e menu Start
 )
 
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$s=(New-Object -ComObject WScript.Shell); $d=Join-Path $env:APPDATA 'Microsoft\Windows\Start Menu\Programs'; if (Test-Path $d) { $l=$s.CreateShortcut((Join-Path $d 'Uninstall BlindCue.lnk')); $l.TargetPath='%UNINSTALL_BAT%'; $l.WorkingDirectory='%UNINSTALL_DIR%'; $l.IconLocation='%ICON_DST%,0'; $l.Description='Rimuove BlindCue'; $l.Save() }" >nul 2>nul
+
 echo.
 echo ======================================================================
 echo    [OK] BlindCue installato correttamente
 echo    Cartella: %INSTALL_DIR%
 echo    Avvio: icona BlindCue sul Desktop o nel menu Start
 echo    Diagnostica: "%INSTALL_DIR%\run.bat" --debug
-echo    Disinstallazione: cancella la cartella e i due collegamenti
+echo    Disinstallazione: "%UNINSTALL_BAT%" (o "Uninstall BlindCue" nel menu Start)
 echo ======================================================================
 echo.
 exit /b 0

@@ -94,8 +94,13 @@ cd BlindCUE
 python3 setup.py            # opens the installer window
 ```
 
-Installs per-user, no `sudo`, no UAC. See the Italian guide below for details
-(requirements, per-system commands, uninstall).
+Installs per-user, no `sudo`, no UAC. On Linux the application is
+**Wayland-native only** (X11 is not supported). The installed copy is
+self-contained: after setup you can delete the cloned folder; a standalone
+uninstaller is left next to the application.
+
+See the Italian guide below for details (requirements, per-system commands,
+uninstall).
 
 ## Quick start
 
@@ -153,7 +158,7 @@ Il principio è semplice: **il pubblico non deve mai vedere il desktop, una fine
 
 BlindCue vuole essere l'alternativa che mancava:
 
-- **Linux prima di tutto**: Wayland e X11 nativi, PipeWire/PulseAudio, VA-API per la decodifica video hardware.
+- **Linux prima di tutto**: Wayland nativo, PipeWire/PulseAudio, VA-API per la decodifica video hardware. X11 non è supportato.
 - **Leggero**: nessun runtime web dentro l'app, nessun database, nessun servizio esterno. Python + Qt + FFmpeg.
 - **Solo open source**: nessuna dipendenza proprietaria, nessuna API a pagamento, nessun account.
 - **Usabile anche altrove**: la stessa base gira su **macOS** (Apple Silicon e Intel) e **Windows 10/11**, perché lo spettacolo non sempre si fa sul computer giusto.
@@ -271,7 +276,7 @@ sostituire.
 | **GPU** | Qualsiasi con driver aggiornati | VA-API su Linux, VideoToolbox su macOS, D3D11VA su Windows |
 | **Display** | 2 schermi consigliati | Il secondo schermo è l'uscita di scena; la doppia uscita indipendente ne richiede un terzo |
 
-L'installer verifica automaticamente Python, RAM, spazio disco, rete, server audio (PipeWire/PulseAudio/ALSA), display (Wayland/X11) e accelerazione GPU.
+L'installer verifica automaticamente Python, RAM, spazio disco, rete, server audio (PipeWire/PulseAudio/ALSA), display (Wayland obbligatorio) e accelerazione GPU.
 
 ---
 
@@ -289,11 +294,13 @@ La finestra (tema scuro BlindCUE, senza terminale) spiega cosa verrà fatto, mos
 
 | Sistema | Dove viene installato | Come si avvia |
 |---|---|---|
-| **Linux** | `~/.local/share/blindcue` | comando `blindcue`, icona nel menu applicazioni |
+| **Linux** | `~/.local/share/blindcue` | comando `blindcue`, icona nel menu applicazioni e sul Desktop |
 | **macOS** | `~/Applications/BlindCue.app` | icona nel Launchpad / Finder |
 | **Windows** | `%LOCALAPPDATA%\Programs\BlindCue` | icona sul Desktop e nel menu Start |
 
 Il programma viene **copiato** nella sua cartella definitiva: la cartella del repository scaricato può anche essere cancellata. I tuoi progetti restano dove li hai salvati e l'autosave vive in `~/.config/blindcue`, quindi un aggiornamento non li tocca.
+
+L'installazione lascia accanto al programma un **disinstallatore autonomo**, che non dipende più dal repository: `blindcue-uninstall` e la voce **Rimuovi BlindCue** su Linux, `BlindCue Uninstall.command` su macOS, `BlindCue-uninstall.bat` e **Uninstall BlindCue** nel menu Start su Windows.
 
 ### Opzioni da terminale
 
@@ -312,6 +319,10 @@ python3 uninstall.py           # finestra di conferma, rimuove programma e colle
 python3 uninstall.py --purge   # rimuove anche impostazioni e autosave
 ```
 
+Puoi anche usare il disinstallatore creato dall'installer, senza il repository:
+`blindcue-uninstall` o **Rimuovi BlindCue** nel menu applicazioni (Linux),
+`BlindCue Uninstall.command` (macOS), **Uninstall BlindCue** nel menu Start (Windows).
+
 La disinstallazione elimina programma, collegamenti di avvio e icona nel menu di sistema, senza lasciare tracce. **I tuoi progetti `.blindcue` non vengono mai toccati**; l'autosave resta disponibile a meno che tu non scelga `--purge`.
 
 ### Linux (piattaforma principale)
@@ -322,7 +333,9 @@ La disinstallazione elimina programma, collegamenti di avvio e icona nel menu di
 ```
 
 Opzioni di `install.sh`: `--check`, `--yes`, `--no-sudo`, `--no-gpu`, `--prefix DIR` (installa in una cartella alternativa, utile per prove).
-Supporto testato per **Debian/Ubuntu**, **Arch/EndeavourOS**, **Fedora**. L'installer installa anche `python3-tk` (serve per la finestra grafica) e le librerie runtime Qt `xcb` (la causa più comune del crash `could not load the Qt platform plugin "xcb"`).
+Supporto testato per **Debian/Ubuntu**, **Arch/EndeavourOS**, **Fedora**.
+
+BlindCue gira **solo su Wayland**: X11 non è supportato e le librerie `xcb` non vengono installate. L'installer verifica la sessione Wayland e si ferma con un messaggio chiaro se non la trova. L'unica eccezione è la finestra di setup, che usa Tkinter e quindi passa da XWayland: l'applicazione vera e propria è Wayland nativa. L'installer installa anche `python3-tk` per quella finestra.
 
 ### macOS
 

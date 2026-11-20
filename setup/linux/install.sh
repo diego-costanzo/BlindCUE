@@ -251,10 +251,10 @@ check_display() {
     log_info "Controllo sessione grafica ..."
     if [ -n "${WAYLAND_DISPLAY:-}" ]; then
         log_success "Sessione Wayland (${WAYLAND_DISPLAY})"
-    elif [ -n "${DISPLAY:-}" ]; then
-        log_success "Sessione X11 (${DISPLAY})"
     else
-        log_warn "Nessuna sessione grafica attiva: avvia BlindCue dal desktop."
+        log_error "BlindCue richiede Wayland: nessuna sessione Wayland attiva."
+        log_error "X11 non è supportato. Riavvia la sessione scegliendo Wayland."
+        PREFLIGHT_FAILED=true
     fi
 }
 
@@ -378,23 +378,21 @@ verify_mandatory_tools() {
     fi
 }
 
-# Qt 6 richiede alcune librerie X11/xcb anche su Wayland, altrimenti il
-# programma termina all'avvio con "could not load the Qt platform plugin".
+# BlindCue gira solo su Wayland: servono le librerie client Wayland, EGL e
+# xkbcommon. X11/xcb non viene installato né usato.
 install_qt_runtime_libs() {
     local pkgs=()
     case "$FAMILY" in
         debian)
-            pkgs=(libgl1 libegl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0
-                  libxcb-icccm4 libxcb-keysyms1 libxcb-shape0 libxcb-xinerama0
-                  libxcb-randr0 libxcb-render-util0 libxcb-image0 libxcb-sync1
-                  libxcb-xfixes0 libxcb-xkb1 libpulse0)
+            pkgs=(libgl1 libegl1 libxkbcommon0 libwayland-client0 libwayland-cursor0
+                  libwayland-egl1 libpulse0)
             ;;
         fedora)
-            pkgs=(mesa-libGL mesa-libEGL libxkbcommon-x11 xcb-util-cursor
-                  xcb-util-wm pulseaudio-libs)
+            pkgs=(mesa-libGL mesa-libEGL libxkbcommon wayland-libs-client
+                  wayland-libs-egl pulseaudio-libs)
             ;;
         arch)
-            pkgs=(libglvnd mesa libxkbcommon-x11 xcb-util-cursor xcb-util-wm libpulse)
+            pkgs=(libglvnd mesa libxkbcommon wayland libpulse)
             ;;
         *) return 0 ;;
     esac
@@ -403,7 +401,7 @@ install_qt_runtime_libs() {
         return 0
     fi
 
-    log_info "Verifico le librerie runtime di Qt 6 (xcb/EGL/audio) ..."
+    log_info "Verifico le librerie runtime di Qt 6 (Wayland/EGL/audio) ..."
     case "$FAMILY" in
         debian)
             run_privileged apt-get install -y --no-install-recommends "${pkgs[@]}" \
@@ -646,6 +644,12 @@ create_launchers() {
 set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+    echo "BlindCue richiede una sessione Wayland. X11 non è supportato." >&2
+    exit 1
+fi
+export QT_QPA_PLATFORM=wayland
+
 export LC_NUMERIC=C
 # Un solo core libero per il sistema anche quando FFmpeg decodifica: il
 # programma limita da sé i propri worker, qui evitiamo solo thread illimitati.
@@ -683,9 +687,10 @@ Name=BlindCue
 GenericName=Live Cue Player
 Comment=Player di cue audio/video per spettacoli dal vivo
 Exec="${run_script}"
-Icon=blindcue
+Icon="${ICON_DIR}/blindcue.png"
 Terminal=false
 Categories=AudioVideo;Player;AudioVideoEditing;
+Keywords=blindcue;cue;teatro;live;audio;video;qlab;
 StartupNotify=true
 StartupWMClass=blindcue
 EOF
@@ -715,6 +720,126 @@ EOF
     else
         log_info "Nessuna cartella Desktop: l'icona resta nel menu applicazioni."
     fi
+
+    # Disinstallatore autonomo: resta dentro l'installazione, quindi il
+    # repository può essere cancellato subito dopo il setup.
+    local uninstall_script="${INSTALL_DIR}/uninstall.sh"
+    cat > "$uninstall_script" << EOF
+#!/usr/bin/env bash
+# BlindCue — disinstallazione autonoma (generata dall'installer).
+set -u
+INSTALL_DIR="${INSTALL_DIR}"
+BIN_DIR="${BIN_DIR}"
+APPS_DIR="${APPS_DIR}"
+ICON_DIR="${ICON_DIR}"
+EOF
+    cat >> "$uninstall_script" << 'UNINSTALL'
+
+purge=false
+assume_yes=false
+for arg in "$@"; do
+    case "$arg" in
+        --purge) purge=true ;;
+        -y|--yes) assume_yes=true ;;
+    esac
+done
+
+ask() {
+    local prompt="$1"
+    if [ "$assume_yes" = true ]; then return 0; fi
+    if [ -t 0 ]; then
+        local ans=""
+        read -r -p "$prompt [s/N] " ans || ans=""
+        case "$ans" in
+            [sS]|[sS][iI]|[yY]|[yY][eE][sS]) return 0 ;;
+            *) return 1 ;;
+        esac
+    fi
+    if command -v zenity &>/dev/null; then
+        zenity --question --title="BlindCue" --text="$prompt" --width=440 2>/dev/null
+        return
+    fi
+    if command -v kdialog &>/dev/null; then
+        kdialog --title "BlindCue" --yesno "$prompt" 2>/dev/null
+        return
+    fi
+    return 1
+}
+
+echo "BlindCue verrà rimosso da: ${INSTALL_DIR}"
+echo "I tuoi progetti (.blindcue) non vengono toccati."
+echo
+
+if ! ask "Rimuovere BlindCue da questo computer?"; then
+    echo "Operazione annullata."
+    exit 0
+fi
+if [ "$assume_yes" = false ] && [ "$purge" = false ] && \
+   ask "Rimuovere anche impostazioni e autosave? (i progetti no)"; then
+    purge=true
+fi
+
+for file in "${BIN_DIR}/blindcue" "${BIN_DIR}/blindcue-uninstall" \
+            "${APPS_DIR}/blindcue.desktop" "${APPS_DIR}/blindcue-uninstall.desktop" \
+            "${ICON_DIR}/blindcue.png"; do
+    if [ -e "$file" ]; then
+        rm -f "$file" && echo "rimosso $file"
+    fi
+done
+
+desktop_dir=""
+if command -v xdg-user-dir &>/dev/null; then
+    desktop_dir="$(xdg-user-dir DESKTOP 2>/dev/null || true)"
+fi
+for dir in "$desktop_dir" "$HOME/Desktop" "$HOME/Scrivania" "$HOME/desktop"; do
+    [ -n "$dir" ] || continue
+    if [ -e "$dir/blindcue.desktop" ]; then
+        rm -f "$dir/blindcue.desktop" && echo "rimosso $dir/blindcue.desktop"
+    fi
+done
+
+rm -rf "$INSTALL_DIR" && echo "rimosso $INSTALL_DIR"
+
+if [ "$purge" = true ]; then
+    for data in "${XDG_CONFIG_HOME:-$HOME/.config}/blindcue" \
+                "${XDG_CONFIG_HOME:-$HOME/.config}/BlindCue"; do
+        if [ -e "$data" ]; then
+            rm -rf "$data" && echo "rimosso $data"
+        fi
+    done
+fi
+
+command -v update-desktop-database &>/dev/null && \
+    update-desktop-database "$APPS_DIR" &>/dev/null || true
+icons_root="$(dirname "$(dirname "$(dirname "$ICON_DIR")")")"
+command -v gtk-update-icon-cache &>/dev/null && \
+    gtk-update-icon-cache -f -t "$icons_root" &>/dev/null || true
+
+echo
+echo "BlindCue è stato rimosso. Grazie per averlo provato."
+UNINSTALL
+    chmod +x "$uninstall_script"
+    log_success "Disinstallatore creato: ${uninstall_script}"
+
+    cat > "${BIN_DIR}/blindcue-uninstall" << EOF
+#!/usr/bin/env bash
+# BlindCue — disinstallazione (generato dall'installer).
+exec "${uninstall_script}" "\$@"
+EOF
+    chmod +x "${BIN_DIR}/blindcue-uninstall"
+    log_success "Comando disponibile: ${BIN_DIR}/blindcue-uninstall"
+
+    cat > "${APPS_DIR}/blindcue-uninstall.desktop" << EOF
+[Desktop Entry]
+Type=Application
+Name=Rimuovi BlindCue
+Comment=Disinstalla BlindCue e rimuove i collegamenti
+Exec="${uninstall_script}"
+Icon="${ICON_DIR}/blindcue.png"
+Terminal=true
+Categories=Utility;
+EOF
+    chmod +x "${APPS_DIR}/blindcue-uninstall.desktop"
 
     # Copia "sul posto": se l'utente lancia il software dalla cartella del
     # progetto, il venv locale non deve più essere ricreato ad ogni prova.
@@ -774,7 +899,8 @@ main() {
     echo "  2. Dal menu applicazioni: cerca 'BlindCue'"
     echo -e "  3. ${CLR_CYAN}${INSTALL_DIR}/run.sh --output-screen 1${CLR_RESET}   (scegli il proiettore)"
     echo ""
-    echo -e "Disinstallazione: cancella ${CLR_CYAN}${INSTALL_DIR}${CLR_RESET} e la voce di menu."
+    echo -e "Disinstallazione: ${CLR_CYAN}blindcue-uninstall${CLR_RESET} oppure 'Rimuovi BlindCue' nel menu."
+    echo -e "Puoi cancellare la cartella del repository: l'installazione è autonoma."
     echo ""
 }
 
