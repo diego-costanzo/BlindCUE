@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10+"></a>
   <a href="https://wiki.qt.io/Qt_for_Python"><img src="https://img.shields.io/badge/PySide6-Qt%206-41CD52?logo=qt&logoColor=white" alt="PySide6 Qt6"></a>
-  <img src="https://img.shields.io/badge/Linux-Wayland%20%7C%20X11-FCC624?logo=linux&logoColor=black" alt="Linux Wayland/X11">
+  <img src="https://img.shields.io/badge/Linux-Wayland%20only-FCC624?logo=linux&logoColor=black" alt="Linux Wayland only">
   <img src="https://img.shields.io/badge/macOS-Apple%20Silicon%20%7C%20Intel-000000?logo=apple&logoColor=white" alt="macOS">
   <img src="https://img.shields.io/badge/Windows-10%20%7C%2011-0078D6?logo=windows&logoColor=white" alt="Windows">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="MIT License"></a>
@@ -42,7 +42,7 @@ The reference tool for live cueing, [QLab](https://qlab.app), is macOS-only and
 commercial. BlindCUE is the open-source alternative for the machines QLab does
 not cover:
 
-- **Linux first**: native Wayland and X11, PipeWire/PulseAudio, VA-API hardware video decoding.
+- **Linux first**: native Wayland only (X11 is not supported), PipeWire/PulseAudio, VA-API hardware video decoding.
 - **Also Windows and macOS**: the same codebase runs on Windows 10/11 and on macOS (Apple Silicon and Intel).
 - **Lightweight**: no embedded web runtime, no database, no external service. Python + Qt + FFmpeg.
 - **Open source only**: no proprietary dependency, no paid API, no account, no cloud.
@@ -66,7 +66,7 @@ guaranteed support: it is an open-source project born from a real show.
 integration, mixin fuzz) that drive the real application with real media. See
 [docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
 
-**Not verified yet.** Deep testing has been on Linux (Wayland/X11). Not yet
+**Not verified yet.** Deep testing has been on Linux (Wayland). Not yet
 covered: codecs beyond H.264 (HEVC, VP9, ProRes), 4K/10-bit files, 5.1/7.1 audio
 on an external system, projector edge blending, continuous sessions over
 10 minutes. Before a real show, run a full dress rehearsal with your own
@@ -192,8 +192,8 @@ Dettaglio dei bug trovati e corretti, con il metodo usato per trovarli:
 [docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
 
 **Cosa non è stato ancora verificato.** Windows e macOS sono supportati
-dall'installer ma il collaudo approfondito è stato fatto su Linux (Wayland e
-X11). Non sono stati provati: codec oltre H.264 (HEVC, VP9, ProRes), file 4K o
+dall'installer ma il collaudo approfondito è stato fatto su Linux (Wayland).
+X11 non è supportato. Non sono stati provati: codec oltre H.264 (HEVC, VP9, ProRes), file 4K o
 10 bit, audio multicanale 5.1/7.1 su impianto esterno, edge blending tra due
 proiettori sovrapposti, sessioni continue oltre i 10 minuti.
 

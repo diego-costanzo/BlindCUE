@@ -44,7 +44,7 @@ Il pubblico vede soltanto l'uscita. Qualsiasi cosa accada sul monitor di regia r
 
 | Elemento | Consigliato |
 |---|---|
-| Computer | Linux (Wayland o X11); funziona anche su macOS e Windows |
+| Computer | Linux (Wayland); funziona anche su macOS e Windows |
 | Monitor | Due schermi (regia + uscita). Con un solo schermo l'uscita diventa una finestra flottante |
 | Cavo video | HDMI, DisplayPort o adattatore verso il proiettore |
 | Audio | Scheda audio o interfaccia con uscita master verso la sala |
@@ -547,7 +547,7 @@ Apri **`⚙ Dispositivi · Uscite`** e scegli la **Modalità Uscita**. Il compor
 
 **Come assegnare una cue all'uscita B.** Seleziona una cue (o più cue) e, nell'ispettore nella scheda **Video · Foto**, usa **Proiettore: A · Schermo 1 / B · Schermo 2**. Il selettore compare solo quando la modalità Due uscite indipendenti è attiva. In tabella le cue dell'uscita B mostrano il badge `B·L2` accanto al numero di layer; nel pannello live compaiono le righe dedicate all'uscita B. I conflitti di layer sono calcolati separatamente per A e per B: `A·L2` e `B·L2` possono convivere senza problemi.
 
-**Limite di Linux/Wayland.** Su Wayland un compositore può rifiutare una finestra che attraversa due uscite. Se i proiettori non si uniscono, avvia la sessione in **X11** (o usa un compositore che consente lo spanning): il dialogo mostra un avviso quando rileva questa condizione.
+**Limite di Linux/Wayland.** Su Wayland un compositore può rifiutare una finestra che attraversa due uscite. Se i proiettori non si uniscono, usa un compositore che consenta lo spanning (per esempio KWin/KDE Plasma): il dialogo mostra un avviso quando rileva questa condizione. X11 non è supportato.
 
 **Immagini diverse sui due proiettori (dentro lo span).** Con la superficie unica puoi già ottenere contenuti distinti: crea due superfici in `F7` — una per la metà sinistra, una per la destra — e assegna ogni cue alla superficie corretta nell'ispettore. Attenzione: i **tre layer sono condivisi** tra le due aree, quindi puoi avere al massimo tre contenuti simultanei in totale, non tre per proiettore. Se ti servono due proiezioni **davvero indipendenti** (tre layer ciascuna), usa la modalità **Due uscite indipendenti** descritta sopra.
 
