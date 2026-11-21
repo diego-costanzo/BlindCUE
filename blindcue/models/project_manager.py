@@ -84,6 +84,32 @@ class ProjectManager:
     # ── Project Save & Load ───────────────────────────────────────────
 
     @staticmethod
+    def media_dir_for(project_path: str | Path) -> Path:
+        """Return the ``<project name>_media/`` archive folder of a project."""
+        project = Path(project_path)
+        return project.parent / f"{project.stem}{MEDIA_DIR_SUFFIX}"
+
+    def uses_media_archive(self, project_path: str | Path, cues: list[Cue]) -> bool:
+        """True when a loaded show takes its media from its own archive folder.
+
+        Such a show was saved as a portable bundle: later saves must keep it
+        portable, otherwise Ctrl+S writes absolute paths again.
+        """
+        try:
+            media_dir = self.media_dir_for(project_path).resolve()
+        except OSError:
+            return False
+        for cue in cues:
+            if cue.media_type == MediaType.GROUP or not cue.file_path:
+                continue
+            try:
+                if Path(cue.file_path).resolve().is_relative_to(media_dir):
+                    return True
+            except (OSError, ValueError):
+                continue
+        return False
+
+    @staticmethod
     def _absolute_media_key(file_path: str) -> str:
         """Normalise a media path so the same file maps to one archive copy."""
         try:
@@ -418,6 +444,12 @@ class ProjectManager:
                             )
                         if base_candidate.is_file():
                             cue.file_path = str(base_candidate)
+                        else:
+                            # A bundle saved with absolute paths: its copy sits
+                            # in <name>_media/ next to the show.
+                            media_candidate = (self.media_dir_for(path) / file_p.name).resolve()
+                            if media_candidate.is_relative_to(proj_dir) and media_candidate.is_file():
+                                cue.file_path = str(media_candidate)
 
                     # Reset LIVE or PREVIZ runtime status to OFFLINE or LOADED
                     cue.status = CueStatus.LOADED if Path(cue.file_path).is_file() else CueStatus.OFFLINE

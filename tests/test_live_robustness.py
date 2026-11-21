@@ -491,3 +491,58 @@ def test_bundled_save_reports_missing_media_and_keeps_it_linked(tmp_path):
     data = json.loads(show.read_text(encoding="utf-8"))
     assert data["cues"][0]["file_path"] == str(gone)
 
+
+
+def test_bundled_show_stays_portable_after_reopen_and_move(tmp_path):
+    """Reopened bundle: detected as portable, and a moved copy still finds its media."""
+    from models.cue import Cue, MediaType
+
+    pm = ProjectManager(autosave_dir=tmp_path / "cfg")
+    src = tmp_path / "src"
+    src.mkdir()
+    song = src / "song.mp3"
+    song.write_bytes(b"MP3")
+    show = tmp_path / "pc1" / "show.blindcue"
+    show.parent.mkdir()
+    cues = [Cue(name="S", media_type=MediaType.AUDIO, file_path=str(song), layer=2)]
+    assert pm.save_project_bundled(show, cues)[0]
+
+    loaded, _i, _s = pm.load_project(show)
+    assert pm.uses_media_archive(show, loaded), "Ctrl+S must keep the bundle portable"
+
+    # An older plain save wrote absolute paths into the archive: after moving
+    # the folder to another PC the copy in "<name>_media/" must still be found.
+    pm.save_project(show, loaded)
+    moved = tmp_path / "pc2"
+    shutil.copytree(show.parent, moved)
+    shutil.rmtree(show.parent)
+    again, _i, _s = pm.load_project(moved / "show.blindcue")
+    assert again[0].status.value == "LOADED"
+    assert Path(again[0].file_path).parent.name == "show_media"
+
+    plain = [Cue(name="P", media_type=MediaType.AUDIO, file_path=str(song), layer=2)]
+    assert not pm.uses_media_archive(moved / "show.blindcue", plain)
+
+
+def test_bundled_save_archives_custom_layer0_image(tmp_path):
+    """The custom Layer 0 image travels with the bundle and is found after a move."""
+    from models.cue import Cue, MediaType
+
+    pm = ProjectManager(autosave_dir=tmp_path / "cfg")
+    logo = tmp_path / "logo.png"
+    logo.write_bytes(b"PNG")
+    show = tmp_path / "pc1" / "show.blindcue"
+    show.parent.mkdir()
+    cues = [Cue(name="I", media_type=MediaType.IMAGE, file_path=str(logo), layer=1)]
+
+    saved, problems, _copied = pm.save_project_bundled(
+        show, cues, settings={"layer0_image": str(logo)}
+    )
+    assert saved and not problems
+    data = json.loads(show.read_text(encoding="utf-8"))
+    assert data["settings"]["layer0_image"] == "show_media/logo.png"
+
+    moved = tmp_path / "pc2"
+    shutil.copytree(show.parent, moved)
+    _cues, _i, settings = pm.load_project(moved / "show.blindcue")
+    assert Path(settings["layer0_image"]) == (moved / "show_media" / "logo.png").resolve()
