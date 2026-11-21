@@ -22,6 +22,19 @@ from models.cue import CueSection
 logger = logging.getLogger(__name__)
 
 
+def _pause_unless_at_end(player: QMediaPlayer) -> None:
+    """Pause *player*, except when it has already reached the end of the file.
+
+    At EndOfMedia the deck is already stopped. ``pause()`` there makes the Qt
+    FFmpeg backend rewind and rebuild its renderers on a worker thread; a
+    ``stop()`` that follows (the EOF handler always calls it) then blocks the
+    GIL-holding main thread on that worker while the worker waits for the GIL
+    to tear down a PySide-wrapped object: a permanent freeze.
+    """
+    if player.mediaStatus() != QMediaPlayer.MediaStatus.EndOfMedia:
+        player.pause()
+
+
 class _PlayerSignals(QObject):
     """Qt signals emitted by the live player."""
     position_changed = Signal(float)   # current playback position (seconds)
@@ -473,7 +486,7 @@ class LivePlayer(QObject):
         self._watchdog_armed = False
         self._driver_timer.stop()
         player, _ = self._deck_pair()
-        player.pause()
+        _pause_unless_at_end(player)
         self.signals.eof_reached.emit()
 
     # ── Signal Handlers ───────────────────────────────────────────────
@@ -736,7 +749,7 @@ class LivePlayer(QObject):
             self._watchdog_armed = False
             self._driver_timer.stop()
             player, _ = self._deck_pair()
-            player.pause()
+            _pause_unless_at_end(player)
             logger.debug("[LIVE] pause()")
         except Exception as exc:
             logger.error("[LIVE] pause() failed: %s", exc, exc_info=True)
