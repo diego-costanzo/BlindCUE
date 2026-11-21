@@ -205,10 +205,15 @@ class _PersistenceMixin:
         paths = [str(p) for p in (raw or []) if isinstance(p, str) and p.strip()]
         return paths[: self._RECENT_PROJECTS_LIMIT]
 
+    @staticmethod
+    def _recent_key(file_path: str) -> str:
+        """Normalise a path the way it is stored in the recent list."""
+        return str(Path(file_path).expanduser())
+
     def _remember_recent_project(self, file_path: str) -> None:
         """Move *file_path* to the top of the recent list and persist it."""
         try:
-            path = str(Path(file_path).expanduser())
+            path = self._recent_key(file_path)
         except Exception:
             return
         if not path:
@@ -223,7 +228,11 @@ class _PersistenceMixin:
 
     def _forget_recent_project(self, file_path: str) -> None:
         """Drop one entry (used when the file disappeared from disk)."""
-        recent = [p for p in self._recent_projects() if p != str(file_path)]
+        try:
+            gone = {str(file_path), self._recent_key(file_path)}
+        except Exception:
+            gone = {str(file_path)}
+        recent = [p for p in self._recent_projects() if p not in gone]
         try:
             self._settings().setValue(self._RECENT_PROJECTS_KEY, recent)
         except Exception as exc:
