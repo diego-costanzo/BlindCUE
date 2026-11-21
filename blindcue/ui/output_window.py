@@ -20,7 +20,7 @@ import os
 from pathlib import Path
 from collections.abc import Callable
 
-from PySide6.QtCore import QPointF, QRectF, QSizeF, Qt, QTimer
+from PySide6.QtCore import QCoreApplication, QPointF, QRectF, QSizeF, Qt, QTimer
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -1499,6 +1499,26 @@ class OutputWindow(QWidget):
         if handle is not None:
             handle.setScreen(screen)
 
+    def _show_fullscreen_on(self, screen: QScreen) -> None:
+        """Make the window full screen on *screen* itself.
+
+        Windows puts a window full screen on the monitor it currently sits on.
+        setWindowFlags() re-creates the native window where the old one was, so
+        when a projector was plugged in while the single-monitor preview was
+        open, showFullScreen() covered the director window on the laptop
+        (2026-11-21). Show the window on the target monitor first, then switch
+        it to full screen there.
+        """
+        geo = screen.geometry()
+        self.setGeometry(geo)
+        self.show()
+        QCoreApplication.processEvents()
+        handle = self.windowHandle()
+        if handle is not None:
+            handle.setScreen(screen)
+        self.setGeometry(geo)
+        self.showFullScreen()
+
     def configure_screen(self, screen: QScreen, is_external: bool = True) -> None:
         """Attach to *screen*. If is_external=True (multi-monitor), goes fullscreen borderless.
         If is_external=False (single monitor test), opens as a clean preview window on screen."""
@@ -1513,9 +1533,8 @@ class OutputWindow(QWidget):
                 | Qt.WindowType.Window
             )
             self._bind_to_screen(screen)
-            self.setGeometry(screen.geometry())
             self.setCursor(QCursor(Qt.CursorShape.BlankCursor))
-            self.showFullScreen()
+            self._show_fullscreen_on(screen)
             logger.info("[OUTPUT] Attached to external screen '%s' (Fullscreen borderless)", screen.name())
         else:
             self.setWindowFlags(
@@ -1580,7 +1599,10 @@ class OutputWindow(QWidget):
             )
             self._bind_to_screen(self._target_screen)
             self.setCursor(QCursor(Qt.CursorShape.BlankCursor))
-            self.showFullScreen()
+            if self._target_screen is not None:
+                self._show_fullscreen_on(self._target_screen)
+            else:
+                self.showFullScreen()
         self._fit_layer0()
 
     def force_close(self) -> None:
