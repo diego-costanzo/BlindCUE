@@ -19,6 +19,8 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QPushButton, QWidget
 
+from i18n import tr
+
 
 class HoldProgressButton(QPushButton):
     """Button requiring continuous hold/press for *hold_ms* to trigger or toggle."""
@@ -301,7 +303,7 @@ class HoldProgressButton(QPushButton):
         if self._progress > 0.0:
             txt_col = QColor("#ffffff")
 
-        raw_text = self._text_active if self._is_active else self._text_idle
+        raw_text = tr(self._text_active if self._is_active else self._text_idle)
         lines = raw_text.split("\n")
 
         font = self.font()

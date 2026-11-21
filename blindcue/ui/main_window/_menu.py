@@ -111,6 +111,19 @@ class _MenuMixin:
         if active_tid in self._theme_actions:
             self._theme_actions[active_tid].setChecked(True)
 
+        # Language submenu (applied on the next start)
+        import i18n
+        lang_menu = view_menu.addMenu("🌐 Lingua / Language / Język")
+        self._lang_action_group = QActionGroup(self)
+        self._lang_action_group.setExclusive(True)
+        saved_lang = i18n.saved_language()
+        for code, label in i18n.LANGUAGES.items():
+            act = QAction(label, self, checkable=True)
+            act.setChecked(code == saved_lang)
+            act.triggered.connect(lambda checked=False, c=code: self._set_ui_language(c))
+            self._lang_action_group.addAction(act)
+            lang_menu.addAction(act)
+
         self._act_earcons = QAction("🔔 &Segnali Acustici Operatore (Earcons)", self, checkable=True)
         self._act_earcons.setToolTip(
             "Accessibilità Regia: Emette un discreto segnale sonoro di conferma ad ogni GO, STOP e PAUSA.\n"
@@ -144,6 +157,12 @@ class _MenuMixin:
         )
 
         help_menu = mb.addMenu("&Help")
+        from ui.help_dialog import show_help
+        help_menu.addAction(
+            QAction("📖 Manuale utente", self, shortcut=QKeySequence(Qt.Key.Key_F1),
+                    triggered=lambda: show_help(self))
+        )
+        help_menu.addSeparator()
         help_menu.addAction(
             QAction("&Info Hardware & Accelerazione…", self, triggered=self._show_hw_info)
         )
@@ -151,6 +170,19 @@ class _MenuMixin:
         help_menu.addAction(
             QAction("&About BlindCue", self, triggered=lambda: show_about_dialog(self))
         )
+
+    def _set_ui_language(self, code: str) -> None:
+        """Store the UI language and ask for a restart (texts are set at build time)."""
+        import i18n
+        if code == i18n.saved_language():
+            return
+        i18n.save_language(code)
+        msg = {
+            "it": "La lingua dell'interfaccia cambierà al prossimo avvio di BlindCue.",
+            "en": "The interface language will change after restarting BlindCue.",
+            "pl": "Język interfejsu zostanie zmieniony po ponownym uruchomieniu BlindCue.",
+        }[code]
+        QMessageBox.information(self, "BlindCue", msg)
 
     def _build_ui(self) -> None:
         self._central_stack = QStackedWidget()

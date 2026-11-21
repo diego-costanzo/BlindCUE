@@ -222,6 +222,10 @@ def main() -> int:
     app.setOrganizationName("BlindCue")
     app.setApplicationVersion("0.1")
 
+    # ── UI language (IT / EN / PL): must run before any widget exists ──
+    import i18n
+    i18n.install()
+
     _install_file_logging()
 
     app_icon = _load_app_icon()
