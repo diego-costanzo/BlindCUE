@@ -103,7 +103,8 @@ def engine_command(extra_args: list[str] | None = None) -> list[str]:
     script = engine_script(platform)
     args = list(extra_args or [])
     if platform == "windows":
-        return ["cmd", "/c", script.name, *args]
+        # ".\" prefix: works even when NoDefaultCurrentDirectoryInExePath is set
+        return ["cmd", "/c", ".\\" + script.name, *args]
     return ["/bin/bash", str(script), *args]
 
 
@@ -291,7 +292,7 @@ def launch(platform: str | None = None) -> None:
         return
 
     if platform == "windows":
-        subprocess.Popen(["cmd", "/c", script.name], cwd=str(script.parent))
+        subprocess.Popen(["cmd", "/c", ".\\" + script.name], cwd=str(script.parent))
         return
 
     subprocess.Popen(["/bin/bash", str(script)], cwd=str(REPO_ROOT), close_fds=True)
