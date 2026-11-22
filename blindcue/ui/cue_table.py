@@ -627,6 +627,7 @@ class CueSequenceTable(QTableWidget):
     ungroup_requested = Signal()
     extract_child_requested = Signal()
     open_timeline_requested = Signal()
+    edit_text_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the cue sequence table with its three columns and selection rules."""
@@ -758,6 +759,9 @@ class CueSequenceTable(QTableWidget):
             is_grp = bool(curr_item and curr_item.data(ROLE_IS_GROUP))
             parent_id = curr_item.data(ROLE_PARENT_ID) if curr_item else None
 
+            if not is_grp and len(rows) == 1:
+                act_text = menu.addAction("✏ Modifica testo…")
+                act_text.triggered.connect(self.edit_text_requested)
             if not is_grp:
                 act_grp = menu.addAction("📁 Raggruppa in Scena (Ctrl+G)")
                 act_grp.triggered.connect(self.group_requested)

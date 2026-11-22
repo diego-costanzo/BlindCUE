@@ -467,6 +467,10 @@ class OutputWindow(QWidget):
         self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
         self._xfade_timers: dict[int, QTimer] = {}
 
+        # Crossfade: frozen snapshot of a layer dissolving over new content
+        self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
+        self._xfade_timers: dict[int, QTimer] = {}
+
         logger.info("[OUTPUT] Native Wayland Output Window created")
 
     # ── Layer 0 ───────────────────────────────────────────────────────

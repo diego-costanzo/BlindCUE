@@ -208,6 +208,8 @@ class _MenuMixin:
         self._cue_list.color_selected.connect(self._set_cue_color)
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
         self._cue_list_panel.add_group_requested.connect(self._on_add_group)
+        self._cue_list_panel.add_text_requested.connect(self._on_add_text_cue)
+        self._cue_list_panel.edit_text_requested.connect(self._on_edit_text_cue)
         self._cue_list_panel.ungroup_requested.connect(self._ungroup_selected)
         self._cue_list_panel.extract_child_requested.connect(self._extract_selected_from_group)
         self._cue_list.open_timeline_requested.connect(self._on_open_group_timeline)
