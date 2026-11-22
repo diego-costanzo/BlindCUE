@@ -52,6 +52,15 @@ class DeviceManager(QObject):
     target_screen_changed = Signal(str)
     profile_changed = Signal(str)
     output_mode_changed = Signal(str)
+    # Operator-facing message about the speakers chosen on this computer
+    # (missing, or back again). Empty string = nothing to report.
+    audio_notice = Signal(str)
+
+    # Speakers chosen in the device dialog are remembered per computer in
+    # QSettings (``audio/<role>_id`` + ``audio/<role>_name``), never in the
+    # show file: a show opened on another computer uses that computer's own
+    # choice, or the Windows default when nothing was chosen there.
+    AUDIO_ROLES = ("master", "monitor")
 
     def __init__(self, parent: QObject | None = None) -> None:
         """Discover audio devices and resolve the projector assignment at startup."""
@@ -73,6 +82,9 @@ class DeviceManager(QObject):
         self._output_window: Any | None = None
         self._secondary_output_window: Any | None = None
         self._media_devices: QMediaDevices | None = None
+        # Roles whose remembered speakers are not connected right now
+        # (role -> remembered name); the Windows default plays meanwhile.
+        self._audio_missing: dict[str, str] = {}
 
         self._init_defaults()
         self._wire_hotplug_detectors()
@@ -83,8 +95,8 @@ class DeviceManager(QObject):
         """Initialize default audio devices, screens, and hardware profile."""
         try:
             self._media_devices = QMediaDevices(self)
-            self._master_device = QMediaDevices.defaultAudioOutput()
-            self._monitor_device = QMediaDevices.defaultAudioOutput()
+            self._master_device = self._resolve_audio("master")
+            self._monitor_device = self._resolve_audio("monitor")
         except Exception as exc:
             logger.warning("[DEVICE-MGR] Could not query default audio output: %s", exc)
 
@@ -220,21 +232,129 @@ class DeviceManager(QObject):
         logger.info("[DEVICE-MGR] Monitor (PFL) audio device updated to '%s'", desc)
         self.monitor_device_changed.emit(desc)
 
+    # ── Remembered speakers (per computer) ────────────────────────────
+
+    @staticmethod
+    def saved_audio_choice(role: str) -> tuple[str, str] | None:
+        """``(device id as hex, device name)`` chosen for *role*, or None
+        when *role* follows the Windows default."""
+        settings = QSettings("BlindCue", "BlindCue")
+        dev_id = str(settings.value(f"audio/{role}_id", "") or "")
+        name = str(settings.value(f"audio/{role}_name", "") or "")
+        return (dev_id, name) if (dev_id or name) else None
+
+    @staticmethod
+    def _store_audio_choice(role: str, device: QAudioDevice | None) -> None:
+        settings = QSettings("BlindCue", "BlindCue")
+        if device is None or device.isNull():
+            settings.remove(f"audio/{role}_id")
+            settings.remove(f"audio/{role}_name")
+        else:
+            settings.setValue(f"audio/{role}_id", bytes(device.id()).hex())
+            settings.setValue(f"audio/{role}_name", device.description())
+
+    @staticmethod
+    def find_audio_device(choice: tuple[str, str], devices: Sequence[QAudioDevice]) -> QAudioDevice | None:
+        """The connected device matching a remembered *choice*: same system
+        id first (two identical sound cards stay apart), then same name (the
+        id of a USB card can change when it goes into another port)."""
+        dev_id, name = choice
+        if dev_id:
+            for dev in devices:
+                if bytes(dev.id()).hex() == dev_id:
+                    return dev
+        if name:
+            for dev in devices:
+                if dev.description() == name:
+                    return dev
+        return None
+
+    def _resolve_audio(self, role: str) -> QAudioDevice:
+        """Device *role* should play on now: the remembered one when it is
+        connected, otherwise the Windows default (and *role* is marked missing)."""
+        default = QMediaDevices.defaultAudioOutput()
+        choice = self.saved_audio_choice(role)
+        if choice is None:
+            self._audio_missing.pop(role, None)
+            return default
+        found = self.find_audio_device(choice, self.get_available_audio_devices())
+        if found is not None:
+            self._audio_missing.pop(role, None)
+            return found
+        self._audio_missing[role] = choice[1] or choice[0]
+        logger.warning("[DEVICE-MGR] Remembered %s audio '%s' not connected - using the default '%s'",
+                       role, self._audio_missing[role], self._device_label(default))
+        return default
+
+    def is_audio_remembered(self, role: str) -> bool:
+        """True when speakers were chosen for *role* on this computer."""
+        return self.saved_audio_choice(role) is not None
+
+    def missing_audio_name(self, role: str) -> str | None:
+        """Name of the remembered speakers of *role* while they are unplugged."""
+        return self._audio_missing.get(role)
+
+    def audio_notice_text(self) -> str:
+        """Status-bar text about remembered speakers that are not connected."""
+        if not self._audio_missing:
+            return ""
+        names = ", ".join(sorted(set(self._audio_missing.values())))
+        return (f"Uscita audio scelta non collegata ({names}): "
+                f"suona l'uscita predefinita ({self._device_label(QMediaDevices.defaultAudioOutput())})")
+
+    def choose_master_audio(self, device: QAudioDevice | None) -> None:
+        """Operator choice for the audience speakers; None = follow Windows."""
+        self._store_audio_choice("master", device)
+        self._audio_missing.pop("master", None)
+        self.set_master_audio_device(device)
+        self.audio_notice.emit(self.audio_notice_text())
+
+    def choose_monitor_audio(self, device: QAudioDevice | None) -> None:
+        """Operator choice for the headphones (PFL); None = follow Windows."""
+        self._store_audio_choice("monitor", device)
+        self._audio_missing.pop("monitor", None)
+        self.set_monitor_audio_device(device)
+        self.audio_notice.emit(self.audio_notice_text())
+
     def _on_audio_outputs_changed(self) -> None:
-        """Handle hardware audio plug/unplug safely."""
+        """Handle hardware audio plug/unplug safely.
+
+        Remembered speakers that come back are used again at once (a projector
+        plugged in again gets its sound back); remembered speakers that go away
+        give way to the Windows default until they return. A role that follows
+        the default only moves when its device disappears.
+        """
         logger.info("[DEVICE-MGR] Audio outputs hardware change detected!")
         devs = self.get_available_audio_devices()
         dev_ids = {bytes(d.id()) for d in devs}
+        missing_before = dict(self._audio_missing)
 
-        # Check if master device was unplugged
-        if self._master_device is not None and bytes(self._master_device.id()) not in dev_ids:
-            logger.warning("[DEVICE-MGR] Master audio device disconnected! Falling back to default.")
-            self.set_master_audio_device(QMediaDevices.defaultAudioOutput())
+        for role, current, setter in (
+            ("master", self._master_device, self.set_master_audio_device),
+            ("monitor", self._monitor_device, self.set_monitor_audio_device),
+        ):
+            choice = self.saved_audio_choice(role)
+            wanted = self.find_audio_device(choice, devs) if choice is not None else None
+            if wanted is not None:
+                self._audio_missing.pop(role, None)
+                if current is None or bytes(current.id()) != bytes(wanted.id()):
+                    logger.info("[DEVICE-MGR] Remembered %s audio '%s' is connected again", role,
+                                wanted.description())
+                    setter(wanted)
+                continue
+            if choice is not None:
+                self._audio_missing[role] = choice[1] or choice[0]
+            if current is not None and bytes(current.id()) not in dev_ids:
+                logger.warning("[DEVICE-MGR] %s audio device disconnected! Falling back to default.",
+                               role.capitalize())
+                setter(QMediaDevices.defaultAudioOutput())
 
-        # Check if monitor device was unplugged
-        if self._monitor_device is not None and bytes(self._monitor_device.id()) not in dev_ids:
-            logger.warning("[DEVICE-MGR] Monitor audio device disconnected! Falling back to default.")
-            self.set_monitor_audio_device(QMediaDevices.defaultAudioOutput())
+        if self._audio_missing != missing_before:
+            back = [name for role, name in missing_before.items() if role not in self._audio_missing]
+            text = self.audio_notice_text()
+            if not text and back:
+                text = f"Uscita audio scelta di nuovo collegata: {', '.join(sorted(set(back)))}"
+            self.audio_notice.emit(text)
 
         self.audio_devices_changed.emit()
 

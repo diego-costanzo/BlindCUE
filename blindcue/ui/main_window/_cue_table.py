@@ -222,6 +222,8 @@ class _CueTableMixin:
             mgr.master_device_changed.connect(self._update_hardware_status_bar)
             mgr.target_screen_changed.connect(self._update_hardware_status_bar)
             mgr.audio_devices_changed.connect(self._update_hardware_status_bar)
+            mgr.audio_notice.connect(self._on_audio_notice)
+            self._on_audio_notice(mgr.audio_notice_text())
             mgr.output_mode_changed.connect(self._on_output_mode_changed)
             mgr.screens_changed.connect(self._refresh_output_monitors)
             self._on_output_mode_changed(getattr(mgr, "_output_mode", "single"))
@@ -290,6 +292,13 @@ class _CueTableMixin:
         dlg = DeviceSettingsDialog(self._device_mgr, self)
         dlg.exec()
         self._update_hardware_status_bar()
+
+    @Slot(str)
+    def _on_audio_notice(self, text: str) -> None:
+        """Tell the operator when the speakers chosen on this computer are
+        missing (the Windows default plays) or connected again."""
+        if text:
+            self._status_label.setText(text)
 
     def _update_hardware_status_bar(self, *args: Any) -> None:
         """Refresh the hardware and device brief in the status bar."""
