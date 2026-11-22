@@ -1687,4 +1687,49 @@ T: dict[str, str] = {
     # ── second launch while the program is already running ──
     'BlindCue è già in esecuzione ma non risponde.\n\nPotrebbe essere ancora in fase di avvio. Se la sua finestra non compare, chiudi BlindCue già aperto e riavvia il programma.':
         'BlindCue is already running but does not respond.\n\nIt may still be starting. If its window does not appear, close the running BlindCue and start the program again.',
+    # ── text cues, crossfade and the cue list (feature PRs) ──
+    'In basso':
+        'Bottom',
+    'Al centro':
+        'Center',
+    'In alto':
+        'Top',
+    'Cue di testo (didascalia)':
+        'Text cue (caption)',
+    'Scrivi il testo da mostrare sul proiettore…':
+        'Type the text shown on the projector…',
+    'Grassetto':
+        'Bold',
+    'Fascia scura dietro il testo':
+        'Dark band behind the text',
+    'Ombra':
+        'Shadow',
+    'Testo:':
+        'Text:',
+    'Dimensione carattere:':
+        'Font size:',
+    'Colore del testo:':
+        'Text colour:',
+    'Posizione sullo schermo:':
+        'Position on screen:',
+    'Suggerimento: la didascalia va sul Layer 3 (sopra video e foto). Fade In/Out, posizione e crossfade si impostano nell\'Inspector come per una foto.':
+        'Tip: the caption goes on Layer 3 (on top of video and photos). Fade In/Out, position and crossfade are set in the Inspector like for a photo.',
+    'Anteprima (proiettore):':
+        'Preview (projector):',
+    'Colore del testo':
+        'Text colour',
+    '+ Testo':
+        '+ Text',
+    'Aggiungi una didascalia sullo schermo (cue di testo, Layer 3)':
+        'Add an on-screen caption (text cue, Layer 3)',
+    'Aggiungi Testo':
+        'Add Text',
+    '✏ Modifica testo…':
+        '✏ Edit text…',
+    'Cue di testo':
+        'Text cue',
+    'Il cue selezionato non è un cue di testo. Aggiungine uno con il pulsante "+ Testo".':
+        'The selected cue is not a text cue. Add one with the "+ Text" button.',
+    'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
+        'Crossfade: the picture currently shown on this cue\'s layer dissolves into this cue over the given time (0 = hard cut). Set Fade In to 0 when using it.',
 }

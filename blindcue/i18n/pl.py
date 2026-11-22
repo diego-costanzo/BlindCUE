@@ -1897,4 +1897,49 @@ T: dict[str, str] = {
     # ── second launch while the program is already running ──
     'BlindCue è già in esecuzione ma non risponde.\n\nPotrebbe essere ancora in fase di avvio. Se la sua finestra non compare, chiudi BlindCue già aperto e riavvia il programma.':
         'BlindCue już działa, ale nie odpowiada.\n\nMoże jeszcze się uruchamia. Jeśli jego okno się nie pojawi, zamknij działający BlindCue i uruchom program ponownie.',
+    # ── text cues, crossfade and the cue list (feature PRs) ──
+    'In basso':
+        'Na dole',
+    'Al centro':
+        'Na środku',
+    'In alto':
+        'Na górze',
+    'Cue di testo (didascalia)':
+        'Cue tekstowe (napis)',
+    'Scrivi il testo da mostrare sul proiettore…':
+        'Wpisz tekst, który pojawi się na projektorze…',
+    'Grassetto':
+        'Pogrubienie',
+    'Fascia scura dietro il testo':
+        'Ciemny pasek pod tekstem',
+    'Ombra':
+        'Cień',
+    'Testo:':
+        'Tekst:',
+    'Dimensione carattere:':
+        'Wielkość liter:',
+    'Colore del testo:':
+        'Kolor tekstu:',
+    'Posizione sullo schermo:':
+        'Położenie na ekranie:',
+    'Suggerimento: la didascalia va sul Layer 3 (sopra video e foto). Fade In/Out, posizione e crossfade si impostano nell\'Inspector come per una foto.':
+        'Wskazówka: napis trafia na warstwę 3 (nad filmem i zdjęciami). Fade In/Out, położenie i przenikanie ustawisz w Inspektorze tak jak dla zdjęcia.',
+    'Anteprima (proiettore):':
+        'Podgląd (projektor):',
+    'Colore del testo':
+        'Kolor tekstu',
+    '+ Testo':
+        '+ Tekst',
+    'Aggiungi una didascalia sullo schermo (cue di testo, Layer 3)':
+        'Dodaj napis na ekranie (cue tekstowe, warstwa 3)',
+    'Aggiungi Testo':
+        'Dodaj tekst',
+    '✏ Modifica testo…':
+        '✏ Edytuj napis…',
+    'Cue di testo':
+        'Cue tekstowe',
+    'Il cue selezionato non è un cue di testo. Aggiungine uno con il pulsante "+ Testo".':
+        'Zaznaczony cue nie jest cue tekstowym. Napis dodasz przyciskiem „+ Tekst”.',
+    'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
+        'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw Fade In na 0.',
 }
