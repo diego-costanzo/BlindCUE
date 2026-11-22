@@ -20,12 +20,14 @@ import os
 from pathlib import Path
 from collections.abc import Callable
 
+import shiboken6
 from PySide6.QtCore import QCoreApplication, QPointF, QRectF, QSizeF, Qt, QTimer
 from PySide6.QtGui import (
     QBrush,
     QColor,
     QCursor,
     QFont,
+    QGuiApplication,
     QImage,
     QKeyEvent,
     QPainter,
@@ -1508,11 +1510,19 @@ class OutputWindow(QWidget):
         open, showFullScreen() covered the director window on the laptop
         (2026-11-21). Show the window on the target monitor first, then switch
         it to full screen there.
+
+        processEvents() can run a monitor change: if the screen went away
+        meanwhile (HDMI flapping) or the window was re-targeted by that change,
+        the newer configuration wins and this one stops here.
         """
         geo = screen.geometry()
         self.setGeometry(geo)
         self.show()
         QCoreApplication.processEvents()
+        if self._target_screen is not screen or not shiboken6.isValid(screen) \
+                or screen not in QGuiApplication.screens():
+            logger.info("[OUTPUT] Screen changed while going full screen - keeping the newer setup")
+            return
         handle = self.windowHandle()
         if handle is not None:
             handle.setScreen(screen)
@@ -1533,6 +1543,7 @@ class OutputWindow(QWidget):
                 | Qt.WindowType.Window
             )
             self._bind_to_screen(screen)
+            self.setWindowTitle("BlindCue – Live Output")
             self.setCursor(QCursor(Qt.CursorShape.BlankCursor))
             self._show_fullscreen_on(screen)
             logger.info("[OUTPUT] Attached to external screen '%s' (Fullscreen borderless)", screen.name())
@@ -1568,13 +1579,38 @@ class OutputWindow(QWidget):
         """Return currently attached QScreen."""
         return self._target_screen
 
+    def ensure_on_target_screen(self) -> None:
+        """Put the window back on its screen if Windows moved it.
+
+        After a display change Windows 11 restores window positions on its own,
+        a moment after the program placed its windows: coming back from
+        "Second screen only" it moved the output onto the laptop, full screen
+        over the director (2026-11-22). Called once things have settled.
+        """
+        target = self._target_screen
+        if target is None or self._span_screens or not self.isVisible():
+            return
+        if not shiboken6.isValid(target) or target not in QGuiApplication.screens():
+            return
+        if target.geometry().contains(self.frameGeometry().center()):
+            return
+        logger.info("[OUTPUT] Window moved off '%s' by the system - placing it again", target.name())
+        self.configure_screen(target, is_external=self._is_external)
+
     def set_target_screen(self, screen: QScreen) -> None:
-        """Switch output window to *screen* dynamically at runtime."""
-        if screen is None or screen == self._target_screen:
+        """Switch output window to *screen* dynamically at runtime.
+
+        The same screen still needs a new setup when it became the primary one
+        (Windows "Second screen only", or the laptop lid closed): the output
+        must then turn into the preview window, or it covers the director.
+        """
+        if screen is None:
             return
         from PySide6.QtWidgets import QApplication
         primary = QApplication.primaryScreen()
         is_external = (screen != primary)
+        if screen == self._target_screen and is_external == self._is_external:
+            return
         logger.info("[OUTPUT] Re-binding output to screen '%s' (is_external=%s)", screen.name(), is_external)
         self.configure_screen(screen, is_external=is_external)
 
