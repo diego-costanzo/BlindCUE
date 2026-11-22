@@ -1,0 +1,399 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>{{APP}} – manuale utente</title>
+{{STYLE}}
+</head>
+<body>
+
+<h1>{{APP}} – manuale utente</h1>
+<p>{{APP}} serve a condurre uno spettacolo dal vivo: da un solo schermo lanci in sequenza
+musica, video e foto<!--IF:text_cues--> e didascalie<!--/IF:text_cues-->, mentre il pubblico vede l'immagine sul proiettore.
+Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
+<!--IF:version--><p style="color:#94a3b8;">Versione del programma: <b>{{VERSION}}</b> (la trovi in
+<i>Help → About</i>).{{CREDITS}}</p><!--/IF:version-->
+
+<h3>Indice</h3>
+<ol>
+<li><a href="#schermo">La finestra del programma – cosa c'è e dove</a></li>
+<li><a href="#nuovo">Nuovo spettacolo e salvataggio</a></li>
+<li><a href="#aggiungere">Aggiungere video, audio<!--IF:text_cues-->, foto e didascalie<!--/IF:text_cues--><!--IFNOT:text_cues--> e foto<!--/IFNOT:text_cues--></a></li>
+<li><a href="#cue">Impostare una cue (Ispettore)</a></li>
+<li><a href="#transizioni">Dissolvenze<!--IF:crossfade-->, crossfade<!--/IF:crossfade-->, effetti e immagine</a></li>
+<li><a href="#audio">Audio: volume, tagli, loop, livellamento</a></li>
+<li><a href="#gruppi">Gruppi e scene</a></li>
+<li><a href="#layer">Layer L1–L3 e Tappo L0</a></li>
+<li><a href="#proiettore">Proiettore e finestra di uscita</a></li>
+<li><a href="#live">Condurre lo spettacolo (modalità LIVE)</a></li>
+<li><a href="#emergenze">Emergenze</a></li>
+<li><a href="#extra">Extra: telecomando dal telefono, mapping, impostazioni</a></li>
+<li><a href="#scorciatoie">Scorciatoie da tastiera</a></li>
+<li><a href="#consigli">Buone pratiche prima dello spettacolo</a></li>
+</ol>
+
+<!-- ================================================================== -->
+<h2><a name="schermo"></a>1. La finestra del programma – cosa c'è e dove</h2>
+<p><img src="img/it/01_main_window_video.png" width="760"></p>
+<ul>
+<li><b>Scaletta cue (colonna sinistra)</b> – l'ordine dello spettacolo. Ogni riga è una
+<i>cue</i>: video <code>VID</code>, audio <code>AUD</code>, immagine <code>IMG</code> oppure
+gruppo <code>GRP</code><!--IF:text_cues-->; le didascalie hanno l'icona 📝<!--/IF:text_cues-->. Sotto la scaletta ci sono i pulsanti
+<b>+ Video / + Audio / + Foto / <!--IF:text_cues-->+ Text / <!--/IF:text_cues-->+ Gruppo</b>,
+<b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
+<li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
+<b>Play / Pausa / Stop</b> provano la cue selezionata.</li>
+<li><b>Il grande pulsante verde GO</b> – lancia la cue successiva (come <kbd>Spazio</kbd>).</li>
+<li><b>Ispettore cue (colonna destra)</b> – tutte le impostazioni della cue selezionata, nelle schede
+<b>Cue · Tempi</b>, <b>Video · Foto</b>, <b>Audio · Tagli</b>.</li>
+<li><b>Forma d'Onda e Automazioni (in basso a sinistra)</b> – l'onda sonora con i punti IN/OUT,
+la curva del volume e le sezioni.</li>
+<li><b>Live Output Status (in basso al centro)</b> – cosa sta andando sui layer 1–3, con i pulsanti
+<b>Fade Out</b> e <b>Master Blackout</b>.</li>
+<li><b>Caricamento Rapido (in basso a destra)</b> – trascina qui i file dal gestore file.</li>
+<li><b>Barra in basso</b> – profilo hardware, <b>Dispositivi · Uscite</b>, blocco pannelli,
+modalità Jam, telecomando e messaggi del programma.</li>
+</ul>
+<p class="tip">💡 La lingua del programma si cambia in <b>View → 🌐 Lingua / Language / Język</b>
+(vale dal riavvio successivo). Questo manuale si apre nella lingua del programma.</p>
+
+<!-- ================================================================== -->
+<h2><a name="nuovo"></a>2. Nuovo spettacolo e salvataggio</h2>
+<ul>
+<li><b>File → New Show</b> (<kbd>Ctrl+N</kbd>) – una scaletta vuota.</li>
+<li><b>File → Save Show</b> (<kbd>Ctrl+S</kbd>) / <b>Save Show As…</b>
+(<kbd>Ctrl+Shift+S</kbd>) – salva un file <code>.blindcue</code>.</li>
+<li>Al salvataggio il programma chiede se <b>copiare i file audio/video nella cartella dello show</b>:
+<ul>
+<li><b>Sì</b> – ottieni una cartella portatile; lo spettacolo si apre su un altro computer
+(per esempio da una chiavetta USB). Consigliato prima della replica.</li>
+<li><b>No</b> – salva solo i percorsi dei tuoi file (meno spazio, ma i file devono
+restare dove sono).</li>
+</ul>
+I file originali non vengono mai modificati.</li>
+<li><b>File → Apri recenti</b> – per tornare velocemente agli spettacoli precedenti.</li>
+<li>Il programma fa un <b>salvataggio automatico</b>. Dopo un crash propone di ripristinare la sessione.</li>
+<li><b>Modifica → Annulla / Ripeti</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) valgono per ogni
+modifica nella scaletta e nell'ispettore.</li>
+</ul>
+<p><img src="img/it/02_menu_file.png" width="260"></p>
+
+<!-- ================================================================== -->
+<h2><a name="aggiungere"></a>3. Aggiungere video, audio<!--IF:text_cues-->, foto e didascalie<!--/IF:text_cues--><!--IFNOT:text_cues--> e foto<!--/IFNOT:text_cues--></h2>
+<h3>Tre modi per aggiungere un file</h3>
+<ol>
+<li>I pulsanti sotto la scaletta: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Foto</b>.</li>
+<li>Trascina i file dal gestore file nel riquadro <b>Caricamento Rapido</b> (in basso a destra).</li>
+<li>La nuova cue va in fondo alla scaletta; spostala con <b>Su / Giù</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li>
+</ol>
+<table class="k">
+<tr><td><b>Video</b></td><td>MP4, MKV, AVI, MOV, WEBM</td></tr>
+<tr><td><b>Audio</b></td><td>MP3, WAV, FLAC, OGG, AAC, M4A</td></tr>
+<tr><td><b>Foto</b></td><td>PNG, JPG, BMP, GIF, WEBP</td></tr>
+</table>
+<p><img src="img/it/03_list_photo.png" width="760"></p>
+
+<h3>Foto</h3>
+<p>Di norma una foto resta sullo schermo <b>finché qualcosa non la sostituisce</b>: la cue
+successiva sullo stesso layer oppure <b>Fade Out</b>. Il tempo di visualizzazione si imposta
+nell'Ispettore: <b>Cue · Tempi → Durata Img</b> (per esempio 10 s; <code>0</code> = senza limite).
+Per una sequenza di foto usa più cue di seguito con <b>Auto-GO</b>
+(capitolo 4) oppure un <a href="#gruppi">gruppo</a>.</p>
+<!--IF:crossfade-->
+<h3><a name="didascalie"></a>Didascalie (testo sullo schermo)</h3>
+<ol>
+<li>Premi <b>+ Text</b> sotto la scaletta.</li>
+<li>Scrivi il testo (Invio = nuova riga), imposta <b>Font size</b>, <b>Text colour</b>,
+<b>Position on screen</b> (in basso / al centro / in alto) e se vuoi la
+<b>Dark band behind the text</b> e lo <b>Shadow</b>. In fondo alla finestra vedi subito
+l'anteprima di quello che apparirà sul proiettore.</li>
+<li><b>OK</b> – nella scaletta compare una cue con l'icona 📝. Viene messa sul layer
+<b>L3: Overlay</b> (la didascalia sta sopra video e foto) con dissolvenze morbide
+(Fade In / Out 0,5 s).</li>
+<li><b>Per cambiare il testo:</b> clic destro sulla cue → <b>✏ Edit text…</b>.</li>
+</ol>
+<p><img src="img/it/13_caption_dialog.png" width="420"> <img src="img/it/14_caption_on_screen.png" width="480"></p>
+<p>La didascalia si comporta come una foto: nell'Ispettore cambi posizione, scala, opacità,
+durata (<b>Durata Img</b>, 0 = fino alla dissolvenza), dissolvenze e crossfade.
+La didascalia è salvata nel file dello spettacolo e viene ricreata su un altro computer.</p>
+
+<h3>Una didascalia insieme alla musica (o a un video)</h3>
+<ol>
+<li>Nella scaletta metti prima la <b>cue della musica</b> e subito sotto la <b>cue della didascalia</b>.</li>
+<li>Seleziona la <b>cue della musica</b> e nell'Ispettore scegli <b>Dopo: Simult.</b>
+Un solo <kbd>Spazio</kbd> avvia la musica e mostra subito la didascalia.</li>
+<li>Nella cue della didascalia imposta <b>Durata Img</b>, per esempio la durata della canzone, e la
+didascalia sparisce da sola. Oppure lascia 0 e chiudila con <b>Fade Out</b> accanto al layer 3.</li>
+</ol>
+<p class="tip">💡 Lo stesso vale per un video: video su L1, didascalia su L3, <b>Simult.</b>
+sulla cue del video. Puoi anche selezionare le due cue e raggrupparle (<kbd>Ctrl+G</kbd>) in
+modalità <b>Simultaneo</b>.</p>
+<p><img src="img/it/15_list_with_caption.png" width="760"></p>
+<!--/IF:crossfade-->
+
+<!-- ================================================================== -->
+<h2><a name="cue"></a>4. Impostare una cue (Ispettore)</h2>
+<p>Fai clic su una cue nella scaletta: l'Ispettore a destra mostra le sue impostazioni.
+Puoi anche selezionare <b>più cue dello stesso tipo</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+clic)
+e modificarle tutte insieme.</p>
+<p><img src="img/it/04_inspector_video_cue.png" width="520"></p>
+
+<h3>La scheda "Cue · Tempi"</h3>
+<ul>
+<li><b>Q (Copione)</b> – il tuo riferimento dal copione, per esempio <code>Q-5</code> o
+<code>Sc.2</code>. Resta legato alla cue anche se cambi l'ordine.</li>
+<li><b>Nome Cue</b> – la descrizione che si vede nella scaletta (per esempio "Entra il coro").</li>
+<li><b>Note Regia</b> – un promemoria per l'operatore, per esempio "dopo la battuta: <i>e allora si spense la luce</i>".
+Si vede in modalità LIVE.</li>
+<li><b>Colore</b> – colora scene e atti per rendere la scaletta più leggibile.</li>
+<li><b>Layer di uscita L1 / L2 / L3</b> – vedi il <a href="#layer">capitolo 8</a>.</li>
+<li><b>Pre-Delay</b> – quanti secondi aspettare dopo il GO prima che la cue parta.</li>
+<li><b>Post-Delay</b> – quanti secondi aspettare dopo la fine della cue (conta con Auto-GO).</li>
+<li><b>Durata Img</b> – per quanto tempo resta visibile una foto (0 = senza limite).</li>
+<li><b>Dopo</b> – cosa succede dopo questa cue:
+<ul>
+<li><b>Blocco</b> (predefinito) – aspetta il tuo GO successivo.</li>
+<li><b>Auto-GO</b> – dopo Pre + durata + Post <b>lancia da sola la cue successiva</b>
+(per esempio finisce una canzone e parte subito un video).</li>
+<li><b>Simult.</b> – al GO <b>parte subito anche la cue successiva</b>
+(per esempio una foto e la musica insieme).</li>
+</ul>
+Le stesse tre modalità sono sotto la scaletta (<b>Blocco / Auto-GO / Simult.</b>).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="transizioni"></a>5. Dissolvenze<!--IF:text_cues-->, crossfade<!--/IF:text_cues-->, effetti e immagine</h2>
+<p><img src="img/it/05_inspector_photo_picture.png" width="520"></p>
+<h3>Dissolvenze (entrata e uscita)</h3>
+<ul>
+<li>Scheda <b>Audio · Tagli → 2 · Dissolvenze</b>: <b>Fade In</b> (dal nero / dal silenzio)
+e <b>Fade Out</b> (verso il nero / il silenzio) in secondi. Vale per video, audio
+e foto.</li>
+<li>La forma della rampa si sceglie sotto la forma d'onda: <b>Fade: Logaritmica</b>
+(la più naturale per l'audio), <b>S-Curve Morbida</b> oppure <b>Lineare</b>.</li>
+</ul>
+<!--IF:crossfade-->
+<h3><a name="crossfade"></a>Crossfade tra le cue</h3>
+<p>Con il <b>Crossfade</b> l'immagine precedente si scioglie dolcemente nella successiva,
+senza passare dal nero – foto in foto, foto in video, video in video.</p>
+<ol>
+<li>Seleziona la cue che deve <b>entrare</b> (per esempio la seconda foto).</li>
+<li>Scheda <b>Audio · Tagli → 2 · Dissolvenze</b> → campo <b>Crossfade</b>:
+scrivi un tempo, per esempio <b>2 s</b>.</li>
+<li>Imposta su quella cue <b>Fade In = 0</b> (il crossfade sostituisce l'entrata dal nero).</li>
+<li>Le due cue devono stare sullo <b>stesso layer</b> (di solito L1). Al GO l'immagine che
+era su quel layer si fonde nella nuova.</li>
+</ol>
+<p><img src="img/it/16_inspector_crossfade.png" width="440"> <img src="img/it/17_crossfade.png" width="480"></p>
+<p class="tip">💡 Una sequenza di foto con crossfade: più foto di seguito su L1, ognuna con
+<b>Crossfade 1–2 s</b>, <b>Durata Img</b> per esempio 5 s e <b>Dopo: Auto-GO</b> – le foto
+cambiano da sole, in modo morbido.</p>
+<p class="warn">Il crossfade riguarda l'immagine. L'audio del video precedente si interrompe
+nel momento del passaggio – se deve sfumare, dagli un <b>Fade Out</b> oppure metti la musica in una cue separata.</p>
+<!--/IF:crossfade-->
+<h3>Immagine (la scheda "Video · Foto")</h3>
+<ul>
+<li><b>Pos X / Y</b> e le frecce – spostano l'immagine; <b>Centro</b> la riporta al centro.</li>
+<li><b>Scala</b> – ingrandisce / rimpicciolisce (per esempio una finestrella in un angolo).</li>
+<li><b>Opacità</b> – trasparenza (per esempio 50% = immagine semitrasparente sullo sfondo).</li>
+<li><b>Formato</b> – forza 16:9, 4:3, 21:9 oppure 1:1.</li>
+<li><b>Ritaglio bordi (crop)</b> – togli bande nere o una parte dell'inquadratura, in % o in pixel.</li>
+<li><b>Rotazione</b> – di un angolo qualsiasi o a passi di 90°.</li>
+<li><b>Disegna maschera…</b> (solo foto) – ritaglia una forma qualsiasi cliccando i punti;
+<b>Bordo sfumato</b> ammorbidisce il contorno.</li>
+<li>Puoi anche <b>trascinare la cornice dell'immagine con il mouse nell'anteprima Pre-Viz</b>.</li>
+<li><b>MIRROR LIVE</b> (sotto l'anteprima) – quando è attivo, le modifiche di posizione e ritaglio
+si vedono subito sul proiettore. Usalo per sistemare l'immagine in prova;
+<b>durante lo spettacolo tienilo spento</b>.</li>
+</ul>
+<h3>Curve nel tempo (automazione)</h3>
+<p>Nel pannello <b>Forma d'Onda</b> scegli <b>Volume</b> oppure <b>Opacità</b> e fai clic sulla linea
+per aggiungere punti – per esempio abbassa la musica durante un dialogo e rialzala dopo.
+<b>Reset Punti</b> cancella la curva.</p>
+
+<!-- ================================================================== -->
+<h2><a name="audio"></a>6. Audio: volume, tagli, loop, livellamento</h2>
+<p><img src="img/it/06_list_audio.png" width="760"></p>
+<ul>
+<li><b>Volume</b> – cursore 0–100% (scheda <b>Audio · Tagli</b>).</li>
+<li><b>Taglio IN / OUT</b> – da dove a dove suonare il brano.
+Il modo più comodo: nel pannello Forma d'Onda fai clic su un punto dell'onda, poi
+<b>IN Testina</b> (<kbd>I</kbd>) oppure <b>OUT Testina</b> (<kbd>O</kbd>).
+<b>Reset IN/OUT</b> ripristina il file intero. I video si tagliano allo stesso modo.</li>
+<li><b>Ripeti cue in loop</b> – spunta e scegli il numero di ripetizioni oppure "infinito"
+(per esempio la musica di sottofondo durante l'intervallo).</li>
+<li><b>Dividi</b> – divide il file in sezioni A, B, C… (per esempio strofa / ritornello). Ogni sezione
+può ripetersi; <b>Esci Loop</b> passa alla successiva.</li>
+<li><b>Livellamento (EBU R128)</b>: <b>Analizza</b> misura il volume percepito del brano e
+<b>Applica Guadagno EBU R128</b> lo allinea agli altri (così un brano non è molto più
+forte degli altri). <b>Ottimizza Dinamica</b> aiuta con i file registrati male.</li>
+<li><b>Modalità Jam / Contest</b> (barra in basso, tieni premuto 5 s) – livella <b>tutti</b> i file insieme.</li>
+<li><b>Pre-ascolto in cuffia</b>: in <b>Dispositivi · Uscite</b> scegli un'uscita separata
+per la cuffia; allora Play nell'anteprima suona solo in cuffia.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="gruppi"></a>7. Gruppi e scene</h2>
+<p>Un gruppo raccoglie più cue in una riga richiudibile – per esempio "Atto 1" o "Sequenza foto".</p>
+<p><img src="img/it/07_group.png" width="760"></p>
+<ul>
+<li>Seleziona alcune cue e premi <b>+ Gruppo</b> (<kbd>Ctrl+G</kbd>).
+Per sciogliere il gruppo: <kbd>Ctrl+Shift+G</kbd>.</li>
+<li>Seleziona il gruppo – nell'Ispettore scegli cosa fa il GO:
+<ul>
+<li><b>Simultaneo</b> – tutti gli elementi partono insieme.</li>
+<li><b>Sequenziale</b> – un solo GO esegue tutta la sequenza, un elemento dopo l'altro.</li>
+<li><b>Passo-Passo</b> – ogni GO avanza di un elemento nel gruppo.</li>
+<li><b>Random / Var.</b> – un elemento a caso (mai lo stesso due volte di fila).</li>
+<li><b>Loop Scena</b> – gli elementi girano in tondo finché non li fermi.</li>
+</ul></li>
+<li><b>Apri Studio Timeline del Gruppo</b> – mostra gli elementi su 3 tracce con un righello;
+trascinando i blocchi decidi quando entra ciascuno (per esempio musica, dopo 3 s il video, dopo 10 s una foto).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="layer"></a>8. Layer L1–L3 e Tappo L0</h2>
+<p>L'immagine è fatta di layer sovrapposti:</p>
+<table class="k">
+<tr><td><b>L3 – Overlay</b></td><td>in cima: didascalie, loghi, finestrelle</td></tr>
+<tr><td><b>L2 – Principale</b></td><td>in mezzo</td></tr>
+<tr><td><b>L1 – Sfondo</b></td><td>in basso: video o foto di sfondo (predefinito)</td></tr>
+<tr><td><b>L0 – Tappo</b></td><td>sempre sotto; si vede quando non va niente</td></tr>
+</table>
+<ul>
+<li>Una nuova cue sullo <b>stesso</b> layer sostituisce la precedente. Una cue su un layer
+<b>diverso</b> si sovrappone.</li>
+<!--IF:audio_l2--><li>Vale anche per l'audio: musica e foto sullo stesso layer si spengono a vicenda.
+Per questo le nuove cue audio vanno di default su <b>L2</b>, foto e video su <b>L1</b>.</li><!--/IF:audio_l2-->
+<!--IFNOT:audio_l2--><li>Vale anche per l'audio: musica e foto sullo stesso layer si spengono a vicenda.
+Metti la musica che deve suonare insieme alle foto su un altro layer (per esempio <b>L2</b>).</li><!--/IFNOT:audio_l2-->
+<li>Il tappo si cambia con <b>Show → Imposta Immagine di Tappo (Layer 0)…</b> oppure con il pulsante
+<b>Cambia Tappo…</b> – per esempio la locandina dello spettacolo o il nero.
+Il tappo predefinito è un pannello con il logo e una griglia per allineare il proiettore.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="proiettore"></a>9. Proiettore e finestra di uscita</h2>
+<p><img src="img/it/09_output_window.png" width="520"></p>
+<ul>
+<li>Collega il proiettore (HDMI) e imposta nel sistema un <b>desktop esteso</b>
+(Windows: <kbd>Win+P</kbd> → <b>Estendi</b>).</li>
+<li>Il programma <b>riconosce da solo</b> il secondo schermo e ci mostra l'immagine
+<b>a schermo intero, senza bordi né cursore</b>. Il tuo monitor resta per te.</li>
+<li>Con un solo monitor l'immagine compare in una piccola finestra
+<b>"Live Output [Monitor Simulato]"</b>.<!--IF:f11--> Fai clic sulla finestra e premi <kbd>F11</kbd>
+per vederla a schermo intero; <kbd>F11</kbd> di nuovo torna alla finestra.<!--/IF:f11--></li>
+<li>Schermo e modalità si scelgono in <b>Show → Dispositivi &amp; Hardware</b>
+(oppure <b>Dispositivi · Uscite</b> nella barra in basso) → <b>Schermo Live Output</b>.
+Con due proiettori puoi avere un'unica immagine distesa su entrambi oppure due
+uscite indipendenti A e B.</li>
+<li>Lì scegli anche l'<b>uscita audio</b> (casse della sala) e l'eventuale cuffia.</li><!--IF:speakers-->
+<li>Il programma <b>ricorda le casse scelte su questo computer</b> (non nel file dello spettacolo).
+Se mancano – per esempio scollegando un proiettore con casse – suona l'uscita predefinita di Windows
+e la barra di stato lo segnala; quando vengono ricollegate il programma torna a usarle da solo.
+<b>"Predefinito di sistema, segue Windows"</b> vuol dire: non ricordare nulla, suona dove indica Windows.</li><!--/IF:speakers--><!--IF:projector_only-->
+<li>Quando resta <b>solo il proiettore</b> (<kbd>Win+P</kbd> → <b>Solo secondo schermo</b>, o il portatile
+chiuso), il programma vi mostra la finestra di regia e l'anteprima dell'uscita in finestra.</li><!--/IF:projector_only-->
+<li><b>View → Mostra Guide sul Proiettore Live</b> (<kbd>Shift+F7</kbd>) –
+una griglia per mettere a fuoco e allineare il proiettore.</li>
+</ul>
+<p><img src="img/it/10_devices.png" width="520"></p>
+
+<!-- ================================================================== -->
+<h2><a name="live"></a>10. Condurre lo spettacolo (modalità LIVE)</h2>
+<p>Quando la scaletta è pronta, passa in modalità LIVE: pulsante <b>VAI IN LIVE</b> oppure
+<kbd>F5</kbd>. Lo schermo diventa semplice e grande – solo ciò che serve durante lo spettacolo.</p>
+<p><img src="img/it/08_live_after_go.png" width="760"></p>
+<ol>
+<li>Seleziona la prima cue – riceve il bollino <b>STANDBY</b> (pronta a partire).
+In basso vedi <b>PROSSIMA IN STANDBY</b> con il nome e le note.</li>
+<li>Premi <kbd>Spazio</kbd> (o il grande pulsante <b>GO</b>) – la cue parte, riceve il bollino
+<b>LIVE</b> e lo STANDBY passa alla successiva.</li>
+<li>Ogni <kbd>Spazio</kbd> successivo = il punto successivo dello spettacolo.</li>
+<li><kbd>↑</kbd> / <kbd>↓</kbd> cambiano la cue successiva (per esempio per saltare qualcosa).
+Un doppio clic su una riga la lancia subito.</li>
+<li>Il pannello <b>Monitor Uscita Layer Live</b> mostra cosa va su L1–L3; <b>Fade Out</b>
+chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic accidentali).</li>
+<li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
+<li><b>Torna a Progetto</b> (<kbd>F5</kbd>) – torni alla modifica; quello che sta andando continua.</li>
+</ol>
+<p class="tip">💡 Durante lo spettacolo tieni attiva la finestra del programma (facci clic) perché
+<kbd>Spazio</kbd> arrivi al programma. Chiudi gli altri programmi.</p>
+<p class="tip">💡 Anche un telefono può fare da telecomando – vedi il <a href="#extra">capitolo 12</a>.</p>
+
+<!-- ================================================================== -->
+<h2><a name="emergenze"></a>11. Emergenze</h2>
+<table class="k">
+<tr><td><b>PAUSA TUTTO</b></td><td>congela tutto (audio, video, tempi); un secondo
+clic riprende dallo stesso punto – per esempio mentre un attore aspetta l'applauso.</td></tr>
+<tr><td><b>Fade Out</b> (accanto a un layer)</td><td>chiude dolcemente solo quel layer.</td></tr>
+<tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>sfuma tutto e mostra il tappo.</td></tr>
+<tr><td><b>PANIC</b> <kbd>Esc</kbd> (in modalità LIVE)</td><td>taglia tutto all'istante (0 ms) – ultima risorsa.</td></tr>
+<tr><td><b>Blocco layer</b></td><td>in modalità LIVE i comandi dei layer sono bloccati;
+tieni premuto il lucchetto 1,2 s per sbloccare scorrimento e pausa dei singoli layer.</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2><a name="extra"></a>12. Extra: telecomando dal telefono, mapping, impostazioni</h2>
+<h3>Telecomando dal telefono (Wi-Fi)</h3>
+<p><b>Show → Controllo Remoto LAN (Web &amp; OSC)</b> (<kbd>F8</kbd>) → <b>avvia i servizi</b>
+e inquadra il codice QR con il telefono (telefono e computer sulla stessa rete Wi-Fi).
+Sul telefono compaiono un grande pulsante GO, pausa, blackout e PANIC.
+Il secondo codice (<b>Monitor Regista</b>) dà una vista di sola lettura – per esempio per il regista
+in platea. L'accesso è protetto da un PIN di 6 cifre.</p>
+<p><img src="img/it/11_remote.png" width="560"></p>
+
+<h3>Studio Superfici di Proiezione &amp; Mapping – <kbd>F7</kbd></h3>
+<p>Quando il proiettore è storto o proietti su uno schermo particolare: correzione trapezoidale
+(4 angoli), schermi virtuali aggiuntivi (per esempio un'immagine solo su una colonna della scenografia),
+maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettore
+(<b>Video · Foto → Superficie</b>).</p>
+<p><img src="img/it/12_surfaces.png" width="560"></p>
+
+<h3>Altro</h3>
+<ul>
+<li><b>View → Tema Interfaccia</b> – i colori del programma (anche una versione in bianco e nero).</li>
+<li><b>View → Segnali Acustici Operatore</b> – un leggero "bip" a ogni GO/STOP/PAUSA.</li>
+<li><b>View → Blocca Larghezza Pannelli</b> – protegge la disposizione da spostamenti accidentali.</li>
+<li>Barra in basso, <b>ECO / STD / PRO</b> – profilo di prestazioni (ECO su un computer più lento).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="scorciatoie"></a>13. Scorciatoie da tastiera</h2>
+<table class="k">
+<tr><td><kbd>Spazio</kbd></td><td>GO – cue successiva</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>scegli la cue / cambia la successiva in LIVE</td></tr>
+<tr><td><kbd>F5</kbd></td><td>modalità LIVE / ritorno al progetto</td></tr>
+<tr><td><kbd>Esc</kbd></td><td>PANIC (in modalità LIVE)</td></tr>
+<tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (tappo)</td></tr>
+<tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>raggruppa / separa</td></tr>
+<tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>sposta la cue</td></tr>
+<tr><td><kbd>Canc</kbd></td><td>elimina la cue</td></tr>
+<tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>punto IN / OUT sulla testina</td></tr>
+<tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>annulla / ripeti</td></tr>
+<tr><td><kbd>Ctrl+S</kbd></td><td>salva</td></tr>
+<tr><td><kbd>F7</kbd> / <kbd>Shift+F7</kbd></td><td>studio superfici / guide sul proiettore</td></tr>
+<tr><td><kbd>F8</kbd></td><td>controllo remoto</td></tr>
+<!--IF:f11--><tr><td><kbd>F11</kbd> (nella finestra di uscita)</td><td>finestra di uscita a schermo intero con un solo monitor</td></tr><!--/IF:f11-->
+<tr><td><kbd>F1</kbd></td><td>questo manuale</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2><a name="consigli"></a>14. Buone pratiche prima dello spettacolo</h2>
+<ul>
+<li><b>Fai una prova generale sullo stesso computer e lo stesso proiettore</b>, dalla prima
+all'ultima cue.</li>
+<li><b>Converti i video pesanti.</b> Su un computer più lento un video preso direttamente dalla
+fotocamera o dal telefono (bitrate molto alto) può scattare. Una versione Full HD a circa
+8–10 Mb/s sul proiettore è identica e scorre fluida.</li>
+<li>Salva lo spettacolo <b>copiando i file</b> e tienine una copia su una chiavetta USB.</li>
+<li>Scrivi nelle <b>Note Regia</b> dopo quale battuta parte ogni cue.</li>
+<li>Spegni <b>MIRROR LIVE</b>, chiudi gli altri programmi, disattiva le notifiche e la
+sospensione dello schermo nel sistema.</li>
+<li>Imposta un tappo (locandina o nero) così il pubblico non vede mai il desktop prima dell'inizio.</li>
+</ul>
+<!--IF:version-->
+<p style="color:#64748b; margin-top:30px;">Manuale per {{APP}} {{VERSION}}.</p>
+<!--/IF:version-->
+</body>
+</html>

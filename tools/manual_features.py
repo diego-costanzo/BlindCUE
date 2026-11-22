@@ -1,0 +1,38 @@
+"""Which optional features does this code base have?
+
+The user manual sources (docs/manual/manual_<lang>.src.html) describe some
+features in blocks that are kept only when the feature is in the code:
+
+    <!--IF:crossfade--> ... <!--/IF:crossfade-->       kept when present
+    <!--IFNOT:crossfade--> ... <!--/IFNOT:crossfade-->  kept when absent
+
+tools/build_manual.py and tools/manual_screenshots.py use the same list, so
+the manual and its screenshots always match the program they ship with.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+# feature -> (file inside the repo, text that must appear in it; None = file exists)
+FEATURES: dict[str, tuple[str, str | None]] = {
+    "version": ("blindcue/version.py", None),
+    "text_cues": ("blindcue/engine/text_render.py", None),
+    "crossfade": ("blindcue/ui/output_window.py", "def begin_crossfade"),
+    "f11": ("blindcue/ui/output_window.py", "Key_F11"),
+    "audio_l2": ("blindcue/ui/main_window/_cue_manip.py", "cue.layer = 2"),
+    "speakers": ("blindcue/engine/device_manager.py", "def saved_audio_choice"),
+    "projector_only": ("blindcue/ui/main_window/_cue_table.py", "def _ensure_director_visible"),
+}
+
+
+def present(root: Path = ROOT) -> set[str]:
+    """Names of the features found in the code under *root*."""
+    found = set()
+    for name, (rel, needle) in FEATURES.items():
+        path = root / rel
+        if path.is_file() and (needle is None or needle in path.read_text(encoding="utf-8")):
+            found.add(name)
+    return found
