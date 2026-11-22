@@ -55,6 +55,7 @@ set "VENV_DIR=%INSTALL_DIR%\venv"
 set "VENV_PY=%VENV_DIR%\Scripts\python.exe"
 set "VENV_PYW=%VENV_DIR%\Scripts\pythonw.exe"
 set "ICON_SRC=%REPO_ROOT%\setup\assets\blindcue.ico"
+if not exist "%ICON_SRC%" set "ICON_SRC=%REPO_ROOT%\blindcue\assets\blindcue.ico"
 set "ICON_DST=%INSTALL_DIR%\BlindCue.ico"
 
 echo.
@@ -194,6 +195,7 @@ if exist "%REPO_ROOT%\LICENSE" copy /Y "%REPO_ROOT%\LICENSE" "%APP_DIR%\LICENSE"
 if exist "%REPO_ROOT%\README.md" copy /Y "%REPO_ROOT%\README.md" "%APP_DIR%\README.md" >nul
 if exist "%REPO_ROOT%\docs" robocopy "%REPO_ROOT%\docs" "%APP_DIR%\docs" /E /NFL /NDL /NJH /NJS /NP >nul
 if exist "%ICON_SRC%" copy /Y "%ICON_SRC%" "%ICON_DST%" >nul
+if exist "%ICON_SRC%" copy /Y "%ICON_SRC%" "%UNINSTALL_DIR%\BlindCue.ico" >nul
 echo [ OK ] Programma copiato in %APP_DIR%
 
 REM ------------------------------------------------------------------------------

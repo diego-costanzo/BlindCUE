@@ -1,0 +1,1969 @@
+"""Polish UI translations for BlindCue.
+
+Keys are the original UI strings found in the source code (mostly Italian).
+Placeholders ``{}`` mark variable parts; the translation must contain the
+same number of ``{}`` (or ``{0}``, ``{1}``... to reorder them).
+Generated from the translation sheets; edit freely.
+"""
+
+T: dict[str, str] = {
+    'Loudness scan failed or file has no audio.':
+        'Analiza głośności nie powiodła się albo plik nie ma dźwięku.',
+    'Ottimizzazione dinamica fallita.':
+        'Optymalizacja dynamiki nie powiodła się.',
+    'No audio data decoded.':
+        'Nie zdekodowano danych audio.',
+    'Nessun secondo schermo rilevato: la superficie unica richiede almeno un proiettore esterno.':
+        'Nie wykryto drugiego ekranu: wspólna powierzchnia wymaga co najmniej jednego zewnętrznego projektora.',
+    "Su Wayland un'unica finestra che copre due uscite può essere rifiutata dal compositore. Se i due proiettori non si uniscono, usa X11 oppure la modalità due uscite indipendenti.":
+        'W Wayland jedno okno na dwa wyjścia może zostać odrzucone przez kompozytor. Jeśli projektory się nie połączą, użyj X11 albo trybu dwóch niezależnych wyjść.',
+    'La doppia uscita indipendente richiede due proiettori esterni (oltre al monitor di regia). Con un solo schermo esterno usa la modalità singola o la superficie unica.':
+        'Dwa niezależne wyjścia wymagają dwóch zewnętrznych projektorów (oprócz monitora reżyserki). Przy jednym ekranie zewnętrznym użyj trybu pojedynczego albo wspólnej powierzchni.',
+    'Predefinito di Sistema':
+        'Domyślne systemowe',
+    'Audio Device':
+        'Urządzenie audio',
+    'Doppia uscita non disponibile':
+        'Podwójne wyjście niedostępne',
+    'Span non applicabile':
+        'Rozciągnięcie (span) niedostępne',
+    'Doppia uscita persa: schermo esterno rimosso':
+        'Utracono podwójne wyjście: odłączono ekran zewnętrzny',
+    'Configurazione doppia uscita fallita':
+        'Konfiguracja podwójnego wyjścia nie powiodła się',
+    'Logaritmica (Naturale)':
+        'Logarytmiczna (naturalna)',
+    'S-Curve Morbida':
+        'Łagodna krzywa S',
+    'Lineare':
+        'Liniowa',
+    "Impossibile avviare '{}': file danneggiato o codec non supportato":
+        "Nie można uruchomić '{}': plik uszkodzony lub nieobsługiwany kodek",
+    'con due uscite attive il limite fluido è 1 video per uscita':
+        'przy dwóch aktywnych wyjściach płynny limit to 1 wideo na wyjście',
+    'oltre 3 video il proiettore perde fluidità':
+        'powyżej 3 filmów projektor traci płynność',
+    '{} video su uscita A':
+        '{} wideo na wyjściu A',
+    '{} video su uscita B':
+        '{} wideo na wyjściu B',
+    'ATTENZIONE: Errore Live L{} ({})':
+        'UWAGA: błąd Live L{} ({})',
+    '⚠ Carico video elevato: ':
+        '⚠ Duże obciążenie wideo: ',
+    'Uscita B disattivata: interrotti ':
+        'Wyjście B wyłączone: zatrzymano ',
+    'Layer {} · Uscita B':
+        'Warstwa {} · Wyjście B',
+    'Conflitto {}: {} elementi ({}) condividono il {} in modalità simultanea. Assegna layer differenti (L1, L2, L3).':
+        'Konflikt {}: {} elementy ({}) współdzielą {} w trybie „Wszystko naraz”. Przypisz różne warstwy (L1, L2, L3).',
+    "Conflitto {}: Viene attivato in simultanea con {} nel gruppo '{}' sullo stesso {}. Assegna un layer differente (L1, L2, L3).":
+        "Konflikt {}: uruchamiane równocześnie z {} w grupie '{}' na tym samym {}. Przypisz inną warstwę (L1, L2, L3).",
+    'Conflitto {}: Avvio simultaneo (Follow Simultaneo) con {} sullo stesso {}. Assegna un layer differente (L1, L2, L3).':
+        'Konflikt {}: start „Razem” z {} na tym samym {}. Przypisz inną warstwę (L1, L2, L3).',
+    'Singolo schermo':
+        'Jeden ekran',
+    'Superficie unica (span)':
+        'Wspólna powierzchnia (span)',
+    'Due uscite indipendenti':
+        'Dwa niezależne wyjścia',
+    '{}: file non trovato ({})':
+        '{}: nie znaleziono pliku ({})',
+    '{}: copia non riuscita ({})':
+        '{}: kopiowanie nie powiodło się ({})',
+    'Schermo Intero (Default)':
+        'Pełny ekran (domyślnie)',
+    'Schermo Intero (100%)':
+        'Pełny ekran (100%)',
+    'Proiezione a schermo intero standard sul monitor / proiettore selezionato':
+        'Standardowa projekcja na pełnym ekranie wybranego monitora / projektora',
+    'Doppio Proiettore: Metà Sinistra (0% – 50%)':
+        'Dwa projektory: lewa połowa (0% – 50%)',
+    'Occupa il primo proiettore in una configurazione desktop estesa a 2 proiettori':
+        'Zajmuje pierwszy projektor w pulpicie rozszerzonym na 2 projektory',
+    'Doppio Proiettore: Metà Destra (50% – 100%)':
+        'Dwa projektory: prawa połowa (50% – 100%)',
+    'Occupa il secondo proiettore in una configurazione desktop estesa a 2 proiettori':
+        'Zajmuje drugi projektor w pulpicie rozszerzonym na 2 projektory',
+    'Doppio Proiettore: Span Panoramico (0% – 100%)':
+        'Dwa projektory: panorama (0% – 100%)',
+    'Si estende su entrambi i proiettori affiancati come un unico grande fondale panoramico':
+        'Rozciąga się na oba projektory obok siebie jako jedno duże panoramiczne tło',
+    'Triplo Proiettore: Sinistra (1/3)':
+        'Trzy projektory: lewy (1/3)',
+    'Occupa il proiettore 1/3 in configurazione a 3 schermi affiancati':
+        'Zajmuje projektor 1/3 w układzie 3 ekranów obok siebie',
+    'Triplo Proiettore: Centro (2/3)':
+        'Trzy projektory: środkowy (2/3)',
+    'Occupa il proiettore centrale in configurazione a 3 schermi affiancati':
+        'Zajmuje środkowy projektor w układzie 3 ekranów obok siebie',
+    'Triplo Proiettore: Destra (3/3)':
+        'Trzy projektory: prawy (3/3)',
+    'Occupa il proiettore 3/3 in configurazione a 3 schermi affiancati':
+        'Zajmuje projektor 3/3 w układzie 3 ekranów obok siebie',
+    'Picture-in-Picture (PiP Basso DX)':
+        'Obraz w obrazie (PiP prawy dolny róg)',
+    "Riquadro d'angolo per sovrapporre una seconda immagine o video sopra il fondale":
+        'Okienko w rogu do nałożenia drugiego obrazu lub filmu na tło',
+    'Quadro 4:3 Centrale':
+        'Kadr 4:3 na środku',
+    'Area classica 4:3 centrata su schermo 16:9 con bande laterali pulite':
+        'Klasyczny obszar 4:3 na środku ekranu 16:9 z czystymi pasami po bokach',
+    'Colonna / Scenografia SX':
+        'Kolumna / scenografia lewa',
+    'Superficie verticale ideale per banner o colonna scenica sinistra':
+        'Pionowa powierzchnia na baner lub lewą kolumnę sceniczną',
+    'Colonna / Scenografia DX':
+        'Kolumna / scenografia prawa',
+    'Superficie verticale ideale per banner o colonna scenica destra':
+        'Pionowa powierzchnia na baner lub prawą kolumnę sceniczną',
+    '{} da {} (tot: {})':
+        '{} z {} (razem: {})',
+    'Nessun comando ricevuto':
+        'Nie odebrano żadnego polecenia',
+    '⏹ Blocco':
+        '⏹ Stop',
+    '⏹ Blocco (Default): esegue solo la cue selezionata (Pre+Durata+Post) e attende GO manuale.':
+        '⏹ Stop (domyślnie): odtwarza tylko zaznaczony cue (Pre+Czas+Post) i czeka na ręczne GO.',
+    '⤵ Auto-GO':
+        '⤵ Auto-GO',
+    '⤵ GO Automatico: al termine di Pre-Delay + Durata + Post-Delay avvia automaticamente la cue successiva.':
+        '⤵ Automatyczne GO: po Pre-Delay + Czas + Post-Delay następny cue startuje sam.',
+    '⇉ Simult.':
+        '⇉ Razem',
+    '⇉ Simultanea: al GO avvia subito insieme la cue successiva (che rispetta comunque il proprio Pre-Delay).':
+        '⇉ Razem z następnym: przy GO od razu startuje też następny cue (z zachowaniem jego Pre-Delay).',
+    'SCALETTA CUE (Sequence List)':
+        'LISTA CUE (kolejność)',
+    '0 Cue':
+        '0 cue',
+    'Standby: Nessuna':
+        'Standby: brak',
+    '🎭 VAI IN LIVE':
+        '🎭 PRZEJDŹ DO LIVE',
+    'Apri la modalità semplificata LIVE (Show Mode) centrata su Scaletta, GO, PAUSA TUTTO e PANIC [F5 / Ctrl+L]':
+        'Otwórz uproszczony tryb LIVE (Show Mode): lista cue, GO, PAUZA WSZYSTKO i PANIC [F5 / Ctrl+L]',
+    'Modalità LIVE Show':
+        'Tryb LIVE (przedstawienie)',
+    'Passa alla schermata di regia semplificata per il live.':
+        'Przełącz na uproszczony ekran prowadzenia przedstawienia.',
+    'Scaletta delle Cue':
+        'Lista cue',
+    'Elenco sequenziale delle scene e dei media. Naviga con freccia Su e Giù, premi Spazio per il GO.':
+        'Kolejna lista scen i mediów. Strzałki w górę i w dół wybierają, Spacja = GO.',
+    '+ Video':
+        '+ Wideo',
+    'Aggiungi file video alla scaletta':
+        'Dodaj plik wideo do listy cue',
+    'Aggiungi Video':
+        'Dodaj wideo',
+    'Apre la finestra di selezione per aggiungere un file video alla scaletta.':
+        'Otwiera okno wyboru pliku wideo do dodania do listy cue.',
+    '+ Audio':
+        '+ Audio',
+    'Aggiungi file audio alla scaletta':
+        'Dodaj plik audio do listy cue',
+    'Aggiungi Audio':
+        'Dodaj audio',
+    'Apre la finestra di selezione per aggiungere un file audio alla scaletta.':
+        'Otwiera okno wyboru pliku audio do dodania do listy cue.',
+    '+ Foto':
+        '+ Zdjęcie',
+    'Aggiungi immagine / foto statica (Layer 1-3)':
+        'Dodaj zdjęcie / obraz statyczny (warstwa 1-3)',
+    'Aggiungi Foto o Immagine':
+        'Dodaj zdjęcie lub obraz',
+    'Apre la finestra di selezione per aggiungere una foto o grafica statica alla scaletta.':
+        'Otwiera okno wyboru zdjęcia lub grafiki do dodania do listy cue.',
+    '+ Gruppo':
+        '+ Grupa',
+    'Crea un gruppo di cue / scena (Ctrl+G)':
+        'Utwórz grupę cue / scenę (Ctrl+G)',
+    'Aggiungi Gruppo o Scena':
+        'Dodaj grupę lub scenę',
+    'Crea un nuovo contenitore di gruppo o scena sincronizzata.':
+        'Tworzy nowy kontener grupy lub zsynchronizowanej sceny.',
+    '▲ Su':
+        '▲ W górę',
+    'Sposta la cue in alto (Alt+↑)':
+        'Przesuń cue w górę (Alt+↑)',
+    '▼ Giù':
+        '▼ W dół',
+    'Sposta la cue in basso (Alt+↓)':
+        'Przesuń cue w dół (Alt+↓)',
+    '🗑 Elimina':
+        '🗑 Usuń',
+    'Rimuovi la cue dalla scaletta (Canc)':
+        'Usuń cue z listy (Del)',
+    '⏹ Blocco: attende il prossimo GO manuale':
+        '⏹ Stop: czeka na następne ręczne GO',
+    'Selezione multipla mista — clicca una modalità per applicarla a tutte':
+        'Mieszane zaznaczenie — kliknij tryb, aby zastosować go do wszystkich',
+    'Seleziona una o più cue per scegliere Blocco / Auto-GO / Simultanea':
+        'Zaznacz jeden lub więcej cue, aby wybrać Stop / Auto-GO / Razem',
+    '⇉ SIMULT':
+        '⇉ RAZEM',
+    '⤵ CASCATA':
+        '⤵ KASKADA',
+    '⏹ PASSO':
+        '⏹ KROK',
+    '🎲 RND':
+        '🎲 LOS',
+    '🔁 LOOP':
+        '🔁 PĘTLA',
+    'Numero progressivo di posizione in scaletta (doppio click = GO)':
+        'Numer pozycji na liście (dwuklik = GO)',
+    'Richiamo copione Q (doppio click per modificare)':
+        'Oznaczenie Q ze scenariusza (dwuklik, aby edytować)',
+    'Nome personalizzato scena / file (doppio click per rinominare; Ctrl/Shift+Click per selezione multipla)':
+        'Własna nazwa sceny / pliku (dwuklik, aby zmienić; Ctrl/Shift+klik = zaznaczanie wielu)',
+    '🎨 Colore Scena / Gruppo':
+        '🎨 Kolor sceny / grupy',
+    'Nome / Media':
+        'Nazwa / media',
+    '🎬 MULTI-TRACK':
+        '🎬 WIELOŚCIEŻKA',
+    '{} Cue':
+        '{} cue',
+    '📁 Raggruppa in Scena (Ctrl+G)':
+        '📁 Zgrupuj w scenę (Ctrl+G)',
+    '🎬 Apri Studio Timeline Gruppo…':
+        '🎬 Otwórz studio osi czasu grupy…',
+    '▶ / ▼ Espandi o Collassa Gruppo':
+        '▶ / ▼ Rozwiń lub zwiń grupę',
+    '🔓 Sciogli Gruppo (Ctrl+Shift+G)':
+        '🔓 Rozgrupuj (Ctrl+Shift+G)',
+    '⤵ AUTO':
+        '⤵ AUTO',
+    '⏏ Estrai dal Gruppo (Ctrl+Shift+G)':
+        '⏏ Wyjmij z grupy (Ctrl+Shift+G)',
+    '⇉ SIM':
+        '⇉ RAZ',
+    'Configurazione Hardware & Uscite di Regia':
+        'Konfiguracja sprzętu i wyjść',
+    '⚙️ Dispositivi di Uscita & Ottimizzazione Hardware':
+        '⚙️ Urządzenia wyjściowe i optymalizacja sprzętu',
+    '⚡ Profilo Hardware · Modalità Adattiva':
+        '⚡ Profil sprzętowy · tryb adaptacyjny',
+    'Profilo Prestazioni:':
+        'Profil wydajności:',
+    'Auto (Consigliato — Rilevamento Intelligente)':
+        'Auto (zalecane — inteligentne wykrywanie)',
+    '🍃 Eco (Muletto / <=4GB RAM / Risparmio Risorse)':
+        '🍃 Eko (starszy sprzęt / <=4GB RAM / oszczędzanie zasobów)',
+    '⚡ Standard (Bilanciato per Live)':
+        '⚡ Standard (zbalansowany do występów)',
+    '🚀 Performance (Workstation Multi-Core / Pro)':
+        '🚀 Wydajność (wielordzeniowa stacja robocza / Pro)',
+    '🔊 Routing Uscite Audio di Regia':
+        '🔊 Kierowanie wyjść audio',
+    '🔊 Master Spettacolo (Impianto Sala / PA Pubblico):':
+        '🔊 Główne wyjście (nagłośnienie sali / publiczność):',
+    '🎧 Pre-Ascolto / Monitor (Cuffia Tecnico / PFL):':
+        '🎧 Odsłuch / monitor (słuchawki operatora / PFL):',
+    "💡 <i>Suggerimento:</i> Assegna la Cuffia per ascoltare in anteprima i brani nell'Ispettore o nella Scaletta senza che il pubblico in sala senta nulla. Se usi una sola scheda, entrambi usano l'uscita predefinita.":
+        '💡 <i>Wskazówka:</i> Przypisz słuchawki, aby odsłuchiwać utwory w Inspektorze lub na liście cue bez słyszenia ich przez publiczność. Przy jednej karcie dźwiękowej oba używają wyjścia domyślnego.',
+    '🖥️ Uscita Video Live (Proiettore / Display Esterno)':
+        '🖥️ Wyjście wideo Live (projektor / ekran zewnętrzny)',
+    'Schermo Live Output:':
+        'Ekran wyjścia Live:',
+    '🔄 Rileva':
+        '🔄 Wykryj',
+    'Modalità Uscita:':
+        'Tryb wyjścia:',
+    '🖥️ Singolo schermo (una sola uscita)':
+        '🖥️ Jeden ekran (jedno wyjście)',
+    '🖥️🖥️ Superficie unica — span su più proiettori':
+        '🖥️🖥️ Wspólna powierzchnia — rozciągnięta na kilka projektorów',
+    '🖥️ ⇄ 🖥️ Due uscite indipendenti (contenuti diversi)':
+        '🖥️ ⇄ 🖥️ Dwa niezależne wyjścia (różne treści)',
+    "💡 BlindCue proietta solo sugli schermi esterni al monitor di regia. Con un solo proiettore tutto va lì; con due proiettori puoi scegliere quale alimenta l'uscita A e quale l'uscita B dal pannello dei layer.":
+        '💡 BlindCue wyświetla obraz tylko na ekranach innych niż monitor reżyserki. Przy jednym projektorze wszystko trafia na niego; przy dwóch w panelu warstw wybierasz, który obsługuje wyjście A, a który B.',
+    'Annulla':
+        'Anuluj',
+    '✓ Applica e Salva':
+        '✓ Zastosuj i zapisz',
+    "Due uscite separate e indipendenti: ogni proiettore ha i propri 3 layer. Assegna ogni cue all'uscita A o B nell'Ispettore.":
+        'Dwa oddzielne, niezależne wyjścia: każdy projektor ma własne 3 warstwy. Przypisz każdy cue do wyjścia A lub B w Inspektorze.',
+    "I proiettori esterni saranno uniti in un'unica tela continua.":
+        'Zewnętrzne projektory zostaną połączone w jedną ciągłą powierzchnię.',
+    'Nessun dispositivo rilevato (Default)':
+        'Nie wykryto urządzenia (domyślne)',
+    "⚠️ Nessuna uscita audio rilevata dal sistema operativo: l'audio userà l'impianto predefinito.":
+        '⚠️ System nie wykrył żadnego wyjścia audio: dźwięk użyje urządzenia domyślnego.',
+    ' (Predefinito)':
+        ' (domyślne)',
+    '⚠️ Una sola uscita audio rilevata: il pre-ascolto in cuffia richiede una seconda scheda audio collegata (USB/DAC). Senza di essa il monitor PFL userebbe lo stesso impianto del pubblico.':
+        '⚠️ Wykryto tylko jedno wyjście audio: odsłuch w słuchawkach wymaga drugiej karty dźwiękowej (USB/DAC). Bez niej odsłuch PFL szedłby na to samo nagłośnienie co dla publiczności.',
+    ' [Primario / Regia]':
+        ' [główny / reżyserka]',
+    ' [Esterno / Proiettore]':
+        ' [zewnętrzny / projektor]',
+    '🍃 <b>Modalità ECO / Muletto:</b> Limitazione thread di calcolo a 2 core, gestione memoria leggera, protezione RAM <= 4GB (perfetta per portatili datati come MacBook Air 2014).':
+        '🍃 <b>Tryb EKO / starszy sprzęt:</b> obliczenia ograniczone do 2 rdzeni, oszczędne zarządzanie pamięcią, ochrona przy RAM do 4 GB (idealny dla starszych laptopów, np. MacBook Air 2014).',
+    'Proiettori coinvolti: {}.':
+        'Użyte projektory: {}.',
+    'Nessun proiettore esterno rilevato.':
+        'Nie wykryto zewnętrznego projektora.',
+    'Schermi coinvolti: {}.':
+        'Użyte ekrany: {}.',
+    'Nessuno schermo esterno rilevato.':
+        'Nie wykryto ekranu zewnętrznego.',
+    '🚀 <b>Modalità PERFORMANCE:</b> Multi-threading completo (fino a 8+ core), precaricamento istantaneo e massime prestazioni per workstation con GPU dedicata.':
+        '🚀 <b>Tryb WYDAJNOŚĆ:</b> pełna wielowątkowość (do 8+ rdzeni), natychmiastowe wczytywanie i maksymalna wydajność dla stacji z osobną kartą graficzną.',
+    '⚡ <b>Modalità STANDARD:</b> Bilanciamento ottimale tra consumo di risorse e fluidità live.':
+        '⚡ <b>Tryb STANDARD:</b> optymalna równowaga między zużyciem zasobów a płynnością na żywo.',
+    'Trascina qui file multimediali\n(Video, Audio, Immagini)\nper aggiungerli alla regia':
+        'Przeciągnij tutaj pliki\n(wideo, audio, obrazy),\naby dodać je do pokazu',
+    "🎬 Studio Timeline Compositore Gruppo — '{}'":
+        "🎬 Studio osi czasu grupy — '{}'",
+    'Montaggio multi-traccia non distruttivo (Layer 1, 2, 3) · Modifica solo i file del gruppo':
+        'Nieniszcząca edycja wielościeżkowa (warstwy 1, 2, 3) · zmienia tylko pliki grupy',
+    '⏱ Durata Scena: 00:00.00':
+        '⏱ Czas sceny: 00:00.00',
+    '↺ Annulla':
+        '↺ Anuluj',
+    'Annulla Modifiche Timeline':
+        'Odrzuć zmiany osi czasu',
+    'Chiude lo studio senza salvare le modifiche apportate alla timeline.':
+        'Zamyka studio bez zapisywania zmian na osi czasu.',
+    '✓ Salva e Sincronizza nel Gruppo':
+        '✓ Zapisz i zsynchronizuj z grupą',
+    'Salva e Sincronizza nel Gruppo':
+        'Zapisz i zsynchronizuj z grupą',
+    "Salva ritardi, layer, tagli e dissolvenze all'interno delle cue del gruppo.":
+        'Zapisuje opóźnienia, warstwy, przycięcia i przejścia w cue grupy.',
+    '📦 ELEMENTI DEL GRUPPO ({} file)':
+        '📦 ELEMENTY GRUPY (plików: {})',
+    'Lista File del Gruppo':
+        'Lista plików grupy',
+    'Elenco dei file assegnati al gruppo. Clicca per selezionare una clip.':
+        'Lista plików przypisanych do grupy. Kliknij, aby wybrać klip.',
+    '🔒 File vincolati al gruppo per evitare inserimenti accidentali o file estranei.':
+        '🔒 Pliki zablokowane w grupie, aby uniknąć przypadkowego dodania obcych plików.',
+    '🖥️ ANTEPRIMA MULTI-LAYER & TRASPORTO':
+        '🖥️ PODGLĄD WIELOWARSTWOWY I STEROWANIE',
+    '▶ SCHERMO ANTEPRIMA SANDBOX\nComposizione Multi-Layer sincronizzata':
+        '▶ EKRAN PODGLĄDU (PIASKOWNICA)\nzsynchronizowana kompozycja wielowarstwowa',
+    '⏮ Inizio':
+        '⏮ Początek',
+    "Riavvolgi all'Inizio":
+        'Przewiń na początek',
+    'Porta la testina di riproduzione al secondo zero.':
+        'Ustawia głowicę odtwarzania na zerowej sekundzie.',
+    '▶  Play':
+        '▶  Odtwórz',
+    'Play o Pausa Anteprima Gruppo':
+        'Odtwórz lub wstrzymaj podgląd grupy',
+    'Avvia o mette in pausa la riproduzione sincronizzata multi-canale.':
+        'Uruchamia lub wstrzymuje zsynchronizowane odtwarzanie wielokanałowe.',
+    '🛠️ MODIFICATORI CLIP ATTIVA':
+        '🛠️ USTAWIENIA AKTYWNEGO KLIPU',
+    'Nessuna clip selezionata':
+        'Nie wybrano klipu',
+    '⏱ TIMELINE DELLE 3 TRACCE (Layer 3 Sopra ➔ Layer 1 Sfondo)':
+        '⏱ OŚ CZASU 3 ŚCIEŻEK (warstwa 3 na wierzchu ➔ warstwa 1 tło)',
+    '🧲 Snap a griglia (0.25s)':
+        '🧲 Przyciągaj do siatki (0,25 s)',
+    '🔍 - Zoom Out':
+        '🔍 - Pomniejsz',
+    '🔍 + Zoom In':
+        '🔍 + Powiększ',
+    'Canvas Timeline a 3 Layer':
+        'Oś czasu 3 warstw',
+    'Compositore visivo a 3 layer per allineare temporalmente i file del gruppo.':
+        'Wizualny kompozytor 3 warstw do wyrównania plików grupy w czasie.',
+    'L3 · OVERLAY / FOTO':
+        'L3 · NAKŁADKA / ZDJĘCIE',
+    'Traccia superiore (Overlay)':
+        'Górna ścieżka (nakładka)',
+    'L2 · VIDEO / AUDIO 2':
+        'L2 · WIDEO / AUDIO 2',
+    'Traccia intermedia':
+        'Środkowa ścieżka',
+    'L1 · SFONDO / BASE':
+        'L1 · TŁO / PODSTAWA',
+    'Traccia di fondo (Background)':
+        'Dolna ścieżka (tło)',
+    'Layer:':
+        'Warstwa:',
+    'Layer 1 (Sfondo)':
+        'Warstwa 1 (tło)',
+    'Layer 2 (Intermedio)':
+        'Warstwa 2 (środek)',
+    'Layer 3 (Overlay)':
+        'Warstwa 3 (nakładka)',
+    'Avvio (s):':
+        'Start (s):',
+    'Taglio IN:':
+        'Przycięcie IN:',
+    'Fade In:':
+        'Fade In:',
+    'Fade Out:':
+        'Fade Out:',
+    'Volume:':
+        'Głośność:',
+    'Opacità:':
+        'Krycie:',
+    '⏸  Pausa':
+        '⏸  Pauza',
+    '{} | 🖥️ CPU: {}C | 💾 RAM: {}GB | 🎮 GPU: {} ({})':
+        '{} | 🖥️ CPU: {}C | 💾 RAM: {}GB | 🎮 GPU: {} ({})',
+    "<h3>Architettura Hardware & Prestazioni BlindCue</h3><p><b>Profilo Attivo:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Processore (CPU):</b> {}<br/>• Core / Thread rilevati: <b>{} core</b></p><p><b>Memoria RAM di Sistema:</b><br/>• Totale: <b>{} GB</b> ({} MB)<br/>• Disponibile: <b>{} GB</b> ({} MB)</p><p><b>Scheda Video (GPU):</b> {}<br/>• Accelerazione Hardware: <b>{}</b><br/>• Schermi Rilevati: <b>{}</b><br/>• Piattaforma: <b>{} ({})</b></p><hr/><h4>Ottimizzazioni per la Massima Stabilità Live:</h4><ul><li><b>GPU Offloading:</b> Compositing Layer 0..3 su GPU tramite Wayland EGL/OpenGL. Zero carico di ridisegno pixel sulla CPU.</li><li><b>Decodifica Video Hardware:</b> QtMultimedia e FFmpeg interrogano automaticamente VA-API / NVDEC per frame zero-copy.</li><li><b>Protezione GC Live:</b> In modalità LIVE il Garbage Collector di Python viene posticipato per prevenire micro-lag durante le Cue.</li><li><b>Isolamento Threading:</b> Worker asincroni limitati per garantire latenza istantanea su UI e Audio.</li></ul><p style='color: #00e676;'><b>Risultato:</b> Stabilità assoluta garantita sia su portatili da 4GB di RAM che su workstation multi-core.</p>":
+        "<h3>Sprzęt i wydajność BlindCue</h3><p><b>Aktywny profil:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Procesor (CPU):</b> {}<br/>• Wykryte rdzenie / wątki: <b>{}</b></p><p><b>Pamięć RAM:</b><br/>• Razem: <b>{} GB</b> ({} MB)<br/>• Dostępne: <b>{} GB</b> ({} MB)</p><p><b>Karta graficzna (GPU):</b> {}<br/>• Akceleracja sprzętowa: <b>{}</b><br/>• Wykryte ekrany: <b>{}</b><br/>• Platforma: <b>{} ({})</b></p><hr/><h4>Optymalizacje dla stabilności na żywo:</h4><ul><li><b>Odciążenie GPU:</b> składanie warstw 0..3 na karcie graficznej (EGL/OpenGL). Procesor nie przerysowuje pikseli.</li><li><b>Sprzętowe dekodowanie wideo:</b> QtMultimedia i FFmpeg same korzystają z VA-API / NVDEC.</li><li><b>Ochrona GC na żywo:</b> w trybie LIVE odśmiecanie pamięci Pythona jest odkładane, by uniknąć mikroprzycięć podczas cue.</li><li><b>Izolacja wątków:</b> ograniczona liczba wątków w tle, aby interfejs i dźwięk reagowały natychmiast.</li></ul><p style='color: #00e676;'><b>Efekt:</b> stabilna praca zarówno na laptopach z 4 GB RAM, jak i na wielordzeniowych stacjach.</p>",
+    'Scelta manuale operatore':
+        'Ręczny wybór operatora',
+    '🍃 ECO':
+        '🍃 EKO',
+    'BlindCue — Info Hardware & Accelerazione':
+        'BlindCue — informacje o sprzęcie i akceleracji',
+    'About BlindCue':
+        'O programie BlindCue',
+    "<h2>{}</h2><p><b>Version {}</b></p><p>Cue player for live shows: video, audio, images and text on a projector.</p><p>Based on <b>{}</b> by {} (MIT licence)<br><a href='{}'>{}</a></p><p>Polish version: <a href='{}'>{}</a></p>":
+        "<h2>{}</h2><p><b>Wersja {}</b></p><p>Program do prowadzenia przedstawień: wideo, dźwięk, zdjęcia i napisy na projektorze.</p><p>Na podstawie programu <b>{}</b> autorstwa {} (licencja MIT)<br><a href='{}'>{}</a></p><p>Wersja polska: <a href='{}'>{}</a></p>",
+    'Auto (RAM {}GB / {} Core: profilo salva-memoria attivo)':
+        'Auto (RAM {}GB / {} rdzeni: aktywny profil oszczędzania pamięci)',
+    '🚀 PRO':
+        '🚀 PRO',
+    '⚡ STD':
+        '⚡ STD',
+    'Apple Metal / GPU ({})':
+        'Apple Metal / GPU ({})',
+    'Auto (RAM {}GB / {} Core: massime prestazioni e multi-screen)':
+        'Auto (RAM {}GB / {} rdzeni: maksymalna wydajność i wiele ekranów)',
+    'Auto (RAM {}GB / {} Core: bilanciamento standard)':
+        'Auto (RAM {}GB / {} rdzeni: standardowa równowaga)',
+    'Software Renderer':
+        'Renderowanie programowe',
+    'Display Principale':
+        'Główny ekran',
+    'Disattivazione... {}s':
+        'Wyłączanie... {}s',
+    'Attivazione... {}s':
+        'Włączanie... {}s',
+    'Native (Automatico)':
+        'Natywne (automatycznie)',
+    '16:9 (Widescreen)':
+        '16:9 (panoramiczny)',
+    '4:3 (Standard)':
+        '4:3 (standardowy)',
+    '21:9 (Ultrawide)':
+        '21:9 (ultraszeroki)',
+    '1:1 (Quadrato)':
+        '1:1 (kwadrat)',
+    'L1: Sfondo':
+        'L1: Tło',
+    'Layer 1 (Default): Livello di sfondo o base scena':
+        'Warstwa 1 (domyślna): tło lub podstawa sceny',
+    'L2: Principale':
+        'L2: Główna',
+    'Layer 2: Livello multimediale intermedio (sopra L1)':
+        'Warstwa 2: środkowa warstwa mediów (nad L1)',
+    'L3: Overlay':
+        'L3: Nakładka',
+    'Layer 3: Livello superiore in primo piano (grafica, loghi, titoli)':
+        'Warstwa 3: wierzchnia warstwa (grafiki, logo, napisy)',
+    'Attende GO manuale (default)':
+        'Czeka na ręczne GO (domyślnie)',
+    'Avvia la successiva dopo Pre+Durata+Post':
+        'Uruchamia następny po Pre+Czas+Post',
+    'Avvia insieme la successiva sul GO':
+        'Uruchamia następny razem przy GO',
+    '⇉ Simultaneo':
+        '⇉ Wszystko naraz',
+    'Fire All: tutti i media del gruppo partono contemporaneamente sul GO.':
+        'Wszystko naraz: wszystkie media grupy startują jednocześnie przy GO.',
+    '⤵ Sequenziale':
+        '⤵ Po kolei',
+    'Cascata: un solo GO lancia tutta la sequenza interna rispettando i ritardi Pre/Durata/Post.':
+        'Kaskada: jedno GO uruchamia całą sekwencję z zachowaniem opóźnień Pre/Czas/Post.',
+    '⏹ Passo-Passo':
+        '⏹ Krok po kroku',
+    "Capitolo teatrale: ogni pressione manuale di GO avanza di un elemento all'interno della scena.":
+        'Rozdział teatralny: każde ręczne GO przechodzi o jeden element w scenie.',
+    '🎲 Random / Var.':
+        '🎲 Losowo',
+    'Sceglie a caso un elemento del gruppo evitando la ripetizione immediata.':
+        'Wybiera losowy element grupy, unikając powtórzenia pod rząd.',
+    '🔁 Loop Scena':
+        '🔁 Zapętl scenę',
+    'Cicla continuamente tutti gli elementi interni finché non viene dato lo stop.':
+        'Odtwarza w kółko wszystkie elementy, aż do zatrzymania.',
+    'ISPETTORE CUE (Nessuna cue selezionata)':
+        'INSPEKTOR CUE (nie wybrano cue)',
+    'Cursore orizzontale da {} a {}.':
+        'Suwak poziomy od {} do {}.',
+    'Pannello Ispettore Cue - Schede':
+        'Panel Inspektora cue - karty',
+    'Schede proprietà: Info e Tempi, Video e Foto, Audio e Tagli, Gruppo.':
+        'Karty właściwości: info i czasy, wideo i zdjęcia, audio i przycięcia, grupa.',
+    '1 · IDENTITÀ IN COPIONE & COLORE GRUPPO':
+        '1 · OZNACZENIE ZE SCENARIUSZA I KOLOR',
+    'I box scuri sono modificabili; usa un colore per dividere scene o atti in Scaletta.':
+        'Ciemne pola można edytować; kolorem rozdzielisz sceny lub akty na liście cue.',
+    'es. Q-2, Q-9a, Sc.1...':
+        'np. Q-2, Q-9a, Sc.1...',
+    'Sigla di copione: resta legata alla cue anche se riordini la scaletta':
+        'Oznaczenie ze scenariusza: zostaje przy cue nawet po zmianie kolejności',
+    'Sigla Q Copione':
+        'Oznaczenie Q',
+    'Identificativo o sigla di copione della cue.':
+        'Identyfikator lub oznaczenie cue ze scenariusza.',
+    'Titolo descrittivo in scaletta...':
+        'Opisowy tytuł na liście cue...',
+    'Nome Cue':
+        'Nazwa cue',
+    'Titolo o etichetta descrittiva della cue nella scaletta.':
+        'Tytuł lub opis cue na liście.',
+    'Attacco battuta, luci, note tecniche...':
+        'Kwestia, światła, uwagi techniczne...',
+    'Note di Regia':
+        'Uwagi reżyserskie',
+    "Note tecniche o didascalie per l'operatore di regia.":
+        'Uwagi techniczne lub podpowiedzi dla operatora.',
+    'Colore:':
+        'Kolor:',
+    '📁 In Scena':
+        '📁 W scenie',
+    '⏏ Estrai dal Gruppo':
+        '⏏ Wyjmij z grupy',
+    "Rimuove questa cue dal gruppo e la sposta all'esterno della scena (Ctrl+Shift+G)":
+        'Usuwa ten cue z grupy i przenosi go poza scenę (Ctrl+Shift+G)',
+    '2 · LAYER DI USCITA (SOVRAPPOSIZIONE)':
+        '2 · WARSTWA WYJŚCIA (KOLEJNOŚĆ)',
+    'Ordine visivo sullo schermo: L3 (sopra) → L2 → L1 → L0 Tappo di sicurezza.':
+        'Kolejność na ekranie: L3 (wierzch) → L2 → L1 → L0 zaślepka bezpieczeństwa.',
+    'Proiettore:':
+        'Projektor:',
+    '3 · TEMPI DI INCASTRO (PRE · DURATA · POST)':
+        '3 · CZASY (PRE · CZAS TRWANIA · POST)',
+    'GO  ▶  [⏳ Pre]  ▶  [▶ Media / Durata]  ▶  [⏱ Post]':
+        'GO  ▶  [⏳ Pre]  ▶  [▶ Media / Czas]  ▶  [⏱ Post]',
+    'Ritardo di partenza dopo il GO per incastrare la cue con altri layer':
+        'Opóźnienie startu po GO, aby zgrać cue z innymi warstwami',
+    'Ritardo di Partenza Pre-Delay':
+        'Opóźnienie startu (Pre-Delay)',
+    "Secondi di ritardo dopo il GO prima dell'avvio della cue.":
+        'Sekundy opóźnienia po GO przed startem cue.',
+    'Attesa extra dopo la fine del media prima di uscire o passare alla successiva':
+        'Dodatkowe czekanie po końcu mediów przed przejściem do następnego',
+    'Attesa Finale Post-Delay':
+        'Czekanie końcowe (Post-Delay)',
+    'Secondi di attesa dopo il termine del media.':
+        'Sekundy czekania po zakończeniu mediów.',
+    'Durata di permanenza in Live delle immagini statiche (0 = infinita)':
+        'Jak długo zdjęcia zostają na ekranie Live (0 = bez końca)',
+    'Durata Immagine Hold Time':
+        'Czas wyświetlania obrazu',
+    'Durata in secondi per le immagini statiche (0 = infinita).':
+        'Czas w sekundach dla zdjęć (0 = bez końca).',
+    'Solo immagini (0 = ∞)':
+        'Tylko obrazy (0 = ∞)',
+    'Dopo:':
+        'Potem:',
+    '🎯 Cue · Tempi':
+        '🎯 Cue · czasy',
+    "Suggerimento: puoi anche trascinare il riquadro o gli 8 bordi direttamente sull'Anteprima Pre-Viz 16:9.":
+        'Wskazówka: ramkę i jej 8 krawędzi możesz też przeciągać bezpośrednio w podglądzie Pre-Viz 16:9.',
+    '1 · POSIZIONAMENTO, ZOOM & TRASPARENZA':
+        '1 · POZYCJA, ZOOM I PRZEZROCZYSTOŚĆ',
+    'Superficie:':
+        'Ekran:',
+    'Assegna la cue a uno schermo virtuale o superficie di proiezione/mapping':
+        'Przypisz cue do ekranu wirtualnego lub powierzchni projekcji/mappingu',
+    '📐 Gestisci...':
+        '📐 Zarządzaj...',
+    'Apri lo Studio Superfici di Proiezione & Video Mapping (F7)':
+        'Otwórz studio powierzchni projekcji i mappingu wideo (F7)',
+    'Offset orizzontale (-1.00 = sx, 0.00 = centro, +1.00 = dx)':
+        'Przesunięcie poziome (-1,00 = lewo, 0,00 = środek, +1,00 = prawo)',
+    'Offset verticale (-1.00 = alto, 0.00 = centro, +1.00 = basso)':
+        'Przesunięcie pionowe (-1,00 = góra, 0,00 = środek, +1,00 = dół)',
+    'Sposta a sinistra (-0.01)':
+        'Przesuń w lewo (-0,01)',
+    'Sposta in alto (-0.01)':
+        'Przesuń w górę (-0,01)',
+    'Sposta in basso (+0.01)':
+        'Przesuń w dół (+0,01)',
+    'Sposta a destra (+0.01)':
+        'Przesuń w prawo (+0,01)',
+    '⌖ Centro':
+        '⌖ Środek',
+    'Ripristina posizione al centro (0.00, 0.00)':
+        'Przywróć pozycję na środek (0,00, 0,00)',
+    'Scala:':
+        'Skala:',
+    'Ripristina scala a 1.0x':
+        'Przywróć skalę 1,0x',
+    'Ripristina opacità al 100%':
+        'Przywróć krycie 100%',
+    'Formato:':
+        'Format:',
+    'Forza le proporzioni del riquadro in Anteprima e Live':
+        'Wymusza proporcje kadru w podglądzie i na Live',
+    '2 · RITAGLIO BORDI (CROP)':
+        '2 · PRZYCIĘCIE KRAWĘDZI (CROP)',
+    'Scegli % oppure pixel reali della sorgente per tagliare i bordi.':
+        'Wybierz % albo rzeczywiste piksele źródła, aby przyciąć krawędzie.',
+    'Imposta il ritaglio in percentuale (0.0% – 99.0%)':
+        'Ustaw przycięcie w procentach (0,0% – 99,0%)',
+    'Imposta il ritaglio esatto in pixel rispetto alla risoluzione del file':
+        'Ustaw dokładne przycięcie w pikselach względem rozdzielczości pliku',
+    '⟲ Reset':
+        '⟲ Reset',
+    'Rimuove il ritaglio e mostra il fotogramma intero':
+        'Usuwa przycięcie i pokazuje cały kadr',
+    'Ritaglio bordo sinistro':
+        'Przycięcie lewej krawędzi',
+    'Ritaglio bordo destro':
+        'Przycięcie prawej krawędzi',
+    'Ritaglio bordo superiore':
+        'Przycięcie górnej krawędzi',
+    'Ritaglio bordo inferiore':
+        'Przycięcie dolnej krawędzi',
+    '3 · ROTAZIONE':
+        '3 · OBRÓT',
+    'Ruota immagine o video. Per le immagini compare anche il ritaglio poligonale.':
+        'Obróć obraz lub wideo. Dla obrazów pojawia się też przycięcie wielokątne.',
+    'Rotazione:':
+        'Obrót:',
+    'Rotazione in gradi attorno al centro del riquadro (-180° … +180°). 0° = dritto.':
+        'Obrót w stopniach wokół środka kadru (-180° … +180°). 0° = prosto.',
+    'Ruota di 90° in senso antiorario':
+        'Obróć o 90° w lewo',
+    "Riporta l'immagine dritta (0°)":
+        'Wyprostuj obraz (0°)',
+    'Ruota di 90° in senso orario':
+        'Obróć o 90° w prawo',
+    '✂ Disegna maschera…':
+        '✂ Narysuj maskę…',
+    "Ritaglia l'immagine lungo un percorso poligonale disegnato a mano":
+        'Przytnij obraz wzdłuż ręcznie narysowanego wielokąta',
+    '✖ Rimuovi':
+        '✖ Usuń',
+    "Rimuove la maschera poligonale e mostra l'immagine intera":
+        'Usuwa maskę wielokątną i pokazuje cały obraz',
+    'Nessuna maschera':
+        'Brak maski',
+    '🖼 Video · Foto':
+        '🖼 Wideo · zdjęcie',
+    "Suggerimento: Dissolvenze (Fade In/Out) attive anche sulle Immagini; inviluppi avanzati e Sezioni A/B/C nella Forma d'Onda.":
+        'Wskazówka: przejścia (Fade In/Out) działają też dla obrazów; zaawansowane obwiednie i sekcje A/B/C są w widoku przebiegu.',
+    '1 · VOLUME PRINCIPALE (AUDIO / VIDEO)':
+        '1 · GŁOŚNOŚĆ GŁÓWNA (AUDIO / WIDEO)',
+    "Livello base del media; puoi disegnare variazioni nel tempo direttamente sulla Forma d'Onda.":
+        'Podstawowy poziom mediów; zmiany w czasie możesz rysować bezpośrednio na przebiegu.',
+    'Ripristina volume al 100%':
+        'Przywróć głośność 100%',
+    '2 · DISSOLVENZE (FADE IN / OUT)':
+        '2 · PRZEJŚCIA (FADE IN / OUT)',
+    "Applicate dolcemente all'ingresso e all'uscita su Audio, Video e Immagini a durata.":
+        'Łagodnie stosowane na początku i końcu audio, wideo i obrazów z czasem.',
+    'Dissolvenza in Entrata Fade-In':
+        'Pojawianie (Fade-In)',
+    'Durata in secondi della dissolvenza in ingresso da nero o silenzio.':
+        'Czas w sekundach pojawiania się z czerni lub ciszy.',
+    'Dissolvenza in Uscita Fade-Out':
+        'Wygaszanie (Fade-Out)',
+    'Durata in secondi della dissolvenza in chiusura a nero o silenzio.':
+        'Czas w sekundach wygaszania do czerni lub ciszy.',
+    '3 · TAGLIO TEMPORALE (PUNTI IN / OUT)':
+        '3 · PRZYCIĘCIE CZASU (PUNKTY IN / OUT)',
+    'Imposta dove inizia e finisce la traccia (tasti rapidi [I] / [O] sulla Testina della Timeline).':
+        'Ustaw, gdzie ścieżka się zaczyna i kończy (skróty [I] / [O] na głowicy osi czasu).',
+    'Punto di Inizio In-Point':
+        'Punkt początku (In)',
+    'Posizione iniziale di riproduzione in minuti, secondi e centesimi.':
+        'Pozycja startu w minutach, sekundach i setnych.',
+    'Punto di Fine Out-Point':
+        'Punkt końca (Out)',
+    'Posizione finale di taglio o fine riproduzione.':
+        'Pozycja końca przycięcia lub odtwarzania.',
+    'Ripristina IN a 0.00s e OUT a Fine':
+        'Przywróć IN na 0,00 s i OUT na koniec',
+    '🔁  4 · RIPETI CUE IN LOOP':
+        '🔁  4 · ZAPĘTL CUE',
+    '5 · LIVELLAMENTO & LOUDNESS (EBU R128)':
+        '5 · WYRÓWNANIE GŁOŚNOŚCI (EBU R128)',
+    'Calcola il volume percepito (LUFS) per livellare tracce troppo basse o troppo alte senza distorsione.':
+        'Mierzy odczuwaną głośność (LUFS), aby wyrównać zbyt ciche lub zbyt głośne ścieżki bez zniekształceń.',
+    '📊 Loudness: Non analizzato':
+        '📊 Głośność: nie zbadano',
+    '🔍 Analizza':
+        '🔍 Zbadaj',
+    'Analizza il volume percepito EBU R128 in background con FFmpeg':
+        'Zbadaj odczuwaną głośność EBU R128 w tle za pomocą FFmpeg',
+    '🎚 Applica Guadagno EBU R128 (-16 LUFS) per questo file':
+        '🎚 Zastosuj wzmocnienie EBU R128 (-16 LUFS) do tego pliku',
+    "Applica l'offset di guadagno non distruttivo sul player per pareggiare il volume con le altre cue.":
+        'Stosuje nieniszczącą korektę wzmocnienia w odtwarzaczu, aby wyrównać głośność z innymi cue.',
+    '🛠 Ottimizza Dinamica (Compressore / Limiter)':
+        '🛠 Optymalizuj dynamikę (kompresor / limiter)',
+    "Per file complessi o registrati male: applica il compressore broadcast EBU R128 a due passate con True-Peak Limiter per appiattire gli sbalzi e proteggere l'impianto.":
+        'Dla trudnych lub źle nagranych plików: stosuje dwuprzebiegowy kompresor EBU R128 z limiterem True-Peak, aby spłaszczyć skoki i chronić nagłośnienie.',
+    '↺ Ripristina Originale':
+        '↺ Przywróć oryginał',
+    "Annulla l'ottimizzazione e torna al file media originale":
+        'Cofnij optymalizację i wróć do oryginalnego pliku',
+    '🎵 Audio · Tagli':
+        '🎵 Audio · przycięcia',
+    '1 · IDENTITÀ SCENA / GRUPPO & COLORE':
+        '1 · OZNACZENIE SCENY / GRUPY I KOLOR',
+    'I gruppi organizzano più media in una singola riga collassabile in Scaletta e Live.':
+        'Grupy łączą kilka mediów w jeden zwijany wiersz na liście cue i w trybie Live.',
+    'es. G-1, Atto 1, Scena A...':
+        'np. G-1, Akt 1, Scena A...',
+    'Sigla di copione del gruppo: resta legata al gruppo se riordini la scaletta':
+        'Oznaczenie grupy ze scenariusza: zostaje przy grupie po zmianie kolejności',
+    'Titolo scena o sequenza...':
+        'Tytuł sceny lub sekwencji...',
+    'Note di regia o indicazioni palco per il gruppo...':
+        'Uwagi reżyserskie lub wskazówki sceniczne dla grupy...',
+    'Pre-Wait:':
+        'Pre-Wait:',
+    'Attesa prima di avviare il gruppo alla pressione del GO.':
+        'Czekanie przed startem grupy po naciśnięciu GO.',
+    'Post-Wait:':
+        'Post-Wait:',
+    "Attesa al termine dell'esecuzione prima di passare alla cue successiva.":
+        'Czekanie po zakończeniu przed przejściem do następnego cue.',
+    '2 · COMPORTAMENTO AL GO (MODALITÀ SCENA)':
+        '2 · DZIAŁANIE PRZY GO (TRYB SCENY)',
+    'Determina come vengono eseguiti i media contenuti nel gruppo quando si preme GO.':
+        'Określa, jak odtwarzane są media grupy po naciśnięciu GO.',
+    '3 · ELEMENTI INTERNI AL GRUPPO':
+        '3 · ELEMENTY GRUPY',
+    'Lista dei media appartenenti a questo gruppo. Usa i pulsanti per espandere o gestire i membri.':
+        'Lista mediów w tej grupie. Przyciskami rozwiniesz grupę lub zarządzisz elementami.',
+    '📁 0 cue nel gruppo':
+        '📁 0 cue w grupie',
+    '▶ Collassa / ▼ Espandi':
+        '▶ Zwiń / ▼ Rozwiń',
+    'Mostra o nascondi i figli del gruppo nella tabella Scaletta':
+        'Pokaż lub ukryj elementy grupy na liście cue',
+    '✕ Rimuovi Cue':
+        '✕ Usuń cue',
+    'Rimuove la cue selezionata dalla lista dal gruppo (torna al livello principale)':
+        'Usuwa zaznaczony cue z grupy (wraca na poziom główny)',
+    '🔓 Sciogli Gruppo':
+        '🔓 Rozgrupuj',
+    'Elimina il contenitore del gruppo e rilascia tutte le sue cue in scaletta':
+        'Usuwa kontener grupy i zostawia wszystkie jej cue na liście',
+    '🎬  APRI STUDIO TIMELINE DEL GRUPPO (3 LAYER)':
+        '🎬  OTWÓRZ STUDIO OSI CZASU GRUPY (3 WARSTWY)',
+    'Studio Timeline Multi-Track':
+        'Studio osi czasu (wielościeżkowe)',
+    'Apre la finestra di composizione multi-traccia a 3 layer per sincronizzare i file del gruppo.':
+        'Otwiera okno kompozycji 3 warstw do synchronizacji plików grupy.',
+    'Apre la finestra extra Studio Timeline per sincronizzare visivamente i file del gruppo\nsulle 3 tracce layer (L1, L2, L3) con righello millisecondi, tagli e anteprima multi-canale.':
+        'Otwiera dodatkowe okno studia osi czasu do wizualnej synchronizacji plików grupy\nna 3 ścieżkach warstw (L1, L2, L3) z linijką milisekund, przycięciami i podglądem wielokanałowym.',
+    '📁 Gruppo · Scena':
+        '📁 Grupa · scena',
+    'Non definita':
+        'Nieokreślona',
+    '📊 {} LUFS | Picco: {} dBFS | Auto-Gain: {}{} dB':
+        '📊 {} LUFS | Szczyt: {} dBFS | Auto-wzmocnienie: {}{} dB',
+    'Q (Copione):':
+        'Q (scenariusz):',
+    'Nome Cue:':
+        'Nazwa cue:',
+    'Note Regia:':
+        'Uwagi:',
+    'A · Schermo 1':
+        'A · Ekran 1',
+    "Questa cue viene proiettata dall'uscita A (primo proiettore).":
+        'Ten cue jest wyświetlany na wyjściu A (pierwszy projektor).',
+    'B · Schermo 2':
+        'B · Ekran 2',
+    "Questa cue viene proiettata dall'uscita B (secondo proiettore indipendente).":
+        'Ten cue jest wyświetlany na wyjściu B (drugi, niezależny projektor).',
+    'Pre-Delay:':
+        'Pre-Delay:',
+    'Post-Delay:':
+        'Post-Delay:',
+    'Durata Img:':
+        'Czas obrazu:',
+    'Pos X:':
+        'Poz. X:',
+    'Pos Y:':
+        'Poz. Y:',
+    'Unità:':
+        'Jednostka:',
+    'Sinistra:':
+        'Lewo:',
+    'Destra:':
+        'Prawo:',
+    'Alto:':
+        'Góra:',
+    'Basso:':
+        'Dół:',
+    'Ripetizioni:':
+        'Powtórzenia:',
+    '∞ Continuo (Infinito)':
+        '∞ Ciągle (bez końca)',
+    'Ripeti 2 volte':
+        'Powtórz 2 razy',
+    'Ripeti 3 volte':
+        'Powtórz 3 razy',
+    'Ripeti 4 volte':
+        'Powtórz 4 razy',
+    'Ripeti 5 volte':
+        'Powtórz 5 razy',
+    'Ripeti 10 volte':
+        'Powtórz 10 razy',
+    'Personalizzato...':
+        'Własne...',
+    'Nome Gruppo:':
+        'Nazwa grupy:',
+    'Manuale':
+        'Ręcznie',
+    'Maschera: {} punti':
+        'Maska: {} punktów',
+    "ISPETTORE CUE — {} [{}] '{}'":
+        "INSPEKTOR CUE — {} [{}] '{}'",
+    'Seleziona una cue':
+        'Wybierz cue',
+    '0 s = Infinita in Live':
+        '0 s = bez końca na Live',
+    "Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9.":
+        'Wybrano obraz: przeciągnij ramkę lub jej 8 krawędzi w podglądzie Pre-Viz 16:9.',
+    'Nota: Cue Immagine — Fade In/Out e inviluppo Opacità attivi. Volume, Tagli e Loop valgono per Audio/Video.':
+        'Uwaga: cue z obrazem — działają Fade In/Out i obwiednia krycia. Głośność, przycięcia i pętla dotyczą audio/wideo.',
+    'ISPETTORE CUE — Selezione Mista ({} cue)':
+        'INSPEKTOR CUE — mieszane zaznaczenie ({} cue)',
+    '⚠ Selezione mista ({}): seleziona solo file dello stesso tipo per modifiche comuni.':
+        '⚠ Mieszane zaznaczenie ({}): zaznacz pliki jednego typu, aby edytować je razem.',
+    'ISPETTORE CUE — {} {} (Modifica Multipla)':
+        'INSPEKTOR CUE — {} {} (edycja wielu)',
+    'Layer misti (clicca L1/L2/L3 per uniformare)':
+        'Różne warstwy (kliknij L1/L2/L3, aby ujednolicić)',
+    '⚡ MODIFICA MULTIPLA: {} file {} selezionati • {}.\nOgni parametro modificato verrà applicato a tutti gli elementi selezionati.':
+        '⚡ EDYCJA WIELU: zaznaczono {} plików {} • {}.\nKażda zmieniona wartość zostanie zastosowana do wszystkich zaznaczonych.',
+    '(Multiplo)':
+        '(wiele)',
+    '[{} file {} selezionati]':
+        '[zaznaczono {} plików {}]',
+    '▼ Espandi Gruppo in Scaletta':
+        '▼ Rozwiń grupę na liście',
+    '▶ Collassa Gruppo in Scaletta':
+        '▶ Zwiń grupę na liście',
+    'Schermo':
+        'Ekran',
+    "Usa IN / OUT o Forma d'Onda":
+        'Użyj IN / OUT lub przebiegu',
+    'Nota: Cue Audio selezionata — Posizione, Zoom, Opacità e Ritaglio sono attivi solo per Video e Immagini.':
+        'Uwaga: wybrano cue audio — pozycja, zoom, krycie i przycięcie działają tylko dla wideo i obrazów.',
+    "Regola Volume, Fade, punti IN/OUT o Loop; usa la Forma d'Onda sotto per curve e Sezioni A/B/C.":
+        'Ustaw głośność, przejścia, punkty IN/OUT lub pętlę; przebieg poniżej służy do krzywych i sekcji A/B/C.',
+    'Usa IN / OUT del video':
+        'Użyj IN / OUT filmu',
+    "Video selezionato: trascina posizione/crop sull'Anteprima Pre-Viz e attiva MIRROR LIVE per calibrare sul proiettore.":
+        'Wybrano wideo: przeciągnij pozycję/przycięcie w podglądzie Pre-Viz i włącz MIRROR LIVE, aby skalibrować na projektorze.',
+    'Regola Volume traccia video, Fade In/Out, punti IN/OUT e Loop (o Sezioni nella Timeline).':
+        'Ustaw głośność ścieżki wideo, Fade In/Out, punkty IN/OUT i pętlę (lub sekcje na osi czasu).',
+    '📁 Questa cue appartiene a una Scena / Gruppo':
+        '📁 Ten cue należy do sceny / grupy',
+    'BUIO TOTALE':
+        'CAŁKOWITA CZERŃ',
+    'STOP IMMEDIATO':
+        'NATYCHMIASTOWY STOP',
+    'Scaletta Regia LIVE Show':
+        'Lista cue do prowadzenia LIVE',
+    'Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.':
+        'Kontrastowa lista cue na żywo. Strzałki w górę i w dół = standby, Spacja = GO, Esc = Panic.',
+    '▶ Fai partire subito questa Cue (GO Forzato)':
+        '▶ Uruchom ten cue teraz (wymuszone GO)',
+    '🎯 Imposta come Prossima Cue (Standby)':
+        '🎯 Ustaw jako następny cue (standby)',
+    '← 🛠 Torna a Progetto  [F5]':
+        '← 🛠 Wróć do projektu  [F5]',
+    'Torna alla vista Progetto per modificare file, crop, fade o tempi (senza interrompere il Live)':
+        'Wróć do widoku projektu, aby edytować pliki, przycięcia, przejścia lub czasy (bez przerywania Live)',
+    '● MODALITÀ LIVE (SHOW MODE)':
+        '● TRYB LIVE (PRZEDSTAWIENIE)',
+    "Azzera Cronometro Spettacolo e riarma l'avvio automatico al prossimo 1° GO":
+        'Wyzeruj stoper przedstawienia i uzbrój automatyczny start przy pierwszym GO',
+    '▶ STANDBY':
+        '▶ STANDBY',
+    'Nessuna cue pronta in scaletta':
+        'Brak gotowego cue na liście',
+    '⏭ Esci da Loop Sezione':
+        '⏭ Wyjdź z pętli sekcji',
+    '🔒 CONTROLLI LAYER BLOCCATI (Protezione di Sicurezza Regia)\nDi default le barre e i controlli dei layer sono protetti per evitare spostamenti o tagli accidentali.\nPer sbloccare scrub, riavvolgimento e pausa dei singoli layer: tieni premuto per 1,2 secondi.\nQuando sbloccato, un singolo click istantaneo riattiva subito il blocco.':
+        '🔒 STEROWANIE WARSTWAMI ZABLOKOWANE (ochrona przed pomyłką)\nDomyślnie paski i przyciski warstw są chronione przed przypadkowym przesunięciem lub ucięciem.\nAby odblokować przewijanie i pauzę pojedynczych warstw: przytrzymaj 1,2 sekundy.\nPo odblokowaniu jedno kliknięcie od razu znowu blokuje.',
+    'Blocco di Sicurezza Layer':
+        'Blokada bezpieczeństwa warstw',
+    'Protezione controlli layer Live. Tieni premuto 1,2 secondi per sbloccare, tocca per ribloccare.':
+        'Ochrona sterowania warstwami Live. Przytrzymaj 1,2 s, aby odblokować; dotknij, aby zablokować.',
+    '⏸  PAUSA TUTTO':
+        '⏸  PAUZA WSZYSTKO',
+    'Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) per ripartire poi dallo stesso istante':
+        'Zamraża wszystkie warstwy LIVE (audio, wideo, Pre-Delay, Post-Delay i obrazy z czasem), by potem ruszyć od tego samego momentu',
+    'Pausa o Riprendi Tutto':
+        'Pauza lub wznowienie wszystkiego',
+    'Congela o riprende tutti i layer multimediali attivi.':
+        'Zamraża lub wznawia wszystkie aktywne warstwy mediów.',
+    '▶   GO  —  PROSSIMA CUE':
+        '▶   GO  —  NASTĘPNY CUE',
+    'GO - Avvia Cue in Standby':
+        'GO - uruchom cue w standby',
+    'Manda in esecuzione la cue pronta in standby. Tasto di scelta rapida: Spazio.':
+        'Uruchamia cue gotowy w standby. Skrót klawiszowy: Spacja.',
+    'Media / Cue':
+        'Media / cue',
+    'Tempi · Sequenza':
+        'Czasy · kolejność',
+    'Layer / Stato':
+        'Warstwa / stan',
+    '🔒\nBLOCCO\nLAYER\n(Tieni 1,2s)':
+        '🔒\nBLOKADA\nWARSTW\n(1,2 s)',
+    '🔓\nLAYER\nATTIVI\n(Click = 🔒)':
+        '🔓\nWARSTWY\nAKTYWNE\n(klik = 🔒)',
+    '▶  RIPRENDI TUTTO  [IN PAUSA]':
+        '▶  WZNÓW WSZYSTKO  [PAUZA]',
+    '▼ Espandi Gruppo':
+        '▼ Rozwiń grupę',
+    '▶ Collassa Gruppo':
+        '▶ Zwiń grupę',
+    '[{} sez.]':
+        '[{} sekc.]',
+    'Cronometro Spettacolo in corso (avvio auto al 1° GO o manuale) — Clicca per PAUSA (non ferma i media)':
+        'Stoper przedstawienia działa (start przy pierwszym GO lub ręcznie) — kliknij, aby ZATRZYMAĆ (media grają dalej)',
+    '⏸ SHOW IN PAUSA':
+        '⏸ PRZEDSTAWIENIE WSTRZYMANE',
+    "Esegui cue in Standby: {} '{}'\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]":
+        "Uruchom cue w standby: {} '{}'\nGłówny skrót klawiszowy: [ SPACJA ]",
+    'Esegui prossima cue\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]':
+        'Uruchom następny cue\nGłówny skrót klawiszowy: [ SPACJA ]',
+    'Cronometro Spettacolo in PAUSA — Clicca per RIPRENDERE o usa ↺ per azzerare e riarmare':
+        'Stoper przedstawienia ZATRZYMANY — kliknij, aby WZNOWIĆ, albo użyj ↺, aby wyzerować',
+    'Durata Spettacolo (Cronometro): parte in automatico al 1° GO oppure clicca qui ora per avviare nelle filate/prove':
+        'Czas przedstawienia (stoper): startuje sam przy pierwszym GO albo kliknij tutaj, aby uruchomić na próbie',
+    '[Scena]':
+        '[Scena]',
+    '⤵ Auto-GO al termine':
+        '⤵ Auto-GO na końcu',
+    '🔁 Loop':
+        '🔁 Pętla',
+    '⏹ MANUALE':
+        '⏹ RĘCZNIE',
+    '⇉ + Cue successiva simultanea':
+        '⇉ + następny cue razem',
+    '⏪ Salta Indietro di 10s':
+        '⏪ Cofnij o 10 s',
+    '⏪ Salta Indietro di 5s':
+        '⏪ Cofnij o 5 s',
+    '⏩ Salta Avanti di 10s':
+        '⏩ Do przodu o 10 s',
+    '⏮ Riavvia da Inizio Cue (In-Point)':
+        '⏮ Od początku cue (punkt In)',
+    'Controllo emissione in tempo reale sui 3 livelli live:':
+        'Sterowanie wyjściem na żywo na 3 warstwach:',
+    'Proiettore A:':
+        'Projektor A:',
+    "Schermo fisico su cui viene proiettata l'uscita A.":
+        'Fizyczny ekran, na którym wyświetlane jest wyjście A.',
+    'Proiettore uscita A':
+        'Projektor wyjścia A',
+    'Proiettore B:':
+        'Projektor B:',
+    "Schermo fisico su cui viene proiettata l'uscita B.":
+        'Fizyczny ekran, na którym wyświetlane jest wyjście B.',
+    'Proiettore uscita B':
+        'Projektor wyjścia B',
+    'USCITA B — secondo proiettore indipendente':
+        'WYJŚCIE B — drugi, niezależny projektor',
+    '⏹ Master Blackout (Tappo) — [ Ctrl+B ]':
+        '⏹ Wygaszenie główne (zaślepka) — [ Ctrl+B ]',
+    "Arresta tutto l'output e mostra Layer 0 (Tappo) — Scorciatoia di sicurezza: Ctrl+B":
+        'Zatrzymuje cały obraz i pokazuje warstwę 0 (zaślepkę) — skrót bezpieczeństwa: Ctrl+B',
+    'Master Blackout':
+        'Wygaszenie główne',
+    "Arresta immediatamente l'output di tutti i layer e torna allo sfondo tappo. Scorciatoia: Ctrl+B.":
+        'Natychmiast zatrzymuje obraz na wszystkich warstwach i wraca do zaślepki. Skrót: Ctrl+B.',
+    'Tappo (L0): Logo BlindCue (Predefinito)':
+        'Zaślepka (L0): logo BlindCue (domyślne)',
+    '📁 Cambia Tappo…':
+        '📁 Zmień zaślepkę…',
+    "Seleziona un'immagine personalizzata per il Layer 0 (locandina festival, logo evento, nero)":
+        'Wybierz własny obraz dla warstwy 0 (plakat, logo wydarzenia, czerń)',
+    '🔄 Reset':
+        '🔄 Reset',
+    'Ripristina il logo predefinito di BlindCue come Layer 0':
+        'Przywróć domyślne logo BlindCue jako warstwę 0',
+    'Logo BlindCue (Predefinito)':
+        'Logo BlindCue (domyślne)',
+    '▶ Riprendi Riproduzione':
+        '▶ Wznów odtwarzanie',
+    '⏸ Metti in Pausa (Prove)':
+        '⏸ Pauza (próby)',
+    'Monitor Uscita Layer Live (L3 Sopra → L1 Sfondo)':
+        'Podgląd warstw Live (L3 wierzch → L1 tło)',
+    'Live Output Status (Monitor Uscita Schermo Esterno)':
+        'Stan wyjścia Live (podgląd ekranu zewnętrznego)',
+    'Salta indietro di 10s su {} (utile nelle prove per ripetere la battuta)':
+        'Cofnij o 10 s na {} (przydatne na próbach, by powtórzyć kwestię)',
+    'Sposta indietro di 10 secondi la testina del {}.':
+        'Cofa głowicę {} o 10 sekund.',
+    'Metti in Pausa {} (utile durante le prove)':
+        'Wstrzymaj {} (przydatne podczas prób)',
+    'Riprendi riproduzione (Layer attualmente in Pausa)':
+        'Wznów odtwarzanie (warstwa wstrzymana)',
+    'Metti in Pausa (utile durante le prove)':
+        'Pauza (przydatne podczas prób)',
+    '∞ LOOP':
+        '∞ PĘTLA',
+    'Dissolvenza in uscita e arresto del contenuto su {}.\nLa durata è quella del Fade Out della cue (minimo 0.2 s).\nPROTEZIONE LIVE: tieni premuto 0.6 secondi per confermare, così un clic involontario non taglia nulla.':
+        'Wygaś i zatrzymaj treść na {}.\nCzas to Fade Out danego cue (minimum 0,2 s).\nOCHRONA LIVE: przytrzymaj 0,6 sekundy, aby potwierdzić — przypadkowe kliknięcie niczego nie utnie.',
+    'Dissolve in uscita e ferma il contenuto sul {} usando il Fade Out della cue. Richiede 0.6 secondi di pressione.':
+        'Wygasza i zatrzymuje treść na {} według Fade Out cue. Wymaga przytrzymania 0,6 s.',
+    'Fade Out':
+        'Wygaś',
+    'Dissolvenza in uscita e arresto del contenuto su {}.\nLa durata è quella del Fade Out della cue (minimo 0.2 s).':
+        'Wygaś i zatrzymaj treść na {}.\nCzas to Fade Out danego cue (minimum 0,2 s).',
+    'Salta indietro di 10s su Layer {} (prove)':
+        'Cofnij o 10 s na warstwie {} (próby)',
+    'Metti in Pausa Layer {} (prove)':
+        'Wstrzymaj warstwę {} (próby)',
+    'Video (*.mp4 *.mkv *.avi *.mov *.webm)':
+        'Wideo (*.mp4 *.mkv *.avi *.mov *.webm)',
+    'Audio (*.mp3 *.wav *.flac *.ogg *.aac *.m4a)':
+        'Audio (*.mp3 *.wav *.flac *.ogg *.aac *.m4a)',
+    'Image (*.png *.jpg *.jpeg *.bmp *.gif *.webp)':
+        'Obrazy (*.png *.jpg *.jpeg *.bmp *.gif *.webp)',
+    "Estratta cue '{}' dal gruppo (spostata sopra la scena)":
+        "Wyjęto cue '{}' z grupy (przeniesiono nad scenę)",
+    "Deleted: {} '{}' (Ctrl+Z per ripristinare)":
+        "Usunięto: {} '{}' (Ctrl+Z, aby przywrócić)",
+    'Eliminate {} cue selezionate (Ctrl+Z per ripristinare)':
+        'Usunięto zaznaczone cue: {} (Ctrl+Z, aby przywrócić)',
+    "Estratta cue '{}' dal gruppo (spostata sotto la scena)":
+        "Wyjęto cue '{}' z grupy (przeniesiono pod scenę)",
+    '— Nessun file selezionato —':
+        '— nie wybrano pliku —',
+    'Tempi: ':
+        'Czasy: ',
+    'MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]':
+        'TRYB LIVE AKTYWNY — uproszczony interfejs prowadzenia [ESC = PANIC]',
+    'MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate':
+        'TRYB PROJEKTU — edycja cue i podgląd znowu dostępne',
+    'Punti envelope azzerati':
+        'Wyzerowano punkty obwiedni',
+    'Creato taglio sezione a {}s ({} sezioni)':
+        'Utworzono cięcie sekcji w {}s (sekcji: {})',
+    'Salta':
+        'Pomiń',
+    'Sezioni azzerate: ripristinato il file originale':
+        'Wyzerowano sekcje: przywrócono oryginalny plik',
+    'Spazio insufficiente per dividere ancora in questo punto':
+        'Za mało miejsca, by jeszcze raz podzielić w tym punkcie',
+    '∞ Infinito':
+        '∞ Bez końca',
+    'Ritorno a file intero (modalità normale)':
+        'Powrót do całego pliku (tryb normalny)',
+    'Sezione unita':
+        'Sekcja scalona',
+    "Creato Gruppo Scena: '{}'":
+        "Utworzono grupę sceny: '{}'",
+    "Sciolto Gruppo: '{}'":
+        "Rozgrupowano: '{}'",
+    "Estratta cue '{}' dal gruppo (spostata all'esterno)":
+        "Wyjęto cue '{}' z grupy (przeniesiono poza nią)",
+    'Nuova Scena / Gruppo':
+        'Nowa scena / grupa',
+    'Studio Timeline Gruppo':
+        'Studio osi czasu grupy',
+    "Il gruppo '{}' non contiene ancora file multimediali.\n\nAggiungi prima delle tracce audio, video o immagini al gruppo nella scaletta principale\nper poterle allineare e sincronizzare sulla timeline a 3 layer.":
+        "Grupa '{}' nie zawiera jeszcze plików multimedialnych.\n\nNajpierw dodaj do grupy ścieżki audio, wideo lub obrazy na głównej liście cue,\naby wyrównać je i zsynchronizować na osi czasu 3 warstw.",
+    "Studio Timeline: Gruppo '{}' sincronizzato con successo ({} file allineati sui layer)":
+        "Studio osi czasu: grupa '{}' zsynchronizowana (wyrównano plików: {})",
+    'Punto IN spostato sulla testina: {}s':
+        'Punkt IN przesunięty na głowicę: {}s',
+    'Punti IN e OUT ripristinati: IN = 0.00s, OUT = Fine':
+        'Przywrócono punkty IN i OUT: IN = 0,00 s, OUT = koniec',
+    'Punto OUT impostato sulla fine del file (Fine)':
+        'Punkt OUT ustawiony na koniec pliku',
+    'Testina prima di IN: OUT impostato al minimo ({}s)':
+        'Głowica przed IN: OUT ustawiony na minimum ({}s)',
+    'OUT aggiornato':
+        'Zaktualizowano OUT',
+    'Punto OUT spostato sulla testina: {}s':
+        'Punkt OUT przesunięty na głowicę: {}s',
+    'Seleziona Immagine di Tappo (Layer 0)':
+        'Wybierz obraz zaślepki (warstwa 0)',
+    'Immagini (*.png *.jpg *.jpeg *.bmp *.webp *.svg);;Tutti i file (*)':
+        'Obrazy (*.png *.jpg *.jpeg *.bmp *.webp *.svg);;Wszystkie pliki (*)',
+    'Tappo (Layer 0) ripristinato al logo predefinito':
+        'Zaślepka (warstwa 0) przywrócona do domyślnego logo',
+    'Larghezze standard dei pannelli ripristinate':
+        'Przywrócono standardowe szerokości paneli',
+    '🔒 Pannelli Bloccati':
+        '🔒 Panele zablokowane',
+    '🔓 Pannelli Sbloccati (Trascina bordi)':
+        '🔓 Panele odblokowane (przeciągnij krawędzie)',
+    'Layout bloccato: le larghezze dei 3 pannelli principali sono fisse':
+        'Układ zablokowany: szerokości 3 głównych paneli są stałe',
+    'Layout sbloccato: trascina i divisori verticali per adattare i pannelli a piacere':
+        'Układ odblokowany: przeciągnij pionowe podziałki, aby dopasować panele',
+    'Silenzioso (Muto)':
+        'Cisza (wyciszone)',
+    'Ascolto Attivo':
+        'Odsłuch aktywny',
+    '{} arrestato e rimosso dal Live':
+        '{} zatrzymano i usunięto z Live',
+    "Compressione dinamica e normalizzazione EBU R128 per '{}' in corso...":
+        "Trwa kompresja dynamiki i normalizacja EBU R128 dla '{}'...",
+    "File originale ripristinato per '{}'":
+        "Przywrócono oryginalny plik dla '{}'",
+    'MODALITÀ JAM / CONTEST ATTIVA — Auto-Gain EBU R128 (-16 LUFS) abilitato su tutti i canali':
+        'TRYB JAM / KONKURS AKTYWNY — auto-wzmocnienie EBU R128 (-16 LUFS) na wszystkich kanałach',
+    'MODALITÀ JAM / CONTEST DISATTIVATA — Ripristinati livelli originali delle cue':
+        'TRYB JAM / KONKURS WYŁĄCZONY — przywrócono oryginalne poziomy cue',
+    "Scansione Loudness EBU R128 per '{}' in corso...":
+        "Trwa pomiar głośności EBU R128 dla '{}'...",
+    "Calcolo guadagno EBU R128 per '{}'...":
+        "Obliczanie wzmocnienia EBU R128 dla '{}'...",
+    "File sorgente non trovato per l'ottimizzazione dinamica.":
+        'Nie znaleziono pliku źródłowego do optymalizacji dynamiki.',
+    "Dinamica ottimizzata con successo per '{}' (-16 LUFS, Limiter -1.5 dBFS)":
+        "Zoptymalizowano dynamikę dla '{}' (-16 LUFS, limiter -1,5 dBFS)",
+    "Analisi Loudness per '{}': {} LUFS (Peak {} dBFS → Gain {}{} dB)":
+        "Analiza głośności dla '{}': {} LUFS (szczyt {} dBFS → wzmocnienie {}{} dB)",
+    '&File':
+        '&Plik',
+    'Apri &recenti':
+        'Otwórz &ostatnie',
+    '&Modifica':
+        '&Edycja',
+    '↶ &Annulla':
+        '↶ &Cofnij',
+    '↷ &Ripeti':
+        '↷ &Ponów',
+    '&Show':
+        '&Przedstawienie',
+    '🎚 Modalità &Jam / Contest (Auto-Gain EBU R128)':
+        '🎚 Tryb &Jam / konkurs (auto-wzmocnienie EBU R128)',
+    'Abilita il livellamento automatico EBU R128 (-16 LUFS) per contest, jam session e file non calibrati.':
+        'Włącza automatyczne wyrównanie EBU R128 (-16 LUFS) dla konkursów, jam session i nieskalibrowanych plików.',
+    '&View':
+        '&Widok',
+    '🎭 Modalità &LIVE (Show Mode)':
+        '🎭 Tryb &LIVE (przedstawienie)',
+    '🎨 &Tema Interfaccia':
+        '🎨 &Motyw interfejsu',
+    '🔔 &Segnali Acustici Operatore (Earcons)':
+        '🔔 &Sygnały dźwiękowe operatora',
+    'Accessibilità Regia: Emette un discreto segnale sonoro di conferma ad ogni GO, STOP e PAUSA.\nUtile per operatori non vedenti o per chi guarda il palco senza guardare il monitor.':
+        'Dostępność: przy każdym GO, STOP i PAUZIE odtwarza dyskretny dźwięk potwierdzenia.\nPrzydatne dla niewidomych operatorów lub gdy patrzysz na scenę zamiast na monitor.',
+    '📐 &Studio Superfici di Proiezione & Mapping…':
+        '📐 Studio &powierzchni projekcji i mappingu…',
+    'Gestisci schermi virtuali, keystone a 4 angoli e configurazioni multi-proiettore':
+        'Zarządzaj ekranami wirtualnymi, korekcją trapezu 4 narożników i układami wielu projektorów',
+    '👁 &Mostra Guide sul Proiettore Live':
+        '👁 &Pokaż linie pomocnicze na projektorze',
+    'Proietta mire ottiche, griglia di precisione e contorni delle superfici sul palco':
+        'Wyświetla plansze testowe, siatkę i obrysy powierzchni na scenie',
+    '🔒 &Blocca Larghezza Pannelli':
+        '🔒 &Zablokuj szerokość paneli',
+    '&Help':
+        'Pomo&c',
+    'GO (Next Cue) — [ SPAZIO ]':
+        'GO (następny cue) — [ SPACJA ]',
+    'Caricamento Rapido (Drag && Drop)':
+        'Szybkie dodawanie (przeciągnij i upuść)',
+    '⚙ Dispositivi · Uscite':
+        '⚙ Urządzenia · wyjścia',
+    'Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro).':
+        'Ustaw główne audio sali, słuchawki operatora (PFL), ekran Live i profil sprzętu (Eko/Pro).',
+    'Dispositivi e Uscite Hardware':
+        'Urządzenia i wyjścia sprzętowe',
+    'Apre il pannello di configurazione delle uscite audio sala, monitor cuffia, schermo video live e profili prestazionali.':
+        'Otwiera panel ustawień wyjść audio sali, odsłuchu w słuchawkach, ekranu wideo Live i profili wydajności.',
+    '🔒 Layout: Bloccato':
+        '🔒 Układ: zablokowany',
+    'Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\nDi default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere.':
+        'Blokuje lub odblokowuje szerokości 3 głównych paneli (lista cue, podgląd, inspektor).\nDomyślnie zablokowane, by uniknąć przypadkowych zmian; kliknij, aby zmieniać rozmiar.',
+    'Blocca Larghezza Pannelli':
+        'Zablokuj szerokość paneli',
+    'Attiva o disattiva il blocco delle larghezze dei pannelli di regia per prevenire spostamenti accidentali.':
+        'Włącza lub wyłącza blokadę szerokości paneli, aby zapobiec przypadkowym zmianom.',
+    'Modalità Jam / Contest (Default: OFF).\nPROTEZIONE REGIA: Tieni premuto per 5 secondi per attivare.\nQuando attiva, applica automaticamente il livellamento sonoro EBU R128 (-16 LUFS)\nsu tutti i media per evitare salti improvvisi di volume durante contest o jam session.\nPer disattivare: tieni premuto 1.5 secondi.':
+        'Tryb jam / konkurs (domyślnie: WYŁ.).\nOCHRONA: przytrzymaj 5 sekund, aby włączyć.\nGdy aktywny, automatycznie wyrównuje głośność EBU R128 (-16 LUFS)\nwe wszystkich mediach, by uniknąć nagłych skoków głośności podczas konkursów lub jam session.\nAby wyłączyć: przytrzymaj 1,5 sekundy.',
+    'Modalità Jam e Contest Livellamento Audio':
+        'Tryb wyrównania głośności jam / konkurs',
+    'Attiva o disattiva il livellamento automatico EBU R128 a -16 LUFS. Richiede una pressione continua di 5 secondi per attivare.':
+        'Włącza lub wyłącza automatyczne wyrównanie EBU R128 do -16 LUFS. Włączenie wymaga przytrzymania przez 5 sekund.',
+    '📡 Remoto: OFF':
+        '📡 Zdalnie: WYŁ.',
+    "Controllo Remoto LAN per Smartphone/Tablet (Web) e OSC.\nClicca per mostrare il QR Code, l'indirizzo IP e le opzioni di comando.":
+        'Zdalne sterowanie w sieci LAN ze smartfona/tabletu (przeglądarka) i OSC.\nKliknij, aby pokazać kod QR, adres IP i opcje poleceń.',
+    'Controllo Remoto LAN Web e OSC':
+        'Zdalne sterowanie LAN (web i OSC)',
+    'Mostra il codice QR per smartphone e la configurazione del server web e OSC.':
+        'Pokazuje kod QR dla smartfona oraz ustawienia serwera web i OSC.',
+    'Ready — No show loaded':
+        'Gotowy — nie wczytano przedstawienia',
+    '&New Show':
+        '&Nowe przedstawienie',
+    '&Open Show…':
+        '&Otwórz przedstawienie…',
+    '&Save Show':
+        '&Zapisz przedstawienie',
+    'Save Show &As…':
+        'Zapisz &jako…',
+    '&Quit':
+        'Za&kończ',
+    '&GO (Next Cue)':
+        '&GO (następny cue)',
+    '&Blackout':
+        '&Wygaszenie (blackout)',
+    'Imposta Immagine di &Tappo (Layer 0)…':
+        'Ustaw obraz &zaślepki (warstwa 0)…',
+    '&Ripristina Tappo Predefinito':
+        '&Przywróć domyślną zaślepkę',
+    '⚙️ &Dispositivi & Hardware (Audio / Video / Profilo)…':
+        '⚙️ &Urządzenia i sprzęt (audio / wideo / profil)…',
+    '📡 &Controllo Remoto LAN (Web & OSC)…':
+        '📡 &Zdalne sterowanie LAN (web i OSC)…',
+    '↺ &Ripristina Larghezze Standard':
+        '↺ &Przywróć standardowe szerokości',
+    '&Info Hardware & Accelerazione…':
+        '&Informacje o sprzęcie i akceleracji…',
+    '&About BlindCue':
+        '&O programie BlindCue',
+    'Nessun progetto recente':
+        'Brak ostatnich projektów',
+    'Svuota elenco recenti':
+        'Wyczyść listę ostatnich',
+    '🎚 Jam: OFF (Tieni 5s)':
+        '🎚 Jam: WYŁ. (5 s)',
+    '🎚 Jam Mode: ATTIVO':
+        '🎚 Tryb jam: WŁ.',
+    '{}. {}  (non trovato)':
+        '{}. {}  (nie znaleziono)',
+    'BlindCue — Ripristino Sessione (Crash Recovery)':
+        'BlindCue — przywracanie sesji (po awarii)',
+    'È stata rilevata una sessione precedente interrotta o non salvata!\n\n• Data ultimo autosave: {}\n• Cue recuperabili: {}\n\nVuoi ripristinare il progetto da dove era stato interrotto?':
+        'Wykryto poprzednią przerwaną lub niezapisaną sesję!\n\n• Data ostatniego autozapisu: {}\n• Cue do odzyskania: {}\n\nCzy przywrócić projekt od miejsca przerwania?',
+    'Nuovo show creato':
+        'Utworzono nowe przedstawienie',
+    'Apri Show BlindCue':
+        'Otwórz przedstawienie BlindCue',
+    'BlindCue Show (*.blindcue *.json);;Tutti i file (*)':
+        'Przedstawienie BlindCue (*.blindcue *.json);;Wszystkie pliki (*)',
+    'Salva Show Con Nome':
+        'Zapisz przedstawienie jako',
+    'BlindCue Show (*.blindcue);;JSON File (*.json)':
+        'Przedstawienie BlindCue (*.blindcue);;Plik JSON (*.json)',
+    'Salvataggio show':
+        'Zapisywanie przedstawienia',
+    'Vuoi copiare i file audio/video dentro la cartella dello show?\n\nSì: archivio portatile, lo show si apre anche su un altro PC.\nNo: salva solo i collegamenti ai file originali (nessuna copia).\n\nIn entrambi i casi i file originali non vengono mai modificati.':
+        'Czy skopiować pliki audio/wideo do folderu przedstawienia?\n\nTak: przenośne archiwum, przedstawienie otworzy się też na innym komputerze.\nNie: zapisuje tylko odnośniki do oryginalnych plików (bez kopiowania).\n\nW obu przypadkach oryginalne pliki nie są zmieniane.',
+    'Sessione ripristinata con successo ({} cue)':
+        'Przywrócono sesję (cue: {})',
+    'Nuovo Show':
+        'Nowe przedstawienie',
+    'Ci sono modifiche non salvate nel progetto corrente.\nVuoi salvarle prima di creare un nuovo show?':
+        'Bieżący projekt ma niezapisane zmiany.\nZapisać je przed utworzeniem nowego przedstawienia?',
+    'Apri Show':
+        'Otwórz przedstawienie',
+    'Ci sono modifiche non salvate.\nVuoi salvare prima di aprire un altro show?':
+        'Są niezapisane zmiany.\nZapisać przed otwarciem innego przedstawienia?',
+    'Caricato: {} ({} cue)':
+        'Wczytano: {} (cue: {})',
+    'Chiusura BlindCue':
+        'Zamykanie BlindCue',
+    'Ci sono modifiche non salvate nel progetto.\nVuoi salvare prima di uscire?':
+        'Projekt ma niezapisane zmiany.\nZapisać przed wyjściem?',
+    '\n… e altre {} cue':
+        '\n… i jeszcze {} cue',
+    'Salvato {} con {} file media copiati':
+        'Zapisano {}, skopiowano plików mediów: {}',
+    '— Inattivo / Nero —':
+        '— bezczynny / czerń —',
+    'Nuovo Spettacolo':
+        'Nowe przedstawienie',
+    '{} Cue ({} scene)':
+        '{} cue ({} scen)',
+    'PROGETTAZIONE: LIVE MIRROR ATTIVO (Modifiche visibili sullo schermo esterno)':
+        'PROJEKTOWANIE: LIVE MIRROR WŁ. (zmiany widać na ekranie zewnętrznym)',
+    'LIVE MIRROR DISATTIVATO — Anteprima isolata (Pronto per lo spettacolo)':
+        'LIVE MIRROR WYŁ. — odizolowany podgląd (gotowe do przedstawienia)',
+    'Selezione mista: {} cue':
+        'Mieszane zaznaczenie: {} cue',
+    'BLACKOUT — Output ripristinato a Layer 0 (Tappo)':
+        'WYGASZENIE — obraz wrócił do warstwy 0 (zaślepka)',
+    '🚨 PANIC (0ms) — STOP TOTALE ESEGUITO':
+        '🚨 PANIC (0 ms) — WSZYSTKO ZATRZYMANE',
+    'Scaletta vuota — Aggiungi prima dei file multimediali':
+        'Pusta lista cue — najpierw dodaj pliki multimedialne',
+    "LIVE → {} '{}' (Layer {}) | Standby: {} '{}'":
+        "LIVE → {} '{}' (warstwa {}) | Standby: {} '{}'",
+    "LIVE → {} '{}' (Layer {}) — Fine scaletta (premi GO per rilanciare)":
+        "LIVE → {} '{}' (warstwa {}) — koniec listy (naciśnij GO, aby zacząć od nowa)",
+    '↶ Annulla (Ctrl+Z) — Stato precedente ripristinato ({} nel registro)':
+        '↶ Cofnij (Ctrl+Z) — przywrócono poprzedni stan ({} w historii)',
+    '↷ Ripeti — Modifica ripristinata ({} ripetibili)':
+        '↷ Ponów — przywrócono zmianę ({} do ponowienia)',
+    'BlindCue – [{}{}] – Director Panel v{}':
+        'BlindCue – [{}{}] – Panel reżyserski v{}',
+    'Nessuna operazione da annullare':
+        'Nie ma czego cofnąć',
+    'Nessuna operazione da ripetere':
+        'Nie ma czego ponowić',
+    'zoom {}%  ·  rotellina = zoom · centrale = sposta · Ctrl+0 = 100%':
+        'zoom {}%  ·  kółko = zoom · środkowy = przesuwanie · Ctrl+0 = 100%',
+    'Maschera poligonale immagine':
+        'Maska wielokątna obrazu',
+    'Clic per aggiungere un punto · trascina un punto per spostarlo · clic destro per eliminarlo (minimo 3 punti).\nRotellina del mouse = zoom sul cursore · trascina con il tasto centrale per spostarti · Ctrl+0 = 100%.\nLa linea tratteggiata segue il cursore e mostra il lato successivo: il poligono si chiude da solo.\nIl file originale non viene mai modificato: la maschera viene salvata nel progetto.':
+        'Kliknij, aby dodać punkt · przeciągnij punkt, aby go przesunąć · prawy klik usuwa punkt (minimum 3 punkty).\nKółko myszy = zoom w miejscu kursora · przeciąganie środkowym przyciskiem przesuwa widok · Ctrl+0 = 100%.\nLinia przerywana podąża za kursorem i pokazuje kolejny bok: wielokąt zamyka się sam.\nOryginalny plik nie jest zmieniany: maska jest zapisywana w projekcie.',
+    '0 punti':
+        '0 punktów',
+    'Svuota':
+        'Wyczyść',
+    'Riduci zoom (Ctrl+−)':
+        'Pomniejsz (Ctrl+−)',
+    'Aumenta zoom (Ctrl++)':
+        'Powiększ (Ctrl++)',
+    "Torna all'immagine intera (Ctrl+0)":
+        'Wróć do całego obrazu (Ctrl+0)',
+    'Bordo sfumato':
+        'Miękka krawędź',
+    'Ammorbidisce il contorno della maschera: 0 = taglio netto.\nLa sfumatura è proporzionata al frame, quindi identica sul proiettore e in Pre-Viz.':
+        'Zmiękcza krawędź maski: 0 = ostre cięcie.\nZmiękczenie jest proporcjonalne do kadru, więc wygląda tak samo na projektorze i w Pre-Viz.',
+    'Applica':
+        'Zastosuj',
+    '{} punti':
+        '{} punktów',
+    'Nessun punto':
+        'Brak punktów',
+    'Immagine non disponibile':
+        'Obraz niedostępny',
+    '📐 CALIBRAZIONE SUPERFICI LIVE · Premi F7 per Chiudere':
+        '📐 KALIBRACJA POWIERZCHNI LIVE · naciśnij F7, aby zamknąć',
+    'BlindCue – Live Output [Monitor Simulato]':
+        'BlindCue – wyjście Live [monitor symulowany]',
+    'GIUNZIONE 50% (DUAL)':
+        'ŁĄCZENIE 50% (PODWÓJNE)',
+    ' · ⭕ Ellisse':
+        ' · ⭕ Elipsa',
+    ' · 🔲 Buco':
+        ' · 🔲 Otwór',
+    '⭕ BUCO ELLITTICO':
+        '⭕ OTWÓR ELIPTYCZNY',
+    '⭕ SAGOMA ELLISSE':
+        '⭕ KSZTAŁT ELIPSY',
+    '🔲 BUCO / FORATURA':
+        '🔲 OTWÓR / WYCIĘCIE',
+    '🔲 SAGOMA INTERNA':
+        '🔲 KSZTAŁT WEWNĘTRZNY',
+    '🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)':
+        '🎵 ODTWARZANIE AUDIO W PODGLĄDZIE (PRE-VIZ)',
+    '⏸ TRACCIA AUDIO IN STANDBY':
+        '⏸ ŚCIEŻKA AUDIO W GOTOWOŚCI',
+    'Pre-ascolto attivo in cuffia • Monitor sala mutato':
+        'Odsłuch w słuchawkach aktywny • nagłośnienie sali wyciszone',
+    "Premi ▶ Play sotto l'anteprima per pre-ascoltare in cuffia":
+        'Naciśnij ▶ Odtwórz pod podglądem, aby odsłuchać w słuchawkach',
+    '🎬 VIDEO CARICATO IN PRE-VIZ — PREMI PLAY':
+        '🎬 WIDEO WCZYTANE DO PRE-VIZ — NACIŚNIJ ODTWÓRZ',
+    'ANTEPRIMA PRE-VIZ (Sandbox)':
+        'PODGLĄD PRE-VIZ (piaskownica)',
+    'Riproduci anteprima / Pre-viz':
+        'Odtwórz podgląd / Pre-viz',
+    "Metti in pausa l'anteprima":
+        'Wstrzymaj podgląd',
+    '⏹  Stop':
+        '⏹  Stop',
+    'Arresta anteprima e riavvolgi':
+        'Zatrzymaj podgląd i przewiń na początek',
+    "Se attivo (default), l'anteprima è muta. Clicca per ascoltare l'audio su richiesta.":
+        'Gdy włączone (domyślnie), podgląd jest wyciszony. Kliknij, aby odsłuchać dźwięk.',
+    '🔗 MIRROR LIVE: OFF':
+        '🔗 MIRROR LIVE: WYŁ.',
+    "Modalità Progettazione: se ATTIVO, le modifiche a Crop, Scala e Posizione vengono proiettate in tempo reale sullo schermo LIVE per calibrare il videoproiettore/schermo.\nIn Spettacolo dal vivo: lasciare DISATTIVATO per isolare completamente l'anteprima.":
+        'Tryb projektowania: gdy WŁĄCZONY, zmiany przycięcia, skali i pozycji są od razu wyświetlane na ekranie LIVE, aby skalibrować projektor/ekran.\nPodczas przedstawienia: zostaw WYŁĄCZONY, aby podgląd był całkowicie odizolowany.',
+    '🔴 MIRROR: ON':
+        '🔴 MIRROR: WŁ.',
+    '🔒 MUTE: ON':
+        '🔒 WYCISZ: WŁ.',
+    '🔊 CUFFIA: ON':
+        '🔊 SŁUCHAWKI: WŁ.',
+    "\n<b>Indirizzo OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>\n• <b style='color:#4ade80;'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>\n• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>\n• <b style='color:#f87171;'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>\n• <b style='color:#fbbf24;'>/pause</b> oppure <b>/resume</b> &nbsp;→&nbsp; Mette in pausa o riprende l'emissione<br>\n• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>\n• <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>\n• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti\n        ":
+        "\n<b>Adres OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>\n• <b style='color:#4ade80;'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla cue w standby<br>\n• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>\n• <b style='color:#f87171;'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; wygaszenie Live (powrót do warstwy 0)<br>\n• <b style='color:#fbbf24;'>/pause</b> lub <b>/resume</b> &nbsp;→&nbsp; pauza lub wznowienie<br>\n• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>\n• <b style='color:#38bdf8;'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>\n• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń\n        ",
+    '📡 Controllo Remoto LAN (Web & OSC) — BlindCUE':
+        '📡 Zdalne sterowanie LAN (web i OSC) — BlindCUE',
+    '📡 CONTROLLO REMOTO IN RETE LOCALE (LAN REGIA)':
+        '📡 ZDALNE STEROWANIE W SIECI LOKALNEJ (LAN)',
+    'Telecomando Operatore (GO/Pause/Panic), Monitor Regista (Sola Lettura) e Server OSC per automazione.':
+        'Pilot operatora (GO/pauza/panic), monitor reżysera (tylko podgląd) i serwer OSC do automatyzacji.',
+    '🔴 SERVIZI REMOTI: DISATTIVATI (Avvia)':
+        '🔴 USŁUGI ZDALNE: WYŁ. (uruchom)',
+    '📱 Telecomando Operatore (Master LIVE)':
+        '📱 Pilot operatora (sterowanie LIVE)',
+    '👁️ Monitor Regista (Sola Lettura)':
+        '👁️ Monitor reżysera (tylko podgląd)',
+    '🎛️ Automazione OSC && Porte':
+        '🎛️ Automatyzacja OSC i porty',
+    '🛡️ SICUREZZA REGIA — PROTEZIONE PIN (ANTI-BURLONE)':
+        '🛡️ BEZPIECZEŃSTWO — OCHRONA KODEM PIN',
+    'Proteggi con Codice PIN a 6 Cifre':
+        'Chroń 6-cyfrowym kodem PIN',
+    'PIN Attuale:':
+        'Aktualny PIN:',
+    '🎲 Nuovo PIN Casuale':
+        '🎲 Nowy losowy PIN',
+    'Genera un nuovo codice PIN casuale a 6 cifre e revoca le sessioni precedenti':
+        'Tworzy nowy losowy 6-cyfrowy PIN i unieważnia poprzednie sesje',
+    '⛔ Disconnetti Tutti':
+        '⛔ Rozłącz wszystkich',
+    "Sbatte fuori all'istante tutti i dispositivi connessi":
+        'Natychmiast rozłącza wszystkie podłączone urządzenia',
+    'Includi PIN nel codice QR (Accesso immediato con fotocamera)':
+        'Dołącz PIN do kodu QR (wejście od razu aparatem)',
+    "💡 <b>Massima Tranquillità in Teatro:</b> Inquadrando il monitor con lo smartphone si entra all'istante senza digitare nulla. Chiunque altro sulla LAN che tenti di accedere via browser troverà il tastierino PIN casuale a 6 cifre con blocco forzatura dopo 5 errori.":
+        '💡 <b>Spokój w teatrze:</b> zeskanowanie kodu z monitora smartfonem daje dostęp od razu, bez wpisywania. Każdy inny w sieci LAN, kto spróbuje wejść przez przeglądarkę, zobaczy klawiaturę z losowym 6-cyfrowym PIN-em i blokadę po 5 błędach.',
+    '📱 Client Web connessi: 0':
+        '📱 Połączone urządzenia: 0',
+    'Chiudi':
+        'Zamknij',
+    'Inquadra con Smartphone\nper aprire il Telecomando LIVE':
+        'Zeskanuj smartfonem,\naby otworzyć pilota LIVE',
+    '📱 TELECOMANDO MASTER LIVE (OPERATORE)':
+        '📱 PILOT LIVE (OPERATOR)',
+    "Ideale per il tecnico sul palco o in sala durante le prove e il montaggio. Offre il controllo completo sull'emissione dei media.":
+        'Idealny dla technika na scenie lub na sali podczas prób i montażu. Daje pełną kontrolę nad emisją mediów.',
+    'Indirizzo Web:':
+        'Adres www:',
+    '📋 Copia Link':
+        '📋 Kopiuj link',
+    '🌐 Apri nel Browser':
+        '🌐 Otwórz w przeglądarce',
+    'Inquadra con Tablet / iPad\nper aprire il Monitor Regia':
+        'Zeskanuj tabletem / iPadem,\naby otworzyć monitor reżysera',
+    '👁️ MONITOR REGISTA && DIRETTORE DI SCENA (SOLA LETTURA)':
+        '👁️ MONITOR REŻYSERA I INSPICJENTA (TYLKO PODGLĄD)',
+    'Interfaccia di sola visualizzazione passiva per tablet, iPad o computer del regista e del direttore di scena. Mostra in tempo reale come lavorano i 3 layer e la scaletta, garantendo zero rischi.':
+        'Pasywny widok tylko do podglądu na tablet, iPada lub komputer reżysera i inspicjenta. Pokazuje na żywo pracę 3 warstw i listy cue, bez żadnego ryzyka.',
+    'Indirizzo Monitor:':
+        'Adres monitora:',
+    '📋 Copia Link Monitor':
+        '📋 Kopiuj link monitora',
+    '🗣️ <b>Come collegare il regista che si trova in platea:</b>':
+        '🗣️ <b>Jak podłączyć reżysera siedzącego na widowni:</b>',
+    "1. <b>A voce / Intercom (se digita a mano):</b> Digli di collegarsi al Wi-Fi del teatro, aprire il browser (Safari, Chrome o Edge) e digitare l'indirizzo IP con la porta e <code>/monitor</code> (oppure <code>/regia</code>). Inserirà poi il PIN a 6 cifre visualizzato in basso.":
+        '1. <b>Głosowo / przez interkom (gdy wpisuje ręcznie):</b> niech połączy się z Wi-Fi teatru, otworzy przeglądarkę (Safari, Chrome lub Edge) i wpisze adres IP z portem oraz <code>/monitor</code> (albo <code>/regia</code>). Potem wpisze 6-cyfrowy PIN widoczny poniżej.',
+    '2. <b>Via Messaggio / WhatsApp / Email:</b> Clicca su <b>[ 📋 Copia Link Monitor ]</b> e incollaglielo in chat. Il link copiato include già il token PIN autorizzato: al regista basterà toccare il link per entrare subito senza digitare nulla!':
+        '2. <b>Przez wiadomość / WhatsApp / e-mail:</b> kliknij <b>[ 📋 Kopiuj link monitora ]</b> i wklej w czacie. Skopiowany link zawiera już autoryzowany PIN: reżyser tylko dotyka linku i od razu wchodzi!',
+    '⚙ CONFIGURAZIONE PORTE DI RETE && PROTOCOLLI':
+        '⚙ KONFIGURACJA PORTÓW SIECIOWYCH I PROTOKOŁÓW',
+    'Abilita Servizio Web (Telecomando && Monitor Regia)':
+        'Włącz usługę web (pilot i monitor reżysera)',
+    'Porta Web:':
+        'Port web:',
+    'Abilita Server OSC UDP':
+        'Włącz serwer OSC (UDP)',
+    'Porta OSC UDP:':
+        'Port OSC (UDP):',
+    '🔄 Applica Nuove Porte':
+        '🔄 Zastosuj nowe porty',
+    '🎛 PRONTUARIO COMANDI OSC (QLab / Mixer Luci / TouchOSC)':
+        '🎛 ŚCIĄGA POLECEŃ OSC (QLab / konsoleta świateł / TouchOSC)',
+    'Ultima attività: Nessun comando ricevuto':
+        'Ostatnia aktywność: brak poleceń',
+    '✓ Disconnessi!':
+        '✓ Rozłączono!',
+    '✅ <b>Pulsante GO tattile gigante</b> con vibrazione aptica':
+        '✅ <b>Duży dotykowy przycisk GO</b> z wibracją',
+    '✅ <b>Monitor Cue in onda</b> con barra countdown in tempo reale':
+        '✅ <b>Podgląd cue na wizji</b> z paskiem odliczania na żywo',
+    '✅ <b>Pulsanti di emergenza:</b> Pausa/Riprendi, Blackout e PANIC 0ms':
+        '✅ <b>Przyciski awaryjne:</b> pauza/wznowienie, wygaszenie i PANIC 0 ms',
+    '✅ <b>Scaletta completa:</b> navigazione rapida e lancio diretto [ ▶ GO ] per singola Cue':
+        '✅ <b>Pełna lista cue:</b> szybkie przewijanie i bezpośrednie [ ▶ GO ] dla każdego cue',
+    '👁️ <b>Panoramica 3 Layer Live:</b> stato simultaneo di Layer 1 (Fondo), Layer 2 (Medio) e Layer 3 (Overlay)':
+        '👁️ <b>Przegląd 3 warstw Live:</b> stan warstwy 1 (tło), 2 (środek) i 3 (nakładka) jednocześnie',
+    '👁️ <b>Prossimo Lancio in Standby:</b> Q in attesa, destinazione layer, fade e tempi di transizione':
+        '👁️ <b>Następny w standby:</b> oczekujące Q, docelowa warstwa, przejście i czasy',
+    '👁️ <b>Scaletta Dinamica Completa:</b> stato live, tipi media, tempi ed avanzamento':
+        '👁️ <b>Pełna lista cue na żywo:</b> stan, typy mediów, czasy i postęp',
+    "🔒 <b style='color:#f87171;'>Zero comandi e zero click:</b> nessun pulsante interattivo, nessun rischio di errore accidentale":
+        "🔒 <b style='color:#f87171;'>Zero poleceń i kliknięć:</b> brak przycisków, brak ryzyka przypadkowego błędu",
+    '🟢 SERVIZI: ATTIVI{} (Arresta)':
+        '🟢 USŁUGI: WŁ.{} (zatrzymaj)',
+    '🔴 SERVIZI REMOTI: OFF (Avvia)':
+        '🔴 USŁUGI ZDALNE: WYŁ. (uruchom)',
+    'QR Code\nNon disponibile':
+        'Kod QR\nniedostępny',
+    '✓ Copiato!':
+        '✓ Skopiowano!',
+    'Rimuovi questa sezione e uniscila alla adiacente':
+        'Usuń tę sekcję i połącz z sąsiednią',
+    'OUT/Fine':
+        'OUT/koniec',
+    'Sezione {} ({}s – {})\nClicca per saltare subito qui':
+        'Sekcja {} ({}s – {})\nKliknij, aby od razu tu przeskoczyć',
+    'Ripetizioni o salto automatico per la Sezione {} (default: x1)':
+        'Powtórzenia lub automatyczne pominięcie sekcji {} (domyślnie: x1)',
+    'Fine File':
+        'Koniec pliku',
+    '{} (Copia)':
+        '{} (kopia)',
+    'BlindCue – Studio Superfici di Proiezione, Mapping & Maschere':
+        'BlindCue – studio powierzchni projekcji, mappingu i masek',
+    'Studio Superfici di Proiezione, Mapping & Maschere':
+        'Studio powierzchni projekcji, mappingu i masek',
+    'Schermi virtuali, keystone 4 angoli, maschere circolari, forature sagomate e mascherature PNG':
+        'Ekrany wirtualne, korekcja trapezu 4 narożników, maski okrągłe, wycięcia i maski PNG',
+    '👁 Mostra Guide sul Proiettore Live (F7)':
+        '👁 Pokaż linie pomocnicze na projektorze (F7)',
+    'SUPERFICI DEFINITE':
+        'ZDEFINIOWANE POWIERZCHNIE',
+    '＋ Nuova':
+        '＋ Nowa',
+    '⎘ Duplica':
+        '⎘ Duplikuj',
+    '✕ Elimina':
+        '✕ Usuń',
+    'GEOMETRIA & PRESET':
+        'GEOMETRIA I USTAWIENIA GOTOWE',
+    '⬛ Rettangolare':
+        '⬛ Prostokąt',
+    '⬡ Prospettiva (4 Angoli)':
+        '⬡ Perspektywa (4 narożniki)',
+    '— Seleziona Preset Rapido —':
+        '— wybierz gotowe ustawienie —',
+    "REGOLAZIONE FINE & UNITA'":
+        'DOKŁADNE USTAWIENIA I JEDNOSTKI',
+    '📐 Pixel (px)':
+        '📐 Piksele (px)',
+    '％ Percentuale (%)':
+        '％ Procenty (%)',
+    '🎭 MASCHERA & RITAGLIO (MASK)':
+        '🎭 MASKA I PRZYCIĘCIE',
+    'Nessuna (Piena)':
+        'Brak (pełna)',
+    '⭕ Ellisse / Cerchio':
+        '⭕ Elipsa / koło',
+    '🔲 Rettangolo / Finestra (Cutout)':
+        '🔲 Prostokąt / okno (wycięcie)',
+    '🖼 Maschera Immagine PNG':
+        '🖼 Maska z obrazu PNG',
+    'Comportamento / Direzione:':
+        'Działanie / kierunek:',
+    "🔘 Proietta all'Interno (Sagoma)":
+        '🔘 Wyświetlaj wewnątrz (kształt)',
+    '🔲 Buca al Centro (Foratura)':
+        '🔲 Otwór w środku (wycięcie)',
+    '📁 Scegli Immagine PNG...':
+        '📁 Wybierz obraz PNG...',
+    '✕ Rimuovi':
+        '✕ Usuń',
+    'Nessun file selezionato':
+        'Nie wybrano pliku',
+    '👁 Evidenzia Bordo Maschera sul Proiettore Live':
+        '👁 Podświetl krawędź maski na projektorze',
+    '🖥 MULTI-PROIETTORE & SPAN':
+        '🖥 WIELE PROJEKTORÓW I ROZCIĄGNIĘCIE',
+    'Per 2 o 3 proiettori affiancati, estendi il desktop nel sistema operativo e usa lo Span:':
+        'Dla 2 lub 3 projektorów obok siebie rozszerz pulpit w systemie i użyj rozciągnięcia (span):',
+    'Estendi su Tutti i Monitor Esterni (Span)':
+        'Rozciągnij na wszystkie monitory zewnętrzne (span)',
+    '💡 Mouse: trascina i vertici o il riquadro. Trascina direttamente il buco sul canvas. Bordo Guida: proietta il contorno esatto sul palco per allinearlo al millimetro.':
+        '💡 Mysz: przeciągaj wierzchołki lub ramkę. Otwór przeciągasz bezpośrednio na płótnie. Krawędź pomocnicza wyświetla dokładny obrys na scenie, by wyrównać go co do milimetra.',
+    'Le modifiche sono applicate in tempo reale al motore di riproduzione.':
+        'Zmiany są od razu stosowane w silniku odtwarzania.',
+    'Salva & Chiudi':
+        'Zapisz i zamknij',
+    'Superficie':
+        'Powierzchnia',
+    'Seleziona Immagine Maschera (PNG / Immagine)':
+        'Wybierz obraz maski (PNG / obraz)',
+    'Immagini (*.png *.jpg *.jpeg *.bmp *.webp);;Tutti i file (*.*)':
+        'Obrazy (*.png *.jpg *.jpeg *.bmp *.webp);;Wszystkie pliki (*.*)',
+    'Nome:':
+        'Nazwa:',
+    'Preset:':
+        'Ustawienie:',
+    'C1 · Alto SX (TL)':
+        'C1 · lewy górny (TL)',
+    'C2 · Alto DX (TR)':
+        'C2 · prawy górny (TR)',
+    'C3 · Basso DX (BR)':
+        'C3 · prawy dolny (BR)',
+    'C4 · Basso SX (BL)':
+        'C4 · lewy dolny (BL)',
+    'Forma:':
+        'Kształt:',
+    'Sfumatura Bordo (Feather):':
+        'Zmiękczenie krawędzi:',
+    'Netto (0px)':
+        'Ostra (0px)',
+    'Morbido (15px)':
+        'Miękka (15px)',
+    'Vignetta (35px)':
+        'Winieta (35px)',
+    'Larghezza:':
+        'Szerokość:',
+    'Altezza:':
+        'Wysokość:',
+    'Multi-Monitor Esteso':
+        'Rozszerzony pulpit na wiele monitorów',
+    "La finestra di uscita è stata estesa su tutti i monitor ({}×{} px).\nI preset 'Doppio Proiettore' mapperanno automaticamente ciascuna metà dello schermo!":
+        "Okno wyjścia rozciągnięto na wszystkie monitory ({}×{} px).\nUstawienia 'Dwa projektory' same przypiszą każdą połowę ekranu!",
+    'Monitor Singolo Rilevato':
+        'Wykryto jeden monitor',
+    'È presente un solo schermo collegato. Per usare lo spanning multi-proiettore, collega un secondo monitor/proiettore alle uscite HDMI o DisplayPort.':
+        'Podłączony jest tylko jeden ekran. Aby rozciągnąć obraz na kilka projektorów, podłącz drugi monitor/projektor do wyjścia HDMI lub DisplayPort.',
+    '🔲 Buco: {}, {} px · Dim: {} × {} px':
+        '🔲 Otwór: {}, {} px · rozmiar: {} × {} px',
+    'Pos: {}, {} px · Dim: {} × {} px':
+        'Poz.: {}, {} px · rozmiar: {} × {} px',
+    'Angolo Attivo:':
+        'Aktywny narożnik:',
+    'Corner X:':
+        'Narożnik X:',
+    'Corner Y:':
+        'Narożnik Y:',
+    '▲ ALTO / TOP ▲':
+        '▲ GÓRA ▲',
+    '▼ BASSO ▼':
+        '▼ DÓŁ ▼',
+    '◀ SX':
+        '◀ L',
+    'DX ▶':
+        'P ▶',
+    'L0 TAPPO • {}×{} ({})':
+        'L0 TŁO • {}×{} ({})',
+    'Obsidian Slate (Regia Pro · Predefinito)':
+        'Obsidian Slate (reżyserka pro · domyślny)',
+    'Tema scuro broadcast calibrato per ambienti di regia con luce soffusa. Morbido e riposante.':
+        'Ciemny motyw dopasowany do słabo oświetlonej reżyserki. Miękki i łagodny dla oczu.',
+    'Carbon Monocromo (100% Scala di Grigi · Bianco Puro)':
+        'Carbon Mono (100% skala szarości · czysta biel)',
+    'Architettura al 100% in scala di grigi senza alcun colore: solo seta bianca, argento e grafite per la massima chiarezza e accessibilità assoluta.':
+        'W 100% skala szarości, bez kolorów: biel, srebro i grafit dla maksymalnej czytelności i dostępności.',
+    'Warm Amber Studio (Caldo Analogico · Valvolare)':
+        'Warm Amber Studio (ciepły, analogowy)',
+    'Palette calda e organica ispirata ai banchi audio analogici valvolari: toni caffè tostato, accenti ambra dorata e rame per il massimo comfort visivo.':
+        'Ciepła paleta inspirowana analogowymi konsoletami lampowymi: odcienie kawy, złoty bursztyn i miedź dla komfortu oczu.',
+    'Nessun Colore (Predefinito)':
+        'Bez koloru (domyślnie)',
+    'Rosso — Atto / Effetto':
+        'Czerwony — akt / efekt',
+    'Ambra — Dialogo / Luce Calda':
+        'Bursztynowy — dialog / ciepłe światło',
+    'Verde — Musica / Ambiente':
+        'Zielony — muzyka / tło dźwiękowe',
+    'Ciano — Video / Proiezione':
+        'Błękitny — wideo / projekcja',
+    'Blu — Cambio Scena':
+        'Niebieski — zmiana sceny',
+    'Viola — Sogno / Atmosfera':
+        'Fioletowy — sen / nastrój',
+    'Magenta — Evento Speciale':
+        'Purpurowy — wydarzenie specjalne',
+    'Curva Fade IN / OUT':
+        'Krzywa Fade IN / OUT',
+    "Forma d'Onda e Automazioni (Timeline)":
+        'Przebieg i automatyzacja (oś czasu)',
+    '↦ IN Testina':
+        '↦ IN na głowicy',
+    'Imposta il punto IN esattamente sulla testina di lettura (Scorciatoia: I)':
+        'Ustawia punkt IN dokładnie na głowicy (skrót: I)',
+    'OUT Testina ↤':
+        'OUT na głowicy ↤',
+    'Imposta il punto OUT esattamente sulla testina di lettura (Scorciatoia: O)':
+        'Ustawia punkt OUT dokładnie na głowicy (skrót: O)',
+    'Testina: --:--.--':
+        'Głowica: --:--.--',
+    '⟲ Reset IN/OUT':
+        '⟲ Reset IN/OUT',
+    'Ripristina IN a 0.00s e OUT a Fine file':
+        'Przywróć IN na 0,00 s i OUT na koniec pliku',
+    '🔊 Volume':
+        '🔊 Głośność',
+    "Modifica la curva Volume sulla forma d'onda":
+        'Edytuj krzywą głośności na przebiegu',
+    '👁 Opacità':
+        '👁 Krycie',
+    "Modifica l'opacità lungo il file video sulla stessa timeline":
+        'Edytuj krycie wzdłuż pliku wideo na tej samej osi czasu',
+    'Finestra temporale visiva per immagini a durata infinita':
+        'Okno czasu dla obrazów wyświetlanych bez końca',
+    'Forma della rampa Fade IN / OUT (Logaritmica consigliata per audio)':
+        'Kształt narastania Fade IN / OUT (dla audio zalecana logarytmiczna)',
+    '⟲ Reset Punti':
+        '⟲ Wyzeruj punkty',
+    'Elimina tutti i punti sulla linea Volume/Opacità':
+        'Usuwa wszystkie punkty na linii głośności/krycia',
+    '✂ Dividi':
+        '✂ Podziel',
+    'Dividi virtualmente il file alla testina in sezioni A, B, C...':
+        'Wirtualnie dzieli plik na głowicy na sekcje A, B, C...',
+    '⏭ Esci Loop':
+        '⏭ Wyjdź z pętli',
+    'Salta immediatamente fuori dalla sezione ripetuta verso la successiva':
+        'Natychmiast wychodzi z powtarzanej sekcji do następnej',
+    '↺ Reset Sez.':
+        '↺ Wyzeruj sekcje',
+    'Rimuovi tutte le sezioni virtuali e torna al file intero':
+        'Usuń wszystkie wirtualne sekcje i wróć do całego pliku',
+    "Zoom indietro forma d'onda (rotella giù)":
+        'Pomniejsz przebieg (kółko w dół)',
+    "Zoom forma d'onda — clicca per ripristinare 1.0× (o doppio clic / Ctrl+0)":
+        'Zoom przebiegu — kliknij, aby przywrócić 1,0× (albo dwuklik / Ctrl+0)',
+    "Zoom avanti forma d'onda (rotella su)":
+        'Powiększ przebieg (kółko w górę)',
+    "Nessuna forma d'onda caricata":
+        'Nie wczytano przebiegu',
+    'IN: 0.00s':
+        'IN: 0.00s',
+    'OUT: Fine':
+        'OUT: koniec',
+    'Vista {}s':
+        'Widok {}s',
+    'Opacità':
+        'Krycie',
+    'Volume':
+        'Głośność',
+    'Layer {}':
+        'Warstwa {}',
+    'Layer comune: L{}':
+        'Wspólna warstwa: L{}',
+    'Fade: {}':
+        'Fade: {}',
+    'Logaritmica':
+        'Logarytmiczna',
+    '🖥️ <b>CPU:</b> {} Core ({}) | 💾 <b>RAM:</b> {} GB (Disp: {} GB) | 🎮 <b>GPU:</b> {}':
+        '🖥️ <b>CPU:</b> {} rdz. ({}) | 💾 <b>RAM:</b> {} GB (wolne: {} GB) | 🎮 <b>GPU:</b> {}',
+    'VA-API Attiva':
+        'VA-API aktywne',
+    'PROSSIMA IN STANDBY:  ':
+        'NASTĘPNY W STANDBY:  ',
+    'PRONTO':
+        'GOTOWY',
+    'ATTESA':
+        'CZEKA',
+    'Testina: {}':
+        'Głowica: {}',
+    'Added: {}':
+        'Dodano: {}',
+    '💡 {}':
+        '💡 {}',
+    '📁 {} cue nel gruppo · Durata stimata: {}':
+        '📁 {} cue w grupie · szacowany czas: {}',
+    ' (Manuale)':
+        ' (ręcznie)',
+    '+ Text':
+        '+ Tekst',
+    'Add an on-screen caption (text cue, Layer 3)':
+        'Dodaj napis na ekranie (cue tekstowe, warstwa 3)',
+    'Add Text':
+        'Dodaj tekst',
+    '✏ Edit text…':
+        '✏ Edytuj napis…',
+    'Text cue (caption)':
+        'Cue tekstowe (napis)',
+    'Type the text shown on the projector…':
+        'Wpisz tekst, który pojawi się na projektorze…',
+    'Bottom':
+        'Na dole',
+    'Center':
+        'Na środku',
+    'Top':
+        'Na górze',
+    'Bold':
+        'Pogrubienie',
+    'Dark band behind the text':
+        'Ciemny pasek pod tekstem',
+    'Shadow':
+        'Cień',
+    'Text:':
+        'Tekst:',
+    'Font size:':
+        'Wielkość liter:',
+    'Text colour:':
+        'Kolor tekstu:',
+    'Position on screen:':
+        'Położenie na ekranie:',
+    'Preview (projector):':
+        'Podgląd (projektor):',
+    'Tip: the caption goes on Layer 3 (on top of video and photos). Fade In/Out, position and crossfade are set in the Inspector like for a photo.':
+        'Wskazówka: napis trafia na warstwę 3 (nad filmem i zdjęciami). Fade In/Out, położenie i przenikanie ustawisz w Inspektorze tak jak dla zdjęcia.',
+    'Cancel':
+        'Anuluj',
+    'Text colour':
+        'Kolor tekstu',
+    'Text cue':
+        'Cue tekstowe',
+    'The selected cue is not a text cue. Add one with the "+ Text" button.':
+        'Zaznaczony cue nie jest cue tekstowym. Napis dodasz przyciskiem „+ Tekst”.',
+    'Crossfade:':
+        'Przenikanie:',
+    'Crossfade':
+        'Przenikanie',
+    "Crossfade: the picture currently shown on this cue's layer dissolves into this cue over the given time (0 = hard cut). Set Fade In to 0 when using it.":
+        'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw Fade In na 0.',
+    # ── strings found by a runtime crawl of every widget and dialog ──
+    'Colore Cue: {}':
+        'Kolor cue: {}',
+    'Colore Scena: {}':
+        'Kolor sceny: {}',
+    'Posizione: #{}':
+        'Pozycja: #{}',
+    'Q (Copione): {}':
+        'Q (scenariusz): {}',
+    'Nome: {}':
+        'Nazwa: {}',
+    'Note di Regia: {}':
+        'Uwagi: {}',
+    'File: {}':
+        'Plik: {}',
+    '⚠️ ATTENZIONE: {}':
+        '⚠️ UWAGA: {}',
+    'Blocco manuale':
+        'Stop (ręczne GO)',
+    'Auto-GO a fine cue':
+        'Auto-GO po końcu cue',
+    'Simultanea con successiva':
+        'Razem z następnym',
+    'Durata {}':
+        'Czas {}',
+    '{} | {}':
+        '{} | {}',
+    'STUDIO COMPOSITORE TIMELINE · {}':
+        'STUDIO OSI CZASU · {}',
+    '⏱ Durata Scena: {}':
+        '⏱ Czas sceny: {}',
+    'Web: {} | OSC: {}':
+        'Web: {} | OSC: {}',
+    'Nessuna azione web ricevuta':
+        'brak poleceń z sieci',
+    '⬛ Schermo Intero (Default)':
+        '⬛ Cały ekran (domyślny)',
+    '⬛  Schermo Intero (Default)':
+        '⬛  Cały ekran (domyślny)',
+    'Dissolvenza in uscita {}':
+        'Wygaszanie: {}',
+    'Pausa o Riprendi {}':
+        'Pauza lub wznowienie: {}',
+    'Riavvolgi 10 secondi {}':
+        'Cofnij o 10 s: {}',
+    'Regolazione Opacità':
+        'Regulacja krycia',
+    'Regolazione Scala':
+        'Regulacja skali',
+    'Regolazione Volume':
+        'Regulacja głośności',
+    'Ripristina Opacità':
+        'Przywróć krycie',
+    'Ripristina Scala':
+        'Przywróć skalę',
+    'Ripristina Volume':
+        'Przywróć głośność',
+    'Layer 0':
+        'Zaślepka L0',
+    # ── user manual window (Help → User manual, F1) ──
+    '📖 Manuale utente':
+        '📖 Instrukcja obsługi',
+    'BlindCue – Manuale utente':
+        'BlindCue – instrukcja obsługi',
+    '⌂ Indice':
+        '⌂ Spis treści',
+    '← Indietro':
+        '← Wstecz',
+    '🌐 Apri nel browser':
+        '🌐 Otwórz w przeglądarce',
+    'Manuale non trovato: {}':
+        'Nie znaleziono instrukcji: {}',
+    # ── device settings dialog ──
+    'Uscita video non applicata':
+        'Nie zastosowano wyjścia wideo',
+    'La modalità selezionata non è applicabile con gli schermi attuali.\nCollega il proiettore esterno richiesto e riprova.':
+        'Wybranego trybu nie da się zastosować przy obecnych ekranach.\nPodłącz wymagany projektor zewnętrzny i spróbuj ponownie.',
+    'Proiettori coinvolti: ':
+        'Używane projektory: ',
+    'Schermi coinvolti: ':
+        'Używane ekrany: ',
+    # ── second launch while the program is already running ──
+    'BlindCue è già in esecuzione ma non risponde.\n\nPotrebbe essere ancora in fase di avvio. Se la sua finestra non compare, chiudi BlindCue già aperto e riavvia il programma.':
+        'BlindCue już działa, ale nie odpowiada.\n\nMoże jeszcze się uruchamia. Jeśli jego okno się nie pojawi, zamknij działający BlindCue i uruchom program ponownie.',
+    # ── text cues, crossfade and the cue list (feature PRs) ──
+    'In basso':
+        'Na dole',
+    'Al centro':
+        'Na środku',
+    'In alto':
+        'Na górze',
+    'Cue di testo (didascalia)':
+        'Cue tekstowe (napis)',
+    'Scrivi il testo da mostrare sul proiettore…':
+        'Wpisz tekst, który pojawi się na projektorze…',
+    'Grassetto':
+        'Pogrubienie',
+    'Fascia scura dietro il testo':
+        'Ciemny pasek pod tekstem',
+    'Ombra':
+        'Cień',
+    'Testo:':
+        'Tekst:',
+    'Dimensione carattere:':
+        'Wielkość liter:',
+    'Colore del testo:':
+        'Kolor tekstu:',
+    'Posizione sullo schermo:':
+        'Położenie na ekranie:',
+    'Suggerimento: la didascalia va sul Layer 3 (sopra video e foto). Fade In/Out, posizione e crossfade si impostano nell\'Inspector come per una foto.':
+        'Wskazówka: napis trafia na warstwę 3 (nad filmem i zdjęciami). Fade In/Out, położenie i przenikanie ustawisz w Inspektorze tak jak dla zdjęcia.',
+    'Anteprima (proiettore):':
+        'Podgląd (projektor):',
+    'Colore del testo':
+        'Kolor tekstu',
+    '+ Testo':
+        '+ Tekst',
+    'Aggiungi una didascalia sullo schermo (cue di testo, Layer 3)':
+        'Dodaj napis na ekranie (cue tekstowe, warstwa 3)',
+    'Aggiungi Testo':
+        'Dodaj tekst',
+    '✏ Modifica testo…':
+        '✏ Edytuj napis…',
+    'Cue di testo':
+        'Cue tekstowe',
+    'Il cue selezionato non è un cue di testo. Aggiungine uno con il pulsante "+ Testo".':
+        'Zaznaczony cue nie jest cue tekstowym. Napis dodasz przyciskiem „+ Tekst”.',
+    'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
+        'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw Fade In na 0.',
+    # ── speakers remembered per computer (feature PR) ──
+    'Predefinito di sistema, segue Windows (ora: {})':
+        'Domyślne wyjście Windows (teraz: {})',
+    '{} (non collegato)':
+        '{} (niepodłączone)',
+    'Uscita audio scelta non collegata ({}): suona l\'uscita predefinita ({})':
+        'Wybrane głośniki nie są podłączone ({}): dźwięk idzie na domyślne wyjście ({})',
+    'Uscita audio scelta di nuovo collegata: {}':
+        'Wybrane głośniki znów podłączone: {}',
+    # ── strings from 3157c0a (PANIC on ESC twice, VA-API, OSC, bundle masks) ──
+    '<b>Indirizzo OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>• <b style=\'color:#f87171;\'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pausa, ripresa o toggle<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l\'IP per inviare comandi protetti':
+        '<b>Adres OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla cue w standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>• <b style=\'color:#f87171;\'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; wygaszenie Live (powrót do warstwy 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; pauza, wznowienie lub przełączenie<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń',
+    'Attiva (VA-API / Hardware Decode)':
+        'Aktywna (VA-API / dekodowanie sprzętowe)',
+    'EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).\nDa tastiera: premi ESC due volte entro 0,6s (protezione anti-tocco accidentale).':
+        'AWARIA (0 ms): natychmiast ucina audio, wideo i obrazy na wszystkich warstwach. Pokazuje czerń, jeśli zaślepka jest kalibracyjna (lub własną zaślepkę, jeśli ustawiono).\nZ klawiatury: naciśnij ESC dwa razy w ciągu 0,6 s (ochrona przed przypadkowym naciśnięciem).',
+    'Layer 0 (Tappo)':
+        'Zaślepka L0',
+    'Maschera superficie \'{}\'':
+        'Maska powierzchni \'{}\'',
+    'OpenGL / EGL (solo compositing, decode CPU)':
+        'OpenGL / EGL (tylko kompozycja, dekodowanie na CPU)',
+    'Software / Headless Renderer':
+        'Renderowanie programowe / bez ekranu',
+    'Software Renderer (nessuna accelerazione GPU)':
+        'Renderowanie programowe (bez akceleracji GPU)',
+    '⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC':
+        '⚠ Naciśnij ESC jeszcze raz w ciągu 0,6 s, aby włączyć PANIC (0 ms) — albo kliknij przycisk PANIC',
+    '🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (1,2s)':
+        '🔒 Sterowanie warstwami chronione — odblokuj kłódką (1,2 s)',
+    '🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]':
+        '🚨  PANIC  —  STOP WSZYSTKIEGO   [ ESC ×2 ]',
+}

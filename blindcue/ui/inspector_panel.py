@@ -240,6 +240,11 @@ class CueInspectorPanel(QGroupBox):
         return QSize(400, 560)
 
     def _set_elided_title(self, full_title: str) -> None:
+        from i18n import tr
+
+        # Translate before eliding: a cut title ("…") no longer matches its
+        # translation template.
+        full_title = tr(full_title)
         self.setToolTip(full_title)
         avail = max(260, self.width() - 32)
         elided = QFontMetrics(self.font()).elidedText(

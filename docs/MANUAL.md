@@ -275,9 +275,9 @@ Premi **`F5`** e la finestra cambia natura. Spariscono i pannelli di lavoro e co
 | A cosa serve | Preparare, correggere, ascoltare | Mandare in onda |
 | Scaletta | Compatta, modificabile | Grande, alto contrasto, protetta |
 | Proprietà delle cue | Tutte accessibili | Non accessibili |
-| Layer live | Comandi attivi | Bloccati (sblocco con pressione 3 s) |
+| Layer live | Comandi attivi | Bloccati (sblocco con pressione 1,2 s) |
 | Comandi distruttivi | Disponibili (con Undo) | Rimossi dall'interfaccia |
-| Tasti principali | `F5`, `Ctrl+S`, `Ctrl+Z` | `Spazio` = GO, `ESC` = PANIC |
+| Tasti principali | `F5`, `Ctrl+S`, `Ctrl+Z` | `Spazio` = GO, `ESC ×2` = PANIC |
 
 Il motivo di tanta severità è semplice: in scena le mani si muovono in fretta, il buio non aiuta e un clic sbagliato si vede dal pubblico. Meglio scoprire che *non puoi* toccare qualcosa, che scoprire troppo tardi di averlo toccato.
 
@@ -487,7 +487,7 @@ Apri **`Show` → `⚙️ Dispositivi & Hardware`**:
 - **Master Sala**: il dispositivo che va al mixer o all'impianto.
 - **Pre-ascolto PFL / Cuffia**: il dispositivo delle tue cuffie.
 
-Sono indipendenti: puoi ascoltare in cuffia senza mandare nulla in sala.
+Sono indipendenti: puoi ascoltare in cuffia senza mandare nulla in sala. Anche gli eventuali **segnali acustici operatore (Earcons)** attivabili dal menu `View` vengono instradati automaticamente sulla cuffia monitor PFL quando è configurata una seconda scheda, così non escono mai sull'impianto del pubblico.
 
 BlindCUE interroga il sistema operativo a ogni apertura del pannello e mostra tutte le **schede audio di uscita** collegate. Un normale computer ha **una sola uscita stereo**: in quel caso il selettore cuffia viene disattivato con un avviso, perché il pre-ascolto PFL finirebbe sullo stesso impianto del pubblico. Collega una seconda scheda (USB, DAC, interfaccia audio) e il selettore si riattiva da solo: il monitor cuffia torna disponibile.
 
@@ -606,7 +606,7 @@ Puoi sostituirlo con un'immagine di **blackout totale** o con il logo del teatro
 
 ### Panic
 
-**`ESC`** in modalità LIVE è il **taglio a 0 ms**: audio e video spariscono istantaneamente e si torna al nero assoluto. Da usare solo per emergenze reali.
+**`ESC ×2`** (doppia pressione entro 0,6 secondi) in modalità LIVE è il **taglio a 0 ms** da tastiera: la doppia pressione evita interruzioni accidentali per un tocco involontario (al primo `ESC` compare un avviso in barra di stato). Il pulsante **PANIC** a schermo e il comando remoto `/panic` (Web/OSC) restano invece **istantanei al primo tocco (0 ms)**. Audio e video spariscono immediatamente e si torna al nero assoluto (o al Tappo personalizzato se impostato). Da usare solo per emergenze reali.
 
 ### Guide di calibrazione
 
@@ -639,14 +639,14 @@ Nel dialogo, il pulsante in alto mostra lo stato:
 
 ### Monitor regista (sola lettura)
 
-Nella scheda **👁️ Monitor Regista** trovi un secondo QR code e il pulsante **📋 Copia Link Monitor**. Il link si può incollare in chat: il regista vede la scaletta e i layer in tempo reale **senza alcun pulsante attivo**. Impossibile causare errori da lì.
+Nella scheda **👁️ Monitor Regista** trovi un secondo QR code e il pulsante **📋 Copia Link Monitor**. Il link si può incollare in chat: il regista vede la scaletta e i layer in tempo reale (inclusi i 3 layer dell'**Uscita B** quando è attiva la doppia uscita indipendente) **senza alcun pulsante attivo**. Impossibile causare errori da lì.
 
 ### Sicurezza PIN
 
 - PIN a **6 cifre**, generabile con **🎲 Nuovo PIN Casuale**.
 - **Includi PIN nel QR**: accesso immediato con la fotocamera.
-- Dopo **5 errori** l'accesso viene bloccato.
-- **⛔ Disconnetti Tutti** revoca le sessioni attive.
+- Dopo **5 errori** l'accesso viene bloccato temporaneamente (30 s).
+- **⛔ Disconnetti Tutti** revoca e chiude immediatamente tutte le sessioni attive.
 
 Attiva il PIN se il Wi-Fi del teatro è condiviso con il pubblico.
 
@@ -658,14 +658,15 @@ Scheda **🎛️ Automazione OSC && Porte**. Porta UDP default **53000**.
 |---|---|
 | `/go`, `/cue/go`, `/blindcue/go [id]` | GO sullo standby, o sulla cue indicata |
 | `/stop`, `/blackout`, `/cue/stop` | Blackout verso il tappo |
-| `/panic`, `/cue/panic` | Stop immediato |
-| `/pause`, `/resume`, `/pause_toggle` | Pausa/ripresa globale |
+| `/panic`, `/cue/panic` | Stop immediato (0 ms) |
+| `/pause` / `/resume` | Pausa o ripresa globale (comandi idempotenti) |
+| `/pause_toggle` / `/toggle_pause` | Inverte lo stato di pausa globale |
 | `/next`, `/prev` | Cue successiva/precedente |
-| `/cue/<id>/go` | Lancia una cue specifica |
+| `/cue/<id>/go` | Lancia una cue specifica (per ID, sigla Q o numero 1-based) |
 | `/cue/<id>/select` | Seleziona una cue |
 | `/volume <0.0–1.0>` | Volume master |
 
-OSC supporta PIN opzionale e whitelist di indirizzi IP.
+OSC supporta PIN opzionale (con blocco anti-bruteforce dopo 5 tentativi) e whitelist stretta di indirizzi IP.
 
 ---
 
@@ -688,9 +689,10 @@ Il salvataggio è **atomico**: se manca la corrente durante la scrittura, il fil
 
 ### Autosave e Crash Recovery
 
-- **Autosave ogni 30 secondi** (e a ogni modifica) in `~/.config/blindcue/autosave.json`.
-- Se BlindCue si chiude in modo anomalo, al riavvio propone il **ripristino** dell'ultima sessione.
+- **Autosave ogni 30 secondi** (e a ogni modifica) in `~/.config/blindcue/autosave.json` — include scaletta, Layer 0, modalità uscita e **superfici di proiezione**.
+- Se BlindCue si chiude in modo anomalo, al riavvio propone il **ripristino** dell'ultima sessione completa.
 - Alla chiusura regolare l'autosave viene marcato come pulito e il prompt non compare.
+- **Anti-sospensione integrata:** finché BlindCue è aperto, inibisce automaticamente la sospensione del computer e lo screensaver (`systemd-inhibit` su Linux, `caffeinate` su macOS, `SetThreadExecutionState` su Windows) e rilascia il blocco alla chiusura.
 
 > **Dove salva l'autosave?** Solo in `~/.config/blindcue/autosave.json`: **non scrive mai** nel tuo file `.blindcue`. Il file di progetto viene toccato esclusivamente quando premi `Ctrl+S` o scegli **Salva con nome**. L'autosave serve come rete di sicurezza dopo un crash o una chiusura accidentale; dopo il ripristino conviene salvare subito con un nome per fissare il lavoro.
 
@@ -712,7 +714,7 @@ Fino a **40 passaggi**, con `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y`. Anche le opera
 | Tasto | Azione |
 |---|---|
 | `SPAZIO` | GO — esegue la cue in standby |
-| `ESC` | PANIC in LIVE; stop anteprima in Progetto |
+| `ESC ×2` / `ESC` | PANIC in LIVE (doppia pressione entro 0,6 s); stop anteprima in Progetto |
 | `Ctrl+B` | Blackout verso il tappo |
 | `F5` / `Ctrl+L` | Entra/esci dalla Modalità LIVE |
 
@@ -756,7 +758,7 @@ Fino a **40 passaggi**, con `Ctrl+Z` / `Ctrl+Shift+Z` / `Ctrl+Y`. Anche le opera
 | La battuta arriva prima del previsto | `SPAZIO` | La cue in standby parte subito |
 | Pausa imprevista a scena aperta | **PAUSA TUTTO** | Congela tutto senza perdere il punto |
 | Scena finita, serve buio concordato | `Ctrl+B` | Dissolvenza morbida verso il tappo |
-| Guasto o emergenza reale | `ESC` | Taglio a 0 ms, nero assoluto |
+| Guasto o emergenza reale | `ESC ×2` (o click su **PANIC**) | Taglio a 0 ms, nero assoluto |
 
 **Differenza fondamentale**: il **Blackout** dissolve; il **Panic** taglia. Il primo è parte dello spettacolo, il secondo è un'emergenza.
 

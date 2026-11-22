@@ -43,18 +43,25 @@ class _MenuMixin:
         self._act_undo.setShortcut(QKeySequence.StandardKey.Undo)
         self._act_undo.setEnabled(False)
         self._act_redo = QAction("↷ &Ripeti", self, triggered=self._on_redo)
-        self._act_redo.setShortcuts([
-            QKeySequence.StandardKey.Redo,
+        redo_keys: list[QKeySequence] = []
+        seen_redo: set[str] = set()
+        for seq in (
+            *QKeySequence.keyBindings(QKeySequence.StandardKey.Redo),
             QKeySequence("Ctrl+Y"),
             QKeySequence("Ctrl+Shift+Z"),
-        ])
+        ):
+            key_str = seq.toString()
+            if key_str and key_str not in seen_redo:
+                seen_redo.add(key_str)
+                redo_keys.append(seq)
+        self._act_redo.setShortcuts(redo_keys)
         self._act_redo.setEnabled(False)
         edit_menu.addAction(self._act_undo)
         edit_menu.addAction(self._act_redo)
 
         show_menu = mb.addMenu("&Show")
         show_menu.addAction(
-            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go)
+            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go_shortcut)
         )
         show_menu.addAction(
             QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"), triggered=self._on_blackout)
@@ -104,6 +111,19 @@ class _MenuMixin:
         if active_tid in self._theme_actions:
             self._theme_actions[active_tid].setChecked(True)
 
+        # Language submenu (applied on the next start)
+        import i18n
+        lang_menu = view_menu.addMenu("🌐 Lingua / Language / Język")
+        self._lang_action_group = QActionGroup(self)
+        self._lang_action_group.setExclusive(True)
+        saved_lang = i18n.saved_language()
+        for code, label in i18n.LANGUAGES.items():
+            act = QAction(label, self, checkable=True)
+            act.setChecked(code == saved_lang)
+            act.triggered.connect(lambda checked=False, c=code: self._set_ui_language(c))
+            self._lang_action_group.addAction(act)
+            lang_menu.addAction(act)
+
         self._act_earcons = QAction("🔔 &Segnali Acustici Operatore (Earcons)", self, checkable=True)
         self._act_earcons.setToolTip(
             "Accessibilità Regia: Emette un discreto segnale sonoro di conferma ad ogni GO, STOP e PAUSA.\n"
@@ -137,6 +157,12 @@ class _MenuMixin:
         )
 
         help_menu = mb.addMenu("&Help")
+        from ui.help_dialog import show_help
+        help_menu.addAction(
+            QAction("📖 Manuale utente", self, shortcut=QKeySequence(Qt.Key.Key_F1),
+                    triggered=lambda: show_help(self))
+        )
+        help_menu.addSeparator()
         help_menu.addAction(
             QAction("&Info Hardware & Accelerazione…", self, triggered=self._show_hw_info)
         )
@@ -144,6 +170,19 @@ class _MenuMixin:
         help_menu.addAction(
             QAction("&About BlindCue", self, triggered=lambda: show_about_dialog(self))
         )
+
+    def _set_ui_language(self, code: str) -> None:
+        """Store the UI language and ask for a restart (texts are set at build time)."""
+        import i18n
+        if code == i18n.saved_language():
+            return
+        i18n.save_language(code)
+        msg = {
+            "it": "La lingua dell'interfaccia cambierà al prossimo avvio di BlindCue.",
+            "en": "The interface language will change after restarting BlindCue.",
+            "pl": "Język interfejsu zostanie zmieniony po ponownym uruchomieniu BlindCue.",
+        }[code]
+        QMessageBox.information(self, "BlindCue", msg)
 
     def _build_ui(self) -> None:
         self._central_stack = QStackedWidget()

@@ -577,3 +577,13 @@ finale:
 La stessa misura su 6 player conferma che i thread `av:h264:dfN` sono pool di
 decodifica per player (creati al primo video, poi stabili), non un accumulo.
 
+---
+
+## 13. Aggiornamento successivo (Audit 22 novembre 2026)
+
+Le proposte §6.6 / §8.1 (inibitore anti-sospensione OS integrato `SleepInhibitor`),
+§7.1 (probe reale VA-API / rilevamento renderer software in `engine/hardware_profile.py`)
+e un audit completo di affidabilità live, sicurezza Web/OSC e regressioni sono
+documentati nel diario di bordo dedicato: **[AUDIT_LOGBOOK.md](AUDIT_LOGBOOK.md)**
+(suite `pytest` salita a **150/150 PASS**).
+

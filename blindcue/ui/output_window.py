@@ -17,15 +17,18 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import OrderedDict
 from pathlib import Path
 from collections.abc import Callable
 
-from PySide6.QtCore import QPointF, QRectF, QSizeF, Qt, QTimer
+import shiboken6
+from PySide6.QtCore import QCoreApplication, QPointF, QRectF, QSizeF, Qt, QTimer
 from PySide6.QtGui import (
     QBrush,
     QColor,
     QCursor,
     QFont,
+    QGuiApplication,
     QImage,
     QKeyEvent,
     QPainter,
@@ -101,8 +104,8 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
 
     def boundingRect(self) -> QRectF:
         """Area covered by the calibration overlay (the whole output scene)."""
-        w = max(1.0, float(self._output.width()))
-        h = max(1.0, float(self._output.height()))
+        cw, ch = self._output._canvas_size()
+        w, h = float(cw), float(ch)
         return QRectF(0.0, 0.0, w, h)
 
     def _draw_guide_badge(self, painter: QPainter, cx: float, cy: float, text: str, col: QColor) -> None:
@@ -120,8 +123,8 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
     def paint(self, painter: QPainter, option, widget=None) -> None:
         """Draw the surface outlines and corner calibration guides."""
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        w = max(1.0, float(self._output.width()))
-        h = max(1.0, float(self._output.height()))
+        cw, ch = self._output._canvas_size()
+        w, h = float(cw), float(ch)
 
         is_full_calib = self._output.is_calibration_guides_visible()
         surfaces = self._output.get_surfaces()
@@ -453,6 +456,16 @@ class OutputWindow(QWidget):
         # Per-layer fade timers (leak-proof & race-proof)
         self._video_fade_timers: dict[int, QTimer] = {}
         self._layer_fade_timers: dict[int, QTimer] = {}
+        # Managed Layer 0 fallback transition timer (cancelled if new media starts)
+        self._fallback_timer: QTimer | None = None
+        self._fallback_gen: int = 0
+        # Bounded LRU caches for expensive surface masks and decoded static images
+        self._surface_mask_cache: OrderedDict[tuple, QImage] = OrderedDict()
+        self._image_pixmap_cache: OrderedDict[tuple, QPixmap] = OrderedDict()
+
+        # Crossfade: frozen snapshot of a layer dissolving over new content
+        self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
+        self._xfade_timers: dict[int, QTimer] = {}
 
         # Crossfade: frozen snapshot of a layer dissolving over new content
         self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
@@ -471,7 +484,8 @@ class OutputWindow(QWidget):
         self._black_rect.setZValue(-100)
 
         if is_default_tappo_path(self._layer0_path):
-            w, h = max(64, self.width()), max(48, self.height())
+            cw, ch = self._canvas_size()
+            w, h = max(64, cw), max(48, ch)
             pat = render_default_tappo_pixmap(w, h, self._layer0_path)
             self._original_logo_pixmap = None
             self._logo_item = self._scene.addPixmap(pat)
@@ -492,9 +506,24 @@ class OutputWindow(QWidget):
         else:
             logger.warning("[OUTPUT] Layer 0 image not found: %s – using black", self._layer0_path)
 
-    def _fit_layer0(self) -> None:
-        """Scale Layer 0 elements to fill the current window size without quality loss."""
+    def _canvas_size(self) -> tuple[int, int]:
+        """Size (px) of the picture area every layer is laid out in.
+
+        A projector uses the whole window. The single-monitor preview window
+        keeps a 16:9 picture letterboxed in whatever shape the window gets:
+        Windows Snap can squeeze it into a tall strip, and stretching the
+        layout to that shape showed something the projector never shows.
+        """
         w, h = max(1, self.width()), max(1, self.height())
+        if self._is_external:
+            return w, h
+        if w * 9 > h * 16:
+            return max(1, round(h * 16 / 9)), h
+        return w, max(1, round(w * 9 / 16))
+
+    def _fit_layer0(self) -> None:
+        """Scale Layer 0 elements to fill the picture area without quality loss."""
+        w, h = self._canvas_size()
         if self._black_rect is not None:
             self._black_rect.setRect(QRectF(0, 0, w, h))
 
@@ -521,7 +550,7 @@ class OutputWindow(QWidget):
             )
 
         self._scene.setSceneRect(0, 0, w, h)
-        self._view.fitInView(self._scene.sceneRect(), Qt.AspectRatioMode.IgnoreAspectRatio)
+        self._view.fitInView(self._scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def set_layer0_image(self, image_path: str | None) -> bool:
         """Set or change the Layer 0 failsafe image dynamically."""
@@ -532,7 +561,8 @@ class OutputWindow(QWidget):
         if is_default_tappo_path(target_path):
             self._layer0_path = str(_DEFAULT_LOGO)
             self._original_logo_pixmap = None
-            pat = render_default_tappo_pixmap(max(64, self.width()), max(48, self.height()), self._layer0_path)
+            cw, ch = self._canvas_size()
+            pat = render_default_tappo_pixmap(max(64, cw), max(48, ch), self._layer0_path)
             if self._logo_item is None:
                 self._logo_item = self._scene.addPixmap(pat)
                 self._logo_item.setZValue(-50)
@@ -599,8 +629,20 @@ class OutputWindow(QWidget):
     @staticmethod
     def _stop_timer_entry(timer_map: dict[int, QTimer], layer: int) -> None:
         old_timer = timer_map.pop(layer, None)
-        if old_timer is not None and old_timer.isActive():
-            old_timer.stop()
+        if old_timer is not None:
+            if old_timer.isActive():
+                old_timer.stop()
+            old_timer.deleteLater()
+
+    def _cancel_fallback_timer(self) -> None:
+        """Cancel any pending Layer 0 fallback transition so new media is never wiped."""
+        self._fallback_gen += 1
+        timer = self._fallback_timer
+        self._fallback_timer = None
+        if timer is not None:
+            if timer.isActive():
+                timer.stop()
+            timer.deleteLater()
 
     # ── Layers 1-3 (Images & Overlays) ────────────────────────────────
 
@@ -639,41 +681,78 @@ class OutputWindow(QWidget):
         w: float,
         h: float,
     ) -> None:
-        """Apply custom PNG opacity mask or edge feathering effect."""
+        """Apply custom PNG opacity mask or edge feathering effect (with bounded LRU cache)."""
+        iw, ih = max(1, int(w)), max(1, int(h))
+
         if surf.mask_type == MaskType.IMAGE.value and surf.mask_image_path:
             img_path = Path(surf.mask_image_path)
             if img_path.is_file():
-                mask_img = QImage(str(img_path))
-                if not mask_img.isNull():
-                    scaled = mask_img.scaled(
-                        max(1, int(w)),
-                        max(1, int(h)),
-                        Qt.AspectRatioMode.IgnoreAspectRatio,
-                        Qt.TransformationMode.SmoothTransformation,
-                    )
-                    if surf.mask_invert:
-                        scaled.invertPixels(QImage.InvertMode.InvertRgba)
+                try:
+                    mtime_ns = img_path.stat().st_mtime_ns
+                except OSError:
+                    mtime_ns = 0
+                cache_key = ("image", str(img_path), mtime_ns, bool(surf.mask_invert), iw, ih)
+                scaled = self._surface_mask_cache.get(cache_key)
+                if scaled is not None:
+                    self._surface_mask_cache.move_to_end(cache_key)
+                else:
+                    mask_img = QImage(str(img_path))
+                    if not mask_img.isNull():
+                        scaled = mask_img.scaled(
+                            iw,
+                            ih,
+                            Qt.AspectRatioMode.IgnoreAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation,
+                        )
+                        if surf.mask_invert:
+                            scaled.invertPixels(QImage.InvertMode.InvertRgba)
+                        self._surface_mask_cache[cache_key] = scaled
+                        while len(self._surface_mask_cache) > 8:
+                            self._surface_mask_cache.popitem(last=False)
+                if scaled is not None and not scaled.isNull():
                     effect = QGraphicsOpacityEffect(container)
                     effect.setOpacityMask(QBrush(scaled))
                     container.setGraphicsEffect(effect)
                     return
 
         if surf.mask_feather > 0 and w > 2 and h > 2:
-            iw, ih = max(1, int(w)), max(1, int(h))
-            scene = QGraphicsScene(0, 0, iw, ih)
-            item = QGraphicsPathItem(clip_path)
-            item.setBrush(QColor(255, 255, 255, 255))
-            item.setPen(Qt.PenStyle.NoPen)
-            blur = QGraphicsBlurEffect()
-            blur.setBlurRadius(min(50.0, float(surf.mask_feather)))
-            item.setGraphicsEffect(blur)
-            scene.addItem(item)
+            hole_key = (
+                round(float(surf.hole_x), 4),
+                round(float(surf.hole_y), 4),
+                round(float(surf.hole_w), 4),
+                round(float(surf.hole_h), 4),
+            )
+            cache_key = (
+                "feather",
+                surf.mask_type,
+                bool(surf.mask_invert),
+                round(float(surf.mask_feather), 2),
+                hole_key,
+                iw,
+                ih,
+            )
+            feather_img = self._surface_mask_cache.get(cache_key)
+            if feather_img is not None:
+                self._surface_mask_cache.move_to_end(cache_key)
+            else:
+                scene = QGraphicsScene(0, 0, iw, ih)
+                item = QGraphicsPathItem(clip_path)
+                item.setBrush(QColor(255, 255, 255, 255))
+                item.setPen(Qt.PenStyle.NoPen)
+                blur = QGraphicsBlurEffect()
+                blur.setBlurRadius(min(50.0, float(surf.mask_feather)))
+                item.setGraphicsEffect(blur)
+                scene.addItem(item)
 
-            feather_img = QImage(iw, ih, QImage.Format_ARGB32_Premultiplied)
-            feather_img.fill(0)
-            p = QPainter(feather_img)
-            scene.render(p)
-            p.end()
+                feather_img = QImage(iw, ih, QImage.Format_ARGB32_Premultiplied)
+                feather_img.fill(0)
+                p = QPainter(feather_img)
+                scene.render(p)
+                p.end()
+
+                self._surface_mask_cache[cache_key] = feather_img
+                while len(self._surface_mask_cache) > 8:
+                    self._surface_mask_cache.popitem(last=False)
 
             effect = QGraphicsOpacityEffect(container)
             effect.setOpacityMask(QBrush(feather_img))
@@ -695,8 +774,8 @@ class OutputWindow(QWidget):
         aspect_ratio: str | None = None,
     ) -> tuple[MediaFrameGeometry, QTransform]:
         """Compute content geometry within surface and apply QTransform to container."""
-        win_w = max(1.0, float(self.width()))
-        win_h = max(1.0, float(self.height()))
+        cw, ch = self._canvas_size()
+        win_w, win_h = float(cw), float(ch)
 
         if surf.mode == SurfaceMode.QUAD:
             p0 = QPointF(win_w * surf.corners[0][0], win_h * surf.corners[0][1])
@@ -779,6 +858,7 @@ class OutputWindow(QWidget):
         reuse_item: bool = False,
     ) -> None:
         """Crop, scale, mask, rotate and composite *pix* onto *layer* mapped to surface."""
+        self._cancel_fallback_timer()
         target_layer = layer if layer in self._image_containers else 1
         surf_id = surface_id or self._layer_surfaces.get(target_layer, DEFAULT_SURFACE_ID)
         self._layer_surfaces[target_layer] = surf_id
@@ -899,9 +979,22 @@ class OutputWindow(QWidget):
                 logger.warning("[OUTPUT] Image file not found: %s", file_path)
                 return
 
-            pix = QPixmap(file_path)
-            if pix.isNull():
-                return
+            try:
+                st = os.stat(file_path)
+                pix_key = (file_path, st.st_mtime_ns, st.st_size)
+            except OSError:
+                pix_key = (file_path, 0, 0)
+
+            pix = self._image_pixmap_cache.get(pix_key)
+            if pix is not None and not pix.isNull():
+                self._image_pixmap_cache.move_to_end(pix_key)
+            else:
+                pix = QPixmap(file_path)
+                if pix.isNull():
+                    return
+                self._image_pixmap_cache[pix_key] = pix
+                while len(self._image_pixmap_cache) > 16:
+                    self._image_pixmap_cache.popitem(last=False)
 
             self._apply_pixmap_to_layer(
                 layer, pix,
@@ -948,6 +1041,7 @@ class OutputWindow(QWidget):
                                   surface_id: str | None = None,
                                   rotation: float = 0.0) -> None:
         """Restore live video visibility on *layer* without disturbing an active loop deck."""
+        self._cancel_fallback_timer()
         target_layer = layer if layer in self._video_containers else 1
         self.clear_pixmap_layer(target_layer)
         self.update_video_layout(
@@ -1033,6 +1127,7 @@ class OutputWindow(QWidget):
 
     def clear_all_layers(self) -> None:
         """Clear all active media overlays and video items across Layers 1-3."""
+        self._cancel_fallback_timer()
         for layer in (1, 2, 3):
             self._end_crossfade(layer)
             self.clear_pixmap_layer(layer)
@@ -1128,6 +1223,7 @@ class OutputWindow(QWidget):
                           surface_id: str | None = None,
                           rotation: float = 0.0) -> None:
         """Show the video item for *layer* with scale, crop, pos, opacity, aspect ratio, surface and rotation."""
+        self._cancel_fallback_timer()
         target_layer = layer if layer in self._video_containers else 1
         self._stop_timer_entry(self._video_fade_timers, target_layer)
         self._stop_timer_entry(self._deck_swap_timers, target_layer)
@@ -1171,8 +1267,7 @@ class OutputWindow(QWidget):
                 "surface_id": surf_id,
                 "rotation": rotation,
             }
-            win_w = max(1, self.width())
-            win_h = max(1, self.height())
+            win_w, win_h = self._canvas_size()
 
             container = self._video_containers[target_layer]
             v_item = self._video_items[target_layer]
@@ -1354,7 +1449,7 @@ class OutputWindow(QWidget):
     def get_output_resolution(self) -> tuple[int, int]:
         """Return the effective resolution (w, h) in pixels of the projector output."""
         if self.width() > 100 and self.height() > 100:
-            return self.width(), self.height()
+            return self._canvas_size()
         if self._span_screens:
             geo = self._span_screens[0].geometry()
             for s in self._span_screens[1:]:
@@ -1520,6 +1615,7 @@ class OutputWindow(QWidget):
                       callback: Callable[[], None] | None = None) -> None:
         """Bring Layer 0 (Tappo) to front with optional micro-fade.
         All live media across Layers 1-3 is removed and the logo is displayed."""
+        self._cancel_fallback_timer()
         self._panic_black = False
         visible_videos = [l for l, c in self._video_containers.items() if c.isVisible()]
         has_media = bool(visible_videos) or self._has_active_media()
@@ -1532,8 +1628,20 @@ class OutputWindow(QWidget):
                 callback()
             return
 
-        # Faded transition to fallback across all active video & image layers
+        # Faded transition to fallback across all active video & image layers.
+        # Guarded by generation counter + managed QTimer so any cue fired within
+        # fade_duration_sec cancels this callback cleanly instead of getting wiped.
+        expected_gen = self._fallback_gen
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+        self._fallback_timer = timer
+
         def _finish():
+            if self._fallback_timer is timer:
+                self._fallback_timer = None
+            timer.deleteLater()
+            if self._fallback_gen != expected_gen:
+                return
             self.clear_all_layers()
             if self._logo_item is not None:
                 self._logo_item.setVisible(True)
@@ -1545,10 +1653,12 @@ class OutputWindow(QWidget):
             self.fade_out_video(duration_sec=fade_duration_sec, layer=l)
         for l in list(self._layer_pixmaps.keys()):
             self.fade_out_layer(l, duration_sec=fade_duration_sec)
-        QTimer.singleShot(int(fade_duration_sec * 1000) + 15, _finish)
+        timer.timeout.connect(_finish)
+        timer.start(int(fade_duration_sec * 1000) + 15)
 
     def panic_blackout(self) -> None:
         """0ms hard stop across all visual layers: pure Black if L0 is default grid, else Custom Tappo."""
+        self._cancel_fallback_timer()
         for layer in (1, 2, 3):
             self._stop_timer_entry(self._video_fade_timers, layer)
             self._stop_timer_entry(self._layer_fade_timers, layer)
@@ -1571,6 +1681,34 @@ class OutputWindow(QWidget):
         if handle is not None:
             handle.setScreen(screen)
 
+    def _show_fullscreen_on(self, screen: QScreen) -> None:
+        """Make the window full screen on *screen* itself.
+
+        Windows puts a window full screen on the monitor it currently sits on.
+        setWindowFlags() re-creates the native window where the old one was, so
+        when a projector was plugged in while the single-monitor preview was
+        open, showFullScreen() covered the director window on the laptop
+        (2026-11-21). Show the window on the target monitor first, then switch
+        it to full screen there.
+
+        processEvents() can run a monitor change: if the screen went away
+        meanwhile (HDMI flapping) or the window was re-targeted by that change,
+        the newer configuration wins and this one stops here.
+        """
+        geo = screen.geometry()
+        self.setGeometry(geo)
+        self.show()
+        QCoreApplication.processEvents()
+        if self._target_screen is not screen or not shiboken6.isValid(screen) \
+                or screen not in QGuiApplication.screens():
+            logger.info("[OUTPUT] Screen changed while going full screen - keeping the newer setup")
+            return
+        handle = self.windowHandle()
+        if handle is not None:
+            handle.setScreen(screen)
+        self.setGeometry(geo)
+        self.showFullScreen()
+
     def configure_screen(self, screen: QScreen, is_external: bool = True) -> None:
         """Attach to *screen*. If is_external=True (multi-monitor), goes fullscreen borderless.
         If is_external=False (single monitor test), opens as a clean preview window on screen."""
@@ -1585,9 +1723,9 @@ class OutputWindow(QWidget):
                 | Qt.WindowType.Window
             )
             self._bind_to_screen(screen)
-            self.setGeometry(screen.geometry())
+            self.setWindowTitle("BlindCue – Live Output")
             self.setCursor(QCursor(Qt.CursorShape.BlankCursor))
-            self.showFullScreen()
+            self._show_fullscreen_on(screen)
             logger.info("[OUTPUT] Attached to external screen '%s' (Fullscreen borderless)", screen.name())
         else:
             self.setWindowFlags(
@@ -1607,7 +1745,10 @@ class OutputWindow(QWidget):
             logger.info("[OUTPUT] Single monitor preview window (%dx%d)", w, h)
 
         self._fit_layer0()
-        self.hide_video_widget()
+        for layer in (1, 2, 3):
+            self._reapply_video_layout(layer)
+            self._reapply_image_layout(layer)
+        self._update_tappo_visibility()
 
     def attach_to_screen(self, screen: QScreen, is_external: bool = True) -> None:
         """Move the output window onto *screen* and match its geometry.
@@ -1621,13 +1762,38 @@ class OutputWindow(QWidget):
         """Return currently attached QScreen."""
         return self._target_screen
 
+    def ensure_on_target_screen(self) -> None:
+        """Put the window back on its screen if Windows moved it.
+
+        After a display change Windows 11 restores window positions on its own,
+        a moment after the program placed its windows: coming back from
+        "Second screen only" it moved the output onto the laptop, full screen
+        over the director (2026-11-22). Called once things have settled.
+        """
+        target = self._target_screen
+        if target is None or self._span_screens or not self.isVisible():
+            return
+        if not shiboken6.isValid(target) or target not in QGuiApplication.screens():
+            return
+        if target.geometry().contains(self.frameGeometry().center()):
+            return
+        logger.info("[OUTPUT] Window moved off '%s' by the system - placing it again", target.name())
+        self.configure_screen(target, is_external=self._is_external)
+
     def set_target_screen(self, screen: QScreen) -> None:
-        """Switch output window to *screen* dynamically at runtime."""
-        if screen is None or screen == self._target_screen:
+        """Switch output window to *screen* dynamically at runtime.
+
+        The same screen still needs a new setup when it became the primary one
+        (Windows "Second screen only", or the laptop lid closed): the output
+        must then turn into the preview window, or it covers the director.
+        """
+        if screen is None:
             return
         from PySide6.QtWidgets import QApplication
         primary = QApplication.primaryScreen()
         is_external = (screen != primary)
+        if screen == self._target_screen and is_external == self._is_external:
+            return
         logger.info("[OUTPUT] Re-binding output to screen '%s' (is_external=%s)", screen.name(), is_external)
         self.configure_screen(screen, is_external=is_external)
 
@@ -1652,21 +1818,24 @@ class OutputWindow(QWidget):
             )
             self._bind_to_screen(self._target_screen)
             self.setCursor(QCursor(Qt.CursorShape.BlankCursor))
-            self.showFullScreen()
+            if self._target_screen is not None:
+                self._show_fullscreen_on(self._target_screen)
+            else:
+                self.showFullScreen()
         self._fit_layer0()
 
     def force_close(self) -> None:
         """Close the output reliably during shutdown, bypassing hide logic."""
         self._force_close_allowed = True
-        for t in self._video_fade_timers.values():
-            t.stop()
-        self._video_fade_timers.clear()
-        for t in self._layer_fade_timers.values():
-            t.stop()
-        self._layer_fade_timers.clear()
-        for t in self._deck_swap_timers.values():
-            t.stop()
-        self._deck_swap_timers.clear()
+        self._cancel_fallback_timer()
+        for timer_map in (self._video_fade_timers, self._layer_fade_timers, self._deck_swap_timers):
+            for t in list(timer_map.values()):
+                if t.isActive():
+                    t.stop()
+                t.deleteLater()
+            timer_map.clear()
+        self._surface_mask_cache.clear()
+        self._image_pixmap_cache.clear()
         self.close()
 
     # ── Overrides ─────────────────────────────────────────────────────
@@ -1690,13 +1859,23 @@ class OutputWindow(QWidget):
             event.ignore()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
-        """F7 toggles the calibration guides; Escape only closes floating previews."""
+        """F7 toggles the calibration guides; F11 toggles full screen; Escape leaves
+        full screen on a floating preview (never closes the external output)."""
         if event.key() == Qt.Key.Key_F7:
             self.toggle_calibration_guides()
             event.accept()
             return
+        if event.key() == Qt.Key.Key_F11:
+            # Full screen on demand for the single-monitor preview (rehearsals).
+            # The external projector output is always full screen already.
+            if not self._is_external:
+                self.toggle_fullscreen()
+            event.accept()
+            return
         if event.key() == Qt.Key.Key_Escape:
             if not self._is_external:
+                if self.isFullScreen():
+                    self.toggle_fullscreen()
                 event.accept()
                 return
             event.ignore()

@@ -33,6 +33,9 @@ VENV_DIR="${RES_DIR}/venv"
 VENV_PY="${VENV_DIR}/bin/python"
 REQ_FILE="${APP_DIR}/requirements.txt"
 ICON_SRC="${REPO_ROOT}/setup/assets/blindcue.icns"
+if [ ! -f "$ICON_SRC" ] && [ -f "${REPO_ROOT}/blindcue/assets/blindcue.icns" ]; then
+    ICON_SRC="${REPO_ROOT}/blindcue/assets/blindcue.icns"
+fi
 
 ASSUME_YES=false
 CHECK_ONLY=false

@@ -15,6 +15,7 @@ import logging
 import secrets
 import socket
 import threading
+import time
 from typing import Any
 from collections.abc import Callable
 
@@ -27,12 +28,25 @@ from services.web_server import WebRemoteServer
 
 logger = logging.getLogger("blindcue.remote")
 
+_LAN_IP_CACHE_TTL_SEC = 15.0
+_lan_ip_cache: tuple[float, list[str]] = (0.0, [])
 
-def get_local_lan_ips() -> list[str]:
-    """Detect non-loopback IPv4 addresses assigned to the local network interfaces."""
+
+def get_local_lan_ips(*, force_refresh: bool = False) -> list[str]:
+    """Detect non-loopback IPv4 addresses assigned to local interfaces (cached, non-blocking).
+
+    Deliberately avoids blocking DNS calls (``socket.getaddrinfo(hostname, ...)``)
+    which can stall the GUI thread for 5-10 seconds on offline theatre Wi-Fi.
+    """
+    global _lan_ip_cache
+    now = time.monotonic()
+    cached_ts, cached_ips = _lan_ip_cache
+    if not force_refresh and cached_ips and (now - cached_ts) < _LAN_IP_CACHE_TTL_SEC:
+        return list(cached_ips)
+
     ips: set[str] = set()
 
-    # Strategy 0: Qt Network Interface discovery (rock-solid on Linux/macOS/Windows, even offline)
+    # Strategy 0: Qt Network Interface discovery (rock-solid on Linux/macOS/Windows, offline-safe)
     try:
         from PySide6.QtNetwork import QAbstractSocket, QNetworkInterface
         for iface in QNetworkInterface.allInterfaces():
@@ -47,26 +61,16 @@ def get_local_lan_ips() -> list[str]:
     except Exception:
         logger.debug("[REMOTE] Qt interface discovery failed", exc_info=True)
 
-    # Strategy 1: Open temporary UDP socket to determine preferred outgoing route
+    # Strategy 1: Kernel routing table lookup via UDP connect (no packets sent, never blocks DNS)
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        primary_ip = s.getsockname()[0]
-        s.close()
-        if primary_ip and not primary_ip.startswith("127."):
-            ips.add(primary_ip)
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.settimeout(0.05)
+            s.connect(("8.8.8.8", 80))
+            primary_ip = s.getsockname()[0]
+            if primary_ip and not primary_ip.startswith("127."):
+                ips.add(primary_ip)
     except Exception:
         logger.debug("[REMOTE] Primary route detection failed", exc_info=True)
-
-    # Strategy 2: Hostname resolution for additional physical/Wi-Fi interfaces
-    try:
-        hostname = socket.gethostname()
-        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
-            ip = info[4][0]
-            if not ip.startswith("127."):
-                ips.add(ip)
-    except Exception:
-        logger.debug("[REMOTE] Hostname resolution failed", exc_info=True)
 
     if not ips:
         ips.add("127.0.0.1")
@@ -74,7 +78,8 @@ def get_local_lan_ips() -> list[str]:
     # Sort so that preferred IP (from private subnets) comes first if present
     res = list(ips)
     res.sort(key=lambda x: (x.startswith("127."), not x.startswith("192.168."), not x.startswith("10."), not x.startswith("172.")))
-    return res
+    _lan_ip_cache = (now, res)
+    return list(res)
 
 
 class RemoteManager(QObject):
@@ -85,6 +90,8 @@ class RemoteManager(QObject):
     panic_requested = Signal()
     blackout_requested = Signal()
     pause_toggle_requested = Signal()
+    pause_requested = Signal()
+    resume_requested = Signal()
     next_cue_requested = Signal()
     prev_cue_requested = Signal()
     cue_go_requested = Signal(object)           # cue id or index
@@ -121,11 +128,10 @@ class RemoteManager(QObject):
 
         self._wire_bridges()
 
-        # Periodic throttle timer for broadcasting live playhead progress (every 250ms when playing)
+        # Periodic throttle timer for broadcasting live playhead progress (only active while web server runs)
         self._broadcast_timer = QTimer(self)
         self._broadcast_timer.setInterval(250)
         self._broadcast_timer.timeout.connect(self._on_broadcast_tick)
-        self._broadcast_timer.start()
 
     def _wire_bridges(self) -> None:
         # Wire Web Server bridge (Cross-thread QueuedConnection guarantees safe main-thread delivery)
@@ -134,6 +140,8 @@ class RemoteManager(QObject):
         wb.panic_requested.connect(self.panic_requested.emit, Qt.ConnectionType.QueuedConnection)
         wb.blackout_requested.connect(self.blackout_requested.emit, Qt.ConnectionType.QueuedConnection)
         wb.pause_toggle_requested.connect(self.pause_toggle_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.pause_requested.connect(self.pause_requested.emit, Qt.ConnectionType.QueuedConnection)
+        wb.resume_requested.connect(self.resume_requested.emit, Qt.ConnectionType.QueuedConnection)
         wb.next_cue_requested.connect(self.next_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
         wb.prev_cue_requested.connect(self.prev_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
         wb.cue_go_requested.connect(self.cue_go_requested.emit, Qt.ConnectionType.QueuedConnection)
@@ -145,6 +153,8 @@ class RemoteManager(QObject):
         os_srv.panic_requested.connect(self.panic_requested.emit, Qt.ConnectionType.QueuedConnection)
         os_srv.blackout_requested.connect(self.blackout_requested.emit, Qt.ConnectionType.QueuedConnection)
         os_srv.pause_toggle_requested.connect(self.pause_toggle_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.pause_requested.connect(self.pause_requested.emit, Qt.ConnectionType.QueuedConnection)
+        os_srv.resume_requested.connect(self.resume_requested.emit, Qt.ConnectionType.QueuedConnection)
         os_srv.next_cue_requested.connect(self.next_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
         os_srv.prev_cue_requested.connect(self.prev_cue_requested.emit, Qt.ConnectionType.QueuedConnection)
         os_srv.cue_go_requested.connect(self.cue_go_requested.emit, Qt.ConnectionType.QueuedConnection)
@@ -287,6 +297,8 @@ class RemoteManager(QObject):
 
         web_ok = self.web_server.start(self._web_port)
         osc_ok = self.osc_server.start(self._osc_port)
+        if web_ok and not self._broadcast_timer.isActive():
+            self._broadcast_timer.start()
 
         self.activity_updated.emit()
         return web_ok, osc_ok
@@ -295,6 +307,7 @@ class RemoteManager(QObject):
         """Stop both Web and OSC servers."""
         self._web_enabled = False
         self._osc_enabled = False
+        self._broadcast_timer.stop()
         self.web_server.stop()
         self.osc_server.stop()
         self.activity_updated.emit()
@@ -305,7 +318,10 @@ class RemoteManager(QObject):
         if self._web_enabled:
             if not self.web_server.is_running():
                 self.web_server.start(self._web_port)
+            if self.web_server.is_running() and not self._broadcast_timer.isActive():
+                self._broadcast_timer.start()
         else:
+            self._broadcast_timer.stop()
             self.web_server.stop()
         self.activity_updated.emit()
 
@@ -323,14 +339,15 @@ class RemoteManager(QObject):
         """Immediately broadcast state update to all web clients (e.g. on GO or cue change)."""
         if self.is_web_active():
             self._refresh_state_cache()
-            self.web_server.broadcast_state(self._state_cache)
+            self.web_server.broadcast_state(self._get_cached_state())
 
     def _on_broadcast_tick(self) -> None:
         if not self.is_web_active():
+            self._broadcast_timer.stop()
             return
         self._refresh_state_cache()
         if self.web_server.get_connected_clients_count() > 0:
-            self.web_server.broadcast_state(self._state_cache)
+            self.web_server.broadcast_state(self._get_cached_state())
 
     def generate_qr_pixmap(self, url: str | None = None, size: int = 220) -> QPixmap | None:
         """Generate high-contrast QR code QPixmap for scanning with smartphones (100% cross-platform)."""

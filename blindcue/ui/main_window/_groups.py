@@ -23,9 +23,13 @@ class _GroupsMixin:
         if self._undo.is_debounce_active():
             self._commit_undo_point()
 
+        from i18n import tr
+
         group_color = sel_cues[0].color if (sel_cues and sel_cues[0].color) else "#6366f1"
         group_cue = Cue(
-            name="Nuova Scena / Gruppo",
+            # The name is saved with the show and shown everywhere: store it in
+            # the UI language.
+            name=tr("Nuova Scena / Gruppo"),
             file_path="",
             media_type=MediaType.GROUP,
             group_mode=GroupMode.STEP.value,

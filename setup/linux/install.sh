@@ -32,8 +32,13 @@ REQ_FILE="${APP_DIR}/requirements.txt"
 
 BIN_DIR="${HOME}/.local/bin"
 APPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-ICON_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor/256x256/apps"
-ICON_SRC="${REPO_ROOT}/setup/assets/blindcue-256.png"
+ICONS_BASE="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
+PIXMAPS_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/pixmaps"
+ICON_DIR="${ICONS_BASE}/256x256/apps"
+ICON_SRC="${REPO_ROOT}/setup/assets/blindcue.png"
+[ ! -f "$ICON_SRC" ] && ICON_SRC="${REPO_ROOT}/blindcue/assets/blindcue.png"
+[ ! -f "$ICON_SRC" ] && ICON_SRC="${REPO_ROOT}/setup/assets/blindcue-256.png"
+[ ! -f "$ICON_SRC" ] && ICON_SRC="${REPO_ROOT}/blindcue/assets/BlindCue-logo.jpeg"
 
 TOTAL_STEPS=6
 ASSUME_YES=false
@@ -669,15 +674,53 @@ EOF
     chmod +x "${BIN_DIR}/blindcue"
     log_success "Comando disponibile: ${BIN_DIR}/blindcue"
 
-    mkdir -p "$ICON_DIR"
-    if [ -f "$ICON_SRC" ]; then
-        cp -f "$ICON_SRC" "${ICON_DIR}/blindcue.png"
-        command -v gtk-update-icon-cache &>/dev/null && \
-            gtk-update-icon-cache -f -t "$(dirname "$(dirname "$(dirname "$ICON_DIR")")")" &>/dev/null || true
-        log_success "Icona installata in ${ICON_DIR}/blindcue.png"
-    else
-        log_warn "Icona non trovata (${ICON_SRC}): la voce di menu userà un'icona generica."
+    mkdir -p "$ICONS_BASE" "$PIXMAPS_DIR"
+    local icon_sizes=(16 24 32 48 64 128 256 512)
+    local installed_any=false
+
+    # Metodo 1: copia le icone pre-generate ad ogni risoluzione da setup/assets/icons/hicolor
+    for size in "${icon_sizes[@]}"; do
+        local pregen="${REPO_ROOT}/setup/assets/icons/hicolor/${size}x${size}/apps/blindcue.png"
+        if [ -f "$pregen" ]; then
+            mkdir -p "${ICONS_BASE}/${size}x${size}/apps"
+            cp -f "$pregen" "${ICONS_BASE}/${size}x${size}/apps/blindcue.png"
+            installed_any=true
+        fi
+    done
+
+    # Fallback: ridimensionamento al volo tramite PySide6 se mancassero quelle pre-generate
+    if [ "$installed_any" != true ] && [ -f "$ICON_SRC" ]; then
+        "$VENV_PY" -c "
+from PySide6.QtGui import QImage
+from PySide6.QtCore import Qt
+from pathlib import Path
+import sys
+
+src = Path(sys.argv[1])
+base_icons = Path(sys.argv[2])
+img = QImage(str(src))
+if not img.isNull():
+    for s in [16, 24, 32, 48, 64, 128, 256, 512]:
+        d = base_icons / f'{s}x{s}' / 'apps'
+        d.mkdir(parents=True, exist_ok=True)
+        scaled = img.scaled(s, s, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        scaled.save(str(d / 'blindcue.png'), 'PNG')
+" "$ICON_SRC" "$ICONS_BASE" 2>/dev/null || true
+        mkdir -p "${ICONS_BASE}/256x256/apps"
+        cp -f "$ICON_SRC" "${ICONS_BASE}/256x256/apps/blindcue.png" 2>/dev/null || true
     fi
+
+    # Fallback pixmaps per file manager e vecchi desktop environment
+    if [ -f "${ICONS_BASE}/256x256/apps/blindcue.png" ]; then
+        cp -f "${ICONS_BASE}/256x256/apps/blindcue.png" "${PIXMAPS_DIR}/blindcue.png"
+    elif [ -f "$ICON_SRC" ]; then
+        cp -f "$ICON_SRC" "${PIXMAPS_DIR}/blindcue.png"
+    fi
+
+    # Aggiorna la cache del tema icone hicolor
+    command -v gtk-update-icon-cache &>/dev/null && \
+        gtk-update-icon-cache -f -t "$ICONS_BASE" &>/dev/null || true
+    log_success "Icone installate nel tema hicolor (16..512px) e in ${PIXMAPS_DIR}/blindcue.png"
 
     mkdir -p "$APPS_DIR"
     cat > "${APPS_DIR}/blindcue.desktop" << EOF
@@ -687,7 +730,7 @@ Name=BlindCue
 GenericName=Live Cue Player
 Comment=Player di cue audio/video per spettacoli dal vivo
 Exec="${run_script}"
-Icon="${ICON_DIR}/blindcue.png"
+Icon=blindcue
 Terminal=false
 Categories=AudioVideo;Player;AudioVideoEditing;
 Keywords=blindcue;cue;teatro;live;audio;video;qlab;
@@ -697,6 +740,10 @@ EOF
     chmod +x "${APPS_DIR}/blindcue.desktop"
     command -v update-desktop-database &>/dev/null && \
         update-desktop-database "$APPS_DIR" &>/dev/null || true
+    command -v kbuildsycoca6 &>/dev/null && \
+        kbuildsycoca6 --noincremental &>/dev/null || true
+    command -v kbuildsycoca5 &>/dev/null && \
+        kbuildsycoca5 --noincremental &>/dev/null || true
     log_success "Voce di menu creata: ${APPS_DIR}/blindcue.desktop"
 
     # Collegamento sul Desktop: è quello che l'utente trova subito.
@@ -731,7 +778,8 @@ set -u
 INSTALL_DIR="${INSTALL_DIR}"
 BIN_DIR="${BIN_DIR}"
 APPS_DIR="${APPS_DIR}"
-ICON_DIR="${ICON_DIR}"
+ICONS_BASE="${ICONS_BASE}"
+PIXMAPS_DIR="${PIXMAPS_DIR}"
 EOF
     cat >> "$uninstall_script" << 'UNINSTALL'
 
@@ -781,9 +829,16 @@ fi
 
 for file in "${BIN_DIR}/blindcue" "${BIN_DIR}/blindcue-uninstall" \
             "${APPS_DIR}/blindcue.desktop" "${APPS_DIR}/blindcue-uninstall.desktop" \
-            "${ICON_DIR}/blindcue.png"; do
+            "${PIXMAPS_DIR}/blindcue.png"; do
     if [ -e "$file" ]; then
         rm -f "$file" && echo "rimosso $file"
+    fi
+done
+
+for size in 16x16 24x24 32x32 48x48 64x64 128x128 256x256 512x512; do
+    icon_file="${ICONS_BASE}/${size}/apps/blindcue.png"
+    if [ -e "$icon_file" ]; then
+        rm -f "$icon_file" && echo "rimosso $icon_file"
     fi
 done
 
@@ -811,9 +866,12 @@ fi
 
 command -v update-desktop-database &>/dev/null && \
     update-desktop-database "$APPS_DIR" &>/dev/null || true
-icons_root="$(dirname "$(dirname "$(dirname "$ICON_DIR")")")"
 command -v gtk-update-icon-cache &>/dev/null && \
-    gtk-update-icon-cache -f -t "$icons_root" &>/dev/null || true
+    gtk-update-icon-cache -f -t "$ICONS_BASE" &>/dev/null || true
+command -v kbuildsycoca6 &>/dev/null && \
+    kbuildsycoca6 --noincremental &>/dev/null || true
+command -v kbuildsycoca5 &>/dev/null && \
+    kbuildsycoca5 --noincremental &>/dev/null || true
 
 echo
 echo "BlindCue è stato rimosso. Grazie per averlo provato."
@@ -835,7 +893,7 @@ Type=Application
 Name=Rimuovi BlindCue
 Comment=Disinstalla BlindCue e rimuove i collegamenti
 Exec="${uninstall_script}"
-Icon="${ICON_DIR}/blindcue.png"
+Icon=blindcue
 Terminal=true
 Categories=Utility;
 EOF

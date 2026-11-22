@@ -1,0 +1,350 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>BlindCUE – user manual</title>
+<style>
+body { font-family: "Segoe UI", sans-serif; font-size: 14px; }
+li { margin-bottom: 4px; }
+h1 { font-size: 26px; color: #38bdf8; }
+h2 { font-size: 20px; color: #38bdf8; margin-top: 28px; border-bottom: 1px solid #334155; }
+h3 { font-size: 16px; color: #fbbf24; margin-top: 18px; }
+code, kbd { font-family: Consolas, monospace; background-color: #1e293b; color: #e2e8f0; }
+table.k td { padding: 3px 10px; border-bottom: 1px solid #334155; }
+.tip { background-color: #0f2a1f; color: #bbf7d0; padding: 6px; }
+.warn { background-color: #3a1d0b; color: #fed7aa; padding: 6px; }
+img { border: 1px solid #334155; }
+a { color: #7dd3fc; }
+</style>
+</head>
+<body>
+
+<h1>BlindCUE – user manual</h1>
+<p>BlindCUE runs live shows: from one screen you fire music, videos and photos
+one after another, while the audience sees the picture on the projector.
+This manual takes you from an empty program to a finished show.</p>
+
+<h3>Contents</h3>
+<ol>
+<li><a href="#screen">The program window – what is where</a></li>
+<li><a href="#new">New show and saving</a></li>
+<li><a href="#adding">Adding video, audio and photos</a></li>
+<li><a href="#cue">Setting up a cue (Inspector)</a></li>
+<li><a href="#transitions">Fades, effects and picture</a></li>
+<li><a href="#sound">Sound: volume, trimming, loops, levelling</a></li>
+<li><a href="#groups">Groups and scenes</a></li>
+<li><a href="#layers">Layers L1–L3 and the Layer 0 cover</a></li>
+<li><a href="#projector">Projector and output window</a></li>
+<li><a href="#live">Running the show (LIVE mode)</a></li>
+<li><a href="#emergency">Emergencies</a></li>
+<li><a href="#extras">Extras: phone remote, mapping, settings</a></li>
+<li><a href="#shortcuts">Keyboard shortcuts</a></li>
+<li><a href="#tips">Good practice before a show</a></li>
+</ol>
+
+<!-- ================================================================== -->
+<h2><a name="screen"></a>1. The program window – what is where</h2>
+<p><img src="img/en/01_main_window_video.png" width="760" height="404"></p>
+<ul>
+<li><b>Cue list (left column)</b> – the running order of the show. Each row is one
+<i>cue</i>: a video <code>VID</code>, sound <code>AUD</code>, picture <code>IMG</code> or
+group <code>GRP</code>. Under the list are the buttons
+<b>+ Video / + Audio / + Photo / + Group</b>,
+<b>Up / Down</b> to move and <b>Delete</b>.</li>
+<li><b>Pre-Viz preview (middle)</b> – a private preview just for you. The audience never sees it.
+<b>Play / Pause / Stop</b> check the selected cue.</li>
+<li><b>The big green GO button</b> – fires the next cue (same as <kbd>Space</kbd>).</li>
+<li><b>Cue inspector (right column)</b> – all settings of the selected cue, on the tabs
+<b>Cue · Timing</b>, <b>Video · Photo</b>, <b>Audio · Trims</b>.</li>
+<li><b>Waveform and Automation (bottom left)</b> – the sound wave with IN/OUT points,
+the volume curve and sections.</li>
+<li><b>Live Output Status (bottom middle)</b> – what is playing on layers 1–3, with the
+<b>Fade Out</b> and <b>Master Blackout</b> buttons.</li>
+<li><b>Quick Load (bottom right)</b> – drag files here from your file manager.</li>
+<li><b>Status bar</b> – hardware profile, <b>Devices · Outputs</b>, panel lock,
+Jam mode, remote control and program messages.</li>
+</ul>
+<p class="tip">💡 Change the program language in <b>View → 🌐 Lingua / Language / Język</b>
+(applied after a restart). This manual opens in the program language.</p>
+
+<!-- ================================================================== -->
+<h2><a name="new"></a>2. New show and saving</h2>
+<ul>
+<li><b>File → New Show</b> (<kbd>Ctrl+N</kbd>) – an empty list.</li>
+<li><b>File → Save Show</b> (<kbd>Ctrl+S</kbd>) / <b>Save Show As…</b>
+(<kbd>Ctrl+Shift+S</kbd>) – saves a <code>.blindcue</code> file.</li>
+<li>When saving, the program asks whether to <b>copy the audio/video files into the show folder</b>:
+<ul>
+<li><b>Yes</b> – you get a portable folder; the show opens on another computer
+(e.g. from a USB stick). Recommended before a performance.</li>
+<li><b>No</b> – only the paths to your files are saved (less space, but the files must
+stay where they are).</li>
+</ul>
+Your original files are never changed.</li>
+<li><b>File → Open Recent</b> – quick way back to earlier shows.</li>
+<li>The program <b>autosaves</b>. After a crash it offers to restore the session.</li>
+<li><b>Edit → Undo / Redo</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) work for every change
+in the list and in the inspector.</li>
+</ul>
+<p><img src="img/en/02_menu_file.png" width="260" height="195"></p>
+
+<!-- ================================================================== -->
+<h2><a name="adding"></a>3. Adding video, audio and photos</h2>
+<h3>Three ways to add a file</h3>
+<ol>
+<li>The buttons under the list: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Photo</b>.</li>
+<li>Drag files from your file manager onto <b>Quick Load</b> (bottom right corner).</li>
+<li>A new cue goes to the end of the list; move it with <b>Up / Down</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li>
+</ol>
+<table class="k">
+<tr><td><b>Video</b></td><td>MP4, MKV, AVI, MOV, WEBM</td></tr>
+<tr><td><b>Audio</b></td><td>MP3, WAV, FLAC, OGG, AAC, M4A</td></tr>
+<tr><td><b>Photos</b></td><td>PNG, JPG, BMP, GIF, WEBP</td></tr>
+</table>
+<p><img src="img/en/03_list_photo.png" width="760" height="404"></p>
+
+<h3>Photos</h3>
+<p>By default a photo stays on screen <b>until something replaces it</b>: the next cue on the
+same layer, or <b>Fade Out</b>. Set the display time in the Inspector:
+<b>Cue · Timing → Image Time</b> (e.g. 10 s; <code>0</code> = no limit).
+For a slideshow use several photo cues in a row with <b>Auto-GO</b>
+(chapter 4), or a <a href="#groups">group</a>.</p>
+
+<!-- ================================================================== -->
+<h2><a name="cue"></a>4. Setting up a cue (Inspector)</h2>
+<p>Click a cue in the list and the Inspector on the right shows its settings.
+You can also select <b>several cues of the same type</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click)
+and change them all at once.</p>
+<p><img src="img/en/04_inspector_video_cue.png" width="520" height="636"></p>
+
+<h3>The "Cue · Timing" tab</h3>
+<ul>
+<li><b>Q (Script)</b> – your cue number from the script, e.g. <code>Q-5</code> or
+<code>Sc.2</code>. It stays with the cue when you reorder the list.</li>
+<li><b>Cue Name</b> – the description shown in the list (e.g. "Choir enters").</li>
+<li><b>Director's Notes</b> – a hint for the operator, e.g. "after the line: <i>and then the lights went out</i>".
+It is visible in LIVE mode.</li>
+<li><b>Colour</b> – colour scenes/acts so the list is easy to read.</li>
+<li><b>Output layer L1 / L2 / L3</b> – see <a href="#layers">chapter 8</a>.</li>
+<li><b>Pre-Delay</b> – seconds to wait after GO before the cue starts.</li>
+<li><b>Post-Delay</b> – seconds to wait after the cue ends (matters with Auto-GO).</li>
+<li><b>Image Time</b> – how long a photo stays visible (0 = no limit).</li>
+<li><b>After</b> – what happens after this cue:
+<ul>
+<li><b>Hold</b> (default) – waits for your next GO.</li>
+<li><b>Auto-GO</b> – after Pre + duration + Post it <b>fires the next cue by itself</b>
+(e.g. a song plays and a video starts right after it).</li>
+<li><b>Simult.</b> – on GO <b>the next cue starts at the same time</b>
+(e.g. a photo and music together).</li>
+</ul>
+The same three modes are under the cue list (<b>Hold / Auto-GO / Simult.</b>).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="transitions"></a>5. Fades, effects and picture</h2>
+<p><img src="img/en/05_inspector_photo_picture.png" width="520" height="636"></p>
+<h3>Fades (in and out)</h3>
+<ul>
+<li>Tab <b>Audio · Trims → 2 · Fades</b>: <b>Fade In</b> (from black / silence)
+and <b>Fade Out</b> (to black / silence) in seconds. Works for video, audio
+and photos.</li>
+<li>Choose the curve under the waveform: <b>Fade: Logarithmic</b>
+(the most natural for sound), <b>Soft S-Curve</b> or <b>Linear</b>.</li>
+</ul>
+
+<h3>Picture (the "Video · Photo" tab)</h3>
+<ul>
+<li><b>Pos X / Y</b> and the arrows – move the picture; <b>Centre</b> puts it back in the middle.</li>
+<li><b>Scale</b> – zoom in / out (e.g. a small window in a corner).</li>
+<li><b>Opacity</b> – transparency (e.g. 50% = half-transparent picture over the background).</li>
+<li><b>Aspect</b> – force 16:9, 4:3, 21:9 or 1:1.</li>
+<li><b>Edge crop</b> – cut off black bars or part of the frame, in % or pixels.</li>
+<li><b>Rotation</b> – any angle or 90° steps.</li>
+<li><b>Draw mask…</b> (photos only) – cut out any shape by clicking points;
+<b>Feathered edge</b> softens the border.</li>
+<li>You can also <b>drag the picture frame with the mouse in the Pre-Viz preview</b>.</li>
+<li><b>MIRROR LIVE</b> (under the preview) – when on, position and crop changes show
+on the projector right away. Use it to line up the picture in rehearsal;
+<b>turn it off for the show</b>.</li>
+</ul>
+<h3>Curves over time (automation)</h3>
+<p>In the <b>Waveform</b> panel choose <b>Volume</b> or <b>Opacity</b> and click on the line
+to add points – e.g. bring the music down during dialogue and up again later.
+<b>Reset Points</b> removes the curve.</p>
+
+<!-- ================================================================== -->
+<h2><a name="sound"></a>6. Sound: volume, trimming, loops, levelling</h2>
+<p><img src="img/en/06_list_audio.png" width="760" height="404"></p>
+<ul>
+<li><b>Volume</b> – slider 0–100% (tab <b>Audio · Trims</b>).</li>
+<li><b>IN / OUT trim</b> – where the track starts and ends.
+Easiest: click on the wave in the Waveform panel, then
+<b>IN at Playhead</b> (<kbd>I</kbd>) or <b>OUT at Playhead</b> (<kbd>O</kbd>).
+<b>Reset IN/OUT</b> brings back the whole file. Videos are trimmed the same way.</li>
+<li><b>Loop cue</b> – tick it and choose the number of repeats or "forever"
+(e.g. background music during the interval).</li>
+<li><b>Split</b> – divides the file into sections A, B, C… (e.g. verse / chorus). Each section
+can repeat; <b>Exit Loop</b> moves on to the next one.</li>
+<li><b>Loudness levelling (EBU R128)</b>: <b>Analyse</b> measures how loud the track is and
+<b>Apply EBU R128 Gain</b> brings it in line with the others (so one track isn't much
+louder). <b>Optimise Dynamics</b> helps with badly recorded files.</li>
+<li><b>Jam / Contest mode</b> (status bar, hold 5 s) – levels <b>all</b> files at once.</li>
+<li><b>Headphone pre-listen</b>: in <b>Devices · Outputs</b> choose a separate output
+for headphones; then Play in the preview plays only in the headphones.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="groups"></a>7. Groups and scenes</h2>
+<p>A group puts several cues into one collapsible row – e.g. "Act 1" or "Slideshow".</p>
+<p><img src="img/en/07_group.png" width="760" height="404"></p>
+<ul>
+<li>Select some cues and press <b>+ Group</b> (<kbd>Ctrl+G</kbd>).
+Ungroup: <kbd>Ctrl+Shift+G</kbd>.</li>
+<li>Select the group – in the Inspector choose what GO does:
+<ul>
+<li><b>Simultaneous</b> – all items start at the same time.</li>
+<li><b>Sequential</b> – one GO plays the whole sequence, one item after another.</li>
+<li><b>Step-by-Step</b> – each GO moves one item further in the group.</li>
+<li><b>Random / Var.</b> – a random item (never the same twice in a row).</li>
+<li><b>Loop Scene</b> – the items play round and round until stopped.</li>
+</ul></li>
+<li><b>Open Group Timeline Studio</b> – shows the items on 3 tracks with a ruler;
+drag the blocks to set when each one comes in (e.g. music, video after 3 s, photo after 10 s).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="layers"></a>8. Layers L1–L3 and the Layer 0 cover</h2>
+<p>The picture is made of layers stacked on top of each other:</p>
+<table class="k">
+<tr><td><b>L3 – Overlay</b></td><td>on top: captions, logos, small windows</td></tr>
+<tr><td><b>L2 – Main</b></td><td>middle</td></tr>
+<tr><td><b>L1 – Background</b></td><td>bottom: background video or photo (default)</td></tr>
+<tr><td><b>L0 – Cover</b></td><td>always underneath; visible when nothing plays</td></tr>
+</table>
+<ul>
+<li>A new cue on <b>the same</b> layer replaces the previous one. A cue on <b>another</b> layer
+goes on top of it.</li>
+
+<li>This applies to sound too: music and a photo on the same layer switch each other off.
+Put music that should play together with photos on another layer (e.g. <b>L2</b>).</li>
+<li>Change the cover with <b>Show → Set Cover Image (Layer 0)…</b> or the
+<b>Change Cover…</b> button – e.g. to the show poster or plain black.
+The default cover is a board with the logo and a grid for lining up the projector.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="projector"></a>9. Projector and output window</h2>
+<p><img src="img/en/09_output_window.png" width="520" height="292"></p>
+<ul>
+<li>Connect the projector (HDMI) and set an <b>extended desktop</b> in the system
+(Windows: <kbd>Win+P</kbd> → <b>Extend</b>).</li>
+<li>The program <b>detects</b> the second screen and shows the picture there
+<b>full screen, without borders or cursor</b>. Your monitor stays for you.</li>
+<li>With only one monitor, the picture is shown in a small window
+<b>"Live Output [Simulated Monitor]"</b>.</li>
+<li>Choose the screen and mode in <b>Show → Devices &amp; Hardware</b>
+(or <b>Devices · Outputs</b> in the status bar) → <b>Live Output Screen</b>.
+With two projectors you can stretch one picture over both or run two
+independent outputs A and B.</li>
+<li>There you also choose the <b>audio output</b> (house speakers) and headphones.</li>
+<li><b>View → Show Guides on the Live Projector</b> (<kbd>Shift+F7</kbd>) –
+a grid for focusing and lining up the projector.</li>
+</ul>
+<p><img src="img/en/10_devices.png" width="520" height="650"></p>
+
+<!-- ================================================================== -->
+<h2><a name="live"></a>10. Running the show (LIVE mode)</h2>
+<p>When the list is ready, switch to LIVE mode: the <b>GO LIVE</b> button or
+<kbd>F5</kbd>. The screen becomes simple and large – only what you need during the show.</p>
+<p><img src="img/en/08_live_after_go.png" width="760" height="404"></p>
+<ol>
+<li>Select the first cue – it gets the <b>STANDBY</b> badge (ready to fire).
+At the bottom you see <b>NEXT IN STANDBY</b> with its name and notes.</li>
+<li>Press <kbd>Space</kbd> (or the big <b>GO</b> button) – the cue plays, gets the
+<b>LIVE</b> badge, and STANDBY jumps to the next one.</li>
+<li>Each further <kbd>Space</kbd> = the next point of the show.</li>
+<li><kbd>↑</kbd> / <kbd>↓</kbd> change which cue is next (e.g. to skip something).
+Double-click a row to fire it right away.</li>
+<li>The <b>Live Layer Output Monitor</b> panel shows what plays on L1–L3; <b>Fade Out</b>
+softly ends that layer (hold it for a moment – protection against accidental clicks).</li>
+<li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
+<li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li>
+</ol>
+<p class="tip">💡 During the show keep the program window active (click it) so that
+<kbd>Space</kbd> goes to the program. Close other programs.</p>
+<p class="tip">💡 A phone can be the remote too – see <a href="#extras">chapter 12</a>.</p>
+
+<!-- ================================================================== -->
+<h2><a name="emergency"></a>11. Emergencies</h2>
+<table class="k">
+<tr><td><b>PAUSE ALL</b></td><td>freezes everything (sound, video, timers); a second
+click resumes from the same point – e.g. while an actor waits for applause.</td></tr>
+<tr><td><b>Fade Out</b> (next to a layer)</td><td>softly ends just that layer.</td></tr>
+<tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>fades everything out and shows the cover.</td></tr>
+<tr><td><b>PANIC</b> <kbd>Esc</kbd> twice within 0.6 s (in LIVE mode)</td><td>cuts everything instantly (0 ms) – last resort.</td></tr>
+<tr><td><b>Layer lock</b></td><td>in LIVE mode the layer controls are locked;
+hold the padlock for 1.2 s to unlock seeking/pausing single layers.</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2><a name="extras"></a>12. Extras: phone remote, mapping, settings</h2>
+<h3>Phone remote (Wi-Fi)</h3>
+<p><b>Show → LAN Remote Control (Web &amp; OSC)</b> (<kbd>F8</kbd>) → <b>start the services</b>
+and scan the QR code with your phone (phone and computer on the same Wi-Fi).
+The phone shows a big GO button, pause, blackout and PANIC.
+The second code (<b>Director Monitor</b>) gives a read-only view – e.g. for the director
+in the audience. Access is protected by a 6-digit PIN.</p>
+<p><img src="img/en/11_remote.png" width="560" height="472"></p>
+
+<h3>Projection Surfaces &amp; Mapping Studio – <kbd>F7</kbd></h3>
+<p>When the projector is not straight or you project on an unusual screen: keystone correction
+(4 corners), extra virtual screens (e.g. a picture only on a column of the set),
+round masks and cut-outs. Assign a cue to a surface in the Inspector
+(<b>Video · Photo → Surface</b>).</p>
+<p><img src="img/en/12_surfaces.png" width="560" height="361"></p>
+
+<h3>Other</h3>
+<ul>
+<li><b>View → Interface Theme</b> – program colours (including a black-and-white one).</li>
+<li><b>View → Operator Audio Cues</b> – a quiet "beep" on GO/STOP/PAUSE.</li>
+<li><b>View → Lock Panel Widths</b> – protects the layout from accidental changes.</li>
+<li>Status bar, <b>ECO / STD / PRO</b> – performance profile (ECO on a slower computer).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="shortcuts"></a>13. Keyboard shortcuts</h2>
+<table class="k">
+<tr><td><kbd>Space</kbd></td><td>GO – next cue</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>select cue / change the next cue in LIVE</td></tr>
+<tr><td><kbd>F5</kbd></td><td>LIVE mode / back to the project</td></tr>
+<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (in LIVE mode): twice within 0.6 s</td></tr>
+<tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (cover)</td></tr>
+<tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>group / ungroup</td></tr>
+<tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>move cue</td></tr>
+<tr><td><kbd>Del</kbd></td><td>delete cue</td></tr>
+<tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>IN / OUT point at the playhead</td></tr>
+<tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>undo / redo</td></tr>
+<tr><td><kbd>Ctrl+S</kbd></td><td>save</td></tr>
+<tr><td><kbd>F7</kbd> / <kbd>Shift+F7</kbd></td><td>surface studio / alignment guides</td></tr>
+<tr><td><kbd>F8</kbd></td><td>remote control</td></tr>
+
+<tr><td><kbd>F1</kbd></td><td>this manual</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2><a name="tips"></a>14. Good practice before a show</h2>
+<ul>
+<li><b>Do a dress rehearsal on the same computer and projector</b>, from the first to
+the last cue.</li>
+<li><b>Convert heavy videos.</b> On a slower computer a video straight from a camera or phone
+(very high bitrate) can stutter. A Full HD version at about 8–10 Mb/s looks the same
+on the projector and plays smoothly.</li>
+<li>Save the show <b>with the files copied</b> and keep a copy on a USB stick.</li>
+<li>Write in <b>Director's Notes</b> after which line each cue goes.</li>
+<li>Turn off <b>MIRROR LIVE</b>, close other programs, turn off notifications and screen
+sleep in the system.</li>
+<li>Set a cover (poster or black) so the audience never sees the desktop before the start.</li>
+</ul>
+
+</body>
+</html>

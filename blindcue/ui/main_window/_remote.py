@@ -21,6 +21,8 @@ class _RemoteMixin:
             mgr.panic_requested.connect(self._on_remote_panic, Qt.ConnectionType.QueuedConnection)
             mgr.blackout_requested.connect(self._on_remote_blackout, Qt.ConnectionType.QueuedConnection)
             mgr.pause_toggle_requested.connect(self._on_remote_pause_toggle, Qt.ConnectionType.QueuedConnection)
+            mgr.pause_requested.connect(self._on_remote_pause, Qt.ConnectionType.QueuedConnection)
+            mgr.resume_requested.connect(self._on_remote_resume, Qt.ConnectionType.QueuedConnection)
             mgr.next_cue_requested.connect(self._on_remote_next_cue, Qt.ConnectionType.QueuedConnection)
             mgr.prev_cue_requested.connect(self._on_remote_prev_cue, Qt.ConnectionType.QueuedConnection)
             mgr.cue_go_requested.connect(self._on_remote_cue_go, Qt.ConnectionType.QueuedConnection)
@@ -62,8 +64,10 @@ class _RemoteMixin:
         active_cues_data = []
         layers_data: dict[str, Any] = {}
 
-        # Default empty layer state for all 3 layers
-        for l_idx in (1, 2, 3):
+        # Default empty layer state for all active runtime layers (1-3, plus 4-6 in dual output)
+        dual_active = bool(getattr(self, "_dual_output_active", False))
+        active_slot_ids = (1, 2, 3, 4, 5, 6) if dual_active else (1, 2, 3)
+        for l_idx in active_slot_ids:
             layers_data[str(l_idx)] = {
                 "layer": l_idx,
                 "is_live": False,
@@ -115,6 +119,7 @@ class _RemoteMixin:
                 "ref": format_cue_ref(idx, c),
                 "type": c.media_type.value,
                 "layer": c.layer,
+                "output_target": getattr(c, "output_target", "A"),
                 "status": c.status.value,
                 "duration": round(float(c_dur), 2),
                 "fade_in": round(float(getattr(c, "fade_in", 0.0) or 0.0), 1),
@@ -133,6 +138,7 @@ class _RemoteMixin:
             "show_title": Path(self._current_project_path).stem if self._current_project_path else "Nuovo Spettacolo",
             "is_live_mode": self.is_live_mode(),
             "is_paused": getattr(self, "_is_global_paused", False),
+            "dual_output_active": dual_active,
             "current_index": row,
             "standby_cue": {
                 "id": standby_cue.cue_id,
@@ -191,6 +197,20 @@ class _RemoteMixin:
             self._remote_mgr.trigger_state_broadcast()
 
     @Slot()
+    def _on_remote_pause(self) -> None:
+        logger.info("[REMOTE] Pausing show from Remote (idempotent)")
+        self.pause_all_set.emit(True)
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
+    def _on_remote_resume(self) -> None:
+        logger.info("[REMOTE] Resuming show from Remote (idempotent)")
+        self.pause_all_set.emit(False)
+        if self._remote_mgr:
+            self._remote_mgr.trigger_state_broadcast()
+
+    @Slot()
     def _on_remote_next_cue(self) -> None:
         if not self._cues:
             return
@@ -210,60 +230,57 @@ class _RemoteMixin:
         if self._remote_mgr:
             self._remote_mgr.trigger_state_broadcast()
 
-    @Slot(object)
-    def _on_remote_cue_go(self, target: Any) -> None:
-        """Jump to and immediately execute specific cue by id or index."""
-        if not self._cues:
-            return
-        found_idx: int | None = None
-        if isinstance(target, int):
+    def _resolve_remote_cue_index(self, target: Any) -> int | None:
+        """Resolve an OSC/Web cue target by exact cue_id, q_label/name, or 1-based cue number."""
+        if isinstance(target, int) and not isinstance(target, bool):
             for idx, c in enumerate(self._cues):
                 if c.cue_id == target:
-                    found_idx = idx
-                    break
-            if found_idx is None:
-                if 0 <= target < len(self._cues):
-                    found_idx = target
-                elif 1 <= target <= len(self._cues):
-                    found_idx = target - 1
-        elif isinstance(target, str):
+                    return idx
+            # Match 1-based cue number (/cue/3/go -> 3rd cue) without silently aliasing 0-based index
+            if 1 <= target <= len(self._cues):
+                return target - 1
+            return None
+        if isinstance(target, str):
             target_clean = target.strip().lower()
+            if not target_clean:
+                return None
             for idx, c in enumerate(self._cues):
-                if str(c.cue_id) == target_clean or c.name.lower() == target_clean:
-                    found_idx = idx
-                    break
+                q_lbl = (c.q_label or "").strip().lower()
+                if str(c.cue_id) == target_clean or (q_lbl and q_lbl == target_clean) or c.name.lower() == target_clean:
+                    return idx
+            if target_clean.isdigit():
+                num = int(target_clean)
+                if 1 <= num <= len(self._cues):
+                    return num - 1
+        return None
 
+    @Slot(object)
+    def _on_remote_cue_go(self, target: Any) -> None:
+        """Jump to and immediately execute specific cue by id, Q-label, or 1-based cue number."""
+        if not self._cues:
+            return
+        found_idx = self._resolve_remote_cue_index(target)
         if found_idx is not None and 0 <= found_idx < len(self._cues):
             logger.info("[REMOTE] Jump and fire cue at index %d (#%d)", found_idx, self._cues[found_idx].cue_id)
             self._cue_list.setCurrentRow(found_idx)
             self._fire_cue_chain(found_idx)
             if self._remote_mgr:
                 self._remote_mgr.trigger_state_broadcast()
+        else:
+            logger.warning("[REMOTE] Ignored cue_go for unknown target: %r", target)
 
     @Slot(object)
     def _on_remote_cue_select(self, target: Any) -> None:
         """Set standby selection to specific cue without executing."""
         if not self._cues:
             return
-        found_idx: int | None = None
-        if isinstance(target, int):
-            for idx, c in enumerate(self._cues):
-                if c.cue_id == target:
-                    found_idx = idx
-                    break
-            if found_idx is None and 0 <= target < len(self._cues):
-                found_idx = target
-        elif isinstance(target, str):
-            target_clean = target.strip().lower()
-            for idx, c in enumerate(self._cues):
-                if str(c.cue_id) == target_clean or c.name.lower() == target_clean:
-                    found_idx = idx
-                    break
-
+        found_idx = self._resolve_remote_cue_index(target)
         if found_idx is not None and 0 <= found_idx < len(self._cues):
             self._cue_list.setCurrentRow(found_idx)
             if self._remote_mgr:
                 self._remote_mgr.trigger_state_broadcast()
+        else:
+            logger.warning("[REMOTE] Ignored cue_select for unknown target: %r", target)
 
     @Slot(float)
     def _on_remote_volume_change(self, vol: float) -> None:
@@ -340,16 +357,20 @@ class _RemoteMixin:
         else:
             self._live_phase_tags.pop(cue_id, None)
         if prev != badge_text:
+            if hasattr(self, "_live_show_panel") and self._live_show_panel.update_phase_badge(cue_id, badge_text):
+                return
             self._sync_live_view()
 
-    def set_global_paused(self, paused: bool) -> None:
+    def set_global_paused(self, paused: bool, *, silent: bool = False) -> None:
         """Mirror the global transport pause (PANIC/PAUSE) in the live panel.
 
         A short earcon confirms the state change to the operator even without
-        looking at the screen — useful when the panic is triggered from a
-        remote (tablet/phone) during a blackout.
+        looking at the screen — useful when pause is triggered from a remote.
         """
-        if hasattr(self, "_earcon_mgr"):
+        paused = bool(paused)
+        changed = (getattr(self, "_is_global_paused", False) != paused)
+        self._is_global_paused = paused
+        if not silent and changed and hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_pause()
         if hasattr(self, "_live_show_panel"):
             self._live_show_panel.set_global_paused(paused)
@@ -440,10 +461,13 @@ class _RemoteMixin:
         self._sync_live_view()
 
     def finish_live_cue_status(self, cue: Cue) -> None:
-        """Mark cue finished (LOADED) and clean up phase badges safely."""
+        """Mark cue finished (LOADED) and clean up phase badges safely (even after Undo)."""
         self._live_phase_tags.pop(cue.cue_id, None)
         if cue.status == CueStatus.LIVE:
             cue.status = CueStatus.LOADED
+        for item in self._cues:
+            if item.cue_id == cue.cue_id and item.status == CueStatus.LIVE:
+                item.status = CueStatus.LOADED
         self._refresh_cue_list(keep_selection=True)
         self._sync_live_view()
 

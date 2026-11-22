@@ -203,6 +203,72 @@ def _sanitize_hex_color(value: object) -> str:
     return ""
 
 
+def _safe_float(
+    value: object,
+    default: float,
+    *,
+    min_val: float | None = None,
+    max_val: float | None = None,
+) -> float:
+    """Parse a finite float with optional clamping, falling back to *default* on NaN/Inf/type errors."""
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        num = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    if not math.isfinite(num):
+        return default
+    if min_val is not None:
+        num = max(min_val, num)
+    if max_val is not None:
+        num = min(max_val, num)
+    return num
+
+
+def _safe_int(
+    value: object,
+    default: int,
+    *,
+    min_val: int | None = None,
+    max_val: int | None = None,
+) -> int:
+    """Parse an integer safely with optional clamping, falling back to *default*."""
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        num = int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return default
+    if min_val is not None:
+        num = max(min_val, num)
+    if max_val is not None:
+        num = min(max_val, num)
+    return num
+
+
+def _safe_opt_float(
+    value: object,
+    *,
+    min_val: float | None = None,
+    max_val: float | None = None,
+) -> float | None:
+    """Parse an optional finite float; returns None if input is None or non-finite."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        num = float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(num):
+        return None
+    if min_val is not None:
+        num = max(min_val, num)
+    if max_val is not None:
+        num = min(max_val, num)
+    return num
+
+
 @dataclass
 class CueSection:
     """Contiguous virtual section inside an audio or video Cue."""
@@ -225,13 +291,16 @@ class CueSection:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> CueSection:
-        """Rebuild a section, clamping corrupt times instead of failing the show."""
-        end_raw = data.get("end")
+        """Rebuild a section, clamping corrupt or non-finite times instead of failing the show."""
+        start_val = _safe_float(data.get("start", 0.0), 0.0, min_val=0.0)
+        end_val = _safe_opt_float(data.get("end"), min_val=0.0)
+        if end_val is not None and end_val <= start_val:
+            end_val = None
         return cls(
             label=str(data.get("label", "A")),
-            start=max(0.0, float(data.get("start", 0.0))),
-            end=max(0.0, float(end_raw)) if end_raw is not None else None,
-            loops=max(0, int(data.get("loops", 1))),
+            start=start_val,
+            end=end_val,
+            loops=_safe_int(data.get("loops", 1), 1, min_val=0),
             skip=bool(data.get("skip", False)),
         )
 
@@ -509,35 +578,53 @@ class Cue:
         The class-level counter is advanced past the loaded ID so that
         future auto-IDs never collide with stored ones.
         """
+        in_pt = _safe_float(data.get("in_point", 0.0), 0.0, min_val=0.0)
+        out_pt = _safe_opt_float(data.get("out_point"), min_val=0.0)
+        if out_pt is not None and out_pt <= in_pt:
+            out_pt = None
+
+        def _clean_env_points(raw_pts: object) -> list[list[float]]:
+            cleaned: list[list[float]] = []
+            if not isinstance(raw_pts, (list, tuple)):
+                return cleaned
+            for p in raw_pts:
+                if not isinstance(p, (list, tuple)) or len(p) < 2:
+                    continue
+                t_val = _safe_opt_float(p[0], min_val=0.0)
+                v_val = _safe_opt_float(p[1], min_val=0.0, max_val=1.0)
+                if t_val is not None and v_val is not None:
+                    cleaned.append([t_val, v_val])
+            return cleaned
+
         cue = cls(
-            name=data["name"],
+            name=str(data["name"]),
             media_type=MediaType(data["media_type"]),
-            file_path=data["file_path"],
-            cue_id=data["cue_id"],
+            file_path=str(data["file_path"]),
+            cue_id=_safe_int(data["cue_id"], next(cls._id_counter), min_val=1),
             q_label=str(data.get("q_label", "") or ""),
-            layer=data.get("layer", 1),
-            volume=data.get("volume", 1.0),
-            loop=data.get("loop", False),
-            loop_count=data.get("loop_count", 0),
-            in_point=data.get("in_point", 0.0),
-            out_point=data.get("out_point"),
-            fade_in=data.get("fade_in", 0.0),
-            fade_out=data.get("fade_out", 0.0),
+            layer=_safe_int(data.get("layer", 1), 1, min_val=1, max_val=3),
+            volume=_safe_float(data.get("volume", 1.0), 1.0, min_val=0.0, max_val=1.0),
+            loop=bool(data.get("loop", False)),
+            loop_count=_safe_int(data.get("loop_count", 0), 0, min_val=0),
+            in_point=in_pt,
+            out_point=out_pt,
+            fade_in=_safe_float(data.get("fade_in", 0.0), 0.0, min_val=0.0),
+            fade_out=_safe_float(data.get("fade_out", 0.0), 0.0, min_val=0.0),
             crop=data.get("crop", _default_crop()),
             rotation=normalize_rotation(data.get("rotation", 0.0)),
             mask_polygon=sanitize_mask_polygon(data.get("mask_polygon")),
             mask_feather=sanitize_mask_feather(data.get("mask_feather", 0.0)),
             aspect_ratio=data.get("aspect_ratio"),
             status=CueStatus(data.get("status", "OFFLINE")),
-            position_x=data.get("position_x", 0.0),
-            position_y=data.get("position_y", 0.0),
-            position_z=data.get("position_z", 0.0),
-            scale=data.get("scale", 1.0),
-            opacity=data.get("opacity", 1.0),
-            notes=data.get("notes", ""),
-            hold_time=max(0.0, float(data.get("hold_time", 0.0) or 0.0)),
-            pre_delay=max(0.0, float(data.get("pre_delay", 0.0) or 0.0)),
-            post_delay=max(0.0, float(data.get("post_delay", 0.0) or 0.0)),
+            position_x=_safe_float(data.get("position_x", 0.0), 0.0, min_val=-5.0, max_val=5.0),
+            position_y=_safe_float(data.get("position_y", 0.0), 0.0, min_val=-5.0, max_val=5.0),
+            position_z=_safe_float(data.get("position_z", 0.0), 0.0, min_val=-100.0, max_val=100.0),
+            scale=_safe_float(data.get("scale", 1.0), 1.0, min_val=0.05, max_val=10.0),
+            opacity=_safe_float(data.get("opacity", 1.0), 1.0, min_val=0.0, max_val=1.0),
+            notes=str(data.get("notes", "") or ""),
+            hold_time=_safe_float(data.get("hold_time", 0.0), 0.0, min_val=0.0),
+            pre_delay=_safe_float(data.get("pre_delay", 0.0), 0.0, min_val=0.0),
+            post_delay=_safe_float(data.get("post_delay", 0.0), 0.0, min_val=0.0),
             follow_mode=(
                 data.get("follow_mode", FollowMode.MANUAL.value)
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES
@@ -556,26 +643,18 @@ class Cue:
                 if data.get("fade_curve", "log") in _VALID_FADE_CURVES
                 else "log"
             ),
-            volume_points=[
-                [max(0.0, float(p[0])), max(0.0, min(1.0, float(p[1])))]
-                for p in (data.get("volume_points") or [])
-                if isinstance(p, (list, tuple)) and len(p) >= 2
-            ],
-            opacity_points=[
-                [max(0.0, float(p[0])), max(0.0, min(1.0, float(p[1])))]
-                for p in (data.get("opacity_points") or [])
-                if isinstance(p, (list, tuple)) and len(p) >= 2
-            ],
-            image_timeline_sec=max(1.0, float(data.get("image_timeline_sec", 10.0) or 10.0)),
+            volume_points=_clean_env_points(data.get("volume_points")),
+            opacity_points=_clean_env_points(data.get("opacity_points")),
+            image_timeline_sec=_safe_float(data.get("image_timeline_sec", 10.0), 10.0, min_val=1.0),
             sections=[
                 CueSection.from_dict(raw)
                 for raw in (data.get("sections") or [])
                 if isinstance(raw, dict)
             ],
             normalize_audio=bool(data.get("normalize_audio", False)),
-            loudness_lufs=float(data["loudness_lufs"]) if data.get("loudness_lufs") is not None else None,
-            true_peak_dbfs=float(data["true_peak_dbfs"]) if data.get("true_peak_dbfs") is not None else None,
-            auto_gain_db=float(data.get("auto_gain_db", 0.0) or 0.0),
+            loudness_lufs=_safe_opt_float(data.get("loudness_lufs")),
+            true_peak_dbfs=_safe_opt_float(data.get("true_peak_dbfs")),
+            auto_gain_db=_safe_float(data.get("auto_gain_db", 0.0), 0.0, min_val=-40.0, max_val=40.0),
             original_file_path=data.get("original_file_path"),
             timeline_composed=bool(data.get("timeline_composed", False)),
             surface_id=str(data.get("surface_id", "default") or "default"),

@@ -124,7 +124,7 @@ def parse_osc_message(data: bytes) -> tuple[str, list[Any]]:
                 break
             b_len = struct.unpack(">i", data[idx : idx + 4])[0]
             idx += 4
-            if idx + b_len > len(data):
+            if b_len < 0 or idx + b_len > len(data):
                 break
             b_val = data[idx : idx + b_len]
             args.append(b_val)

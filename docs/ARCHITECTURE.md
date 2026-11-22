@@ -3,7 +3,7 @@
 Documento tecnico per chi vuole **manutenere, estendere, correggere o fare un fork** di BlindCue.
 Descrive come è organizzato il codice, dove vive ogni responsabilità, quali sono i confini da non violare e come verificare le modifiche.
 
-Per l'uso del software vedi il **[Manuale Utente](MANUAL.md)**.
+Per l'uso del software vedi il **[Manuale Utente](MANUAL.md)**; per la cronologia di collaudo e audit vedi **[TEST_FINDINGS.md](TEST_FINDINGS.md)** e **[AUDIT_LOGBOOK.md](AUDIT_LOGBOOK.md)**.
 
 ---
 
@@ -78,10 +78,12 @@ blindcue/
 │   ├── envelope.py             # Curve di fade, keyframe, SectionSequencer
 │   ├── player_live.py          # LivePlayer: deck A/B, envelope a 50 Hz, sezioni
 │   ├── player_test.py          # TestPlayer: pre-ascolto PFL isolato
-│   ├── audio_analyzer.py       # Waveform, EBU R128, normalizzazione via FFmpeg
-│   ├── device_manager.py       # Routing audio, schermo di uscita, profili hardware
+│   ├── audio_analyzer.py       # Waveform streaming O(width), EBU R128, loudnorm atomico via FFmpeg
+│   ├── device_manager.py       # Routing audio (Master/PFL/Earcon), schermi A/B, profili hardware
+│   ├── hardware_profile.py     # Profiler hardware (cache statica), probe VA-API reale, ShowRuntimeGuard
+│   ├── sleep_inhibitor.py      # Anti-sospensione/screensaver cross-platform 100% stdlib
 │   ├── runtime_limits.py       # ★ Budget CPU/thread condiviso
-│   └── earcon.py               # Segnali acustici di conferma
+│   └── earcon.py               # Segnali acustici di conferma (instradati su cuffia PFL)
 ├── services/                   # Rete, sempre disaccoppiata dalla GUI
 │   ├── osc_protocol.py         # OSC 1.0 binario puro Python
 │   ├── osc_server.py           # QUdpSocket → RemoteManager
@@ -200,14 +202,14 @@ La copertura di regressione è in `tests/test_sections_playback.py`.
 flowchart TD
     A["main.py: parsing argomenti, UTF-8 console, logging"] --> B["QApplication + icona"]
     B --> C["Preflight FFmpeg (warning, non fatale)"]
-    C --> D["Rilevamento schermi"]
-    D --> E["OutputWindow + 3 LivePlayer (L1, L2, L3)"]
+    C --> D["Rilevamento schermi + SleepInhibitor"]
+    D --> E["OutputWindow A/B + 6 LivePlayer (L1..L6)"]
     E --> F["MainWindow sulla schermata primaria"]
     F --> G["OutputWindow.configure_screen sullo schermo esterno"]
     G --> H["TestPlayer (anteprima muta)"]
-    H --> I["DeviceManager: audio, schermo, profilo"]
+    H --> I["DeviceManager: audio Master/PFL/Earcon, schermi, profilo"]
     I --> J["RemoteManager (Web/OSC spenti di default)"]
-    J --> K["Wiring deck A/B, opacità, GO → scheduler"]
+    J --> K["Wiring deck A/B, opacità, GO → scheduler, aboutToQuit → shutdown"]
     K --> L["Crash recovery prompt, autosave"]
 ```
 
@@ -433,25 +435,26 @@ UDP, porta default `53000`. Implementazione binaria 1.0 in puro Python (stringhe
 /go, /cue/go, /blindcue/go [id]
 /stop, /blackout, /cue/stop
 /panic, /cue/panic
-/pause, /resume, /pause_toggle
+/pause, /resume                 # idempotenti (pausa / ripresa esplicite)
+/pause_toggle, /toggle_pause    # inversione stato pausa
 /next, /prev
 /cue/<id>/go, /cue/<id>/select
 /volume <0.0..1.0>
 ```
 
-Supporta PIN opzionale e whitelist di IP.
+Supporta PIN opzionale (con lockout 5 errori / 30 s) e whitelist stretta di IP (rifiuta anche sender vuoti).
 
 ### Web (`web_server.py`)
 
-HTTP multi-thread con **SSE** per lo stato in tempo reale.
+HTTP multi-thread (`timeout = 10s`) con **SSE** per lo stato in tempo reale (`MAX_SSE_CLIENTS = 32`, chiusura immediata via sentinella `_SSE_CLOSE` + `close_connection = True` su `stop()`/`revoke_all_sessions()`).
 
 | Endpoint | Uso |
 |---|---|
 | `/` | Telecomando operatore (GO, PANIC, selezione cue) |
-| `/monitor`, `/regia`, `/director`, `/view` | Monitor regista in sola lettura |
+| `/monitor`, `/regia`, `/director`, `/view` | Monitor regista in sola lettura (mostra anche Uscita B se attiva) |
 | `/api/status` | Stato corrente in JSON |
 | `/api/events` | Stream SSE |
-| `/api/action` (POST) | `go`, `panic`, `blackout`, `pause_toggle`, `next`, `prev`, `cue_go`, `select` |
+| `/api/action` (POST) | `go`, `panic`, `blackout`, `pause`, `resume`, `pause_toggle`, `next`, `prev`, `cue_go`, `select` |
 
 Sicurezza: PIN a 6 cifre, confronto con `hmac.compare_digest`, blocco dopo errori ripetuti, rate limiting.
 
@@ -472,8 +475,13 @@ pytest -q tests/test_show_engine_pure.py          # motore puro, millisecondi
 |---|---|---|
 | `test_show_engine_pure.py` | Puro Python, zero Qt | LIVE/LOADED, catene, gruppi, auto-follow, blackout |
 | `test_show_engine.py` | Headless con finestre | GO reale, pre-delay, gruppi, sezioni, envelope, surface |
-| `test_live_robustness.py` | Stress / caos | OSC sotto carico, input fuzz, file corrotti, zombie FFmpeg, web server |
+| `test_sections_playback.py` | Playback reale | Sezioni: loop, skip, vamp, salti, break, replay |
+| `test_media_transforms.py` | Rendering / modello | Crop, scala, posizione, rotazione, maschere, aspect ratio |
+| `test_output_modes.py` | Routing schermi | Uscita singola, span, doppia uscita indipendente |
+| `test_dual_output.py` | Multi-proiettore | Routing A/B, conflitti separati, fallback sicuro |
+| `test_live_robustness.py` | Stress / caos | OSC sotto carico, input fuzz, file corrotti, zombie FFmpeg, archivio portatile |
 | `test_live_integration.py` | Integrazione | RemoteManager, segnali, cache stato, autosave, boot headless |
+| `test_audit_regressions.py` | Regressioni audit | Zero shortcut duplicati, fallback cancellabile, lock LIVE, deck idle, SSE/OSC, sleep inhibitor, confine `engine ↛ ui` |
 
 ### Come scrivere un test
 
@@ -530,10 +538,14 @@ Se un test fallisce, **prima** si verifica se il bug è nel codice o nell'assunz
 | Logica di scena in un mixin | Non testabile, fragile | `engine/show_engine.py` |
 | Stato globale mutabile | Bug non riproducibili | Passare lo stato esplicitamente |
 
-### I due bug storici da non reintrodurre
+### Bug storici da non reintrodurre
 
 1. **Il contenitore GROUP declassato dal primo figlio.** Un gruppo che va in onda perdeva il badge LIVE quando il primo figlio occupava lo stesso layer. La guardia è in `demote_live_on_layer` e in `ShowEngine.promote_to_live`.
 2. **GO su gruppo vuoto con selezione persa.** Il ramo "gruppo senza figli" cambiava riga senza ricostruire la tabella. Ora chiama `_refresh_cue_list(keep_selection=False)` prima di spostare lo standby.
+3. **Scorciatoie duplicate (`QAction` + `QShortcut`).** Registrare la stessa combinazione di tasti su una `QAction` di menu e su un `QShortcut` causa `Ambiguous shortcut overload` in Qt e blocca silenziosamente il comando (es. `Ctrl+B`, `F5`). Coperto da `test_main_window_has_no_duplicate_shortcuts`.
+4. **`QTimer.singleShot` anonimi su transizioni di output.** Un timer non cancellabile (es. `show_fallback()`) può sovrascrivere una nuova cue lanciata durante il fade. Usare sempre timer gestiti con contatore generazionale e `deleteLater()`.
+5. **Chiamate DNS bloccanti (`socket.getaddrinfo`) sul thread GUI.** Su LAN/Wi-Fi di teatro offline possono bloccare l'interfaccia per 5–10 s; usare `QNetworkInterface` con cache TTL.
+6. **Import `ui/` dentro `engine/`.** Il confine architetturale `engine/ ↛ ui/` è verificato automaticamente via AST da `test_engine_has_no_ui_imports_and_hardware_profile_caches`.
 
 ---
 

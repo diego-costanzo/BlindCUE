@@ -41,6 +41,7 @@ from ui.cue_table import (
     ROLE_IS_LIVE,
     ROLE_IS_STANDBY,
     ROLE_LAYER,
+    ROLE_LAYER_CONFLICT,
     ROLE_LOOP,
     ROLE_MEDIA_TYPE,
     ROLE_NOTES_TXT,
@@ -127,15 +128,14 @@ class LiveCueTable(QTableWidget):
         self.setAccessibleDescription("Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.")
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
-        """Keyboard shortcuts on the live list (GO, arrows, stop)."""
+        """Keyboard shortcuts on the live list (GO, arrows). ESC propagates to MainWindow double-ESC guard."""
         key = event.key()
         if key == Qt.Key.Key_Space:
             self.go_requested.emit()
             event.accept()
             return
         if key == Qt.Key.Key_Escape:
-            self.panic_requested.emit()
-            event.accept()
+            event.ignore()
             return
         super().keyPressEvent(event)
         if key in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_PageUp, Qt.Key.Key_PageDown):
@@ -728,6 +728,7 @@ class LiveShowPanel(QWidget):
         super().__init__(parent)
         self._is_paused_all: bool = False
         self._updating_table: bool = False
+        self._cue_id_to_row: dict[int, int] = {}
 
         # Show duration stopwatch (monotonic drift-free tracking for shows & rehearsals)
         self._sw_armed: bool = True
@@ -826,13 +827,14 @@ class LiveShowPanel(QWidget):
         right_layout.addSpacing(8)
 
         # Far away from bottom GO trigger: Crimson PANIC Stop button
-        self.btn_panic = QPushButton("🚨  PANIC  —  STOP TOTALE   [ ESC ]")
+        self.btn_panic = QPushButton("🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]")
         self.btn_panic.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_panic.setFixedHeight(34)
-        self.btn_panic.setMinimumWidth(252)
+        self.btn_panic.setMinimumWidth(268)
         self.btn_panic.setToolTip(
             "EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. "
-            "Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato)."
+            "Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).\n"
+            "Da tastiera: premi ESC due volte entro 0,6s (protezione anti-tocco accidentale)."
         )
         self.btn_panic.setStyleSheet(
             "QPushButton { background-color: #7f1d1d; color: #ffffff; border: 2px solid #ef4444; "
@@ -1395,6 +1397,27 @@ class LiveShowPanel(QWidget):
         self._is_paused_all = paused
         self._apply_pause_btn_style(paused=paused)
 
+    def update_phase_badge(self, cue_id: int, phase_txt: str) -> bool:
+        """Fast-path O(1) update of a single row's phase countdown badge (10 Hz scheduler ticks)."""
+        row = self._cue_id_to_row.get(cue_id)
+        if row is None or not (0 <= row < self.live_table.rowCount()):
+            return False
+        is_waiting = bool(phase_txt)
+        for c_idx in range(6):
+            it = self.live_table.item(row, c_idx)
+            if it is None:
+                return False
+            is_live = bool(it.data(ROLE_IS_LIVE))
+            is_standby = bool(it.data(ROLE_IS_STANDBY))
+            status_txt = "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
+            status_clr = "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8"))
+            it.setData(ROLE_PHASE_TXT, phase_txt)
+            it.setData(ROLE_STATUS_TXT, status_txt)
+            it.setData(ROLE_STATUS_CLR, status_clr)
+            if c_idx == 5:
+                it.setText(status_txt)
+        return True
+
     def sync_cues(
         self,
         cues: list[Cue],
@@ -1404,11 +1427,25 @@ class LiveShowPanel(QWidget):
         show_break_loop: bool = False,
         layer_conflicts: dict[int, Any] | None = None,
     ) -> None:
-        """Refresh the extended Live Scaletta table, standby banner, and GO target label."""
+        """Refresh the extended Live Scaletta table, standby banner, and GO target label.
+
+        Reuses existing QTableWidgetItem cells in place to avoid churning 6*N Qt heap
+        objects on every GO or phase update.
+        """
         self._updating_table = True
         try:
             self.live_table.setRowCount(len(cues))
             phases = phase_tags or {}
+            conflicts = layer_conflicts or {}
+
+            # Pre-index hierarchy once in O(N) instead of O(N^2) scans per row
+            cue_by_id: dict[int, Cue] = {c.cue_id: c for c in cues}
+            children_by_parent: dict[int, list[Cue]] = {}
+            self._cue_id_to_row.clear()
+            for idx, c in enumerate(cues):
+                self._cue_id_to_row[c.cue_id] = idx
+                if c.parent_id is not None:
+                    children_by_parent.setdefault(c.parent_id, []).append(c)
 
             for r, cue in enumerate(cues):
                 is_live = (cue.status == CueStatus.LIVE)
@@ -1416,11 +1453,13 @@ class LiveShowPanel(QWidget):
                 phase_txt = phases.get(cue.cue_id, "")
                 is_waiting = bool(phase_txt)
                 is_group = (cue.media_type == MediaType.GROUP)
+                conflict = conflicts.get(cue.cue_id)
+                conflict_txt = getattr(conflict, "reason", "") if conflict is not None else ""
 
                 # Duration string calculation
                 dur_hint = known_durations.get(cue.file_path, 0.0)
                 if is_group:
-                    children = [c for c in cues if c.parent_id == cue.cue_id]
+                    children = children_by_parent.get(cue.cue_id, [])
                     child_count = len(children)
                     tot_d = 0.0
                     for ch in children:
@@ -1451,25 +1490,33 @@ class LiveShowPanel(QWidget):
 
                 is_last_child = False
                 if cue.parent_id is not None:
-                    siblings = [c for c in cues if c.parent_id == cue.parent_id]
+                    siblings = children_by_parent.get(cue.parent_id, [])
                     if siblings and siblings[-1].cue_id == cue.cue_id:
                         is_last_child = True
 
                 cue_color = getattr(cue, "color", "") or ""
                 prev_color = (getattr(cues[r - 1], "color", "") or "") if r > 0 else ""
                 incoming_link = cues[r - 1].follow_mode if r > 0 else ""
+                status_txt = "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
+                status_clr = "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8"))
 
-                it_num = QTableWidgetItem(f"{r + 1}")
-                it_q = QTableWidgetItem((cue.q_label or "").strip() or "—")
-                it_name = QTableWidgetItem(cue.name)
-                it_notes = QTableWidgetItem(cue.notes or "")
-                it_timing = QTableWidgetItem(dur_str)
-                it_state = QTableWidgetItem(
-                    "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
+                col_texts = (
+                    f"{r + 1}",
+                    (cue.q_label or "").strip() or "—",
+                    cue.name,
+                    cue.notes or "",
+                    dur_str,
+                    status_txt,
                 )
 
-                items = (it_num, it_q, it_name, it_notes, it_timing, it_state)
-                for c_idx, it in enumerate(items):
+                for c_idx, cell_text in enumerate(col_texts):
+                    it = self.live_table.item(r, c_idx)
+                    if it is None:
+                        it = QTableWidgetItem(cell_text)
+                        self.live_table.setItem(r, c_idx, it)
+                    elif it.text() != cell_text:
+                        it.setText(cell_text)
+
                     it.setData(ROLE_CUE_COLOR, cue_color)
                     it.setData(ROLE_PREV_COLOR, prev_color)
                     it.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
@@ -1494,19 +1541,17 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_POST_DELAY, cue.post_delay)
                     it.setData(ROLE_DURATION_TXT, dur_str)
                     it.setData(ROLE_PHASE_TXT, phase_txt)
-                    it.setData(
-                        ROLE_STATUS_TXT,
-                        "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO")),
-                    )
-                    it.setData(
-                        ROLE_STATUS_CLR,
-                        "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8")),
-                    )
-                    self.live_table.setItem(r, c_idx, it)
+                    it.setData(ROLE_LAYER_CONFLICT, conflict_txt)
+                    it.setData(ROLE_STATUS_TXT, status_txt)
+                    it.setData(ROLE_STATUS_CLR, status_clr)
+                    if conflict_txt:
+                        it.setToolTip(f"⚠ {conflict_txt}")
+                    elif it.toolTip():
+                        it.setToolTip("")
 
                 # Set row visibility based on parent collapsed state
                 if cue.parent_id is not None:
-                    parent = next((c for c in cues if c.cue_id == cue.parent_id), None)
+                    parent = cue_by_id.get(cue.parent_id)
                     self.live_table.setRowHidden(r, bool(parent and parent.collapsed))
                 else:
                     self.live_table.setRowHidden(r, False)
@@ -1563,3 +1608,9 @@ class LiveShowPanel(QWidget):
             self.btn_break_loop.setVisible(show_break_loop)
         finally:
             self._updating_table = False
+
+    def closeEvent(self, event) -> None:  # noqa: N802
+        """Stop the show clock timer cleanly when the live panel closes."""
+        if hasattr(self, "_clock_timer") and self._clock_timer.isActive():
+            self._clock_timer.stop()
+        super().closeEvent(event)

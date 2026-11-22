@@ -78,6 +78,7 @@ class MainWindow(
     layer_seek_requested = Signal(int, float)            # emits live layer (1..3) and target position in seconds
     panic_requested = Signal()                           # emits instant 0ms Panic stop all
     pause_all_toggled = Signal()                         # emits global Show Pause/Resume toggle
+    pause_all_set = Signal(bool)                         # emits idempotent global pause/resume state
 
     def __init__(self, output_window: OutputWindow,
                  parent: QWidget | None = None,
@@ -128,6 +129,8 @@ class MainWindow(
         self._known_file_durations: dict[str, float] = {}
         self._live_phase_tags: dict[int, str] = {}
         self._live_mode: bool = False
+        self._is_global_paused: bool = False
+        self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True
         self._top_ratios: tuple[float, float, float] = _DEFAULT_TOP_RATIOS
         self._applying_splitter_layout: bool = False
@@ -154,6 +157,6 @@ class MainWindow(
         app = QApplication.instance()
         if app is not None:
             app.installEventFilter(self)
-
-        QTimer.singleShot(150, self._check_crash_recovery)
+        # The crash-recovery question is scheduled by main() once the whole
+        # boot is done (see the end of main.main()).
 

@@ -444,7 +444,8 @@ class TestRecentProjects:
 
         harness._remember_recent_project("/shows/show3.blindcue")
         assert harness._recent_projects()[0].endswith("show3.blindcue")
-        assert harness._recent_projects().count("/shows/show3.blindcue") == 1
+        # Stored paths are OS-normalised (backslashes on Windows).
+        assert harness._recent_projects().count(str(Path("/shows/show3.blindcue"))) == 1
 
     def test_forget_and_clear(self, tmp_path) -> None:
         harness = self._harness(tmp_path)
@@ -452,7 +453,7 @@ class TestRecentProjects:
         harness._remember_recent_project("/shows/b.blindcue")
 
         harness._forget_recent_project("/shows/a.blindcue")
-        assert harness._recent_projects() == ["/shows/b.blindcue"]
+        assert harness._recent_projects() == [str(Path("/shows/b.blindcue"))]
 
         harness._clear_recent_projects()
         assert harness._recent_projects() == []

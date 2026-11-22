@@ -47,7 +47,8 @@ class _PersistenceMixin:
             return
         try:
             self._apply_inspector_to_cue()
-            settings = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+            settings: dict[str, Any] = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+            settings["surfaces"] = [s.to_dict() for s in self._surfaces]
             output = self._output_settings()
             if output:
                 settings["output"] = output
@@ -100,12 +101,17 @@ class _PersistenceMixin:
             for item in recovery.get("cues", []):
                 try:
                     cue = Cue.from_dict(item)
-                    cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE
+                    if cue.media_type == MediaType.GROUP:
+                        cue.status = CueStatus.LOADED
+                    else:
+                        cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE
                     self._cues.append(cue)
                 except Exception as exc:
                     logger.warning("[RECOVERY] Error recovering cue: %s", exc)
             self._current_index = recovery.get("current_cue_index", -1)
             self._current_project_path = recovery.get("active_project_path")
+            self._project_bundled = bool(self._current_project_path) and \
+                self._project_manager.uses_media_archive(self._current_project_path, self._cues)
 
             rec_settings = recovery.get("settings", {})
             lay0 = rec_settings.get("layer0_image") if isinstance(rec_settings, dict) else None
@@ -113,6 +119,19 @@ class _PersistenceMixin:
                 self.set_layer0_image(lay0)
             else:
                 self._on_reset_layer0()
+            surfaces_raw = rec_settings.get("surfaces") if isinstance(rec_settings, dict) else None
+            if surfaces_raw:
+                try:
+                    self._surfaces = [SurfaceDefinition.from_dict(d) for d in surfaces_raw]
+                except Exception as exc:
+                    logger.warning("[RECOVERY] Error restoring surfaces: %s", exc)
+                    self._surfaces = [create_default_surface()]
+            else:
+                self._surfaces = [create_default_surface()]
+            self._output.set_surfaces(self._surfaces)
+            if getattr(self, "_output_b", None) is not None:
+                self._output_b.set_surfaces(self._surfaces)
+            self._inspector.set_available_surfaces(self._surfaces)
             self._apply_output_settings(rec_settings)
 
             self._refresh_cue_list(keep_selection=False)
@@ -151,9 +170,13 @@ class _PersistenceMixin:
         ):
             return
 
+        if any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags):
+            self._on_panic()
+
         self._cues.clear()
         self._current_index = -1
         self._current_project_path = None
+        self._project_bundled = False
         self._surfaces = [create_default_surface()]
         self._output.set_surfaces(self._surfaces)
         if getattr(self, "_output_b", None) is not None:
@@ -205,10 +228,15 @@ class _PersistenceMixin:
         paths = [str(p) for p in (raw or []) if isinstance(p, str) and p.strip()]
         return paths[: self._RECENT_PROJECTS_LIMIT]
 
+    @staticmethod
+    def _recent_key(file_path: str) -> str:
+        """Normalise a path the way it is stored in the recent list."""
+        return str(Path(file_path).expanduser())
+
     def _remember_recent_project(self, file_path: str) -> None:
         """Move *file_path* to the top of the recent list and persist it."""
         try:
-            path = str(Path(file_path).expanduser())
+            path = self._recent_key(file_path)
         except Exception:
             return
         if not path:
@@ -223,7 +251,11 @@ class _PersistenceMixin:
 
     def _forget_recent_project(self, file_path: str) -> None:
         """Drop one entry (used when the file disappeared from disk)."""
-        recent = [p for p in self._recent_projects() if p != str(file_path)]
+        try:
+            gone = {str(file_path), self._recent_key(file_path)}
+        except Exception:
+            gone = {str(file_path)}
+        recent = [p for p in self._recent_projects() if p not in gone]
         try:
             self._settings().setValue(self._RECENT_PROJECTS_KEY, recent)
         except Exception as exc:
@@ -257,9 +289,13 @@ class _PersistenceMixin:
         """Load *file_path* into the window, restoring every project setting."""
         try:
             cues, current_idx, settings = self._project_manager.load_project(file_path)
+            if any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags):
+                self._on_panic()
             self._cues = cues
             self._current_index = current_idx
             self._current_project_path = file_path
+            # A show saved as a portable bundle must stay one on the next Ctrl+S.
+            self._project_bundled = self._project_manager.uses_media_archive(file_path, cues)
 
             layer0 = settings.get("layer0_image") if isinstance(settings, dict) else None
             if layer0 and os.path.isfile(layer0):

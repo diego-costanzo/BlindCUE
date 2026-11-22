@@ -224,9 +224,57 @@ class _CueTableMixin:
             mgr.audio_devices_changed.connect(self._update_hardware_status_bar)
             mgr.output_mode_changed.connect(self._on_output_mode_changed)
             mgr.screens_changed.connect(self._refresh_output_monitors)
+            mgr.screens_changed.connect(self._schedule_director_check)
             self._on_output_mode_changed(getattr(mgr, "_output_mode", "single"))
             self._refresh_output_monitors()
             self._update_hardware_status_bar()
+
+    @Slot()
+    def _schedule_director_check(self) -> None:
+        # Windows 11 minimises the windows of a monitor that goes away and
+        # moves windows around for a while after a display change: look once
+        # it has settled, and once more a little later.
+        for delay in (1500, 4000):
+            QTimer.singleShot(delay, self._after_display_change)
+
+    def _after_display_change(self) -> None:
+        """Outputs back on their screens first, then the director visible."""
+        for out in (self._output, getattr(self, "_output_b", None)):
+            ensure = getattr(out, "ensure_on_target_screen", None)
+            if ensure is not None:
+                ensure()
+        self._ensure_director_visible()
+
+    def _ensure_director_visible(self) -> None:
+        """Keep the director window usable after a display change.
+
+        With Windows "Second screen only" (or the laptop lid closed) the
+        director's monitor goes away and Windows 11 minimises the window; with
+        the output full screen on the only screen nothing could be clicked
+        (2026-11-22). The director goes back to the primary screen when it is
+        minimised, off every screen, or under an output window.
+        """
+        app = QApplication.instance()
+        if app is None or getattr(self, "_force_closing", False):
+            return
+        center = self.frameGeometry().center()
+        on_screen = any(s.geometry().contains(center) for s in app.screens())
+        covered = False
+        for out in (self._output, getattr(self, "_output_b", None)):
+            if out is None or not out.isVisible() or out.isMinimized():
+                continue
+            on_top = bool(out.windowFlags() & Qt.WindowType.WindowStaysOnTopHint)
+            if on_top and out.frameGeometry().contains(center):
+                covered = True
+        if on_screen and not covered and not self.isMinimized():
+            return
+        logger.info("[MAIN-WIN] Director window brought back after a display change "
+                    "(minimised=%s, on screen=%s, covered=%s)", self.isMinimized(), on_screen, covered)
+        self.setWindowState(self.windowState() & ~Qt.WindowState.WindowMinimized)
+        self.bind_to_primary_screen()
+        self.show()
+        self.raise_()
+        self.activateWindow()
 
     @Slot()
     def _refresh_output_monitors(self) -> None:

@@ -76,4 +76,6 @@ class _WaveformWorkerMixin:
     def _on_analyzer_failed(self, analyzer, path: str, msg: str) -> None:
         self._active_analyzers.discard(analyzer)
         logger.warning("Waveform error for %s: %s", path, msg)
-        self._waveform.set_peaks(np.array([]))
+        cue = self._selected_cue()
+        if cue is not None and cue.file_path and os.path.abspath(cue.file_path) == os.path.abspath(path):
+            self._waveform.set_peaks(np.array([]))

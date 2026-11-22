@@ -21,6 +21,7 @@ import logging
 import queue
 import threading
 import time
+import urllib.parse
 from typing import Any
 from collections.abc import Callable
 
@@ -30,6 +31,10 @@ logger = logging.getLogger("blindcue.web")
 
 # Maximum permitted HTTP request payload (1 MB) to protect against DoS
 MAX_BODY_SIZE = 1024 * 1024
+# Cap concurrent SSE streams so runaway tabs cannot exhaust threads/sockets
+MAX_SSE_CLIENTS = 32
+# Sentinel pushed into SSE queues to unblock threads immediately on stop/revoke
+_SSE_CLOSE = object()
 
 # ── Embedded Mobile Web App (HTML5 + CSS3 + Vanilla ES6) ─────────────
 _HTML_PAGE = """<!DOCTYPE html>
@@ -690,6 +695,17 @@ _HTML_PAGE = """<!DOCTYPE html>
       }
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    let lastCueListSig = "";
+
     function formatTime(sec) {
       if (sec === undefined || sec === null || isNaN(sec) || sec < 0) return "00:00";
       const s = Math.round(sec);
@@ -789,39 +805,51 @@ _HTML_PAGE = """<!DOCTYPE html>
         lblP.textContent = "PAUSA";
       }
 
-      // 5. Scaletta (Cue List)
+      // 5. Scaletta (Cue List) — only rebuild DOM when list state changes so mobile taps never drop
       const listEl = document.getElementById('cueListScroll');
       const cues = state.cues || [];
       document.getElementById('cueCount').textContent = `${cues.length} CUE`;
 
-      let html = "";
-      cues.forEach(c => {
-        const isLive = (c.status === "live");
-        const isSb = Boolean(c.is_standby);
-        const rowClass = `cue-row ${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
-        const typeClass = `cue-badge ${c.type || 'video'}`;
+      const cueSig = JSON.stringify(cues.map(c => [c.id, c.name, c.ref, c.type, c.layer, c.output_target, c.status, c.duration, c.is_standby]));
+      if (cueSig !== lastCueListSig) {
+        lastCueListSig = cueSig;
+        let html = "";
+        cues.forEach(c => {
+          const statusNorm = String(c.status || "").toLowerCase();
+          const typeNorm = String(c.type || "video").toLowerCase();
+          const isLive = (statusNorm === "live");
+          const isOffline = (statusNorm === "offline");
+          const isSb = Boolean(c.is_standby);
+          const rowClass = `cue-row ${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
+          const safeType = ['video', 'audio', 'image', 'group'].includes(typeNorm) ? typeNorm : 'video';
+          const typeClass = `cue-badge ${safeType}`;
 
-        let icon = "🎬";
-        if (c.type === "audio") icon = "🎵";
-        else if (c.type === "image") icon = "🖼";
-        else if (c.type === "group") icon = "📁";
+          let icon = "🎬";
+          if (safeType === "audio") icon = "🎵";
+          else if (safeType === "image") icon = "🖼";
+          else if (safeType === "group") icon = "📁";
 
-        html += `
-          <div class="${rowClass}" onclick="doAction('select', ${c.id})">
-            <div class="cue-info">
-              <div class="cue-title-row">
-                <span class="${typeClass}">${icon} ${c.ref || ('#' + c.id)}</span>
-                <span class="cue-name">${c.name}</span>
+          const outPrefix = (String(c.output_target || "A").toUpperCase() === "B") ? "B·" : "";
+          const cueIdNum = Number(c.id);
+          const safeIdArg = Number.isFinite(cueIdNum) ? String(cueIdNum) : JSON.stringify(String(c.id));
+
+          html += `
+            <div class="${rowClass}" onclick="doAction('select', ${safeIdArg})">
+              <div class="cue-info">
+                <div class="cue-title-row">
+                  <span class="${typeClass}">${icon} ${escapeHtml(c.ref || ('#' + c.id))}</span>
+                  <span class="cue-name">${escapeHtml(c.name)}</span>
+                </div>
+                <div class="cue-meta">${outPrefix}L${escapeHtml(c.layer)} · ${formatTime(c.duration)}${isOffline ? ' · ⚠ OFFLINE' : ''}</div>
               </div>
-              <div class="cue-meta">L${c.layer} · ${formatTime(c.duration)}</div>
+              <button class="btn-cue-go" onclick="event.stopPropagation(); doAction('cue_go', ${safeIdArg})">
+                ${isLive ? '● LIVE' : '▶ GO'}
+              </button>
             </div>
-            <button class="btn-cue-go" onclick="event.stopPropagation(); doAction('cue_go', ${c.id})">
-              ${isLive ? '● LIVE' : '▶ GO'}
-            </button>
-          </div>
-        `;
-      });
-      listEl.innerHTML = html;
+          `;
+        });
+        listEl.innerHTML = html;
+      }
     }
 
     function setOnline(online) {
@@ -859,7 +887,23 @@ _HTML_PAGE = """<!DOCTYPE html>
       evtSource.onerror = () => {
         setOnline(false);
         evtSource.close();
-        setTimeout(initSSE, 2500);
+        evtSource = null;
+        // Probe status once so a revoked PIN opens the lock screen instead of retrying into lockout
+        const probeUrl = currentPin ? `/api/status?pin=${encodeURIComponent(currentPin)}` : '/api/status';
+        fetch(probeUrl)
+          .then(res => res.json())
+          .then(data => {
+            if (data.authenticated === false && data.pin_required) {
+              currentPin = "";
+              sessionStorage.removeItem('blindcue_pin');
+              showLockScreen(data.error || "Sessione revocata: reinserisci il PIN");
+            } else {
+              setTimeout(initSSE, 2500);
+            }
+          })
+          .catch(() => {
+            setTimeout(initSSE, 2500);
+          });
       };
     }
 
@@ -1541,6 +1585,40 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Output B Layers (shown dynamically when dual independent outputs are active) -->
+    <div class="section-title" id="outputBTitle" style="display: none;">
+      <span>● Uscita B — Proiettore Indipendente (Layer B·1..B·3)</span>
+    </div>
+    <div class="layers-grid" id="outputBGrid" style="display: none;">
+      <div class="layer-card" id="layerCard4">
+        <div class="layer-hdr">
+          <span class="layer-badge">B·LAYER 1 (FONDO)</span>
+          <span class="layer-status" id="layerStatus4">IDLE</span>
+        </div>
+        <div class="layer-title" id="layerTitle4">— Inattivo / Nero —</div>
+        <div class="layer-progress-bg"><div class="layer-progress-bar" id="layerBar4"></div></div>
+        <div class="layer-time-row"><span id="layerElap4">00:00</span><span id="layerRem4">--:--</span></div>
+      </div>
+      <div class="layer-card" id="layerCard5">
+        <div class="layer-hdr">
+          <span class="layer-badge">B·LAYER 2 (MEDIO)</span>
+          <span class="layer-status" id="layerStatus5">IDLE</span>
+        </div>
+        <div class="layer-title" id="layerTitle5">— Inattivo / Nero —</div>
+        <div class="layer-progress-bg"><div class="layer-progress-bar" id="layerBar5"></div></div>
+        <div class="layer-time-row"><span id="layerElap5">00:00</span><span id="layerRem5">--:--</span></div>
+      </div>
+      <div class="layer-card" id="layerCard6">
+        <div class="layer-hdr">
+          <span class="layer-badge">B·LAYER 3 (OVERLAY)</span>
+          <span class="layer-status" id="layerStatus6">IDLE</span>
+        </div>
+        <div class="layer-title" id="layerTitle6">— Inattivo / Nero —</div>
+        <div class="layer-progress-bg"><div class="layer-progress-bar" id="layerBar6"></div></div>
+        <div class="layer-time-row"><span id="layerElap6">00:00</span><span id="layerRem6">--:--</span></div>
+      </div>
+    </div>
+
     <!-- Section: Standby Cue Banner -->
     <div class="standby-banner" id="standbyBanner">
       <div class="standby-left">
@@ -1632,6 +1710,17 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       sessionStorage.setItem('blindcue_pin', currentPin);
     }
 
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    let lastMonitorTableSig = "";
+
     function formatTime(sec) {
       if (sec === undefined || sec === null || isNaN(sec) || sec < 0) return "00:00";
       const s = Math.round(sec);
@@ -1654,9 +1743,13 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       // Show Title
       document.getElementById('showTitle').textContent = state.show_title || "Spettacolo";
 
-      // 3 Layers Deck
+      // Layers Deck (1-3 Output A, plus 4-6 Output B when dual output is active)
       const layers = state.layers || {};
-      [1, 2, 3].forEach(lIdx => {
+      const dualActive = Boolean(state.dual_output_active);
+      document.getElementById('outputBTitle').style.display = dualActive ? 'flex' : 'none';
+      document.getElementById('outputBGrid').style.display = dualActive ? 'grid' : 'none';
+      const activeIds = dualActive ? [1, 2, 3, 4, 5, 6] : [1, 2, 3];
+      activeIds.forEach(lIdx => {
         const lData = layers[String(lIdx)] || { is_live: false, title: "— Inattivo / Nero —", phase: "IDLE", pos_sec: 0, end_sec: 0, start_sec: 0 };
         const card = document.getElementById(`layerCard${lIdx}`);
         const stat = document.getElementById(`layerStatus${lIdx}`);
@@ -1700,59 +1793,69 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       if (state.standby_cue) {
         sbName.textContent = `${state.standby_cue.ref} · ${state.standby_cue.name}`;
         sbMeta.innerHTML = `
-          <span class="standby-meta-item"><b>Layer:</b> L${state.standby_cue.layer}</span>
+          <span class="standby-meta-item"><b>Layer:</b> L${escapeHtml(state.standby_cue.layer)}</span>
           <span class="standby-meta-item"><b>Durata:</b> ${formatTime(state.standby_cue.duration)}</span>
-          <span class="standby-meta-item"><b>Fade:</b> ${state.standby_cue.fade_in || 0}s IN / ${state.standby_cue.fade_out || 0}s OUT</span>
-          ${state.standby_cue.notes ? `<span class="standby-meta-item"><b>Note:</b> ${state.standby_cue.notes}</span>` : ''}
+          <span class="standby-meta-item"><b>Fade:</b> ${escapeHtml(state.standby_cue.fade_in || 0)}s IN / ${escapeHtml(state.standby_cue.fade_out || 0)}s OUT</span>
+          ${state.standby_cue.notes ? `<span class="standby-meta-item"><b>Note:</b> ${escapeHtml(state.standby_cue.notes)}</span>` : ''}
         `;
       } else {
         sbName.textContent = "— Fine Scaletta —";
         sbMeta.innerHTML = `<span class="standby-meta-item">Tutte le cue eseguite</span>`;
       }
 
-      // Scaletta Table
+      // Scaletta Table (diffed to avoid repaint jitter)
       const tb = document.getElementById('cuesTableBody');
       const cues = state.cues || [];
       document.getElementById('cuesCountBadge').textContent = `${cues.length} CUE`;
 
-      let html = "";
-      cues.forEach(c => {
-        const isLive = (c.status === "live");
-        const isSb = Boolean(c.is_standby);
-        const rowClass = `${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
+      const tableSig = JSON.stringify(cues);
+      if (tableSig !== lastMonitorTableSig) {
+        lastMonitorTableSig = tableSig;
+        let html = "";
+        cues.forEach(c => {
+          const statusNorm = String(c.status || "").toLowerCase();
+          const typeNorm = String(c.type || "video").toLowerCase();
+          const safeType = ['video', 'audio', 'image', 'group'].includes(typeNorm) ? typeNorm : 'video';
+          const isLive = (statusNorm === "live");
+          const isSb = Boolean(c.is_standby);
+          const rowClass = `${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
 
-        let stBadge = `<span class="status-badge">○ PRONTA</span>`;
-        if (isLive) {
-          stBadge = `<span class="status-badge live">● IN ONDA</span>`;
-        } else if (isSb) {
-          stBadge = `<span class="status-badge standby">▶ STANDBY</span>`;
-        } else if (c.status === "offline" && !isSb) {
-          stBadge = `<span class="status-badge">✓ ESEGUITA</span>`;
-        }
+          let stBadge = `<span class="status-badge">○ PRONTA</span>`;
+          if (isLive) {
+            stBadge = `<span class="status-badge live">● IN ONDA</span>`;
+          } else if (isSb) {
+            stBadge = `<span class="status-badge standby">▶ STANDBY</span>`;
+          } else if (statusNorm === "offline") {
+            stBadge = `<span class="status-badge" style="color:#f87171;">⚠ OFFLINE</span>`;
+          }
 
-        const typeClass = `type-badge ${c.type || 'video'}`;
-        let icon = "🎬";
-        if (c.type === "audio") icon = "🎵";
-        else if (c.type === "image") icon = "🖼";
-        else if (c.type === "group") icon = "📁";
+          const typeClass = `type-badge ${safeType}`;
+          let icon = "🎬";
+          if (safeType === "audio") icon = "🎵";
+          else if (safeType === "image") icon = "🖼";
+          else if (safeType === "group") icon = "📁";
 
-        html += `
-          <tr class="${rowClass}">
-            <td>${stBadge}</td>
-            <td class="cue-col-ref">${c.ref || ('#' + c.id)}</td>
-            <td>
-              <div class="cue-col-name">${c.name}</div>
-              ${c.notes ? `<div class="cue-notes">${c.notes}</div>` : ''}
-            </td>
-            <td><span class="${typeClass}">${icon} ${(c.type || 'VIDEO').toUpperCase()}</span></td>
-            <td><span style="font-weight:700; color:#38bdf8;">L${c.layer}</span></td>
-            <td style="font-family:ui-monospace, monospace;">${formatTime(c.duration)}</td>
-            <td style="font-family:ui-monospace, monospace; color:#94a3b8;">${c.fade_in || 0}s / ${c.fade_out || 0}s</td>
-            <td style="font-size:11px; color:#a1a1aa;">${c.follow_mode === 'AUTO_FOLLOW' ? 'Auto-follow' : 'Manuale'}</td>
-          </tr>
-        `;
-      });
-      tb.innerHTML = html;
+          const outPrefix = (String(c.output_target || "A").toUpperCase() === "B") ? "B·" : "";
+          const followTxt = c.follow_mode === 'AUTO_FOLLOW' ? 'Auto-follow' : (c.follow_mode === 'SIMULTANEOUS' ? 'Simultanea' : 'Manuale');
+
+          html += `
+            <tr class="${rowClass}">
+              <td>${stBadge}</td>
+              <td class="cue-col-ref">${escapeHtml(c.ref || ('#' + c.id))}</td>
+              <td>
+                <div class="cue-col-name">${escapeHtml(c.name)}</div>
+                ${c.notes ? `<div class="cue-notes">${escapeHtml(c.notes)}</div>` : ''}
+              </td>
+              <td><span class="${typeClass}">${icon} ${escapeHtml(safeType.toUpperCase())}</span></td>
+              <td><span style="font-weight:700; color:#38bdf8;">${outPrefix}L${escapeHtml(c.layer)}</span></td>
+              <td style="font-family:ui-monospace, monospace;">${formatTime(c.duration)}</td>
+              <td style="font-family:ui-monospace, monospace; color:#94a3b8;">${escapeHtml(c.fade_in || 0)}s / ${escapeHtml(c.fade_out || 0)}s</td>
+              <td style="font-size:11px; color:#a1a1aa;">${followTxt}</td>
+            </tr>
+          `;
+        });
+        tb.innerHTML = html;
+      }
     }
 
     function setOnline(online) {
@@ -1785,7 +1888,23 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       evtSource.onerror = () => {
         setOnline(false);
         evtSource.close();
-        setTimeout(initSSE, 2500);
+        evtSource = null;
+        // Probe status once so a revoked PIN opens the lock screen instead of retrying into lockout
+        const probeUrl = currentPin ? `/api/status?pin=${encodeURIComponent(currentPin)}` : '/api/status';
+        fetch(probeUrl)
+          .then(res => res.json())
+          .then(data => {
+            if (data.authenticated === false && data.pin_required) {
+              currentPin = "";
+              sessionStorage.removeItem('blindcue_pin');
+              showLockScreen(data.error || "Sessione revocata: reinserisci il PIN");
+            } else {
+              setTimeout(initSSE, 2500);
+            }
+          })
+          .catch(() => {
+            setTimeout(initSSE, 2500);
+          });
       };
     }
 
@@ -1878,6 +1997,8 @@ class WebRemoteBridge(QObject):
     panic_requested = Signal()
     blackout_requested = Signal()
     pause_toggle_requested = Signal()
+    pause_requested = Signal()
+    resume_requested = Signal()
     next_cue_requested = Signal()
     prev_cue_requested = Signal()
     cue_go_requested = Signal(object)           # cue id or index
@@ -1895,6 +2016,9 @@ class _ThreadingHttpServer(http.server.ThreadingHTTPServer):
 
 class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
     """Handles HTTP requests, REST actions, and SSE (Server-Sent Events) live streaming."""
+
+    # Protect request threads against Slowloris / half-open mobile Wi-Fi drops
+    timeout = 10
 
     @property
     def controller(self) -> WebRemoteServer:
@@ -1925,15 +2049,25 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         if hdr_pin:
             return self.controller.check_pin(hdr_pin, client_ip)
 
-        # 2. Check query parameter ?pin=
-        if "?" in self.path:
-            query = self.path.split("?")[1]
-            for param in query.split("&"):
-                if param.startswith("pin="):
-                    cand = param.split("=")[1].strip()
-                    return self.controller.check_pin(cand, client_ip)
+        # 2. Check query parameter ?pin= (properly URL-decoded)
+        parsed = urllib.parse.urlsplit(self.path)
+        if parsed.query:
+            params = urllib.parse.parse_qs(parsed.query, keep_blank_values=False)
+            pin_vals = params.get("pin")
+            if pin_vals:
+                cand = pin_vals[0].strip()
+                return self.controller.check_pin(cand, client_ip)
 
         return False, "PIN di regia richiesto"
+
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        """Respond cleanly to CORS preflight requests from mobile/tablet browsers."""
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, X-BlindCue-PIN")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802
         """Serve the remote page, the REST state snapshot and the SSE stream."""
@@ -2007,15 +2141,17 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(401, "Unauthorized - PIN Required")
             return
 
+        client_queue: queue.Queue = queue.Queue(maxsize=30)
+        if not self.controller.register_sse_client(client_queue):
+            self.send_error(503, "Too Many SSE Clients")
+            return
+
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Cache-Control", "no-cache")
         self.send_header("Connection", "keep-alive")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
-
-        client_queue: queue.Queue = queue.Queue(maxsize=30)
-        self.controller.register_sse_client(client_queue)
 
         # Send initial full state immediately
         try:
@@ -2039,12 +2175,17 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(b": heartbeat\n\n")
                     self.wfile.flush()
                     continue
+                if payload is _SSE_CLOSE:
+                    break
                 body = payload if isinstance(payload, str) else json.dumps(payload)
                 self.wfile.write(f"data: {body}\n\n".encode())
                 self.wfile.flush()
         except OSError as exc:
             logger.debug("[WEB] SSE client %s disconnected: %s", self.client_address[0], exc)
         finally:
+            # Explicitly close the underlying TCP socket so EventSource clients
+            # receive immediate EOF on revoke/stop instead of waiting on keep-alive.
+            self.close_connection = True
             self.controller.unregister_sse_client(client_queue)
 
     def _handle_action(self) -> None:
@@ -2090,8 +2231,12 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             bridge.panic_requested.emit()
         elif action == "blackout":
             bridge.blackout_requested.emit()
-        elif action in ("pause_toggle", "pause", "resume"):
+        elif action == "pause_toggle":
             bridge.pause_toggle_requested.emit()
+        elif action == "pause":
+            bridge.pause_requested.emit()
+        elif action == "resume":
+            bridge.resume_requested.emit()
         elif action == "next":
             bridge.next_cue_requested.emit()
         elif action == "prev":
@@ -2161,10 +2306,18 @@ class WebRemoteServer:
             return True, ""
         now = time.time()
         with self._auth_lock:
+            if len(self._failed_attempts) > 256:
+                self._failed_attempts = {
+                    ip: entry for ip, entry in self._failed_attempts.items()
+                    if entry[1] > now
+                }
             fails, lockout = self._failed_attempts.get(client_ip, (0, 0.0))
-            if fails >= 5 and now < lockout:
-                rem = max(1, int(lockout - now))
-                return False, f"Troppi tentativi errati. Blocco temporaneo per {rem}s."
+            if fails >= 5:
+                if now < lockout:
+                    rem = max(1, int(lockout - now))
+                    return False, f"Troppi tentativi errati. Blocco temporaneo per {rem}s."
+                # Lockout period elapsed: reset strike counter cleanly
+                fails = 0
 
             if hmac.compare_digest(str(candidate).strip(), self._pin):
                 self._failed_attempts.pop(client_ip, None)
@@ -2175,12 +2328,29 @@ class WebRemoteServer:
                 self._failed_attempts[client_ip] = (fails, lock)
                 return False, "PIN errato."
 
+    def _close_all_sse_clients(self) -> None:
+        """Unblock and drop every active SSE queue immediately."""
+        with self._clients_lock:
+            clients = list(self._sse_clients)
+            self._sse_clients.clear()
+        for q in clients:
+            try:
+                q.put_nowait(_SSE_CLOSE)
+            except queue.Full:
+                try:
+                    q.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    q.put_nowait(_SSE_CLOSE)
+                except queue.Full:
+                    pass
+
     def revoke_all_sessions(self) -> None:
-        """Clear failed attempts and drop active SSE streams to force re-authentication."""
+        """Clear failed attempts and immediately terminate active SSE streams to force re-authentication."""
         with self._auth_lock:
             self._failed_attempts.clear()
-        with self._clients_lock:
-            self._sse_clients.clear()
+        self._close_all_sse_clients()
 
     def set_state_provider(self, provider: Callable[[], dict[str, Any]]) -> None:
         """Register the callback that builds the JSON state snapshot.
@@ -2205,11 +2375,16 @@ class WebRemoteServer:
             return "Nessuna azione web ricevuta"
         return f"{self._last_action} da {self._last_client_ip}"
 
-    def register_sse_client(self, client_queue: queue.Queue) -> None:
-        """Subscribe a browser client to the state stream (Server-Sent Events)."""
+    def register_sse_client(self, client_queue: queue.Queue) -> bool:
+        """Subscribe a browser client to the state stream (bounded to MAX_SSE_CLIENTS)."""
         with self._clients_lock:
+            if len(self._sse_clients) >= MAX_SSE_CLIENTS:
+                logger.warning("[WEB] Rejected SSE client: limit %d reached", MAX_SSE_CLIENTS)
+                return False
             self._sse_clients.add(client_queue)
-        logger.info("[WEB] Mobile client connected (Active: %d)", self.get_connected_clients_count())
+            active = len(self._sse_clients)
+        logger.info("[WEB] Mobile client connected (Active: %d)", active)
+        return True
 
     def unregister_sse_client(self, client_queue: queue.Queue) -> None:
         """Drop a browser client that disconnected or timed out."""
@@ -2286,8 +2461,10 @@ class WebRemoteServer:
             logger.debug("[WEB] HTTP server loop terminated unexpectedly", exc_info=True)
 
     def stop(self) -> None:
-        """Stop HTTP server and unblock all worker threads."""
+        """Stop HTTP server and unblock all worker threads immediately."""
         self._running = False
+        # Wake and terminate active SSE streams first so handler threads exit promptly
+        self._close_all_sse_clients()
         if self._httpd:
             if (self._thread is not None
                     and threading.current_thread() is not self._thread):
@@ -2312,8 +2489,7 @@ class WebRemoteServer:
                     logger.debug("[WEB] Error closing HTTP socket", exc_info=True)
             self._httpd = None
         self._thread = None
-        with self._clients_lock:
-            self._sse_clients.clear()
+        self._close_all_sse_clients()
         logger.info("[WEB] Remote Web Server stopped")
 
     def __del__(self) -> None:
