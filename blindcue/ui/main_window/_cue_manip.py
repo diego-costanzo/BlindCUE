@@ -32,6 +32,10 @@ class _CueManipMixin:
             return
 
         cue = Cue(name=os.path.basename(file_path), media_type=media_type, file_path=file_path)
+        if media_type == MediaType.AUDIO:
+            # One player per layer: music on L1 would be cut by the next photo
+            # or video (also L1) started with it in "Simultanea" mode.
+            cue.layer = 2
         errors = cue.validate()
         if errors:
             QMessageBox.warning(self, "Validation Error", "\n".join(errors))
