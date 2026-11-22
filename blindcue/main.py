@@ -620,6 +620,11 @@ def main() -> int:
                     layer, s_sec, end_sec=e_sec, start_sec=s_sec, is_looping_inf=inf_flag
                 )
 
+            # Crossfade: dissolve the picture currently on this layer
+            # into the new cue instead of a hard cut.
+            if getattr(cue, "crossfade", 0.0) > 0:
+                _out_window(layer).begin_crossfade(_local_layer(layer), float(cue.crossfade))
+
             if cue.media_type == MediaType.VIDEO:
                 if lp is not None:
                     init_op = 0.0 if cue.fade_in > 0 else (
