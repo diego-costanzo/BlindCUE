@@ -375,8 +375,6 @@ T: dict[str, str] = {
         'Auto (RAM {}GB / {} Cores: maximum performance and multi-screen)',
     'Auto (RAM {}GB / {} Core: bilanciamento standard)':
         'Auto (RAM {}GB / {} Cores: standard balance)',
-    'Attiva (OpenGL / Hardware Accelerated)':
-        'Active (OpenGL / Hardware Accelerated)',
     'Display Principale':
         'Main Display',
     'Disattivazione... {}s':
@@ -803,10 +801,6 @@ T: dict[str, str] = {
         '● LIVE MODE (SHOW MODE)',
     "Azzera Cronometro Spettacolo e riarma l'avvio automatico al prossimo 1° GO":
         'Reset the Show Stopwatch and re-arm auto start on the next 1st GO',
-    '🚨  PANIC  —  STOP TOTALE   [ ESC ]':
-        '🚨  PANIC  —  TOTAL STOP   [ ESC ]',
-    'EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).':
-        'EMERGENCY (0ms): Immediately cuts Audio, Video and Images on all layers. Shows pure black if the cover is the calibration one (or the custom cover if set).',
     'Nessuna cue pronta in scaletta':
         'No cue ready in the list',
     '⏭ Esci da Loop Sezione':
@@ -931,8 +925,6 @@ T: dict[str, str] = {
         "Fades out and stops the content on {} using the cue's Fade Out. Requires a 0.6 second press.",
     'Dissolvenza in uscita e arresto del contenuto su {}.\nLa durata è quella del Fade Out della cue (minimo 0.2 s).':
         "Fade out and stop the content on {}.\nThe duration is the cue's Fade Out (minimum 0.2 s).",
-    '🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (3s)':
-        '🔒 Layer Controls Protected — Unlock with the Padlock (3s)',
     'Salta indietro di 10s su Layer {} (prove)':
         'Skip back 10s on Layer {} (rehearsals)',
     'Metti in Pausa Layer {} (prove)':
@@ -1741,4 +1733,25 @@ T: dict[str, str] = {
         'Chosen audio output not connected ({}): playing on the default output ({})',
     'Uscita audio scelta di nuovo collegata: {}':
         'Chosen audio output connected again: {}',
+    # ── strings from 3157c0a (PANIC on ESC twice, VA-API, OSC, bundle masks) ──
+    '<b>Indirizzo OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>• <b style=\'color:#f87171;\'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pausa, ripresa o toggle<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l\'IP per inviare comandi protetti':
+        '<b>OSC Address:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> or <b>/cue/go</b> &nbsp;→&nbsp; Runs GO on the Standby cue<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; Immediate 0ms stop (All layers)<br>• <b style=\'color:#f87171;\'>/stop</b> or <b>/blackout</b> &nbsp;→&nbsp; Live blackout (Back to Layer 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pause, resume or toggle<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Moves the cue list selection<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;number&gt;/go</b> &nbsp;→&nbsp; Runs the given cue at once (e.g. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Authenticates the IP to send protected commands',
+    'Attiva (VA-API / Hardware Decode)':
+        'Active (VA-API / Hardware Decode)',
+    'EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).\nDa tastiera: premi ESC due volte entro 0,6s (protezione anti-tocco accidentale).':
+        'EMERGENCY (0ms): Immediately cuts Audio, Video and Images on all layers. Shows pure black if the cover is the calibration one (or the custom cover if set).\nFrom the keyboard: press ESC twice within 0.6 s (protection against accidental presses).',
+    'Layer 0 (Tappo)':
+        'Layer 0 (cover)',
+    'Maschera superficie \'{}\'':
+        'Surface mask \'{}\'',
+    'OpenGL / EGL (solo compositing, decode CPU)':
+        'OpenGL / EGL (compositing only, CPU decoding)',
+    'Software Renderer (nessuna accelerazione GPU)':
+        'Software Renderer (no GPU acceleration)',
+    '⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC':
+        '⚠ Press ESC again within 0.6 s for PANIC (0ms) — or click the PANIC button',
+    '🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (1,2s)':
+        '🔒 Layer Controls Protected — Unlock with the Padlock (1.2s)',
+    '🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]':
+        '🚨  PANIC  —  TOTAL STOP   [ ESC ×2 ]',
 }

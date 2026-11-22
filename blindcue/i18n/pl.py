@@ -433,8 +433,6 @@ T: dict[str, str] = {
         'Auto (RAM {}GB / {} rdzeni: maksymalna wydajność i wiele ekranów)',
     'Auto (RAM {}GB / {} Core: bilanciamento standard)':
         'Auto (RAM {}GB / {} rdzeni: standardowa równowaga)',
-    'Attiva (OpenGL / Hardware Accelerated)':
-        'Aktywna (OpenGL / sprzętowa)',
     'Software Renderer':
         'Renderowanie programowe',
     'Display Principale':
@@ -885,10 +883,6 @@ T: dict[str, str] = {
         '● TRYB LIVE (PRZEDSTAWIENIE)',
     "Azzera Cronometro Spettacolo e riarma l'avvio automatico al prossimo 1° GO":
         'Wyzeruj stoper przedstawienia i uzbrój automatyczny start przy pierwszym GO',
-    '🚨  PANIC  —  STOP TOTALE   [ ESC ]':
-        '🚨  PANIC  —  STOP WSZYSTKIEGO   [ ESC ]',
-    'EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).':
-        'AWARIA (0 ms): natychmiast ucina audio, wideo i obrazy na wszystkich warstwach. Pokazuje czerń, jeśli zaślepka jest kalibracyjna (lub własną zaślepkę, jeśli ustawiono).',
     '▶ STANDBY':
         '▶ STANDBY',
     'Nessuna cue pronta in scaletta':
@@ -1027,8 +1021,6 @@ T: dict[str, str] = {
         'Wygaś',
     'Dissolvenza in uscita e arresto del contenuto su {}.\nLa durata è quella del Fade Out della cue (minimo 0.2 s).':
         'Wygaś i zatrzymaj treść na {}.\nCzas to Fade Out danego cue (minimum 0,2 s).',
-    '🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (3s)':
-        '🔒 Sterowanie warstwami chronione — odblokuj kłódką (3 s)',
     'Salta indietro di 10s su Layer {} (prove)':
         'Cofnij o 10 s na warstwie {} (próby)',
     'Metti in Pausa Layer {} (prove)':
@@ -1951,4 +1943,27 @@ T: dict[str, str] = {
         'Wybrane głośniki nie są podłączone ({}): dźwięk idzie na domyślne wyjście ({})',
     'Uscita audio scelta di nuovo collegata: {}':
         'Wybrane głośniki znów podłączone: {}',
+    # ── strings from 3157c0a (PANIC on ESC twice, VA-API, OSC, bundle masks) ──
+    '<b>Indirizzo OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>• <b style=\'color:#f87171;\'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pausa, ripresa o toggle<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l\'IP per inviare comandi protetti':
+        '<b>Adres OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla cue w standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>• <b style=\'color:#f87171;\'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; wygaszenie Live (powrót do warstwy 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; pauza, wznowienie lub przełączenie<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń',
+    'Attiva (VA-API / Hardware Decode)':
+        'Aktywna (VA-API / dekodowanie sprzętowe)',
+    'EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).\nDa tastiera: premi ESC due volte entro 0,6s (protezione anti-tocco accidentale).':
+        'AWARIA (0 ms): natychmiast ucina audio, wideo i obrazy na wszystkich warstwach. Pokazuje czerń, jeśli zaślepka jest kalibracyjna (lub własną zaślepkę, jeśli ustawiono).\nZ klawiatury: naciśnij ESC dwa razy w ciągu 0,6 s (ochrona przed przypadkowym naciśnięciem).',
+    'Layer 0 (Tappo)':
+        'Zaślepka L0',
+    'Maschera superficie \'{}\'':
+        'Maska powierzchni \'{}\'',
+    'OpenGL / EGL (solo compositing, decode CPU)':
+        'OpenGL / EGL (tylko kompozycja, dekodowanie na CPU)',
+    'Software / Headless Renderer':
+        'Renderowanie programowe / bez ekranu',
+    'Software Renderer (nessuna accelerazione GPU)':
+        'Renderowanie programowe (bez akceleracji GPU)',
+    '⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC':
+        '⚠ Naciśnij ESC jeszcze raz w ciągu 0,6 s, aby włączyć PANIC (0 ms) — albo kliknij przycisk PANIC',
+    '🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (1,2s)':
+        '🔒 Sterowanie warstwami chronione — odblokuj kłódką (1,2 s)',
+    '🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]':
+        '🚨  PANIC  —  STOP WSZYSTKIEGO   [ ESC ×2 ]',
 }
