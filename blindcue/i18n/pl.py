@@ -1942,4 +1942,13 @@ T: dict[str, str] = {
         'Zaznaczony cue nie jest cue tekstowym. Napis dodasz przyciskiem „+ Tekst”.',
     'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
         'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw Fade In na 0.',
+    # ── speakers remembered per computer (feature PR) ──
+    'Predefinito di sistema, segue Windows (ora: {})':
+        'Domyślne wyjście Windows (teraz: {})',
+    '{} (non collegato)':
+        '{} (niepodłączone)',
+    'Uscita audio scelta non collegata ({}): suona l\'uscita predefinita ({})':
+        'Wybrane głośniki nie są podłączone ({}): dźwięk idzie na domyślne wyjście ({})',
+    'Uscita audio scelta di nuovo collegata: {}':
+        'Wybrane głośniki znów podłączone: {}',
 }

@@ -1732,4 +1732,13 @@ T: dict[str, str] = {
         'The selected cue is not a text cue. Add one with the "+ Text" button.',
     'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
         'Crossfade: the picture currently shown on this cue\'s layer dissolves into this cue over the given time (0 = hard cut). Set Fade In to 0 when using it.',
+    # ── speakers remembered per computer (feature PR) ──
+    'Predefinito di sistema, segue Windows (ora: {})':
+        'Windows default output (now: {})',
+    '{} (non collegato)':
+        '{} (not connected)',
+    'Uscita audio scelta non collegata ({}): suona l\'uscita predefinita ({})':
+        'Chosen audio output not connected ({}): playing on the default output ({})',
+    'Uscita audio scelta di nuovo collegata: {}':
+        'Chosen audio output connected again: {}',
 }
