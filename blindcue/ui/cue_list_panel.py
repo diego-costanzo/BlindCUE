@@ -7,6 +7,7 @@ from PySide6.QtCore import QEvent, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGroupBox,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -116,9 +117,6 @@ class CueListPanel(QGroupBox):
         self.table.extract_child_requested.connect(self.extract_child_requested)
         layout.addWidget(self.table)
 
-        btn_add_row = QHBoxLayout()
-        btn_add_row.setSpacing(4)
-
         self.btn_add_video = QPushButton("+ Video")
         self.btn_add_video.setToolTip("Aggiungi file video alla scaletta")
         self.btn_add_video.setAccessibleName("Aggiungi Video")
@@ -167,16 +165,21 @@ class CueListPanel(QGroupBox):
         self.btn_move_down.clicked.connect(self.move_down_requested)
         self.btn_delete.clicked.connect(self.delete_requested)
 
-        for btn in (self.btn_add_video, self.btn_add_audio, self.btn_add_image, self.btn_add_group):
-            btn_add_row.addWidget(btn, stretch=1)
-        layout.addLayout(btn_add_row)
-
-        btn_edit_row = QHBoxLayout()
-        btn_edit_row.setSpacing(4)
-        btn_edit_row.addWidget(self.btn_move_up, stretch=1)
-        btn_edit_row.addWidget(self.btn_move_down, stretch=1)
-        btn_edit_row.addWidget(self.btn_delete, stretch=2)
-        layout.addLayout(btn_edit_row)
+        # Two rows of four. In one long row, longer (translated) labels were
+        # cut to 3-4 letters at 125 % Windows scaling with the theme's 12 px
+        # side padding, which the compact padding below also trims.
+        btn_grid = QGridLayout()
+        btn_grid.setHorizontalSpacing(4)
+        btn_grid.setVerticalSpacing(4)
+        for idx, btn in enumerate((
+            self.btn_add_video, self.btn_add_audio, self.btn_add_image,
+            self.btn_add_group, self.btn_move_up, self.btn_move_down, self.btn_delete,
+        )):
+            btn.setStyleSheet(btn.styleSheet() + " QPushButton { padding: 2px 3px; }")
+            btn_grid.addWidget(btn, idx // 4, idx % 4)
+        for col in range(4):
+            btn_grid.setColumnStretch(col, 1)
+        layout.addLayout(btn_grid)
 
         # 3-State Sequencing Link Mode Selector (Blocco | Auto-GO | Simultanea) — Fixed height prevents hover jump!
         self.link_box = QFrame()

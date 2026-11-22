@@ -865,6 +865,21 @@ class CueInspectorPanel(QGroupBox):
         self.spin_fade_out.setAccessibleName("Dissolvenza in Uscita Fade-Out")
         self.spin_fade_out.setAccessibleDescription("Durata in secondi della dissolvenza in chiusura a nero o silenzio.")
         fade_grid.addWidget(self.spin_fade_out, 0, 3)
+
+        # Crossfade: dissolve the previous picture on the same layer
+        fade_grid.addWidget(self._make_field_label("Crossfade:"), 1, 0)
+        self.spin_crossfade = SmartDoubleSpinBox()
+        self.spin_crossfade.setMinimumWidth(68)
+        self.spin_crossfade.setRange(0.0, 10.0)
+        self.spin_crossfade.setDecimals(1)
+        self.spin_crossfade.setSingleStep(0.5)
+        self.spin_crossfade.setSuffix(" s")
+        self.spin_crossfade.setToolTip(
+            "Crossfade: l'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue "
+            "nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0."
+        )
+        self.spin_crossfade.setAccessibleName("Crossfade")
+        fade_grid.addWidget(self.spin_crossfade, 1, 1)
         fade_grid.setColumnStretch(1, 1)
         fade_grid.setColumnStretch(3, 1)
         l2.addLayout(fade_grid)
@@ -1497,6 +1512,7 @@ class CueInspectorPanel(QGroupBox):
             (self.spin_crop_b.valueChanged, "crop_b"),
             (self.spin_fade_in.valueChanged, "fade_in"),
             (self.spin_fade_out.valueChanged, "fade_out"),
+            (self.spin_crossfade.valueChanged, "crossfade"),
             (self.spin_in.valueChanged, "in_point"),
             (self.spin_out.valueChanged, "out_point"),
             (self.spin_hold_time.valueChanged, "hold_time"),
@@ -1976,7 +1992,7 @@ class CueInspectorPanel(QGroupBox):
             self.slider_opacity, self.btn_opacity_reset,
             self.btn_crop_pct, self.btn_crop_px,
             self.spin_crop_l, self.spin_crop_r, self.spin_crop_t, self.spin_crop_b,
-            self.btn_crop_reset, self.spin_fade_in, self.spin_fade_out,
+            self.btn_crop_reset, self.spin_fade_in, self.spin_fade_out, self.spin_crossfade,
             self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
             self.btn_mask_edit, self.btn_mask_clear,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset,
@@ -2014,6 +2030,7 @@ class CueInspectorPanel(QGroupBox):
 
         self.spin_fade_in.setEnabled(True)
         self.spin_fade_out.setEnabled(True)
+        self.spin_crossfade.setEnabled(True)
         self.spin_pre_delay.setEnabled(True)
         self.spin_post_delay.setEnabled(True)
 
@@ -2128,6 +2145,7 @@ class CueInspectorPanel(QGroupBox):
 
         self.spin_fade_in.setValue(cue.fade_in)
         self.spin_fade_out.setValue(cue.fade_out)
+        self.spin_crossfade.setValue(float(getattr(cue, "crossfade", 0.0)))
         self.spin_hold_time.setValue(cue.hold_time)
         self.spin_pre_delay.setValue(getattr(cue, "pre_delay", 0.0))
         self.spin_post_delay.setValue(getattr(cue, "post_delay", 0.0))
@@ -2349,6 +2367,7 @@ class CueInspectorPanel(QGroupBox):
 
         cue.fade_in = self.spin_fade_in.value()
         cue.fade_out = self.spin_fade_out.value()
+        cue.crossfade = self.spin_crossfade.value()
         cue.hold_time = self.spin_hold_time.value()
         cue.pre_delay = self.spin_pre_delay.value()
         cue.post_delay = self.spin_post_delay.value()
@@ -2440,6 +2459,8 @@ class CueInspectorPanel(QGroupBox):
                 cue.fade_in = self.spin_fade_in.value()
             elif field_key == "fade_out":
                 cue.fade_out = self.spin_fade_out.value()
+            elif field_key == "crossfade":
+                cue.crossfade = self.spin_crossfade.value()
             elif field_key == "hold_time":
                 cue.hold_time = self.spin_hold_time.value()
             elif field_key == "pre_delay":
