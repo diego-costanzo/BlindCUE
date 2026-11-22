@@ -386,6 +386,9 @@ class Cue:
     timeline_composed: bool = False  # GROUP cue configured/synced via multi-track studio timeline
     surface_id: str = "default"  # Target virtual screen / mapping surface ID ("default" = full screen)
     output_target: str = "A"  # Physical projector output: "A" (default) or "B" (second independent output)
+    # Crossfade: seconds over which the previous picture on the same layer
+    # dissolves into this cue. 0 = hard cut / normal Fade In behaviour.
+    crossfade: float = 0.0
 
     def __post_init__(self) -> None:
         """Normalise routing target, crop, rotation and mask once, at construction."""
@@ -561,6 +564,7 @@ class Cue:
             "timeline_composed": self.timeline_composed,
             "surface_id": self.surface_id,
             "output_target": self.output_target,
+            "crossfade": round(float(self.crossfade), 3),
         }
 
     @classmethod
@@ -651,6 +655,7 @@ class Cue:
             timeline_composed=bool(data.get("timeline_composed", False)),
             surface_id=str(data.get("surface_id", "default") or "default"),
             output_target=normalize_output_target(data.get("output_target", "A")),
+            crossfade=max(0.0, float(data.get("crossfade", 0.0) or 0.0)),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)

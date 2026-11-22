@@ -463,6 +463,10 @@ class OutputWindow(QWidget):
         self._surface_mask_cache: OrderedDict[tuple, QImage] = OrderedDict()
         self._image_pixmap_cache: OrderedDict[tuple, QPixmap] = OrderedDict()
 
+        # Crossfade: frozen snapshot of a layer dissolving over new content
+        self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
+        self._xfade_timers: dict[int, QTimer] = {}
+
         logger.info("[OUTPUT] Native Wayland Output Window created")
 
     # ── Layer 0 ───────────────────────────────────────────────────────
@@ -1044,8 +1048,75 @@ class OutputWindow(QWidget):
         self._video_containers[target_layer].show()
         self._update_tappo_visibility()
 
+    # ── Crossfade ─────────────────────────────────────────────────────
+    def begin_crossfade(self, layer: int, duration_sec: float) -> None:
+        """Freeze what *layer* shows now and dissolve it over whatever comes next.
+
+        Call right before new content is placed on *layer*: the snapshot sits
+        just above the layer (below higher layers) and fades from opaque to
+        transparent over *duration_sec*, so the new picture appears through it.
+        Works for image→image, video→image, image→video and video→video.
+        """
+        target = layer if layer in self._video_containers else 1
+        self._end_crossfade(target)
+        if duration_sec <= 0:
+            return
+        vc = self._video_containers[target]
+        ic = self._image_containers[target]
+        if not (vc.isVisible() or ic.isVisible()):
+            return
+        rect = self._scene.sceneRect()
+        w, h = int(rect.width()), int(rect.height())
+        if w <= 0 or h <= 0:
+            return
+
+        img = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
+        img.fill(Qt.GlobalColor.transparent)
+        hidden = []
+        for item in self._scene.items():
+            if item.parentItem() is None and item not in (vc, ic) and item.isVisible():
+                item.setVisible(False)
+                hidden.append(item)
+        painter = QPainter(img)
+        try:
+            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+            self._scene.render(painter, QRectF(0.0, 0.0, float(w), float(h)), rect)
+        finally:
+            painter.end()
+            for item in hidden:
+                item.setVisible(True)
+
+        ghost = self._scene.addPixmap(QPixmap.fromImage(img))
+        ghost.setPos(rect.topLeft())
+        ghost.setZValue(target * 10 + 5)
+        self._xfade_ghosts[target] = ghost
+
+        steps = max(1, int(duration_sec * 30))
+        cur = 0
+        timer = QTimer(self)
+        self._xfade_timers[target] = timer
+
+        def _step() -> None:
+            nonlocal cur
+            cur += 1
+            ghost.setOpacity(max(0.0, 1.0 - cur / steps))
+            if cur >= steps:
+                self._end_crossfade(target)
+
+        timer.timeout.connect(_step)
+        timer.start(int(1000 / 30))
+        logger.info("[OUTPUT] Crossfade on Layer %d over %.2fs", target, duration_sec)
+
+    def _end_crossfade(self, layer: int) -> None:
+        """Stop and remove the crossfade snapshot on *layer* (if any)."""
+        self._stop_timer_entry(self._xfade_timers, layer)
+        ghost = self._xfade_ghosts.pop(layer, None)
+        if ghost is not None:
+            self._scene.removeItem(ghost)
+
     def clear_layer(self, layer: int) -> None:
         """Remove any visual content (image or video) from *layer*."""
+        self._end_crossfade(layer)
         self.clear_pixmap_layer(layer)
         self.hide_video_widget(layer=layer)
         self._update_tappo_visibility()
@@ -1054,6 +1125,7 @@ class OutputWindow(QWidget):
         """Clear all active media overlays and video items across Layers 1-3."""
         self._cancel_fallback_timer()
         for layer in (1, 2, 3):
+            self._end_crossfade(layer)
             self.clear_pixmap_layer(layer)
             self.hide_video_widget(layer=layer)
         self._update_tappo_visibility()
