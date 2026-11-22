@@ -36,6 +36,10 @@ class _CueManipMixin:
             # One player per layer: music on L1 would be cut by the next photo
             # or video (also L1) started with it in "Simultanea" mode.
             cue.layer = 2
+        self._append_new_cue(cue)
+
+    def _append_new_cue(self, cue: Cue) -> None:
+        """Validate *cue*, append it to the list, select it and record undo."""
         errors = cue.validate()
         if errors:
             QMessageBox.warning(self, "Validation Error", "\n".join(errors))
@@ -52,6 +56,61 @@ class _CueManipMixin:
         self._status_label.setText(f"Added: {cue}")
         self._auto_save()
         logger.info("Added cue: %s", cue)
+
+    # ── Text cues (captions) ──────────────────────────────────────────
+    def _on_add_text_cue(self) -> None:
+        """Create a caption cue on Layer 3 with soft fades."""
+        from engine.text_render import render_text_png, text_cue_name
+        from ui.text_cue_dialog import TextCueDialog
+
+        dlg = TextCueDialog(None, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        spec = dlg.spec()
+        try:
+            path = render_text_png(spec)
+        except OSError as exc:
+            QMessageBox.warning(self, "Cue di testo", str(exc))
+            return
+        cue = Cue(name=text_cue_name(spec), media_type=MediaType.IMAGE, file_path=path)
+        cue.text_spec = spec
+        cue.layer = 3
+        cue.fade_in = 0.5
+        cue.fade_out = 0.5
+        self._append_new_cue(cue)
+
+    def _on_edit_text_cue(self) -> None:
+        """Re-open the caption editor for the selected text cue."""
+        from engine.text_render import render_text_png, text_cue_name
+        from ui.text_cue_dialog import TextCueDialog
+
+        cue = self._selected_cue()
+        if cue is None or not cue.text_spec:
+            QMessageBox.information(
+                self, "Cue di testo",
+                "Il cue selezionato non è un cue di testo. Aggiungine uno con il pulsante \"+ Testo\".",
+            )
+            return
+        dlg = TextCueDialog(cue.text_spec, self)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+        spec = dlg.spec()
+        try:
+            path = render_text_png(spec)
+        except OSError as exc:
+            QMessageBox.warning(self, "Cue di testo", str(exc))
+            return
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        if cue.name == text_cue_name(cue.text_spec):
+            cue.name = text_cue_name(spec)
+        cue.text_spec = spec
+        cue.file_path = path
+        self._refresh_cue_list()
+        self._on_cue_selected(self._cue_list.currentRow())
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._auto_save()
 
     @Slot(str)
     def _on_file_dropped(self, file_path: str) -> None:

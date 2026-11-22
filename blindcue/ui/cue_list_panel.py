@@ -50,6 +50,8 @@ class CueListPanel(QGroupBox):
 
     add_media_requested = Signal(object)  # MediaType
     add_group_requested = Signal()
+    add_text_requested = Signal()
+    edit_text_requested = Signal()
     ungroup_requested = Signal()
     extract_child_requested = Signal()
     move_up_requested = Signal()
@@ -135,6 +137,11 @@ class CueListPanel(QGroupBox):
         self.btn_add_image.setAccessibleDescription("Apre la finestra di selezione per aggiungere una foto o grafica statica alla scaletta.")
         self.btn_add_image.setFixedHeight(26)
 
+        self.btn_add_text = QPushButton("+ Testo")
+        self.btn_add_text.setToolTip("Aggiungi una didascalia sullo schermo (cue di testo, Layer 3)")
+        self.btn_add_text.setAccessibleName("Aggiungi Testo")
+        self.btn_add_text.setFixedHeight(26)
+
         self.btn_add_group = QPushButton("+ Gruppo")
         self.btn_add_group.setToolTip("Crea un gruppo di cue / scena (Ctrl+G)")
         self.btn_add_group.setAccessibleName("Aggiungi Gruppo o Scena")
@@ -161,6 +168,8 @@ class CueListPanel(QGroupBox):
         self.btn_add_audio.clicked.connect(lambda: self.add_media_requested.emit(MediaType.AUDIO))
         self.btn_add_image.clicked.connect(lambda: self.add_media_requested.emit(MediaType.IMAGE))
         self.btn_add_group.clicked.connect(self.add_group_requested)
+        self.btn_add_text.clicked.connect(self.add_text_requested)
+        self.table.edit_text_requested.connect(self.edit_text_requested)
         self.btn_move_up.clicked.connect(self.move_up_requested)
         self.btn_move_down.clicked.connect(self.move_down_requested)
         self.btn_delete.clicked.connect(self.delete_requested)
@@ -172,7 +181,7 @@ class CueListPanel(QGroupBox):
         btn_grid.setHorizontalSpacing(4)
         btn_grid.setVerticalSpacing(4)
         for idx, btn in enumerate((
-            self.btn_add_video, self.btn_add_audio, self.btn_add_image,
+            self.btn_add_video, self.btn_add_audio, self.btn_add_image, self.btn_add_text,
             self.btn_add_group, self.btn_move_up, self.btn_move_down, self.btn_delete,
         )):
             btn.setStyleSheet(btn.styleSheet() + " QPushButton { padding: 2px 3px; }")

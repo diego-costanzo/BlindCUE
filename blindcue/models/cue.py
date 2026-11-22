@@ -317,6 +317,9 @@ class Cue:
     timeline_composed: bool = False  # GROUP cue configured/synced via multi-track studio timeline
     surface_id: str = "default"  # Target virtual screen / mapping surface ID ("default" = full screen)
     output_target: str = "A"  # Physical projector output: "A" (default) or "B" (second independent output)
+    # Text cue: settings of an on-screen caption rendered to a transparent PNG
+    # (file_path). Empty dict = ordinary media cue.
+    text_spec: dict[str, Any] = field(default_factory=dict)
     # Crossfade: seconds over which the previous picture on the same layer
     # dissolves into this cue. 0 = hard cut / normal Fade In behaviour.
     crossfade: float = 0.0
@@ -495,6 +498,7 @@ class Cue:
             "timeline_composed": self.timeline_composed,
             "surface_id": self.surface_id,
             "output_target": self.output_target,
+            "text_spec": dict(self.text_spec),
             "crossfade": round(float(self.crossfade), 3),
         }
 
@@ -576,6 +580,7 @@ class Cue:
             timeline_composed=bool(data.get("timeline_composed", False)),
             surface_id=str(data.get("surface_id", "default") or "default"),
             output_target=normalize_output_target(data.get("output_target", "A")),
+            text_spec=dict(data.get("text_spec") or {}),
             crossfade=max(0.0, float(data.get("crossfade", 0.0) or 0.0)),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
@@ -584,6 +589,14 @@ class Cue:
             cls._id_counter = itertools.count(cue.cue_id + 1)
         if project_root is not None and cue.media_type != MediaType.GROUP:
             cue.resolve_media_path(project_root)
+        if cue.text_spec and not Path(cue.file_path).is_file():
+            # Text cues are re-creatable from their settings (e.g. a show
+            # opened on another computer without the cached caption image).
+            try:
+                from engine.text_render import render_text_png
+                cue.file_path = render_text_png(cue.text_spec)
+            except Exception as exc:  # pragma: no cover - needs Qt GUI
+                logger.warning("Could not re-render text cue %s: %s", cue.cue_id, exc)
         return cue
 
     # ── Helpers ───────────────────────────────────────────────────────
