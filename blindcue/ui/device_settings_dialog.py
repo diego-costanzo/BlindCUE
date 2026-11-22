@@ -6,6 +6,7 @@ import logging
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
+from PySide6.QtMultimedia import QMediaDevices
 from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
@@ -29,6 +30,11 @@ from ui.hardware_info import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Item data meaning "keep the speakers remembered for this computer" (shown
+# while they are unplugged, or when no output is detected at all): applying
+# the dialog must not forget them because they are missing right now.
+_KEEP_CHOICE = "keep-remembered-audio"
 
 
 class DeviceSettingsDialog(QDialog):
@@ -310,12 +316,9 @@ class DeviceSettingsDialog(QDialog):
         cur_master = self.device_mgr.get_master_audio_device()
         cur_monitor = self.device_mgr.get_monitor_audio_device()
 
-        cur_master_id = bytes(cur_master.id()) if cur_master and not cur_master.isNull() else b""
-        cur_monitor_id = bytes(cur_monitor.id()) if cur_monitor and not cur_monitor.isNull() else b""
-
         if not devs:
-            self._combo_master.addItem("Nessun dispositivo rilevato (Default)", None)
-            self._combo_monitor.addItem("Nessun dispositivo rilevato (Default)", None)
+            self._combo_master.addItem("Nessun dispositivo rilevato (Default)", _KEEP_CHOICE)
+            self._combo_monitor.addItem("Nessun dispositivo rilevato (Default)", _KEEP_CHOICE)
             self._combo_monitor.setEnabled(False)
             self._lbl_audio_capability.setText(
                 "⚠️ Nessuna uscita audio rilevata dal sistema operativo: "
@@ -324,30 +327,31 @@ class DeviceSettingsDialog(QDialog):
             self._lbl_audio_capability.setVisible(True)
             return
 
-        master_idx = 0
-        monitor_idx = 0
+        default_dev = QMediaDevices.defaultAudioOutput()
+        default_name = (default_dev.description().strip() or "Audio Device") if not default_dev.isNull() else "?"
 
-        for i, dev in enumerate(devs):
-            name = dev.description().strip() or "Audio Device"
-            is_def = " (Predefinito)" if dev.isDefault() else ""
-            label = f"{name}{is_def}"
-            dev_id = bytes(dev.id())
-
-            self._combo_master.addItem(label, dev)
-            self._combo_monitor.addItem(label, dev)
-
-            if cur_master_id and dev_id == cur_master_id:
-                master_idx = i
-            elif not cur_master_id and dev.isDefault():
-                master_idx = i
-
-            if cur_monitor_id and dev_id == cur_monitor_id:
-                monitor_idx = i
-            elif not cur_monitor_id and dev.isDefault():
-                monitor_idx = i
-
-        self._combo_master.setCurrentIndex(master_idx)
-        self._combo_monitor.setCurrentIndex(monitor_idx)
+        for combo, role, current in (
+            (self._combo_master, "master", cur_master),
+            (self._combo_monitor, "monitor", cur_monitor),
+        ):
+            # First entry: follow Windows (nothing remembered, also right on
+            # another computer). It stays selected unless speakers were chosen,
+            # so applying a screen change never pins the speakers playing now.
+            combo.addItem(f"Predefinito di sistema, segue Windows (ora: {default_name})", None)
+            selected = 0
+            remembered = self.device_mgr.is_audio_remembered(role)
+            missing = self.device_mgr.missing_audio_name(role)
+            if remembered and missing:
+                combo.addItem(f"{missing} (non collegato)", _KEEP_CHOICE)
+                selected = 1
+            for dev in devs:
+                name = dev.description().strip() or "Audio Device"
+                is_def = " (Predefinito)" if dev.isDefault() else ""
+                combo.addItem(f"{name}{is_def}", dev)
+                if (remembered and not missing and current is not None and not current.isNull()
+                        and bytes(dev.id()) == bytes(current.id())):
+                    selected = combo.count() - 1
+            combo.setCurrentIndex(selected)
 
         # Without a second sound card the PFL preview would play on the same
         # speakers as the audience, so the headphone routing is disabled.
@@ -408,10 +412,14 @@ class DeviceSettingsDialog(QDialog):
         self.device_mgr.set_hardware_profile(pref)
 
         # 2. Apply audio devices
+        # Remembered for this computer; None = follow Windows. A disabled
+        # headphone list (one sound card) cannot be a choice, so it changes nothing.
         master_dev = self._combo_master.currentData()
         monitor_dev = self._combo_monitor.currentData()
-        self.device_mgr.set_master_audio_device(master_dev)
-        self.device_mgr.set_monitor_audio_device(monitor_dev)
+        if not isinstance(master_dev, str):
+            self.device_mgr.choose_master_audio(master_dev)
+        if self._combo_monitor.isEnabled() and not isinstance(monitor_dev, str):
+            self.device_mgr.choose_monitor_audio(monitor_dev)
 
         # 3. Apply output routing (guard against stale QScreen removed during hot-unplug)
         mode = self._combo_output_mode.currentData() or OutputMode.SINGLE.value
