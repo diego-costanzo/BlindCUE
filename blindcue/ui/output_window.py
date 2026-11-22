@@ -104,8 +104,8 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
 
     def boundingRect(self) -> QRectF:
         """Area covered by the calibration overlay (the whole output scene)."""
-        w = max(1.0, float(self._output.width()))
-        h = max(1.0, float(self._output.height()))
+        cw, ch = self._output._canvas_size()
+        w, h = float(cw), float(ch)
         return QRectF(0.0, 0.0, w, h)
 
     def _draw_guide_badge(self, painter: QPainter, cx: float, cy: float, text: str, col: QColor) -> None:
@@ -123,8 +123,8 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
     def paint(self, painter: QPainter, option, widget=None) -> None:
         """Draw the surface outlines and corner calibration guides."""
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        w = max(1.0, float(self._output.width()))
-        h = max(1.0, float(self._output.height()))
+        cw, ch = self._output._canvas_size()
+        w, h = float(cw), float(ch)
 
         is_full_calib = self._output.is_calibration_guides_visible()
         surfaces = self._output.get_surfaces()
@@ -476,7 +476,8 @@ class OutputWindow(QWidget):
         self._black_rect.setZValue(-100)
 
         if is_default_tappo_path(self._layer0_path):
-            w, h = max(64, self.width()), max(48, self.height())
+            cw, ch = self._canvas_size()
+            w, h = max(64, cw), max(48, ch)
             pat = render_default_tappo_pixmap(w, h, self._layer0_path)
             self._original_logo_pixmap = None
             self._logo_item = self._scene.addPixmap(pat)
@@ -497,9 +498,24 @@ class OutputWindow(QWidget):
         else:
             logger.warning("[OUTPUT] Layer 0 image not found: %s – using black", self._layer0_path)
 
-    def _fit_layer0(self) -> None:
-        """Scale Layer 0 elements to fill the current window size without quality loss."""
+    def _canvas_size(self) -> tuple[int, int]:
+        """Size (px) of the picture area every layer is laid out in.
+
+        A projector uses the whole window. The single-monitor preview window
+        keeps a 16:9 picture letterboxed in whatever shape the window gets:
+        Windows Snap can squeeze it into a tall strip, and stretching the
+        layout to that shape showed something the projector never shows.
+        """
         w, h = max(1, self.width()), max(1, self.height())
+        if self._is_external:
+            return w, h
+        if w * 9 > h * 16:
+            return max(1, round(h * 16 / 9)), h
+        return w, max(1, round(w * 9 / 16))
+
+    def _fit_layer0(self) -> None:
+        """Scale Layer 0 elements to fill the picture area without quality loss."""
+        w, h = self._canvas_size()
         if self._black_rect is not None:
             self._black_rect.setRect(QRectF(0, 0, w, h))
 
@@ -526,7 +542,7 @@ class OutputWindow(QWidget):
             )
 
         self._scene.setSceneRect(0, 0, w, h)
-        self._view.fitInView(self._scene.sceneRect(), Qt.AspectRatioMode.IgnoreAspectRatio)
+        self._view.fitInView(self._scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def set_layer0_image(self, image_path: str | None) -> bool:
         """Set or change the Layer 0 failsafe image dynamically."""
@@ -537,7 +553,8 @@ class OutputWindow(QWidget):
         if is_default_tappo_path(target_path):
             self._layer0_path = str(_DEFAULT_LOGO)
             self._original_logo_pixmap = None
-            pat = render_default_tappo_pixmap(max(64, self.width()), max(48, self.height()), self._layer0_path)
+            cw, ch = self._canvas_size()
+            pat = render_default_tappo_pixmap(max(64, cw), max(48, ch), self._layer0_path)
             if self._logo_item is None:
                 self._logo_item = self._scene.addPixmap(pat)
                 self._logo_item.setZValue(-50)
@@ -749,8 +766,8 @@ class OutputWindow(QWidget):
         aspect_ratio: str | None = None,
     ) -> tuple[MediaFrameGeometry, QTransform]:
         """Compute content geometry within surface and apply QTransform to container."""
-        win_w = max(1.0, float(self.width()))
-        win_h = max(1.0, float(self.height()))
+        cw, ch = self._canvas_size()
+        win_w, win_h = float(cw), float(ch)
 
         if surf.mode == SurfaceMode.QUAD:
             p0 = QPointF(win_w * surf.corners[0][0], win_h * surf.corners[0][1])
@@ -1174,8 +1191,7 @@ class OutputWindow(QWidget):
                 "surface_id": surf_id,
                 "rotation": rotation,
             }
-            win_w = max(1, self.width())
-            win_h = max(1, self.height())
+            win_w, win_h = self._canvas_size()
 
             container = self._video_containers[target_layer]
             v_item = self._video_items[target_layer]
@@ -1357,7 +1373,7 @@ class OutputWindow(QWidget):
     def get_output_resolution(self) -> tuple[int, int]:
         """Return the effective resolution (w, h) in pixels of the projector output."""
         if self.width() > 100 and self.height() > 100:
-            return self.width(), self.height()
+            return self._canvas_size()
         if self._span_screens:
             geo = self._span_screens[0].geometry()
             for s in self._span_screens[1:]:
