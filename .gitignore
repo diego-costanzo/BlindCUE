@@ -42,6 +42,7 @@ venv.bak/
 # PyInstaller / Nuitka
 *.manifest
 *.spec
+!packaging/windows/blindcue.spec
 
 # Installer logs & unit tests
 pip-log.txt
