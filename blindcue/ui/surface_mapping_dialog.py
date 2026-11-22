@@ -1686,12 +1686,20 @@ class SurfaceMappingDialog(QDialog):
             self.spin_cy.setValue(self._to_display_y(c_pt[1]))
             self._updating_ui = False
 
+    def _next_unique_surface_id(self, prefix: str, start: int = 1) -> tuple[str, int]:
+        """Return a surface_id guaranteed not to collide with any existing surface."""
+        existing = {s.surface_id for s in self._surfaces}
+        idx = max(1, start)
+        while f"{prefix}_{idx}" in existing:
+            idx += 1
+        return f"{prefix}_{idx}", idx
+
     @Slot()
     def _add_surface(self) -> None:
-        new_idx = len(self._surfaces) + 1
+        new_id, new_idx = self._next_unique_surface_id("surface", len(self._surfaces) + 1)
         col = SURFACE_COLORS[(new_idx - 1) % len(SURFACE_COLORS)]
         new_surf = SurfaceDefinition(
-            surface_id=f"surface_{new_idx}",
+            surface_id=new_id,
             name=f"Superficie {new_idx}",
             mode=SurfaceMode.RECTANGLE.value,
             x=0.1, y=0.1, w=0.5, h=0.5,
@@ -1706,7 +1714,8 @@ class SurfaceMappingDialog(QDialog):
     def _duplicate_surface(self) -> None:
         src = self._get_active_surface()
         dup = src.clone()
-        dup.surface_id = f"{src.surface_id}_copy_{len(self._surfaces)}"
+        dup_id, _ = self._next_unique_surface_id(f"{src.surface_id}_copy", 1)
+        dup.surface_id = dup_id
         dup.name = f"{src.name} (Copia)"
         dup.x = min(0.9, dup.x + 0.05)
         dup.y = min(0.9, dup.y + 0.05)

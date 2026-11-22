@@ -46,6 +46,7 @@ class StudioPreviewMonitor(QWidget):
         self._layer0_is_default: bool = True
         self._layer0_pattern_cache: tuple[int, int, float, QPixmap] | None = None
         self._image_pixmap: QPixmap | None = None
+        self._image_qimage: QImage | None = None
         self._video_frame_image: QImage | None = None
         self._active_media_type: MediaType | None = None
 
@@ -200,8 +201,10 @@ class StudioPreviewMonitor(QWidget):
         self._mask_feather = float(mask_feather or 0.0)
         if os.path.isfile(file_path):
             self._image_pixmap = QPixmap(file_path)
+            self._image_qimage = self._image_pixmap.toImage() if not self._image_pixmap.isNull() else None
         else:
             self._image_pixmap = None
+            self._image_qimage = None
         self.update()
 
     def show_audio(self) -> None:
@@ -213,6 +216,7 @@ class StudioPreviewMonitor(QWidget):
         """Reset the monitor to an empty state (no image, frame or audio)."""
         self._active_media_type = None
         self._image_pixmap = None
+        self._image_qimage = None
         self._video_frame_image = None
         self._rendered_media_rect = None
         self._full_media_rect = None
@@ -395,8 +399,11 @@ class StudioPreviewMonitor(QWidget):
         elif self._active_media_type in (MediaType.IMAGE, MediaType.VIDEO):
             source_img: QImage | None = None
 
-            if self._active_media_type == MediaType.IMAGE and self._image_pixmap and not self._image_pixmap.isNull():
-                source_img = self._image_pixmap.toImage()
+            if self._active_media_type == MediaType.IMAGE and self._image_qimage and not self._image_qimage.isNull():
+                source_img = self._image_qimage
+            elif self._active_media_type == MediaType.IMAGE and self._image_pixmap and not self._image_pixmap.isNull():
+                self._image_qimage = self._image_pixmap.toImage()
+                source_img = self._image_qimage
             elif self._active_media_type == MediaType.VIDEO and self._video_frame_image and not self._video_frame_image.isNull():
                 source_img = self._video_frame_image
 

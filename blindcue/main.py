@@ -91,11 +91,14 @@ from ui.output_window import OutputWindow
 from engine.envelope import evaluate_cue_level
 from engine.player_live import LivePlayer
 from engine.player_test import TestPlayer
+from engine.show_engine import ShowEngine
 from engine.show_scheduler import ScheduledWindow, ShowScheduler
+from engine.sleep_inhibitor import SleepInhibitor
 from models.cue import (
     Cue,
     CueStatus,
     FollowMode,
+    GroupMode,
     MediaType,
     resolve_output_target,
     runtime_layer,
@@ -224,7 +227,7 @@ def main() -> int:
     screens = app.screens()
     primary = app.primaryScreen()
     logger.info("Detected %d screen(s). Primary: '%s'",
-                len(screens), primary.name())
+                len(screens), primary.name() if primary is not None else "None")
 
     is_external = False
     external_screens = [s for s in screens if s != primary]
@@ -249,12 +252,19 @@ def main() -> int:
         output_screen = external_screens[0]
         is_external = True
     else:
-        output_screen = primary
+        output_screen = primary if primary is not None else (screens[0] if screens else None)
         is_external = False
         logger.info("Single screen detected – output will run as a floating preview window.")
 
-    logger.info("Output screen: '%s' (%s, is_external=%s)",
-                output_screen.name(), output_screen.geometry(), is_external)
+    if output_screen is not None:
+        logger.info("Output screen: '%s' (%s, is_external=%s)",
+                    output_screen.name(), output_screen.geometry(), is_external)
+    else:
+        logger.warning("No screen reported by Qt platform – running without screen binding.")
+
+    # ── Prevent OS sleep / screen blanking during live shows ──────────
+    sleep_inhibitor = SleepInhibitor()
+    sleep_inhibitor.acquire()
 
     # ── Output windows (Layer 0 + live rendering) ─────────────────────
     # Window A is always in use. Window B drives a second independent
@@ -321,7 +331,8 @@ def main() -> int:
     main_win.show()
 
     # Attach OutputWindow strictly to target screen after MainWindow maps on primary
-    output_win.configure_screen(output_screen, is_external=is_external)
+    if output_screen is not None:
+        output_win.configure_screen(output_screen, is_external=is_external)
 
     main_win.raise_()
     main_win.activateWindow()
@@ -339,6 +350,7 @@ def main() -> int:
     device_mgr = DeviceManager()
     device_mgr.register_live_players(list(live_players.values()))
     device_mgr.register_test_player(test_player)
+    device_mgr.register_earcon_manager(main_win._earcon_mgr)
     # An explicit --screen on the command line always wins; otherwise the
     # projector assignment restored by DeviceManager is kept untouched.
     if args.output_screen >= 0 and output_screen is not None:
@@ -448,6 +460,13 @@ def main() -> int:
             apply_fade_out_at_end=(cue.hold_time > 0),
         )
 
+    def _resolve_current_cue(cue: Cue) -> Cue:
+        """Reconcile *cue* with the current list in MainWindow (handles Undo object replacement)."""
+        for item in main_win._cues:
+            if item.cue_id == cue.cue_id:
+                return item
+        return cue
+
     def _on_live_img_tick() -> None:
         if not live_image_envelopes:
             live_img_timer.stop()
@@ -455,43 +474,51 @@ def main() -> int:
         now = time.monotonic()
         done_layers: list[int] = []
         for l_idx, entry in list(live_image_envelopes.items()):
-            cue_item: Cue = entry["cue"]
-            if active_live_cues.get(l_idx) is not cue_item:
-                done_layers.append(l_idx)
-                continue
-            elapsed = max(0.0, now - entry["started"])
-            if cue_item.hold_time > 0 and elapsed >= cue_item.hold_time:
-                done_layers.append(l_idx)
-                op_end = _eval_image_opacity(cue_item, cue_item.hold_time)
-                _set_layer_opacity(l_idx, op_end)
-                _enter_post_delay_or_finalize(
-                    cue_item, l_idx, layer_fire_gen.get(l_idx, 0)
-                )
-                logger.info("[MAIN] Image on Layer %d reached hold_time (%.1fs)", l_idx, cue_item.hold_time)
-                continue
+            try:
+                cue_item: Cue = _resolve_current_cue(entry["cue"])
+                active_on_layer = active_live_cues.get(l_idx)
+                if active_on_layer is None or active_on_layer.cue_id != cue_item.cue_id:
+                    done_layers.append(l_idx)
+                    continue
+                if active_on_layer is not cue_item:
+                    active_live_cues[l_idx] = cue_item
+                    entry["cue"] = cue_item
+                elapsed = max(0.0, now - entry["started"])
+                if cue_item.hold_time > 0 and elapsed >= cue_item.hold_time:
+                    done_layers.append(l_idx)
+                    op_end = _eval_image_opacity(cue_item, cue_item.hold_time)
+                    _set_layer_opacity(l_idx, op_end)
+                    _enter_post_delay_or_finalize(
+                        cue_item, l_idx, layer_fire_gen.get(l_idx, 0)
+                    )
+                    logger.info("[MAIN] Image on Layer %d reached hold_time (%.1fs)", l_idx, cue_item.hold_time)
+                    continue
 
-            op = _eval_image_opacity(cue_item, elapsed)
-            _set_layer_opacity(l_idx, op)
-            if cue_item.hold_time > 0:
-                main_win.update_live_layer_progress(
-                    l_idx,
-                    elapsed,
-                    end_sec=cue_item.hold_time,
-                    start_sec=0.0,
-                    is_looping_inf=False,
-                )
+                op = _eval_image_opacity(cue_item, elapsed)
+                _set_layer_opacity(l_idx, op)
+                if cue_item.hold_time > 0:
+                    main_win.update_live_layer_progress(
+                        l_idx,
+                        elapsed,
+                        end_sec=cue_item.hold_time,
+                        start_sec=0.0,
+                        is_looping_inf=False,
+                    )
 
-            sel = main_win._selected_cue()
-            if (
-                sel is not None
-                and sel.cue_id == cue_item.cue_id
-                and not preview_manual_position
-                and not main_win._img_previz_timer.isActive()
-            ):
-                dur = cue_item.hold_time if cue_item.hold_time > 0 else cue_item.image_timeline_sec
-                main_win.set_waveform_playhead_seconds(min(dur, elapsed), dur, source_tag=f"LIVE L{l_idx}")
+                sel = main_win._selected_cue()
+                if (
+                    sel is not None
+                    and sel.cue_id == cue_item.cue_id
+                    and not preview_manual_position
+                    and not main_win._img_previz_timer.isActive()
+                ):
+                    dur = cue_item.hold_time if cue_item.hold_time > 0 else cue_item.image_timeline_sec
+                    main_win.set_waveform_playhead_seconds(min(dur, elapsed), dur, source_tag=f"LIVE L{l_idx}")
 
-            if cue_item.hold_time <= 0 and elapsed > entry["anim_end"] + 0.05:
+                if cue_item.hold_time <= 0 and elapsed > entry["anim_end"] + 0.05:
+                    done_layers.append(l_idx)
+            except Exception as exc:
+                logger.error("[MAIN] Error in live image envelope tick L%d: %s", l_idx, exc, exc_info=True)
                 done_layers.append(l_idx)
 
         for l_idx in done_layers:
@@ -503,6 +530,9 @@ def main() -> int:
 
     def _set_global_paused(paused: bool) -> None:
         """Freeze or resume all active live layers, timed image envelopes, and Pre/Post delays."""
+        paused = bool(paused)
+        if paused == scheduler.is_paused() and bool(getattr(main_win, "_is_global_paused", False)) == paused:
+            return
         scheduler.set_paused(paused)
         now = time.monotonic()
         if paused:
@@ -545,12 +575,14 @@ def main() -> int:
         """Clear output layer after playback + optional post_delay and trigger AUTO_FOLLOW if enabled."""
         if expected_gen is not None and layer_fire_gen.get(layer) != expected_gen:
             return
+        cue = _resolve_current_cue(cue)
         lp = live_players.get(layer)
         if lp is not None:
             lp.stop()
         _clear_layer(layer)
         live_image_envelopes.pop(layer, None)
-        if active_live_cues.get(layer) is cue:
+        active_on_layer = active_live_cues.get(layer)
+        if active_on_layer is not None and active_on_layer.cue_id == cue.cue_id:
             active_live_cues.pop(layer, None)
         paused_layers_by_global.discard(layer)
         main_win._reset_live_label(layer)
@@ -712,11 +744,14 @@ def main() -> int:
     def _on_scheduler_finished(win: ScheduledWindow) -> None:
         if layer_fire_gen.get(win.layer) != win.generation:
             return
-        main_win.set_cue_phase_badge(win.cue.cue_id, "")
-        if win.phase == "PRE":
-            _launch_cue_now(win.cue, win.layer, win.generation)
-        elif win.phase == "POST":
-            _finalize_cue_exit(win.cue, win.layer, expected_gen=win.generation)
+        try:
+            main_win.set_cue_phase_badge(win.cue.cue_id, "")
+            if win.phase == "PRE":
+                _launch_cue_now(_resolve_current_cue(win.cue), win.layer, win.generation)
+            elif win.phase == "POST":
+                _finalize_cue_exit(_resolve_current_cue(win.cue), win.layer, expected_gen=win.generation)
+        except Exception as exc:
+            logger.error("[MAIN] Scheduler finished error on L%d (%s): %s", win.layer, win.phase, exc, exc_info=True)
 
     scheduler.tick_updated.connect(_on_scheduler_tick)
     scheduler.window_finished.connect(_on_scheduler_finished)
@@ -776,6 +811,7 @@ def main() -> int:
 
     live_durations: dict[int, float] = {layer: 0.0 for layer in _ALL_RUNTIME_LAYERS}
     preview_manual_position = False
+    test_duration = 0.0
 
     def _live_effective_bounds(cue: Cue, dur_sec: float) -> tuple[float, float, bool]:
         start_sec = max(0.0, cue.in_point)
@@ -985,7 +1021,7 @@ def main() -> int:
             scheduler.cancel_all()
             scheduler.set_paused(False)
             paused_layers_by_global.clear()
-            main_win.set_global_paused(False)
+            main_win.set_global_paused(False, silent=True)
             live_image_envelopes.clear()
             live_img_timer.stop()
             for l_idx in _ALL_RUNTIME_LAYERS:
@@ -994,8 +1030,6 @@ def main() -> int:
                 live_positions[l_idx] = 0.0
             for lp in live_players.values():
                 lp.fade_out(0.2, stop_after=True)
-            output_win.show_fallback(fade_duration_sec=0.2)
-            output_win_b.show_fallback(fade_duration_sec=0.2)
             active_live_cues.clear()
             logger.info("[MAIN] Master Blackout executed across all layers (0.2s micro-fade)")
         except Exception as exc:
@@ -1007,6 +1041,7 @@ def main() -> int:
             scheduler.cancel_all()
             scheduler.set_paused(False)
             paused_layers_by_global.clear()
+            main_win.set_global_paused(False, silent=True)
             live_image_envelopes.clear()
             live_img_timer.stop()
             for l_idx in _ALL_RUNTIME_LAYERS:
@@ -1024,6 +1059,7 @@ def main() -> int:
     main_win.blackout_requested.connect(_on_blackout_requested)
     main_win.panic_requested.connect(_on_panic_requested)
     main_win.pause_all_toggled.connect(lambda: _set_global_paused(not scheduler.is_paused()))
+    main_win.pause_all_set.connect(_set_global_paused)
 
     def _on_layer_play_pause_requested(layer: int) -> None:
         """Toggle rehearsal pause/resume for active Audio/Video live layer."""
@@ -1081,8 +1117,6 @@ def main() -> int:
                     _cue_window(sel).set_layer_opacity(sel.layer, op)
 
         test_player.set_opacity_callback(_on_test_video_opacity)
-
-        test_duration = 0.0
 
         def _is_selected_cue_live() -> bool:
             sel = main_win._selected_cue()
@@ -1314,30 +1348,54 @@ def main() -> int:
 
     device_mgr.output_mode_changed.connect(_on_output_mode_changed)
 
-    # ── Graceful shutdown on SIGINT / SIGTERM ──────────────────────────
-    _shutdown_state = {"done": False}
+    # ── Graceful shutdown on SIGINT / SIGTERM / UI close (aboutToQuit) ─
+    _shutdown_state = {"signalled": False, "performed": False}
 
-    def _perform_shutdown() -> None:
+    def _perform_shutdown(*, from_about_to_quit: bool = False) -> None:
+        if _shutdown_state["performed"]:
+            return
+        _shutdown_state["performed"] = True
         logger.info("[MAIN] Performing graceful shutdown")
-        remote_mgr.stop_all()
-        scheduler.cancel_all()
+        try:
+            remote_mgr.stop_all()
+        except Exception:
+            logger.debug("[MAIN] remote_mgr.stop_all failed during shutdown", exc_info=True)
+        try:
+            scheduler.cancel_all()
+        except Exception:
+            pass
         live_img_timer.stop()
+        video_budget_timer.stop()
+        timer.stop()
         main_win._force_closing = True
         for lp in live_players.values():
-            lp.shutdown()
+            try:
+                lp.shutdown()
+            except Exception:
+                logger.debug("[MAIN] LivePlayer shutdown failed", exc_info=True)
         if test_player is not None:
-            test_player.shutdown()
+            try:
+                test_player.shutdown()
+            except Exception:
+                logger.debug("[MAIN] TestPlayer shutdown failed", exc_info=True)
+        try:
+            sleep_inhibitor.release()
+        except Exception:
+            pass
         output_win.force_close()
         output_win_b.force_close()
-        main_win.close()
-        app.quit()
+        if not from_about_to_quit:
+            main_win.close()
+            app.quit()
+
+    app.aboutToQuit.connect(lambda: _perform_shutdown(from_about_to_quit=True))
 
     def _shutdown(*_args) -> None:
         # Python signal handlers run in the main thread, but may fire mid-slot
         # (re-entrant). Defer the teardown to the next event-loop turn and run once.
-        if _shutdown_state["done"]:
+        if _shutdown_state["signalled"]:
             return
-        _shutdown_state["done"] = True
+        _shutdown_state["signalled"] = True
         logger.info("[MAIN] Shutdown signal received")
         QTimer.singleShot(0, _perform_shutdown)
 
@@ -1345,7 +1403,7 @@ def main() -> int:
     signal.signal(signal.SIGTERM, _shutdown)
 
     # Allow Python signal handlers to run while the Qt event loop blocks
-    timer = QTimer()
+    timer = QTimer(main_win)
     timer.start(200)
     timer.timeout.connect(lambda: None)
 

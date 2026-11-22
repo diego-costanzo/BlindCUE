@@ -47,7 +47,8 @@ class _PersistenceMixin:
             return
         try:
             self._apply_inspector_to_cue()
-            settings = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+            settings: dict[str, Any] = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+            settings["surfaces"] = [s.to_dict() for s in self._surfaces]
             output = self._output_settings()
             if output:
                 settings["output"] = output
@@ -100,7 +101,10 @@ class _PersistenceMixin:
             for item in recovery.get("cues", []):
                 try:
                     cue = Cue.from_dict(item)
-                    cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE
+                    if cue.media_type == MediaType.GROUP:
+                        cue.status = CueStatus.LOADED
+                    else:
+                        cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE
                     self._cues.append(cue)
                 except Exception as exc:
                     logger.warning("[RECOVERY] Error recovering cue: %s", exc)
@@ -113,6 +117,19 @@ class _PersistenceMixin:
                 self.set_layer0_image(lay0)
             else:
                 self._on_reset_layer0()
+            surfaces_raw = rec_settings.get("surfaces") if isinstance(rec_settings, dict) else None
+            if surfaces_raw:
+                try:
+                    self._surfaces = [SurfaceDefinition.from_dict(d) for d in surfaces_raw]
+                except Exception as exc:
+                    logger.warning("[RECOVERY] Error restoring surfaces: %s", exc)
+                    self._surfaces = [create_default_surface()]
+            else:
+                self._surfaces = [create_default_surface()]
+            self._output.set_surfaces(self._surfaces)
+            if getattr(self, "_output_b", None) is not None:
+                self._output_b.set_surfaces(self._surfaces)
+            self._inspector.set_available_surfaces(self._surfaces)
             self._apply_output_settings(rec_settings)
 
             self._refresh_cue_list(keep_selection=False)
@@ -150,6 +167,9 @@ class _PersistenceMixin:
             "Ci sono modifiche non salvate nel progetto corrente.\nVuoi salvarle prima di creare un nuovo show?",
         ):
             return
+
+        if any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags):
+            self._on_panic()
 
         self._cues.clear()
         self._current_index = -1
@@ -257,6 +277,8 @@ class _PersistenceMixin:
         """Load *file_path* into the window, restoring every project setting."""
         try:
             cues, current_idx, settings = self._project_manager.load_project(file_path)
+            if any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags):
+                self._on_panic()
             self._cues = cues
             self._current_index = current_idx
             self._current_project_path = file_path

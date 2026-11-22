@@ -45,6 +45,32 @@ class DeviceSettingsDialog(QDialog):
         self._build_ui()
         self._load_current_values()
 
+        # Keep device/screen lists fresh if hardware is plugged or unplugged while open
+        self.device_mgr.audio_devices_changed.connect(self._on_audio_hotplug)
+        self.device_mgr.screens_changed.connect(self._on_screens_hotplug)
+
+    def _on_audio_hotplug(self) -> None:
+        self._populate_audio_devices()
+
+    def _on_screens_hotplug(self) -> None:
+        self._populate_screens()
+        self._on_output_mode_changed()
+
+    def _disconnect_hotplug_signals(self) -> None:
+        for sig, slot in (
+            (self.device_mgr.audio_devices_changed, self._on_audio_hotplug),
+            (self.device_mgr.screens_changed, self._on_screens_hotplug),
+        ):
+            try:
+                sig.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+
+    def done(self, result: int) -> None:
+        """Disconnect device-manager hotplug signals before dialog disposal."""
+        self._disconnect_hotplug_signals()
+        super().done(result)
+
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
@@ -387,12 +413,16 @@ class DeviceSettingsDialog(QDialog):
         self.device_mgr.set_master_audio_device(master_dev)
         self.device_mgr.set_monitor_audio_device(monitor_dev)
 
-        # 3. Apply output routing
+        # 3. Apply output routing (guard against stale QScreen removed during hot-unplug)
         mode = self._combo_output_mode.currentData() or OutputMode.SINGLE.value
         if mode == OutputMode.SINGLE.value:
             screen = self._combo_screen.currentData()
-            if screen is not None:
+            available_screens = self.device_mgr.get_available_screens()
+            if screen is not None and screen in available_screens:
                 self.device_mgr.set_target_screen(screen)
+            elif screen is not None:
+                logger.warning("[DEVICE-DLG] Selected screen was disconnected before Apply; refreshing list")
+                self._populate_screens()
         if not self.device_mgr.set_output_mode(mode):
             QMessageBox.warning(
                 self,

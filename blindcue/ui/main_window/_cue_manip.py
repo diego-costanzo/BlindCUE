@@ -112,7 +112,17 @@ class _CueManipMixin:
         self._undo.update_current_index(anchor_row)
 
         removed = [self._cues.pop(r) for r in sorted(sel_rows, reverse=True)]
+        cleared_slots: set[int] = set()
         for rem in removed:
+            had_phase = rem.cue_id in self._live_phase_tags
+            if had_phase:
+                self._live_phase_tags.pop(rem.cue_id, None)
+            if rem.media_type != MediaType.GROUP and (rem.status == CueStatus.LIVE or had_phase):
+                slot = self._runtime_slot(rem)
+                if slot not in cleared_slots:
+                    cleared_slots.add(slot)
+                    self._reset_live_label(slot)
+                    self.layer_clear_requested.emit(slot)
             if rem.media_type == MediaType.GROUP:
                 for c in self._cues:
                     if c.parent_id == rem.cue_id:

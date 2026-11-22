@@ -61,10 +61,11 @@ below are implemented and tested, but the project is young.
 programming and verified on real hardware. It is not a commercial product with
 guaranteed support: it is an open-source project born from a real show.
 
-**How tested.** Every release passes about 210 automated checks on Linux:
-130 `pytest` tests plus five harnesses (functional, sections, live groups,
+**How tested.** Every release passes about 230 automated checks on Linux:
+150 `pytest` tests plus five harnesses (functional, sections, live groups,
 integration, mixin fuzz) that drive the real application with real media. See
-[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
+[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md) and
+[docs/AUDIT_LOGBOOK.md](docs/AUDIT_LOGBOOK.md).
 
 **Not verified yet.** Deep testing has been on Linux (Wayland). Not yet
 covered: codecs beyond H.264 (HEVC, VP9, ProRes), 4K/10-bit files, 5.1/7.1 audio
@@ -82,7 +83,7 @@ computer, projector and files — that applies to any live software.
 - Separate **room master** and **headphone PFL** audio routing, EBU R128 loudness, non-destructive normalisation.
 - **Projection mapping**: automatic projector detection, span, dual independent outputs, surfaces, masks, keystone.
 - **LAN remote**: mobile-first web remote (QR + PIN), director monitor, native OSC server.
-- **Failsafes**: atomic saves, autosave + crash recovery, global pause, panic, 40-step undo/redo, dedicated CPU budget.
+- **Failsafes**: atomic saves, autosave + crash recovery (including surfaces), OS sleep/screensaver inhibition, global pause, panic, 40-step undo/redo, dedicated CPU budget.
 
 ## Install
 
@@ -109,7 +110,7 @@ uninstall).
 3. Drop audio/video/image files into the **Drop Zone**, or build cues from the cue list.
 4. Tune **pre-delay, fade, volume, layer and surface** in the inspector.
 5. Press **`F5`** to enter **LIVE mode**.
-6. **`SPACE`** for GO. **`Ctrl+B`** for blackout. **`ESC`** for Panic.
+6. **`SPACE`** for GO. **`Ctrl+B`** for blackout. **`ESC ×2`** (double tap within 0.6s) for Panic (or instant click on the PANIC button).
 
 ---
 
@@ -176,12 +177,12 @@ strumenti di intelligenza artificiale (pair programming), poi verificato a mano
 su hardware reale. Non è un prodotto commerciale con supporto garantito: è un
 progetto open source che nasce dal bisogno concreto di uno spettacolo dal vivo.
 
-**Quanto è testato.** Ogni rilascio passa circa 210 verifiche automatiche su
+**Quanto è testato.** Ogni rilascio passa circa 230 verifiche automatiche su
 Linux:
 
 | Verifica | Casi | Copre |
 |---|---|---|
-| `pytest tests/` | 130 | Macchina a stati, sezioni, envelope, persistenza, robustezza, integrazione |
+| `pytest tests/` | 150 | Macchina a stati, sezioni, envelope, persistenza, robustezza, integrazione, regressioni audit |
 | suite funzionale | 49 | Rendering pixel-level, media reali, logica, gruppi, persistenza, doppia uscita |
 | sezioni live | 11 | Sezioni, skip, vamp, salti su playback audio e video reale |
 | gruppi live | 6 | STEP, SEQUENCE, SIMULTANEOUS, LOOP, RANDOM su media veri |
@@ -189,7 +190,7 @@ Linux:
 | fuzz dei mixin | 5 | 400-600 operazioni UI casuali con invarianti e controllo risorse |
 
 Dettaglio dei bug trovati e corretti, con il metodo usato per trovarli:
-[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md).
+[docs/TEST_FINDINGS.md](docs/TEST_FINDINGS.md) e [docs/AUDIT_LOGBOOK.md](docs/AUDIT_LOGBOOK.md).
 
 **Cosa non è stato ancora verificato.** Windows e macOS sono supportati
 dall'installer ma il collaudo approfondito è stato fatto su Linux (Wayland).
@@ -251,8 +252,9 @@ sostituire.
 
 - Salvataggio **atomico** su file JSON aperto (`.blindcue`).
 - **Archivio portatile** opzionale: al salvataggio puoi copiare i media dentro la cartella dello show e lo spettacolo si apre su qualunque computer. I file originali non vengono mai spostati né modificati.
-- **Autosave** ogni 30 secondi e **Crash Recovery** al riavvio.
-- **Pausa globale** senza drift e **Panic** a 0 ms.
+- **Autosave** ogni 30 secondi e **Crash Recovery** al riavvio (incluse le superfici di proiezione).
+- **Inibizione sospensione/screensaver** integrata a livello di sistema operativo (`systemd-inhibit` su Linux) finché BlindCue è aperto.
+- **Pausa globale** senza drift e **Panic** a 0 ms (doppia pressione `ESC ×2` anti-errore da tastiera, click istantaneo sul pulsante).
 - **Undo/Redo** fino a 40 passaggi.
 - **Budget CPU** dedicato: il lavoro in background non satura mai tutti i core.
 
@@ -373,7 +375,7 @@ python blindcue/main.py
 3. Trascina file audio/video/immagini nella **Drop Zone**, oppure crea cue dalla scaletta.
 4. Regola **Pre-Delay**, **fade**, **volume**, layer e superficie nell'ispettore.
 5. Premi **`F5`** per entrare in **Modalità LIVE**.
-6. **`SPAZIO`** per il GO. **`Ctrl+B`** per il blackout. **`ESC`** per il Panic.
+6. **`SPAZIO`** per il GO. **`Ctrl+B`** per il blackout. **`ESC ×2`** (entro 0,6 s) per il Panic da tastiera.
 
 ### Salvare uno show: collegamenti o archivio portatile
 
@@ -384,9 +386,9 @@ Con **Salva con nome** (`Ctrl+Shift+S`) BlindCue chiede come vuoi salvare:
 | **No** (predefinito) | Salva solo i collegamenti ai file originali | I media restano dove sono e li gestisci tu |
 | **Sì** | Copia i media in `<nome>_media/` accanto al file `.blindcue` | Vuoi portare lo show su un altro computer con una chiavetta |
 
-L'archivio portatile usa percorsi relativi, quindi la cartella dello show si può
+L'archivio portatile usa percorsi relativi (inclusi Layer 0 personalizzato e maschere PNG delle superfici), quindi la cartella dello show si può
 spostare o copiare integralmente. I file originali **non vengono mai modificati
-né spostati**, i nomi uguali vengono disambiguati (`clip.mp4` → `clip_2.mp4`) e,
+né spostati**, i nomi uguali con contenuto diverso vengono disambiguati tramite verifica SHA-256 (`clip.mp4` → `clip_2.mp4`) e,
 se un file non è copiabile, lo show viene salvato comunque con un avviso che
 elenca i media rimasti collegati. All'apertura BlindCue segnala subito gli
 eventuali media mancanti.
@@ -398,7 +400,7 @@ eventuali media mancanti.
 | Tasto | Azione |
 |---|---|
 | `SPAZIO` | GO — esegue la cue in standby |
-| `ESC` | PANIC (in LIVE) / stop anteprima (in Progetto) |
+| `ESC ×2` / `ESC` | PANIC in LIVE (doppia pressione entro 0,6 s) / stop anteprima in Progetto |
 | `Ctrl+B` | Blackout verso il tappo di sicurezza |
 | `F5` / `Ctrl+L` | Entra/esci dalla Modalità LIVE |
 | `F7` | Studio superfici di proiezione e video mapping |
@@ -428,7 +430,7 @@ BlindCUE/
 │   ├── services/            # Web Remote (HTTP+SSE), OSC, QR, coordinamento remoto
 │   └── ui/                  # Widget Qt; il pacchetto main_window/ è suddiviso in mixin
 ├── tests/                   # Suite headless: robustezza, integrazione, show engine
-├── docs/                    # ARCHITECTURE.md, MANUAL.md, TEST_FINDINGS.md
+├── docs/                    # ARCHITECTURE.md, MANUAL.md, TEST_FINDINGS.md, AUDIT_LOGBOOK.md
 ├── immagini di progetto/    # Screenshot per questo README
 ├── setup.py                 # installer universale: rileva l'OS e apre la GUI
 ├── uninstall.py             # disinstallazione guidata: rimuove tutto, senza tracce
@@ -450,7 +452,7 @@ Dettaglio dei moduli, flusso dati e guida all'estensione: **[docs/ARCHITECTURE.m
 La suite gira **headless** (backend Qt `offscreen`) e non richiede un display:
 
 ```bash
-# Tutta la suite (130 test)
+# Tutta la suite (150 test)
 QT_QPA_PLATFORM=offscreen pytest -q tests/
 
 # Solo la macchina a stati dello show (nessuna dipendenza Qt, millisecondi)
@@ -467,6 +469,7 @@ pytest -q tests/test_show_engine_pure.py
 | `test_dual_output.py` | Deck A/B, handoff senza stutter, layer per uscita |
 | `test_live_robustness.py` | Stress OSC, fuzz, file corrotti, zombie FFmpeg, archivio portatile |
 | `test_live_integration.py` | Remote manager, segnali, cache stato, autosave, boot headless |
+| `test_audit_regressions.py` | Regressioni audit live: shortcut, fallback race, lock layer, deck swap, SSE/OSC, sleep inhibitor |
 
 Oltre a pytest, il collaudo include harness che guidano la vera applicazione con
 media reali e controllano il comportamento osservabile (posizione del playhead,
@@ -491,7 +494,8 @@ Il resoconto completo dei bug trovati e del metodo usato è in
 
 - **[Manuale Utente](docs/MANUAL.md)** — uso quotidiano, tutte le funzioni, scorciatoie, emergenze, troubleshooting.
 - **[Architettura](docs/ARCHITECTURE.md)** — struttura interna, flusso dati, concorrenza, come estendere o fare fork.
-- **[Collaudo](docs/TEST_FINDINGS.md)** — cosa è stato testato, i bug trovati e come sono stati individuati.
+- **[Collaudo](docs/TEST_FINDINGS.md)** — collaudo su hardware reale, prestazioni misurate e bug risolti.
+- **[Diario di Bordo Audit](docs/AUDIT_LOGBOOK.md)** — audit di affidabilità live, correzioni applicate e checklist per le iterazioni future.
 
 ---
 

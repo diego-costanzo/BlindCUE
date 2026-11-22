@@ -18,6 +18,7 @@ import hmac
 import logging
 import math
 import re
+import time
 from typing import Any
 
 from PySide6.QtCore import QObject, QTimer, Signal
@@ -40,6 +41,8 @@ class OscServer(QObject):
     panic_requested = Signal()
     blackout_requested = Signal()
     pause_toggle_requested = Signal()
+    pause_requested = Signal()
+    resume_requested = Signal()
     next_cue_requested = Signal()
     prev_cue_requested = Signal()
     cue_go_requested = Signal(object)           # cue index or identifier (int or str)
@@ -59,16 +62,18 @@ class OscServer(QObject):
         self._pin: str = "4821"
         self._allowed_ips: set[str] = set()
         self._authenticated_ips: set[str] = set()
+        self._failed_auth: dict[str, tuple[int, float]] = {}  # ip -> (fails, lockout_until)
 
     def set_security(self, pin_required: bool = False, pin: str = "4821", allowed_ips: list[str] | None = None) -> None:
         """Configure OSC authentication and optional IP whitelist."""
         self._pin_required = bool(pin_required)
         self._pin = str(pin).strip()
-        self._allowed_ips = {ip.strip() for ip in allowed_ips} if allowed_ips else set()
+        self._allowed_ips = {ip.strip() for ip in allowed_ips if ip.strip()} if allowed_ips else set()
 
     def clear_authenticated_clients(self) -> None:
         """Revoke all active client sessions."""
         self._authenticated_ips.clear()
+        self._failed_auth.clear()
 
     def is_running(self) -> bool:
         """True while the OSC listener thread is active."""
@@ -158,31 +163,65 @@ class OscServer(QObject):
 
     def _dispatch_command(self, address: str, args: list[Any], sender_addr: str = "") -> None:
         """Route OSC address patterns to the corresponding playback action."""
-        addr = address.lower().strip()
+        raw_addr = address.strip()
+        addr = raw_addr.lower()
 
-        # 0. Check IP Whitelist
-        if self._allowed_ips and sender_addr and sender_addr not in self._allowed_ips:
-            logger.warning("[OSC] Dropped packet from non-whitelisted IP: %s", sender_addr)
+        # 0. Check IP Whitelist (empty/unknown sender is also rejected when whitelist is active)
+        if self._allowed_ips and sender_addr not in self._allowed_ips:
+            logger.warning("[OSC] Dropped packet from non-whitelisted IP: %r", sender_addr)
             return
+
+        # Rate-limiting helper for PIN attempts
+        now = time.monotonic()
+        ip_key = sender_addr or "unknown"
+        if len(self._failed_auth) > 256:
+            self._failed_auth = {
+                k: v for k, v in self._failed_auth.items() if v[1] > now
+            }
+
+        def _is_locked_out() -> bool:
+            fails, until = self._failed_auth.get(ip_key, (0, 0.0))
+            if fails >= 5 and now < until:
+                return True
+            if fails >= 5 and now >= until:
+                self._failed_auth.pop(ip_key, None)
+            return False
+
+        def _record_auth_fail() -> None:
+            fails, until = self._failed_auth.get(ip_key, (0, 0.0))
+            if fails >= 5 and now >= until:
+                fails = 0
+            fails += 1
+            lock = (now + 30.0) if fails >= 5 else 0.0
+            self._failed_auth[ip_key] = (fails, lock)
 
         # Check authentication handshake (/auth <pin>)
         if addr in ("/auth", "/login", "/blindcue/auth") and args:
+            if _is_locked_out():
+                logger.warning("[OSC] Auth locked out for host %s", ip_key)
+                return
             if hmac.compare_digest(str(args[0]).strip(), self._pin):
+                self._failed_auth.pop(ip_key, None)
                 self._authenticated_ips.add(sender_addr)
                 logger.info("[OSC] Host %s authenticated successfully with PIN", sender_addr)
             else:
+                _record_auth_fail()
                 logger.warning("[OSC] Authentication failed for host %s", sender_addr)
             return
 
-        # Check PIN requirement
+        # Check PIN requirement (match PIN case-sensitively on raw_addr)
         if self._pin_required and sender_addr not in self._authenticated_ips:
+            if _is_locked_out():
+                logger.warning("[OSC] Locked out host %s attempted '%s'", ip_key, address)
+                return
             pin_prefix = f"/{self._pin}/"
             blindcue_pin_prefix = f"/blindcue/{self._pin}/"
-            if addr.startswith(pin_prefix):
-                addr = "/" + addr[len(pin_prefix):]
-            elif addr.startswith(blindcue_pin_prefix):
-                addr = "/blindcue/" + addr[len(blindcue_pin_prefix):]
+            if raw_addr.startswith(pin_prefix):
+                addr = "/" + raw_addr[len(pin_prefix):].lower()
+            elif raw_addr[:10].lower() == "/blindcue/" and raw_addr[10:].startswith(f"{self._pin}/"):
+                addr = "/blindcue/" + raw_addr[10 + len(self._pin) + 1:].lower()
             else:
+                _record_auth_fail()
                 logger.warning("[OSC] Dropped unauthorized command '%s' from %s (PIN required)", address, sender_addr)
                 return
 
@@ -205,8 +244,16 @@ class OscServer(QObject):
             self.panic_requested.emit()
             return
 
-        # 4. Pause / Resume / Toggle
-        if addr in ("/pause", "/resume", "/pause_toggle", "/toggle_pause", "/cue/pause", "/blindcue/pause"):
+        # 4. Pause / Resume / Toggle (idempotent /pause & /resume + explicit toggle)
+        if addr in ("/pause", "/cue/pause", "/blindcue/pause"):
+            self.pause_requested.emit()
+            return
+
+        if addr in ("/resume", "/cue/resume", "/blindcue/resume"):
+            self.resume_requested.emit()
+            return
+
+        if addr in ("/pause_toggle", "/toggle_pause"):
             self.pause_toggle_requested.emit()
             return
 

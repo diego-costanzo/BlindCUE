@@ -97,6 +97,7 @@ class _LiveLayerBar(QWidget):
 
     def set_locked(self, locked: bool) -> None:
         """Disable interactive scrub on this layer bar while the console is locked."""
+        self._locked = bool(locked)
         if self._locked:
             self._is_dragging = False
             self._hover_active = False
@@ -926,14 +927,14 @@ class LiveStatusPanel(QGroupBox):
         for layer, btn_back in self._jump_back_buttons.items():
             btn_back.setEnabled(not self._locked)
             btn_back.setToolTip(
-                "🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (3s)"
+                "🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (1,2s)"
                 if self._locked
                 else f"Salta indietro di 10s su Layer {layer} (prove)"
             )
         for layer, btn_pp in self._play_pause_buttons.items():
             btn_pp.setEnabled(not self._locked)
             btn_pp.setToolTip(
-                "🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (3s)"
+                "🔒 Controlli Layer Protetti — Sblocca con il Lucchetto (1,2s)"
                 if self._locked
                 else f"Metti in Pausa Layer {layer} (prove)"
             )

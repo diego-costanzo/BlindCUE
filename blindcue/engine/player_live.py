@@ -60,6 +60,7 @@ class LivePlayer(QObject):
         self._standby_audio: QAudioOutput | None = None
         self._standby_target_ms: int | None = None
         self._standby_ready: bool = False
+        self._standby_seek_pending: bool = False
         self._active_deck: int = 0  # 0 = primary, 1 = standby deck
 
         # Automation & sections state
@@ -96,6 +97,8 @@ class LivePlayer(QObject):
         self._load_watchdog.timeout.connect(self._recover_stalled_load)
         self._watchdog_trials: int = 0
         self._watchdog_armed: bool = False
+        self._play_started_pos_ms: int = 0
+        self._media_progressed: bool = False
 
         self._setup_player()
 
@@ -337,10 +340,12 @@ class LivePlayer(QObject):
         want_url = QUrl.fromLocalFile(self._file_path)
         if idle_player.source() != want_url:
             self._standby_ready = False
+            self._standby_seek_pending = True
             idle_player.setSource(want_url)
             idle_player.pause()
         else:
             self._standby_ready = True
+            self._standby_seek_pending = False
             idle_player.pause()
             idle_player.setPosition(target_ms)
 
@@ -493,6 +498,8 @@ class LivePlayer(QObject):
         player, _ = self._deck_pair(deck_idx)
         if player.playbackState() == QMediaPlayer.PlaybackState.StoppedState:
             return
+        if pos_ms != self._play_started_pos_ms:
+            self._media_progressed = True
         pos_sec = pos_ms / 1000.0
         self.signals.position_changed.emit(pos_sec)
         self._check_boundaries(pos_ms)
@@ -522,13 +529,17 @@ class LivePlayer(QObject):
         if deck_idx != self._active_deck:
             if status in (QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferedMedia):
                 self._standby_ready = True
-                if self._standby_target_ms is not None and self._standby_player is not None:
-                    self._standby_player.setPosition(self._standby_target_ms)
+                if self._standby_seek_pending and self._standby_target_ms is not None:
+                    self._standby_seek_pending = False
+                    idle_p, _ = self._deck_pair(deck_idx)
+                    idle_p.setPosition(self._standby_target_ms)
             return
         if self._finished:
             return
 
         player, _ = self._deck_pair(deck_idx)
+        if status == QMediaPlayer.MediaStatus.BufferedMedia:
+            self._media_progressed = True
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
             target = (
                 int(round(self._sequencer.active_start_sec() * 1000))
@@ -564,6 +575,15 @@ class LivePlayer(QObject):
 
     # ── Public Playback API ───────────────────────────────────────────
 
+    def _stop_fade_timer(self) -> None:
+        """Stop and schedule deletion of any active manual fade timer."""
+        old = self._fade_timer
+        self._fade_timer = None
+        if old is not None:
+            if old.isActive():
+                old.stop()
+            old.deleteLater()
+
     def load(self, file_path: str, start: float = 0.0,
              end: float | None = None) -> None:
         """Load a media file cleanly on Deck 0, resetting any standby/fade state."""
@@ -572,12 +592,12 @@ class LivePlayer(QObject):
             self._boundary_armed = True
             self._finished = False
             self._driver_timer.stop()
-            if self._fade_timer is not None and self._fade_timer.isActive():
-                self._fade_timer.stop()
+            self._stop_fade_timer()
             if self._standby_player is not None:
                 self._standby_player.stop()
                 self._standby_target_ms = None
                 self._standby_ready = False
+                self._standby_seek_pending = False
 
             # Sections describe the cue being REPLACED, not the incoming media.
             # Left installed, the LoadedMedia handler seeks the fresh file to the
@@ -667,6 +687,10 @@ class LivePlayer(QObject):
                         player.setPosition(pos_ms)
             self._finished = False
             self._boundary_armed = True
+            self._play_started_pos_ms = pos_ms
+            self._media_progressed = (
+                player.mediaStatus() == QMediaPlayer.MediaStatus.BufferedMedia
+            )
 
             self._apply_envelope_at(pos_ms / 1000.0)
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
@@ -697,16 +721,31 @@ class LivePlayer(QObject):
             if not self._file_path or self._manual_fade_active:
                 return
             player, _ = self._deck_pair()
-            if player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-                return
-            if player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+            st = player.mediaStatus()
+            if st == QMediaPlayer.MediaStatus.EndOfMedia:
                 # Legitimately finished: never restart a cue that reached its end.
+                return
+            # In Qt6, playbackState() switches to PlayingState immediately on
+            # play(), even while mediaStatus() is wedged in LoadingMedia or
+            # StalledMedia. Only consider playback healthy when media actually
+            # buffered/progressed.
+            stalled_statuses = (
+                QMediaPlayer.MediaStatus.LoadingMedia,
+                QMediaPlayer.MediaStatus.StalledMedia,
+                QMediaPlayer.MediaStatus.InvalidMedia,
+                QMediaPlayer.MediaStatus.NoMedia,
+            )
+            if (
+                self._media_progressed
+                and player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
+                and st not in stalled_statuses
+            ):
                 return
             self._watchdog_trials += 1
             logger.warning(
                 "[LIVE] %s non parte (status=%s): riapertura forzata %d/3",
                 os.path.basename(self._file_path),
-                player.mediaStatus().name,
+                st.name,
                 self._watchdog_trials,
             )
             target = (
@@ -714,6 +753,8 @@ class LivePlayer(QObject):
                 if self._sequencer.active
                 else max(self._start_ms, player.position())
             )
+            self._media_progressed = False
+            self._play_started_pos_ms = target
             player.stop()
             player.setSource(QUrl())
             player.setSource(QUrl.fromLocalFile(self._file_path))
@@ -781,13 +822,13 @@ class LivePlayer(QObject):
             self._load_watchdog.stop()
             self._watchdog_trials = 0
             self._watchdog_armed = False
-            if self._fade_timer is not None and self._fade_timer.isActive():
-                self._fade_timer.stop()
+            self._stop_fade_timer()
             self._player.stop()
             if self._standby_player is not None:
                 self._standby_player.stop()
                 self._standby_target_ms = None
                 self._standby_ready = False
+                self._standby_seek_pending = False
             self._active_deck = 0
             self._sections_cfg.clear()
             self._sequencer.configure([], 0.0, 0.0)
@@ -824,6 +865,8 @@ class LivePlayer(QObject):
         try:
             vol_norm = max(0.0, min(1.0, volume / 100.0))
             self._base_volume = vol_norm
+            if self._fade_timer is None or not self._fade_timer.isActive():
+                self._manual_fade_active = False
             _, audio = self._deck_pair()
             if not self._volume_points and not self._manual_fade_active:
                 audio.setVolume(vol_norm)
@@ -848,7 +891,9 @@ class LivePlayer(QObject):
                 self._player.setLoops(QMediaPlayer.Loops.Infinite)
             else:
                 self._player.setLoops(loop_count)
-            if self._is_video_cue and loop:
+            # Only allocate the standby video decoder when looping across an
+            # explicit OUT point; full-file loops are handled natively by Qt.
+            if self._is_video_cue and loop and self._end_ms is not None:
                 self._pre_cue_next_target()
         except Exception as exc:
             logger.error("[LIVE] set_loop() failed: %s", exc)
@@ -871,8 +916,7 @@ class LivePlayer(QObject):
     def fade_in(self, target_volume: int, duration_sec: float) -> None:
         """Direct manual fade-in helper (also preserved for standalone callers)."""
         try:
-            if self._fade_timer is not None and self._fade_timer.isActive():
-                self._fade_timer.stop()
+            self._stop_fade_timer()
 
             if duration_sec <= 0:
                 self.set_volume(target_volume)
@@ -886,7 +930,8 @@ class LivePlayer(QObject):
             step_increment = target_norm / steps
             current_step = 0
 
-            self._fade_timer = QTimer(self)
+            timer = QTimer(self)
+            self._fade_timer = timer
 
             def _tick() -> None:
                 nonlocal current_step
@@ -894,10 +939,10 @@ class LivePlayer(QObject):
                 new_vol = min(target_norm, current_step * step_increment)
                 self._deck_pair()[1].setVolume(new_vol)
                 if current_step >= steps:
-                    self._fade_timer.stop()
+                    self._stop_fade_timer()
 
-            self._fade_timer.timeout.connect(_tick)
-            self._fade_timer.start(step_interval)
+            timer.timeout.connect(_tick)
+            timer.start(step_interval)
         except Exception as exc:
             logger.error("[LIVE] fade_in() failed: %s", exc)
             self.set_volume(target_volume)
@@ -906,8 +951,7 @@ class LivePlayer(QObject):
                  callback: Callable[[], None] | None = None) -> None:
         """Smooth manual fade-out (e.g. Cut/Blackout) down to 0 and optional stop."""
         try:
-            if self._fade_timer is not None and self._fade_timer.isActive():
-                self._fade_timer.stop()
+            self._stop_fade_timer()
 
             self._manual_fade_active = True
             _, audio = self._deck_pair()
@@ -925,7 +969,8 @@ class LivePlayer(QObject):
             step_decrement = start_norm / steps
             current_step = 0
 
-            self._fade_timer = QTimer(self)
+            timer = QTimer(self)
+            self._fade_timer = timer
 
             def _tick() -> None:
                 nonlocal current_step
@@ -933,15 +978,15 @@ class LivePlayer(QObject):
                 new_vol = max(0.0, start_norm - (current_step * step_decrement))
                 self._deck_pair()[1].setVolume(new_vol)
                 if current_step >= steps:
-                    self._fade_timer.stop()
+                    self._stop_fade_timer()
                     self._deck_pair()[1].setVolume(0.0)
                     if stop_after:
                         self.stop()
                     if callback is not None:
                         callback()
 
-            self._fade_timer.timeout.connect(_tick)
-            self._fade_timer.start(step_interval)
+            timer.timeout.connect(_tick)
+            timer.start(step_interval)
         except Exception as exc:
             logger.error("[LIVE] fade_out() failed: %s", exc)
             self._deck_pair()[1].setVolume(0.0)
@@ -957,9 +1002,10 @@ class LivePlayer(QObject):
         application from closing after a show.
         """
         try:
+            self._load_watchdog.stop()
+            self._watchdog_armed = False
             self._driver_timer.stop()
-            if self._fade_timer is not None:
-                self._fade_timer.stop()
+            self._stop_fade_timer()
             self._player.stop()
             if self._standby_player is not None:
                 self._standby_player.stop()

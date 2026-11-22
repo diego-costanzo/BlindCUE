@@ -10,6 +10,8 @@ Follows open-source best practices:
 
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 import logging
 import os
@@ -89,6 +91,80 @@ class ProjectManager:
         except OSError:
             return os.path.abspath(os.path.expanduser(file_path))
 
+    @staticmethod
+    def _file_sha256(path: Path) -> str:
+        """Compute SHA-256 digest of *path* in bounded 64 KiB chunks."""
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            while True:
+                chunk = fh.read(65536)
+                if not chunk:
+                    break
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @classmethod
+    def _files_identical(cls, path_a: Path, path_b: Path) -> bool:
+        """Return True iff *path_a* and *path_b* have identical size and SHA-256 content."""
+        try:
+            st_a = path_a.stat()
+            st_b = path_b.stat()
+        except OSError:
+            return False
+        if st_a.st_size != st_b.st_size:
+            return False
+        try:
+            if path_a.resolve() == path_b.resolve():
+                return True
+        except OSError:
+            pass
+        try:
+            return cls._file_sha256(path_a) == cls._file_sha256(path_b)
+        except OSError:
+            return False
+
+    def _archive_single_file(
+        self,
+        source_path: str,
+        label: str,
+        media_dir: Path,
+        mapping: dict[str, str],
+        claimed: set[str],
+        problems: list[str],
+    ) -> str | None:
+        """Archive one file into *media_dir* atomically, returning its relative path."""
+        source = Path(source_path).expanduser()
+        key = self._absolute_media_key(str(source))
+        if key in mapping:
+            return mapping[key]
+        if not source.is_file():
+            problems.append(f"{label}: file non trovato ({source})")
+            return None
+        temp_target: Path | None = None
+        try:
+            media_dir.mkdir(parents=True, exist_ok=True)
+            target = self._media_target(media_dir, source, claimed)
+            claimed.add(target.name)
+            if not target.is_file() or not self._files_identical(target, source):
+                temp_target = target.with_name(f".{target.name}.tmp")
+                shutil.copy2(source, temp_target)
+                os.replace(temp_target, target)
+                temp_target = None
+            if target.stat().st_size != source.stat().st_size:
+                raise OSError("copia incompleta")
+            rel = f"{media_dir.name}/{target.name}"
+            mapping[key] = rel
+            return rel
+        except Exception as exc:
+            if temp_target is not None and temp_target.exists():
+                try:
+                    temp_target.unlink()
+                except OSError:
+                    pass
+            logger.error("[PROJECT] Cannot archive media %s: %s", source, exc)
+            problems.append(f"{label}: copia non riuscita ({exc})")
+            return None
+
     def import_media(
         self, cues: list[Cue], project_path: str | Path
     ) -> tuple[dict[str, str], list[str]]:
@@ -98,7 +174,7 @@ class ProjectManager:
         the returned mapping lets the saved show reference the copies with
         *relative* paths, so the whole folder can be moved to another machine.
         Originals are only read: they are never moved or deleted.  Re-saving
-        the same show reuses the copies already present.
+        the same show reuses identical copies already present.
 
         Returns ``(mapping, problems)`` where *mapping* maps the absolute
         source path to the relative path to store in the project, and
@@ -113,41 +189,21 @@ class ProjectManager:
         for cue in cues:
             if cue.media_type == MediaType.GROUP or not cue.file_path:
                 continue
-            source = Path(cue.file_path).expanduser()
-            key = self._absolute_media_key(str(source))
-            if key in mapping:
-                continue
-            if not source.is_file():
-                problems.append(f"{cue.name}: file non trovato ({source})")
-                continue
-            try:
-                media_dir.mkdir(parents=True, exist_ok=True)
-                target = self._media_target(media_dir, source, claimed)
-                claimed.add(target.name)
-                if not target.is_file() or target.stat().st_size != source.stat().st_size:
-                    temp_target = target.with_name(f".{target.name}.tmp")
-                    shutil.copy2(source, temp_target)
-                    os.replace(temp_target, target)
-                if target.stat().st_size != source.stat().st_size:
-                    raise OSError("copia incompleta")
-                mapping[key] = f"{media_dir.name}/{target.name}"
-            except Exception as exc:
-                logger.error("[PROJECT] Cannot archive media %s: %s", source, exc)
-                problems.append(f"{cue.name}: copia non riuscita ({exc})")
+            self._archive_single_file(
+                cue.file_path, cue.name, media_dir, mapping, claimed, problems
+            )
 
         logger.info(
             "[PROJECT] Archived %d media file(s) into %s", len(mapping), media_dir
         )
         return mapping, problems
 
-    @staticmethod
-    def _media_target(media_dir: Path, source: Path, claimed: set[str]) -> Path:
-        """Pick a free destination name, keeping same-named files side by side."""
+    @classmethod
+    def _media_target(cls, media_dir: Path, source: Path, claimed: set[str]) -> Path:
+        """Pick a free destination name, keeping distinct same-named files side by side."""
         name = source.name or "media"
         target = media_dir / name
-        if name in claimed or (
-            target.is_file() and target.stat().st_size != source.stat().st_size
-        ):
+        if name in claimed or (target.is_file() and not cls._files_identical(target, source)):
             stem, suffix = os.path.splitext(name)
             index = 2
             while True:
@@ -155,8 +211,11 @@ class ProjectManager:
                 candidate_path = media_dir / candidate
                 if candidate not in claimed and not candidate_path.is_file():
                     return candidate_path
-                if candidate not in claimed and candidate_path.is_file() and \
-                        candidate_path.stat().st_size == source.stat().st_size:
+                if (
+                    candidate not in claimed
+                    and candidate_path.is_file()
+                    and cls._files_identical(candidate_path, source)
+                ):
                     return candidate_path
                 index += 1
         return target
@@ -226,12 +285,51 @@ class ProjectManager:
         Returns ``(saved, problems, copied)``.
         """
         media_map, problems = self.import_media(cues, file_path)
+        project = Path(file_path)
+        media_dir = project.parent / f"{project.stem}{MEDIA_DIR_SUFFIX}"
+        claimed = {Path(rel).name for rel in media_map.values()}
+
+        eff_settings = copy.deepcopy(settings) if isinstance(settings, dict) else {}
+        layer0 = eff_settings.get("layer0_image")
+        if isinstance(layer0, str) and layer0 and os.path.isfile(layer0):
+            rel_l0 = self._archive_single_file(
+                layer0, "Layer 0 (Tappo)", media_dir, media_map, claimed, problems
+            )
+            if rel_l0:
+                eff_settings["layer0_image"] = rel_l0
+
+        surf_dicts: list[Any] | None = None
+        if surfaces is not None:
+            surf_dicts = [
+                copy.deepcopy(s.to_dict() if hasattr(s, "to_dict") else s)
+                for s in surfaces
+            ]
+        elif isinstance(eff_settings.get("surfaces"), list):
+            surf_dicts = copy.deepcopy(eff_settings["surfaces"])
+
+        if surf_dicts is not None:
+            for sd in surf_dicts:
+                if isinstance(sd, dict):
+                    mask_p = sd.get("mask_image_path")
+                    if isinstance(mask_p, str) and mask_p and os.path.isfile(mask_p):
+                        rel_mask = self._archive_single_file(
+                            mask_p,
+                            f"Maschera superficie '{sd.get('name', 'surface')}'",
+                            media_dir,
+                            media_map,
+                            claimed,
+                            problems,
+                        )
+                        if rel_mask:
+                            sd["mask_image_path"] = rel_mask
+            eff_settings["surfaces"] = surf_dicts
+
         saved = self.save_project(
             file_path,
             cues,
             current_index=current_index,
-            settings=settings,
-            surfaces=surfaces,
+            settings=eff_settings,
+            surfaces=surf_dicts,
             media_map=media_map,
         )
         return saved, problems, len(media_map)
@@ -280,9 +378,35 @@ class ProjectManager:
 
             loaded_cues: list[Cue] = []
             proj_dir = path.parent.resolve()
+
+            # Resolve optional relative asset paths inside settings safely (Layer 0 & surface masks)
+            def _resolve_relative_asset(raw_path: Any) -> Any:
+                if not isinstance(raw_path, str) or not raw_path.strip():
+                    return raw_path
+                p = Path(raw_path)
+                if p.is_absolute():
+                    return raw_path
+                candidate = (proj_dir / p).resolve()
+                if candidate.is_relative_to(proj_dir) and candidate.is_file():
+                    return str(candidate)
+                return raw_path
+
+            if "layer0_image" in settings:
+                settings["layer0_image"] = _resolve_relative_asset(settings.get("layer0_image"))
+            if isinstance(settings.get("surfaces"), list):
+                for sd in settings["surfaces"]:
+                    if isinstance(sd, dict) and sd.get("mask_image_path"):
+                        sd["mask_image_path"] = _resolve_relative_asset(sd["mask_image_path"])
+
             for item in raw_cues:
                 try:
                     cue = Cue.from_dict(item, project_root=proj_dir)
+                    if cue.media_type == MediaType.GROUP:
+                        # Group containers have no media file and are always LOADED
+                        cue.status = CueStatus.LOADED
+                        loaded_cues.append(cue)
+                        continue
+
                     # Check if file exists at recorded absolute path
                     file_p = Path(cue.file_path)
                     if not file_p.is_file():
@@ -336,7 +460,7 @@ class ProjectManager:
             "active_project_path": active_project_path,
             "current_cue_index": current_index,
             "cues_count": len(cues),
-            "settings": settings or {},
+            "settings": copy.deepcopy(settings) if settings else {},
             "cues": [cue.to_dict() for cue in cues],
         }
 

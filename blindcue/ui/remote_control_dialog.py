@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -40,10 +40,52 @@ class RemoteControlDialog(QDialog):
         self.setMinimumSize(840, 660)
 
         self._build_ui()
+        self._pin_debounce_timer = QTimer(self)
+        self._pin_debounce_timer.setSingleShot(True)
+        self._pin_debounce_timer.setInterval(300)
+        self._pin_debounce_timer.timeout.connect(self._on_pin_settings_changed)
+        self._feedback_timers: dict[int, QTimer] = {}
         self._update_display()
 
         # Connect live updates
         self._remote_mgr.activity_updated.connect(self._update_display, Qt.ConnectionType.QueuedConnection)
+
+    def _cleanup_connections(self) -> None:
+        try:
+            self._remote_mgr.activity_updated.disconnect(self._update_display)
+        except (RuntimeError, TypeError):
+            pass
+        self._pin_debounce_timer.stop()
+        for t in list(self._feedback_timers.values()):
+            if t.isActive():
+                t.stop()
+            t.deleteLater()
+        self._feedback_timers.clear()
+
+    def done(self, result: int) -> None:
+        """Disconnect remote manager signals and stop timers when dialog closes."""
+        self._cleanup_connections()
+        super().done(result)
+
+    def _flash_button_text(self, button: QPushButton, temp_text: str, restore_text: str, ms: int = 1500) -> None:
+        """Temporarily show confirmation text on *button* using a lifecycle-owned QTimer."""
+        key = id(button)
+        old = self._feedback_timers.pop(key, None)
+        if old is not None:
+            old.stop()
+            old.deleteLater()
+        button.setText(temp_text)
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def _restore() -> None:
+            self._feedback_timers.pop(key, None)
+            timer.deleteLater()
+            button.setText(restore_text)
+
+        timer.timeout.connect(_restore)
+        self._feedback_timers[key] = timer
+        timer.start(ms)
 
     def _build_ui(self) -> None:
         self.setStyleSheet("""
@@ -228,7 +270,8 @@ class RemoteControlDialog(QDialog):
                 padding: 2px 4px;
             }
         """)
-        self.txt_pin.textChanged.connect(self._on_pin_settings_changed)
+        self.txt_pin.textChanged.connect(lambda _txt: self._pin_debounce_timer.start())
+        self.txt_pin.editingFinished.connect(self._on_pin_settings_changed)
         sec_top_row.addWidget(self.txt_pin)
 
         self.btn_new_pin = QPushButton("🎲 Nuovo PIN Casuale")
@@ -546,21 +589,11 @@ class RemoteControlDialog(QDialog):
         osc_lay = QVBoxLayout(grp_osc)
         osc_lay.setSpacing(4)
 
-        cheat_text = """
-<b>Indirizzo OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>
-• <b style='color:#4ade80;'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>
-• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>
-• <b style='color:#f87171;'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>
-• <b style='color:#fbbf24;'>/pause</b> oppure <b>/resume</b> &nbsp;→&nbsp; Mette in pausa o riprende l'emissione<br>
-• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>
-• <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>
-• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti
-        """
-        lbl_cheat = QLabel(cheat_text)
-        lbl_cheat.setTextFormat(Qt.TextFormat.RichText)
-        lbl_cheat.setStyleSheet("font-size: 11px; line-height: 1.3; background: transparent;")
-        lbl_cheat.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-        osc_lay.addWidget(lbl_cheat)
+        self.lbl_osc_cheat = QLabel()
+        self.lbl_osc_cheat.setTextFormat(Qt.TextFormat.RichText)
+        self.lbl_osc_cheat.setStyleSheet("font-size: 11px; line-height: 1.3; background: transparent;")
+        self.lbl_osc_cheat.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        osc_lay.addWidget(self.lbl_osc_cheat)
 
         lay.addWidget(grp_osc)
 
@@ -598,8 +631,25 @@ class RemoteControlDialog(QDialog):
                 padding: 6px 14px;
             """)
 
+        self.chk_web.blockSignals(True)
         self.chk_web.setChecked(self._remote_mgr._web_enabled)
+        self.chk_web.blockSignals(False)
+
+        self.chk_osc.blockSignals(True)
         self.chk_osc.setChecked(self._remote_mgr._osc_enabled)
+        self.chk_osc.blockSignals(False)
+
+        osc_addr = self._remote_mgr.get_osc_address()
+        self.lbl_osc_cheat.setText(
+            f"<b>Indirizzo OSC:</b> <span style='color:#38bdf8;'>{osc_addr}</span><br>"
+            "• <b style='color:#4ade80;'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>"
+            "• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>"
+            "• <b style='color:#f87171;'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>"
+            "• <b style='color:#fbbf24;'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pausa, ripresa o toggle<br>"
+            "• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>"
+            "• <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>"
+            "• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti"
+        )
 
         # 1. Update Operator URL & QR
         op_url_disp = self._remote_mgr.get_primary_web_url(include_pin=False)
@@ -643,6 +693,7 @@ class RemoteControlDialog(QDialog):
         self._update_display()
 
     def _on_pin_settings_changed(self) -> None:
+        self._pin_debounce_timer.stop()
         p_en = self.chk_pin.isChecked()
         pin = self.txt_pin.text().strip() or "123456"
         qr_pin = self.chk_qr_pin.isChecked()
@@ -651,28 +702,36 @@ class RemoteControlDialog(QDialog):
 
     def _generate_new_pin(self) -> None:
         new_pin = self._remote_mgr.generate_new_pin()
+        self.txt_pin.blockSignals(True)
         self.txt_pin.setText(new_pin)
+        self.txt_pin.blockSignals(False)
         self._update_display()
 
     def _kick_all_clients(self) -> None:
         self._remote_mgr.revoke_all_sessions()
-        self.btn_kick_all.setText("✓ Disconnessi!")
-        from PySide6.QtCore import QTimer
-        QTimer.singleShot(1500, lambda: self.btn_kick_all.setText("⛔ Disconnetti Tutti"))
+        self._flash_button_text(self.btn_kick_all, "✓ Disconnessi!", "⛔ Disconnetti Tutti")
 
     def _apply_ports(self) -> None:
         w_port = self.spin_web_port.value()
         o_port = self.spin_osc_port.value()
-        self._remote_mgr.start_all(web_port=w_port, osc_port=o_port)
+        web_was_enabled = self.chk_web.isChecked()
+        osc_was_enabled = self.chk_osc.isChecked()
+        self._remote_mgr._web_port = w_port
+        self._remote_mgr._osc_port = o_port
+        if web_was_enabled:
+            self._remote_mgr.web_server.start(w_port)
+            self._remote_mgr.set_web_enabled(True)
+        if osc_was_enabled:
+            self._remote_mgr.osc_server.start(o_port)
+            self._remote_mgr.set_osc_enabled(True)
+        self._remote_mgr.activity_updated.emit()
         self._update_display()
 
     def _copy_op_url(self) -> None:
         clipboard = QApplication.clipboard()
         if clipboard:
             clipboard.setText(self._remote_mgr.get_qr_url())
-            self.btn_copy_op.setText("✓ Copiato!")
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(1500, lambda: self.btn_copy_op.setText("📋 Copia Link"))
+            self._flash_button_text(self.btn_copy_op, "✓ Copiato!", "📋 Copia Link")
 
     def _open_op_browser(self) -> None:
         QDesktopServices.openUrl(QUrl(self._remote_mgr.get_qr_url()))
@@ -681,9 +740,7 @@ class RemoteControlDialog(QDialog):
         clipboard = QApplication.clipboard()
         if clipboard:
             clipboard.setText(self._remote_mgr.get_monitor_qr_url())
-            self.btn_copy_dir.setText("✓ Copiato!")
-            from PySide6.QtCore import QTimer
-            QTimer.singleShot(1500, lambda: self.btn_copy_dir.setText("📋 Copia Link Monitor"))
+            self._flash_button_text(self.btn_copy_dir, "✓ Copiato!", "📋 Copia Link Monitor")
 
     def _open_dir_browser(self) -> None:
         QDesktopServices.openUrl(QUrl(self._remote_mgr.get_monitor_qr_url()))

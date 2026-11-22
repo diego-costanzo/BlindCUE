@@ -33,7 +33,7 @@ from PySide6.QtMultimedia import QAudioDevice, QMediaDevices
 
 from models.cue import normalize_output_target
 from models.output_config import OutputMode, normalize_output_mode
-from ui.hardware_info import (
+from engine.hardware_profile import (
     PROFILE_AUTO,
     ShowRuntimeGuard,
     evaluate_hardware_profile,
@@ -70,6 +70,7 @@ class DeviceManager(QObject):
         # Registered consumers
         self._live_players: list[Any] = []
         self._test_player: Any | None = None
+        self._earcon_mgr: Any | None = None
         self._output_window: Any | None = None
         self._secondary_output_window: Any | None = None
         self._media_devices: QMediaDevices | None = None
@@ -145,6 +146,13 @@ class DeviceManager(QObject):
             if hasattr(self._test_player, "set_audio_device"):
                 self._test_player.set_audio_device(self._monitor_device)
 
+    def register_earcon_manager(self, earcon_mgr: Any | None) -> None:
+        """Register the operator earcon manager so chimes route to the PFL monitor."""
+        self._earcon_mgr = earcon_mgr
+        if self._earcon_mgr is not None and self._monitor_device is not None:
+            if hasattr(self._earcon_mgr, "set_audio_device"):
+                self._earcon_mgr.set_audio_device(self._monitor_device)
+
     def register_output_window(self, output_window: Any | None) -> None:
         """Register output window to receive screen routing updates."""
         self._output_window = output_window
@@ -216,6 +224,8 @@ class DeviceManager(QObject):
         self._monitor_device = device
         if self._test_player is not None and hasattr(self._test_player, "set_audio_device"):
             self._test_player.set_audio_device(device)
+        if self._earcon_mgr is not None and hasattr(self._earcon_mgr, "set_audio_device"):
+            self._earcon_mgr.set_audio_device(device)
         desc = self._device_label(device)
         logger.info("[DEVICE-MGR] Monitor (PFL) audio device updated to '%s'", desc)
         self.monitor_device_changed.emit(desc)
@@ -322,11 +332,13 @@ class DeviceManager(QObject):
                 return False
             if screen == self._output_a_screen:
                 # Swap: output A takes the projector that was driving B.
-                self._output_a_screen, self._output_b_screen = screen, self._output_a_screen
+                self._output_a_screen, self._output_b_screen = self._output_b_screen, screen
+                self._target_screen = self._output_a_screen
             else:
                 self._output_b_screen = screen
             settings.setValue("output/screen_b", self._output_b_screen.name())
-            settings.setValue("output/screen_a", self._output_a_screen.name())
+            if self._output_a_screen is not None:
+                settings.setValue("output/screen_a", self._output_a_screen.name())
             logger.info("[DEVICE-MGR] Output B → '%s'", screen.name())
             if self._output_mode == OutputMode.DUAL.value:
                 self._apply_output_mode()

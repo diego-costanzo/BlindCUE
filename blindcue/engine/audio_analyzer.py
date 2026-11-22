@@ -14,9 +14,11 @@ import hashlib
 import logging
 import os
 import re
+import selectors
 import shutil
 import subprocess
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -109,14 +111,25 @@ class WaveformAnalyzer(QRunnable):
             return None
 
     def _decode_pcm(self) -> np.ndarray | None:
-        """Decode mono f32le PCM via ffmpeg and return as numpy array."""
+        """Decode mono f32le PCM via ffmpeg with bounded streaming memory.
+
+        Streams 64 KiB chunks from ffmpeg and folds excess samples into a
+        compact peak-envelope buffer (strictly O(target_width) RAM even for
+        multi-hour audio files), while remaining compatible with mocked Popen
+        objects in unit tests.
+        """
         ffmpeg = _resolve_binary("ffmpeg")
         if ffmpeg is None:
             logger.warning("[WAVEFORM] ffmpeg not found in PATH; waveform unavailable")
             return None
 
         proc: subprocess.Popen | None = None
-        raw = b""
+        # Keep peak buffer bounded to ~512 KiB max regardless of audio length
+        max_buf_samples = max(16384, self.target_width * 16)
+        # Align max_buf_samples to an even number for lossless pairwise folding
+        if max_buf_samples % 2 != 0:
+            max_buf_samples += 1
+
         try:
             with subprocess.Popen(
                 [
@@ -132,19 +145,123 @@ class WaveformAnalyzer(QRunnable):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.DEVNULL,
                 stdin=subprocess.DEVNULL,
+                **child_process_kwargs(),
             ) as proc:
-                try:
-                    raw, _ = proc.communicate(timeout=_DECODE_TIMEOUT_SEC)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
+                stdout = getattr(proc, "stdout", None)
+                if stdout is None or not hasattr(stdout, "read"):
+                    # Fallback for test doubles implementing communicate() only
                     try:
-                        raw, _ = proc.communicate(timeout=5)
+                        raw, _ = proc.communicate(timeout=_DECODE_TIMEOUT_SEC)
                     except subprocess.TimeoutExpired:
-                        raw = b""
-                    logger.warning("[WAVEFORM] ffmpeg timed out and was killed for %s", self.file_path)
+                        proc.kill()
+                        try:
+                            raw, _ = proc.communicate(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            raw = b""
+                        logger.warning("[WAVEFORM] ffmpeg timed out and was killed for %s", self.file_path)
+                    except BaseException:
+                        proc.kill()
+                        raise
+                    if not raw:
+                        return None
+                    trimmed = len(raw) - (len(raw) % 4)
+                    if trimmed <= 0:
+                        return None
+                    return np.frombuffer(raw[:trimmed], dtype=np.float32)
+
+                # Real streaming decode with wall-clock deadline + O(target_width) RAM
+                deadline = time.monotonic() + _DECODE_TIMEOUT_SEC
+                peak_buf = np.empty(0, dtype=np.float32)
+                stride = 1
+                carry = np.empty(0, dtype=np.float32)
+                byte_rem = b""
+                timed_out = False
+
+                sel: selectors.BaseSelector | None = None
+                try:
+                    if hasattr(stdout, "fileno"):
+                        sel = selectors.DefaultSelector()
+                        sel.register(stdout, selectors.EVENT_READ)
+                except Exception:
+                    sel = None
+
+                try:
+                    while True:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            timed_out = True
+                            break
+                        if sel is not None:
+                            events = sel.select(timeout=min(0.5, remaining))
+                            if not events:
+                                if proc.poll() is not None:
+                                    # Drain any final bytes after process exit
+                                    pass
+                                else:
+                                    continue
+                        chunk = stdout.read(65536)
+                        if not chunk:
+                            break
+                        if byte_rem:
+                            chunk = byte_rem + chunk
+                        usable = len(chunk) - (len(chunk) % 4)
+                        byte_rem = chunk[usable:]
+                        if usable <= 0:
+                            continue
+
+                        samples = np.abs(np.frombuffer(chunk[:usable], dtype=np.float32))
+                        if stride > 1:
+                            if len(carry) > 0:
+                                samples = np.concatenate((carry, samples))
+                            n_blocks = len(samples) // stride
+                            if n_blocks > 0:
+                                reduced = samples[: n_blocks * stride].reshape(n_blocks, stride).max(axis=1)
+                                carry = samples[n_blocks * stride :]
+                            else:
+                                carry = samples
+                                continue
+                        else:
+                            reduced = samples
+
+                        peak_buf = np.concatenate((peak_buf, reduced))
+                        while len(peak_buf) >= max_buf_samples:
+                            even_n = len(peak_buf) - (len(peak_buf) % 2)
+                            tail = peak_buf[even_n:]
+                            peak_buf = np.maximum(peak_buf[0:even_n:2], peak_buf[1:even_n:2])
+                            if len(tail) > 0:
+                                peak_buf = np.concatenate((peak_buf, tail))
+                            stride *= 2
                 except BaseException:
                     proc.kill()
                     raise
+                finally:
+                    if sel is not None:
+                        try:
+                            sel.close()
+                        except Exception:
+                            pass
+
+                if timed_out:
+                    proc.kill()
+                    try:
+                        proc.wait(timeout=5)
+                    except subprocess.TimeoutExpired:
+                        pass
+                    logger.warning("[WAVEFORM] ffmpeg timed out and was killed for %s", self.file_path)
+                    return None
+
+                try:
+                    proc.wait(timeout=max(1.0, deadline - time.monotonic()))
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=5)
+                    logger.warning("[WAVEFORM] ffmpeg exit timed out for %s", self.file_path)
+                    return None
+
+                if len(carry) > 0:
+                    peak_buf = np.concatenate((peak_buf, np.array([carry.max()], dtype=np.float32)))
+
+                return peak_buf if len(peak_buf) > 0 else None
         except Exception as exc:
             logger.warning("[WAVEFORM] ffmpeg decode failed: %s", exc)
             return None
@@ -155,14 +272,6 @@ class WaveformAnalyzer(QRunnable):
                     proc.wait(timeout=5)
                 except Exception:
                     logger.debug("[WAVEFORM] Could not reap ffmpeg child", exc_info=True)
-
-        if not raw:
-            return None
-        try:
-            return np.frombuffer(raw, dtype=np.float32)
-        except ValueError as exc:
-            logger.warning("[WAVEFORM] Malformed PCM buffer: %s", exc)
-            return None
 
     # ── QRunnable entry point ─────────────────────────────────────────
 
@@ -369,12 +478,15 @@ def render_normalized_media(
 
     stem = Path(file_path).stem
     ext = Path(file_path).suffix.lower()
-    h = hashlib.md5(f"{file_path}_{os.path.getmtime(file_path)}".encode(), usedforsecurity=False).hexdigest()[:8]
+    st = os.stat(file_path)
+    cache_sig = f"{file_path}|{st.st_mtime_ns}|{st.st_size}|{target_lufs:.2f}|{peak_ceiling_db:.2f}|{lra_target:.2f}"
+    h = hashlib.sha256(cache_sig.encode("utf-8", errors="replace")).hexdigest()[:12]
 
     video_exts = {".mp4", ".mkv", ".mov", ".webm", ".avi"}
     is_video = ext in video_exts
     out_ext = ext if is_video else ".wav"
     out_path = str(cache_dir / f"{stem}_ebur128_{h}{out_ext}")
+    tmp_path = str(cache_dir / f".{stem}_ebur128_{h}.{os.getpid()}.tmp{out_ext}")
 
     if os.path.isfile(out_path) and os.path.getsize(out_path) > 1000:
         return out_path
@@ -388,7 +500,7 @@ def render_normalized_media(
             "-c:v", "copy",
             "-af", filter_str,
             "-c:a", "aac", "-b:a", "256k",
-            out_path,
+            tmp_path,
         ]
     else:
         cmd = [
@@ -396,21 +508,23 @@ def render_normalized_media(
             "-y", "-nostats", "-nostdin", "-i", file_path,
             "-af", filter_str,
             "-c:a", "pcm_s16le",
-            out_path,
+            tmp_path,
         ]
 
     try:
         subprocess.run(cmd, capture_output=True, check=True, timeout=timeout_sec,
                        stdin=subprocess.DEVNULL, **_no_window_kwargs())
-        if os.path.isfile(out_path):
+        if os.path.isfile(tmp_path) and os.path.getsize(tmp_path) > 0:
+            os.replace(tmp_path, out_path)
             return out_path
     except Exception as exc:
         logger.error("[LOUDNORM] Rendering failed for %s: %s", file_path, exc)
-        try:
-            if os.path.isfile(out_path):
-                os.remove(out_path)
-        except OSError:
-            logger.debug("[LOUDNORM] Could not remove partial output %s", out_path, exc_info=True)
+    finally:
+        if os.path.isfile(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                logger.debug("[LOUDNORM] Could not remove partial temp output %s", tmp_path, exc_info=True)
     return None
 
 

@@ -180,6 +180,11 @@ class ShowEngine:
         try:
             idx = cues.index(finished_cue)
         except ValueError:
-            return -1
+            idx = next(
+                (i for i, c in enumerate(cues) if c.cue_id == finished_cue.cue_id),
+                -1,
+            )
+            if idx < 0:
+                return -1
         nxt = idx + 1
         return nxt if 0 <= nxt < len(cues) else -1

@@ -43,18 +43,25 @@ class _MenuMixin:
         self._act_undo.setShortcut(QKeySequence.StandardKey.Undo)
         self._act_undo.setEnabled(False)
         self._act_redo = QAction("↷ &Ripeti", self, triggered=self._on_redo)
-        self._act_redo.setShortcuts([
-            QKeySequence.StandardKey.Redo,
+        redo_keys: list[QKeySequence] = []
+        seen_redo: set[str] = set()
+        for seq in (
+            *QKeySequence.keyBindings(QKeySequence.StandardKey.Redo),
             QKeySequence("Ctrl+Y"),
             QKeySequence("Ctrl+Shift+Z"),
-        ])
+        ):
+            key_str = seq.toString()
+            if key_str and key_str not in seen_redo:
+                seen_redo.add(key_str)
+                redo_keys.append(seq)
+        self._act_redo.setShortcuts(redo_keys)
         self._act_redo.setEnabled(False)
         edit_menu.addAction(self._act_undo)
         edit_menu.addAction(self._act_redo)
 
         show_menu = mb.addMenu("&Show")
         show_menu.addAction(
-            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go)
+            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go_shortcut)
         )
         show_menu.addAction(
             QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"), triggered=self._on_blackout)

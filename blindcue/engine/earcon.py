@@ -14,7 +14,7 @@ import wave
 from pathlib import Path
 
 from PySide6.QtCore import QByteArray, QTemporaryFile, QUrl
-from PySide6.QtMultimedia import QSoundEffect
+from PySide6.QtMultimedia import QAudioDevice, QSoundEffect
 
 
 def _generate_sine_wav(frequency_hz: float, duration_ms: float, volume: float = 0.28) -> bytes:
@@ -48,9 +48,22 @@ class EarconManager:
     def __init__(self, temp_dir: Path | None = None) -> None:
         """Create the earcon manager; audio assets are loaded only when ``enabled`` is set."""
         self._enabled: bool = False
+        self._audio_device: QAudioDevice | None = None
         self._temp_files: list[QTemporaryFile] = []
         self._sounds: dict[str, QSoundEffect] = {}
         self._init_sounds()
+
+    def set_audio_device(self, device: QAudioDevice | None) -> None:
+        """Route operator earcons to the monitor/headphone device instead of the PA."""
+        self._audio_device = device
+        if device is None or device.isNull():
+            return
+        for sound in self._sounds.values():
+            if hasattr(sound, "setAudioDevice"):
+                try:
+                    sound.setAudioDevice(device)
+                except Exception:
+                    pass
 
     def _init_sounds(self) -> None:
         """Synthesize earcons and load them into memory-backed QSoundEffect objects."""

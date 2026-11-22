@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -61,14 +63,14 @@ class _WindowSetupMixin:
                 self._live_show_panel.live_table.viewport().update()
         if hasattr(self, "_waveform_panel") and self._waveform_panel is not None:
             self._waveform_panel.update()
-        if hasattr(self, "_live_status_panel") and self._live_status_panel is not None:
-            if hasattr(self._live_status_panel, "refresh_theme_styles"):
-                self._live_status_panel.refresh_theme_styles()
-            self._live_status_panel.update()
-        if hasattr(self, "_inspector_panel") and self._inspector_panel is not None:
-            if hasattr(self._inspector_panel, "refresh_theme_styles"):
-                self._inspector_panel.refresh_theme_styles()
-            self._inspector_panel.update()
+        if hasattr(self, "_live_status") and self._live_status is not None:
+            if hasattr(self._live_status, "refresh_theme_styles"):
+                self._live_status.refresh_theme_styles()
+            self._live_status.update()
+        if hasattr(self, "_inspector") and self._inspector is not None:
+            if hasattr(self._inspector, "refresh_theme_styles"):
+                self._inspector.refresh_theme_styles()
+            self._inspector.update()
 
         # Update Status Bar widgets
         t = get_active_theme()
@@ -201,20 +203,20 @@ class _WindowSetupMixin:
         self._autosave_timer.start()
 
     def _setup_shortcuts(self) -> None:
+        # Note: Ctrl+B (Blackout), F5 (Live Mode), F7 (Surface Mapping),
+        # Shift+F7 (Calibration Guides), F8 (Remote) and Space (GO) are already
+        # owned by QActions in the menu bar. Registering QShortcuts for the same
+        # keys causes Qt "Ambiguous shortcut overload" and silently blocks them.
         QShortcut(QKeySequence(Qt.Key.Key_Delete), self, self._on_delete_cue)
         QShortcut(QKeySequence(Qt.Key.Key_Backspace), self, self._on_delete_cue)
         QShortcut(QKeySequence("Alt+Up"), self, self._on_move_up)
         QShortcut(QKeySequence("Alt+Down"), self, self._on_move_down)
-        QShortcut(QKeySequence("Ctrl+B"), self, self._on_blackout)
         QShortcut(QKeySequence(Qt.Key.Key_I), self, lambda: self._on_snap_shortcut(True))
         QShortcut(QKeySequence(Qt.Key.Key_O), self, lambda: self._on_snap_shortcut(False))
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_escape_pressed)
-        QShortcut(QKeySequence(Qt.Key.Key_F5), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
-        QShortcut(QKeySequence(Qt.Key.Key_F7), self, self._open_surface_mapping_dialog)
-        QShortcut(QKeySequence("Shift+F7"), self, lambda: self._toggle_calibration_guides(not self._output.is_calibration_guides_visible()))
 
     def _is_text_input_focused(self) -> bool:
         focus_w = QApplication.focusWidget()
@@ -227,7 +229,16 @@ class _WindowSetupMixin:
         if hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState:
             return
         if self._live_mode:
-            self._on_panic()
+            now = time.monotonic()
+            last = getattr(self, "_last_esc_press_mono", 0.0)
+            if last > 0.0 and (now - last) <= 0.6:
+                self._last_esc_press_mono = 0.0
+                self._on_panic()
+            else:
+                self._last_esc_press_mono = now
+                self._status_label.setText(
+                    "⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC"
+                )
             return
         if hasattr(self, "_btn_test_stop"):
             self._btn_test_stop.click()

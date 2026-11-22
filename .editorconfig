@@ -1,0 +1,25 @@
+# Regole di formattazione condivise da tutti gli editor (VS Code/Trae, JetBrains, Vim...).
+# Servono a mantenere indentazione e fine riga coerenti tra Linux, macOS e Windows.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.{json,yml,yaml,html,css,js,md}]
+indent_style = space
+indent_size = 2
+
+# Gli script di Windows devono restare in CRLF: cmd.exe non legge bene i .bat
+# con terminazioni LF.
+[*.{bat,cmd}]
+end_of_line = crlf
+
+[*.md]
+trim_trailing_whitespace = false

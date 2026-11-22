@@ -14,11 +14,15 @@ from ui.main_window._common import (  # noqa: F401
 
 class _TransportMixin:
     @Slot()
-    def _on_go(self) -> None:
-        focus_w = QApplication.focusWidget()
-        if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
+    def _on_go_shortcut(self) -> None:
+        """Keyboard Space trigger: suppressed while typing in text/spin/combo inputs."""
+        if self._is_text_input_focused():
             return
+        self._on_go()
 
+    @Slot()
+    def _on_go(self) -> None:
+        """Direct GO trigger (GO buttons, double-click, programmatic calls): always fires."""
         if not self._cues:
             self._status_label.setText("Scaletta vuota — Aggiungi prima dei file multimediali")
             return
@@ -61,6 +65,11 @@ class _TransportMixin:
         self._live_show_panel.notify_first_go()
         for c_idx in chain:
             cue = self._cues[c_idx]
+            if cue.media_type == MediaType.GROUP:
+                self._fire_group_child(cue, depth=0)
+                self._current_index = c_idx
+                logger.info("[GO] Fired chained group #%d: %s", cue.cue_id, cue)
+                continue
             if cue.pre_delay <= 0.02:
                 ShowEngine.promote_to_live(self._cues, cue, dual_active=self._dual_output_active)
                 self._update_live_layer_label(cue)
@@ -168,6 +177,8 @@ class _TransportMixin:
             self._refresh_cue_list(keep_selection=False)
             if len(children) > 1:
                 self._cue_list.setCurrentRow(self._cues.index(children[1]))
+            elif mode == GroupMode.LOOP.value:
+                self._cue_list.setCurrentRow(self._cues.index(first_child))
             else:
                 next_idx = self._cues.index(first_child) + 1
                 if next_idx < len(self._cues):
@@ -206,7 +217,7 @@ class _TransportMixin:
         self._refresh_cue_list()
         for sp in self._for_each_status_panel():
             sp.reset_all_layers()
-        self.set_global_paused(False)
+        self.set_global_paused(False, silent=True)
         self.blackout_requested.emit()
         self._sync_live_view()
         self._status_label.setText("BLACKOUT — Output ripristinato a Layer 0 (Tappo)")
@@ -220,7 +231,7 @@ class _TransportMixin:
         self._refresh_cue_list()
         for sp in self._for_each_status_panel():
             sp.reset_all_layers()
-        self.set_global_paused(False)
+        self.set_global_paused(False, silent=True)
         self.panic_requested.emit()
         self._output.panic_blackout()
         if getattr(self, "_output_b", None) is not None:
