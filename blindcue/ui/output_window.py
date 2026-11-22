@@ -1767,13 +1767,23 @@ class OutputWindow(QWidget):
             event.ignore()
 
     def keyPressEvent(self, event: QKeyEvent) -> None:  # noqa: N802
-        """F7 toggles the calibration guides; Escape only closes floating previews."""
+        """F7 toggles the calibration guides; F11 toggles full screen; Escape leaves
+        full screen on a floating preview (never closes the external output)."""
         if event.key() == Qt.Key.Key_F7:
             self.toggle_calibration_guides()
             event.accept()
             return
+        if event.key() == Qt.Key.Key_F11:
+            # Full screen on demand for the single-monitor preview (rehearsals).
+            # The external projector output is always full screen already.
+            if not self._is_external:
+                self.toggle_fullscreen()
+            event.accept()
+            return
         if event.key() == Qt.Key.Key_Escape:
             if not self._is_external:
+                if self.isFullScreen():
+                    self.toggle_fullscreen()
                 event.accept()
                 return
             event.ignore()
