@@ -110,7 +110,8 @@ class _PersistenceMixin:
                     logger.warning("[RECOVERY] Error recovering cue: %s", exc)
             self._current_index = recovery.get("current_cue_index", -1)
             self._current_project_path = recovery.get("active_project_path")
-            self._project_bundled = bool(self._current_project_path) and                 self._project_manager.uses_media_archive(self._current_project_path, self._cues)
+            self._project_bundled = bool(self._current_project_path) and \
+                self._project_manager.uses_media_archive(self._current_project_path, self._cues)
 
             rec_settings = recovery.get("settings", {})
             lay0 = rec_settings.get("layer0_image") if isinstance(rec_settings, dict) else None
