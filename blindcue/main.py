@@ -224,6 +224,10 @@ def main() -> int:
 
     _install_file_logging()
 
+    # ── UI language (IT / EN / PL): must run before any widget exists ──
+    import i18n
+    i18n.install()
+
     app_icon = _load_app_icon()
     if not app_icon.isNull():
         app.setWindowIcon(app_icon)

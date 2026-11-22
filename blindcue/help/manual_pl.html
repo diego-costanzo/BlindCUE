@@ -1,0 +1,351 @@
+<html>
+<head>
+<meta charset="utf-8">
+<title>BlindCUE – instrukcja obsługi</title>
+<style>
+body { font-family: "Segoe UI", sans-serif; font-size: 14px; }
+li { margin-bottom: 4px; }
+h1 { font-size: 26px; color: #38bdf8; }
+h2 { font-size: 20px; color: #38bdf8; margin-top: 28px; border-bottom: 1px solid #334155; }
+h3 { font-size: 16px; color: #fbbf24; margin-top: 18px; }
+code, kbd { font-family: Consolas, monospace; background-color: #1e293b; color: #e2e8f0; }
+table.k td { padding: 3px 10px; border-bottom: 1px solid #334155; }
+.tip { background-color: #0f2a1f; color: #bbf7d0; padding: 6px; }
+.warn { background-color: #3a1d0b; color: #fed7aa; padding: 6px; }
+img { border: 1px solid #334155; }
+a { color: #7dd3fc; }
+</style>
+</head>
+<body>
+
+<h1>BlindCUE – instrukcja obsługi</h1>
+<p>BlindCUE to program do prowadzenia przedstawień: z jednego ekranu odpalasz
+kolejno muzykę, filmy i zdjęcia, a widownia widzi obraz na projektorze.
+Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
+
+<h3>Spis treści</h3>
+<ol>
+<li><a href="#ekran">Ekran programu – co gdzie jest</a></li>
+<li><a href="#nowe">Nowe przedstawienie i zapisywanie</a></li>
+<li><a href="#dodawanie">Dodawanie wideo, audio i zdjęć</a></li>
+<li><a href="#cue">Ustawianie cue (Inspektor)</a></li>
+<li><a href="#przejscia">Przejścia, efekty i obraz</a></li>
+<li><a href="#dzwiek">Dźwięk: głośność, przycięcie, pętla, wyrównanie</a></li>
+<li><a href="#grupy">Grupy i sceny</a></li>
+<li><a href="#warstwy">Warstwy L1–L3 i zaślepka L0</a></li>
+<li><a href="#projektor">Projektor i okno wyjścia</a></li>
+<li><a href="#live">Prowadzenie przedstawienia (tryb LIVE)</a></li>
+<li><a href="#awaryjne">Sytuacje awaryjne</a></li>
+<li><a href="#dodatki">Dodatki: pilot w telefonie, mapping, ustawienia</a></li>
+<li><a href="#skroty">Skróty klawiszowe</a></li>
+<li><a href="#porady">Dobre praktyki przed przedstawieniem</a></li>
+</ol>
+
+<!-- ================================================================== -->
+<h2><a name="ekran"></a>1. Ekran programu – co gdzie jest</h2>
+<p><img src="img/pl/01_main_window_video.png" width="760" height="404"></p>
+<ul>
+<li><b>Lista cue (lewa kolumna)</b> – kolejność przedstawienia. Każdy wiersz to jeden
+<i>cue</i> (punkt): film <code>VID</code>, dźwięk <code>AUD</code>, obraz <code>IMG</code> albo
+grupa <code>GRP</code>. Pod listą są przyciski
+<b>+ Wideo / + Audio / + Zdjęcie / + Grupa</b>,
+przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>.</li>
+<li><b>Podgląd Pre-Viz (środek)</b> – prywatny podgląd tylko dla Ciebie. Widownia go nie widzi.
+Przyciski <b>Odtwórz / Pauza / Stop</b> sprawdzają zaznaczony cue.</li>
+<li><b>Duży zielony przycisk GO</b> – odpala następny cue (to samo co <kbd>Spacja</kbd>).</li>
+<li><b>Inspektor cue (prawa kolumna)</b> – wszystkie ustawienia zaznaczonego cue, w kartach
+<b>Cue · czasy</b>, <b>Wideo · zdjęcie</b>, <b>Audio · przycięcia</b>.</li>
+<li><b>Przebieg i automatyzacja (dół, lewo)</b> – fala dźwięku z punktami IN/OUT,
+krzywą głośności i podziałem na sekcje.</li>
+<li><b>Stan wyjścia Live (dół, środek)</b> – co teraz gra na warstwach 1–3, przyciski
+<b>Wygaś</b> i <b>Wygaszenie główne</b>.</li>
+<li><b>Szybkie dodawanie (dół, prawo)</b> – przeciągnij tu pliki z menedżera plików.</li>
+<li><b>Pasek na dole</b> – profil sprzętu, <b>Urządzenia · wyjścia</b>, blokada paneli,
+tryb Jam, pilot zdalny i komunikaty programu.</li>
+</ul>
+<p class="tip">💡 Język programu zmienisz w menu <b>Widok → 🌐 Lingua / Language / Język</b>
+(działa po ponownym uruchomieniu). Ta instrukcja otwiera się w języku programu.</p>
+
+<!-- ================================================================== -->
+<h2><a name="nowe"></a>2. Nowe przedstawienie i zapisywanie</h2>
+<ul>
+<li><b>Plik → Nowe przedstawienie</b> (<kbd>Ctrl+N</kbd>) – pusta lista.</li>
+<li><b>Plik → Zapisz przedstawienie</b> (<kbd>Ctrl+S</kbd>) / <b>Zapisz jako…</b>
+(<kbd>Ctrl+Shift+S</kbd>) – zapisuje plik <code>.blindcue</code>.</li>
+<li>Przy zapisie program pyta, czy <b>skopiować pliki audio/wideo do folderu przedstawienia</b>:
+<ul>
+<li><b>Tak</b> – powstaje przenośny folder; przedstawienie otworzysz na innym komputerze
+(np. z pendrive'a). Polecane przed występem.</li>
+<li><b>Nie</b> – zapisuje tylko ścieżki do Twoich plików (mniej miejsca, ale pliki muszą
+zostać tam, gdzie były).</li>
+</ul>
+Oryginalne pliki nigdy nie są zmieniane.</li>
+<li><b>Plik → Otwórz ostatnie</b> – szybki powrót do poprzednich przedstawień.</li>
+<li>Program robi <b>autozapis</b>. Po awarii zaproponuje przywrócenie sesji.</li>
+<li><b>Edycja → Cofnij / Ponów</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) działa dla
+wszystkich zmian na liście i w inspektorze.</li>
+</ul>
+<p><img src="img/pl/02_menu_file.png" width="260" height="156"></p>
+
+<!-- ================================================================== -->
+<h2><a name="dodawanie"></a>3. Dodawanie wideo, audio i zdjęć</h2>
+<h3>Trzy sposoby dodania pliku</h3>
+<ol>
+<li>Przyciski pod listą: <b>+ Wideo</b>, <b>+ Audio</b>, <b>+ Zdjęcie</b>.</li>
+<li>Przeciągnij pliki z menedżera plików do pola <b>Szybkie dodawanie</b> (prawy dolny róg).</li>
+<li>Nowy cue trafia na koniec listy; przesuń go przyciskami <b>W górę / W dół</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li>
+</ol>
+<table class="k">
+<tr><td><b>Wideo</b></td><td>MP4, MKV, AVI, MOV, WEBM</td></tr>
+<tr><td><b>Audio</b></td><td>MP3, WAV, FLAC, OGG, AAC, M4A</td></tr>
+<tr><td><b>Zdjęcia</b></td><td>PNG, JPG, BMP, GIF, WEBP</td></tr>
+</table>
+<p><img src="img/pl/03_list_photo.png" width="760" height="404"></p>
+
+<h3>Zdjęcia</h3>
+<p>Zdjęcie domyślnie zostaje na ekranie <b>bez końca</b>, aż odpalisz kolejny cue na tej samej
+warstwie albo użyjesz <b>Wygaś</b>. Czas wyświetlania ustawisz w Inspektorze:
+<b>Cue · czasy → Czas obrazu</b> (np. 10 s; <code>0</code> = bez końca).
+Pokaz zdjęć zrobisz jako kilka cue ze zdjęciami po kolei z ustawionym <b>Auto-GO</b>
+(rozdział 4) albo jako <a href="#grupy">grupę</a>.</p>
+
+<!-- ================================================================== -->
+<h2><a name="cue"></a>4. Ustawianie cue (Inspektor)</h2>
+<p>Kliknij cue na liście – Inspektor po prawej pokaże jego ustawienia.
+Możesz też zaznaczyć <b>kilka cue tego samego typu</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+klik)
+i zmienić je wszystkie naraz.</p>
+<p><img src="img/pl/04_inspector_video_cue.png" width="520" height="636"></p>
+
+<h3>Karta „Cue · czasy”</h3>
+<ul>
+<li><b>Q (scenariusz)</b> – Twoje oznaczenie ze scenariusza, np. <code>Q-5</code> albo
+<code>Sc.2</code>. Zostaje przy cue nawet po zmianie kolejności.</li>
+<li><b>Nazwa cue</b> – opis widoczny na liście (np. „Wejście chóru”).</li>
+<li><b>Uwagi</b> – podpowiedź dla operatora, np. „po słowach: <i>i wtedy zgasło światło</i>”.
+Widać ją w trybie LIVE.</li>
+<li><b>Kolor</b> – pokoloruj sceny/akty, żeby lista była czytelna.</li>
+<li><b>Warstwa wyjścia L1 / L2 / L3</b> – patrz <a href="#warstwy">rozdział 8</a>.</li>
+<li><b>Pre-Delay</b> – ile sekund odczekać po GO, zanim cue ruszy.</li>
+<li><b>Post-Delay</b> – ile sekund odczekać po końcu cue (ważne przy Auto-GO).</li>
+<li><b>Czas obrazu</b> – jak długo widać zdjęcie (0 = bez końca).</li>
+<li><b>Potem</b> – co się dzieje po tym cue:
+<ul>
+<li><b>Stop</b> (domyślnie) – czeka na Twoje następne GO.</li>
+<li><b>Auto-GO</b> – po Pre + czasie trwania + Post <b>sam odpala następny cue</b>
+(np. muzyka gra, a po niej automatycznie rusza film).</li>
+<li><b>Razem</b> – przy GO <b>od razu startuje też następny cue</b>
+(np. zdjęcie i muzyka jednocześnie).</li>
+</ul>
+Te same trzy tryby są pod listą cue (przyciski <b>Stop / Auto-GO / Razem</b>).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="przejscia"></a>5. Przejścia, efekty i obraz</h2>
+<p><img src="img/pl/05_inspector_photo_picture.png" width="520" height="636"></p>
+<h3>Przejścia (pojawianie i wygaszanie)</h3>
+<ul>
+<li>Karta <b>Audio · przycięcia → 2 · Przejścia</b>: <b>Fade In</b> (pojawianie z czerni / ciszy)
+i <b>Fade Out</b> (wygaszanie do czerni / ciszy) w sekundach. Działa dla wideo, audio
+i zdjęć.</li>
+<li>Kształt narastania wybierzesz pod przebiegiem: <b>Fade: Logarytmiczna</b>
+(najbardziej naturalna dla dźwięku), <b>Łagodna krzywa S</b> albo <b>Liniowa</b>.</li>
+</ul>
+
+<h3>Obraz (karta „Wideo · zdjęcie”)</h3>
+<ul>
+<li><b>Poz. X / Y</b> i strzałki – przesuwanie obrazu; <b>Środek</b> wraca na środek.</li>
+<li><b>Skala</b> – powiększenie / pomniejszenie (np. małe okienko w rogu).</li>
+<li><b>Krycie</b> – przezroczystość (np. 50% = półprzezroczysty obraz na tle).</li>
+<li><b>Format</b> – wymuś 16:9, 4:3, 21:9 albo 1:1.</li>
+<li><b>Przycięcie krawędzi (crop)</b> – obetnij czarne pasy lub fragment kadru, w % albo pikselach.</li>
+<li><b>Obrót</b> – o dowolny kąt lub o 90°.</li>
+<li><b>Narysuj maskę…</b> (tylko zdjęcia) – wytnij dowolny kształt, klikając punkty;
+<b>Miękka krawędź</b> rozmywa brzegi.</li>
+<li>Ramkę obrazu możesz też <b>przeciągać myszą w podglądzie Pre-Viz</b>.</li>
+<li><b>MIRROR LIVE</b> (pod podglądem) – gdy włączony, zmiany położenia i przycięcia
+widać od razu na projektorze. Używaj przy ustawianiu obrazu na próbie;
+<b>na przedstawieniu wyłącz</b>.</li>
+</ul>
+<h3>Krzywe w czasie (automatyzacja)</h3>
+<p>W panelu <b>Przebieg</b> wybierz <b>Głośność</b> lub <b>Krycie</b> i klikaj na linii,
+żeby dodać punkty – np. ścisz muzykę na czas dialogu i podgłośnij później.
+<b>Wyzeruj punkty</b> usuwa krzywą.</p>
+
+<!-- ================================================================== -->
+<h2><a name="dzwiek"></a>6. Dźwięk: głośność, przycięcie, pętla, wyrównanie</h2>
+<p><img src="img/pl/06_list_audio.png" width="760" height="404"></p>
+<ul>
+<li><b>Głośność</b> – suwak 0–100% (karta <b>Audio · przycięcia</b>).</li>
+<li><b>Przycięcie IN / OUT</b> – od którego momentu do którego grać utwór.
+Najwygodniej: w panelu Przebieg kliknij w miejsce na fali, potem
+<b>IN na głowicy</b> (<kbd>I</kbd>) lub <b>OUT na głowicy</b> (<kbd>O</kbd>).
+<b>Reset IN/OUT</b> przywraca cały plik. Tak samo przycinasz film.</li>
+<li><b>Zapętl cue</b> – zaznacz i wybierz liczbę powtórzeń albo „bez końca”
+(np. muzyka w tle podczas przerwy).</li>
+<li><b>Podziel</b> – dzieli plik na sekcje A, B, C… (np. zwrotka / refren). Każdą sekcję
+można powtarzać; <b>Wyjdź z pętli</b> przechodzi do następnej.</li>
+<li><b>Wyrównanie głośności (EBU R128)</b>: <b>Zbadaj</b> mierzy głośność utworu, a
+<b>Zastosuj wzmocnienie</b> wyrównuje go do innych (żeby jeden utwór nie był dużo
+głośniejszy). <b>Optymalizuj dynamikę</b> pomaga przy źle nagranych plikach.</li>
+<li><b>Tryb Jam / konkurs</b> (pasek na dole, przytrzymaj 5 s) – wyrównuje głośność
+<b>wszystkich</b> plików naraz.</li>
+<li><b>Odsłuch w słuchawkach</b>: w <b>Urządzenia · wyjścia</b> wybierz osobne wyjście
+dla słuchawek; wtedy przycisk Odtwórz w podglądzie gra tylko w słuchawkach.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="grupy"></a>7. Grupy i sceny</h2>
+<p>Grupa łączy kilka cue w jeden zwijany wiersz – np. „Akt 1” albo „Pokaz zdjęć”.</p>
+<p><img src="img/pl/07_group.png" width="760" height="404"></p>
+<ul>
+<li>Zaznacz kilka cue i naciśnij <b>+ Grupa</b> (<kbd>Ctrl+G</kbd>).
+Rozgrupowanie: <kbd>Ctrl+Shift+G</kbd>.</li>
+<li>Zaznacz grupę – w Inspektorze wybierzesz, co robi GO:
+<ul>
+<li><b>Wszystko naraz</b> – wszystkie elementy startują jednocześnie.</li>
+<li><b>Po kolei</b> – jedno GO odpala całą sekwencję jedną po drugiej.</li>
+<li><b>Krok po kroku</b> – każde GO przechodzi o jeden element w grupie.</li>
+<li><b>Losowo</b> – losowy element (bez powtórzeń pod rząd).</li>
+<li><b>Zapętl scenę</b> – elementy grają w kółko do zatrzymania.</li>
+</ul></li>
+<li><b>Otwórz studio osi czasu grupy</b> – pokazuje elementy na 3 ścieżkach z linijką;
+przeciągając klocki ustawisz, kiedy który ma wejść (np. muzyka, po 3 s film, po 10 s zdjęcie).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="warstwy"></a>8. Warstwy L1–L3 i zaślepka L0</h2>
+<p>Obraz składa się z warstw ułożonych jedna na drugiej:</p>
+<table class="k">
+<tr><td><b>L3 – Nakładka</b></td><td>na wierzchu: napisy, logo, małe okienka</td></tr>
+<tr><td><b>L2 – Główna</b></td><td>środek</td></tr>
+<tr><td><b>L1 – Tło</b></td><td>spód: film lub zdjęcie tła (domyślna)</td></tr>
+<tr><td><b>L0 – Zaślepka</b></td><td>zawsze pod spodem; widać ją, gdy nic nie gra</td></tr>
+</table>
+<ul>
+<li>Nowy cue na <b>tej samej</b> warstwie zastępuje poprzedni. Cue na <b>innej</b> warstwie
+nakłada się na niego.</li>
+
+<li>Dotyczy to też dźwięku: muzyka i zdjęcie na tej samej warstwie wyłączają się nawzajem.
+Muzykę, która ma grać razem ze zdjęciami, ustaw na inną warstwę (np. <b>L2</b>).</li>
+<li>Zaślepkę zmienisz w <b>Przedstawienie → Ustaw obraz zaślepki</b> albo przyciskiem
+<b>Zmień zaślepkę…</b> – np. na plakat przedstawienia lub czerń.
+Domyślna zaślepka to plansza z logo i siatką do ustawiania projektora.</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="projektor"></a>9. Projektor i okno wyjścia</h2>
+<p><img src="img/pl/09_output_window.png" width="520" height="292"></p>
+<ul>
+<li>Podłącz projektor (HDMI) i ustaw w systemie <b>rozszerzony pulpit</b>
+(Windows: <kbd>Win+P</kbd> → <b>Rozszerz</b>).</li>
+<li>Program <b>sam wykrywa</b> drugi ekran i wyświetla na nim obraz
+<b>na pełnym ekranie, bez ramek i kursora</b>. Monitor z programem zostaje dla Ciebie.</li>
+<li>Gdy jest tylko jeden monitor, obraz pokazuje się w małym oknie
+<b>„wyjście Live [monitor symulowany]”</b>.</li>
+<li>Wybór ekranu i trybu: <b>Przedstawienie → Urządzenia i sprzęt</b>
+(lub <b>Urządzenia · wyjścia</b> na dolnym pasku) → <b>Ekran wyjścia Live</b>.
+Przy dwóch projektorach możesz mieć jeden obraz rozciągnięty na oba albo dwa
+niezależne wyjścia A i B.</li>
+<li>Tam też wybierasz <b>wyjście audio</b> (głośniki sali) i ewentualnie słuchawki.</li>
+<li><b>Widok → Pokaż linie pomocnicze na projektorze</b> (<kbd>Shift+F7</kbd>) –
+siatka do ustawienia ostrości i położenia projektora.</li>
+</ul>
+<p><img src="img/pl/10_devices.png" width="520" height="618"></p>
+
+<!-- ================================================================== -->
+<h2><a name="live"></a>10. Prowadzenie przedstawienia (tryb LIVE)</h2>
+<p>Gdy lista jest gotowa, przejdź w tryb LIVE: przycisk <b>PRZEJDŹ DO LIVE</b> albo
+<kbd>F5</kbd>. Ekran robi się prosty i duży – tylko to, co potrzebne na przedstawieniu.</p>
+<p><img src="img/pl/08_live_after_go.png" width="760" height="404"></p>
+<ol>
+<li>Zaznacz pierwszy cue – dostaje znaczek <b>STANDBY</b> (gotowy do odpalenia).
+Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.</li>
+<li>Naciśnij <kbd>Spacja</kbd> (albo duży przycisk <b>GO</b>) – cue gra, dostaje znaczek
+<b>LIVE</b>, a STANDBY przeskakuje na następny.</li>
+<li>Kolejne <kbd>Spacja</kbd> = kolejne punkty przedstawienia.</li>
+<li><kbd>↑</kbd> / <kbd>↓</kbd> zmieniają, który cue jest następny (np. żeby coś pominąć).
+Dwuklik na wierszu odpala go od razu.</li>
+<li>Panel <b>Podgląd warstw Live</b> pokazuje, co gra na L1–L3; <b>Wygaś</b> łagodnie
+kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym kliknięciem).</li>
+<li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
+<li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li>
+</ol>
+<p class="tip">💡 Przy prowadzeniu przedstawienia trzymaj okno programu aktywne
+(kliknij w nie), żeby <kbd>Spacja</kbd> trafiała do programu. Inne programy zamknij.</p>
+<p class="tip">💡 Pilotem może być też telefon – patrz <a href="#dodatki">rozdział 12</a>.</p>
+
+<!-- ================================================================== -->
+<h2><a name="awaryjne"></a>11. Sytuacje awaryjne</h2>
+<table class="k">
+<tr><td><b>PAUZA WSZYSTKO</b></td><td>zamraża wszystko (dźwięk, film, czasy); drugie
+kliknięcie wznawia od tego samego miejsca – np. gdy aktor czeka na brawa.</td></tr>
+<tr><td><b>Wygaś</b> (przy warstwie)</td><td>łagodnie kończy tylko jedną warstwę.</td></tr>
+<tr><td><b>Wygaszenie główne</b> <kbd>Ctrl+B</kbd></td><td>płynnie wygasza wszystko i pokazuje zaślepkę.</td></tr>
+<tr><td><b>PANIC</b> <kbd>Esc</kbd> dwa razy w ciągu 0,6 s (w trybie LIVE)</td><td>natychmiast ucina wszystko (0 ms) – ostateczność.</td></tr>
+<tr><td><b>Blokada warstw</b></td><td>w trybie LIVE sterowanie warstwami jest zablokowane;
+przytrzymaj kłódkę 1,2 s, żeby odblokować przewijanie/pauzę pojedynczych warstw.</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2><a name="dodatki"></a>12. Dodatki: pilot w telefonie, mapping, ustawienia</h2>
+<h3>Pilot w telefonie (sieć Wi-Fi)</h3>
+<p><b>Przedstawienie → Zdalne sterowanie LAN</b> (<kbd>F8</kbd>) → <b>uruchom usługi</b>
+i zeskanuj kod QR telefonem (telefon i komputer w tej samej sieci Wi-Fi).
+W telefonie pojawi się duży przycisk GO, pauza, wygaszenie i PANIC.
+Drugi kod (<b>Monitor reżysera</b>) daje podgląd bez możliwości klikania – np. dla reżysera
+na widowni. Dostęp chroni 6-cyfrowy PIN.</p>
+<p><img src="img/pl/11_remote.png" width="560" height="472"></p>
+
+<h3>Studio powierzchni projekcji (mapping) – <kbd>F7</kbd></h3>
+<p>Gdy projektor stoi krzywo albo wyświetlasz na nietypowym ekranie: korekcja trapezu
+(4 narożniki), dodatkowe ekrany wirtualne (np. obraz tylko na kolumnie scenografii),
+maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
+(<b>Wideo · zdjęcie → Ekran</b>).</p>
+<p><img src="img/pl/12_surfaces.png" width="560" height="361"></p>
+
+<h3>Inne</h3>
+<ul>
+<li><b>Widok → Motyw interfejsu</b> – kolorystyka programu (też wersja czarno-biała).</li>
+<li><b>Widok → Sygnały dźwiękowe operatora</b> – ciche „piknięcie” przy GO/STOP/PAUZIE.</li>
+<li><b>Widok → Zablokuj szerokość paneli</b> – chroni układ przed przypadkowym przesunięciem.</li>
+<li>Pasek na dole, <b>EKO / STD / PRO</b> – profil wydajności (na słabszym komputerze EKO).</li>
+</ul>
+
+<!-- ================================================================== -->
+<h2><a name="skroty"></a>13. Skróty klawiszowe</h2>
+<table class="k">
+<tr><td><kbd>Spacja</kbd></td><td>GO – następny cue</td></tr>
+<tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>wybór cue / zmiana następnego w LIVE</td></tr>
+<tr><td><kbd>F5</kbd></td><td>tryb LIVE / powrót do projektu</td></tr>
+<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (w trybie LIVE): dwa razy w ciągu 0,6 s</td></tr>
+<tr><td><kbd>Ctrl+B</kbd></td><td>wygaszenie główne (zaślepka)</td></tr>
+<tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>grupuj / rozgrupuj</td></tr>
+<tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>przesuń cue</td></tr>
+<tr><td><kbd>Del</kbd></td><td>usuń cue</td></tr>
+<tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>punkt IN / OUT na głowicy</td></tr>
+<tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>cofnij / ponów</td></tr>
+<tr><td><kbd>Ctrl+S</kbd></td><td>zapisz</td></tr>
+<tr><td><kbd>F7</kbd> / <kbd>Shift+F7</kbd></td><td>studio powierzchni / linie pomocnicze</td></tr>
+<tr><td><kbd>F8</kbd></td><td>zdalne sterowanie</td></tr>
+
+<tr><td><kbd>F1</kbd></td><td>ta instrukcja</td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2><a name="porady"></a>14. Dobre praktyki przed przedstawieniem</h2>
+<ul>
+<li><b>Zrób próbę generalną na tym samym komputerze i projektorze</b>, od pierwszego do
+ostatniego cue.</li>
+<li><b>Ciężkie filmy przekonwertuj.</b> Na słabszym komputerze film z aparatu/telefonu
+(bardzo wysoki bitrate) może przycinać. Wersja Full HD ok. 8–10 Mb/s wygląda tak samo
+na projektorze, a działa płynnie.</li>
+<li>Zapisz przedstawienie z <b>kopiowaniem plików</b> i miej kopię na pendrivie.</li>
+<li>Wpisz w <b>Uwagi</b>, po jakiej kwestii odpalić dany cue.</li>
+<li>Wyłącz <b>MIRROR LIVE</b>, zamknij inne programy, wyłącz powiadomienia i usypianie
+ekranu w systemie.</li>
+<li>Ustaw zaślepkę (plakat lub czerń), żeby przed startem widownia nie widziała pulpitu.</li>
+</ul>
+
+</body>
+</html>
