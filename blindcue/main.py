@@ -228,6 +228,19 @@ def main() -> int:
     if not app_icon.isNull():
         app.setWindowIcon(app_icon)
 
+    # ── One copy per user: a second launch brings the first to the front ──
+    from services.single_instance import SingleInstance, bring_to_front
+    instance_guard = SingleInstance()
+    if not instance_guard.acquire():
+        logger.warning("[MAIN] BlindCue is already running - asking it to come to the front")
+        if not instance_guard.notify_running():
+            QMessageBox.information(
+                None, "BlindCue",
+                "BlindCue è già in esecuzione ma non risponde.\n\n"
+                "Potrebbe essere ancora in fase di avvio. Se la sua finestra non "
+                "compare, chiudi BlindCue già aperto e riavvia il programma.")
+        return 0
+
     logger.info("Running on native platform: '%s'", app.platformName())
 
     # ── Runtime dependency preflight ──────────────────────────────────
@@ -350,6 +363,7 @@ def main() -> int:
     main_win = MainWindow(output_window=output_win, secondary_output_window=output_win_b)
     main_win.bind_to_primary_screen(primary)
     main_win.show()
+    instance_guard.activation_requested.connect(lambda: bring_to_front(main_win))
 
     # Attach OutputWindow strictly to target screen after MainWindow maps on primary
     if output_screen is not None:
