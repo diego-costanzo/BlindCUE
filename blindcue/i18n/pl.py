@@ -1935,8 +1935,8 @@ T: dict[str, str] = {
     'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
         'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw Fade In na 0.',
     # ── speakers remembered per computer (feature PR) ──
-    'Predefinito di sistema, segue Windows (ora: {})':
-        'Domyślne wyjście Windows (teraz: {})',
+    'Predefinito di sistema, segue il sistema (ora: {})':
+        'Domyślne wyjście systemowe (teraz: {})',
     '{} (non collegato)':
         '{} (niepodłączone)',
     'Uscita audio scelta non collegata ({}): suona l\'uscita predefinita ({})':

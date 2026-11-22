@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>BlindCUE – manuale utente</title>
+<title>BlindCue – manuale utente</title>
 <style>
 body { font-family: "Segoe UI", sans-serif; font-size: 14px; }
 li { margin-bottom: 4px; }
@@ -18,18 +18,20 @@ a { color: #7dd3fc; }
 </head>
 <body>
 
-<h1>BlindCUE – manuale utente</h1>
-<p>BlindCUE serve a condurre uno spettacolo dal vivo: da un solo schermo lanci in sequenza
-musica, video e foto, mentre il pubblico vede l'immagine sul proiettore.
+<h1>BlindCue – manuale utente</h1>
+<p>BlindCue serve a condurre uno spettacolo dal vivo: da un solo schermo lanci in sequenza
+musica, video e foto e didascalie, mentre il pubblico vede l'immagine sul proiettore.
 Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
+<p style="color:#94a3b8;">Versione del programma: <b>0.1</b> (la trovi in
+<i>Help → About</i>).</p>
 
 <h3>Indice</h3>
 <ol>
 <li><a href="#schermo">La finestra del programma – cosa c'è e dove</a></li>
 <li><a href="#nuovo">Nuovo spettacolo e salvataggio</a></li>
-<li><a href="#aggiungere">Aggiungere video, audio e foto</a></li>
+<li><a href="#aggiungere">Aggiungere video, audio, foto e didascalie</a></li>
 <li><a href="#cue">Impostare una cue (Ispettore)</a></li>
-<li><a href="#transizioni">Dissolvenze, effetti e immagine</a></li>
+<li><a href="#transizioni">Dissolvenze, crossfade, effetti e immagine</a></li>
 <li><a href="#audio">Audio: volume, tagli, loop, livellamento</a></li>
 <li><a href="#gruppi">Gruppi e scene</a></li>
 <li><a href="#layer">Layer L1–L3 e Tappo L0</a></li>
@@ -47,8 +49,8 @@ Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
 <ul>
 <li><b>Scaletta cue (colonna sinistra)</b> – l'ordine dello spettacolo. Ogni riga è una
 <i>cue</i>: video <code>VID</code>, audio <code>AUD</code>, immagine <code>IMG</code> oppure
-gruppo <code>GRP</code>. Sotto la scaletta ci sono i pulsanti
-<b>+ Video / + Audio / + Foto / + Gruppo</b>,
+gruppo <code>GRP</code>; le didascalie hanno l'icona 📝. Sotto la scaletta ci sono i pulsanti
+<b>+ Video / + Audio / + Foto / + Testo / + Gruppo</b>,
 <b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
 <li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
 <b>Play / Pausa / Stop</b> provano la cue selezionata.</li>
@@ -85,10 +87,10 @@ I file originali non vengono mai modificati.</li>
 <li><b>Modifica → Annulla / Ripeti</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) valgono per ogni
 modifica nella scaletta e nell'ispettore.</li>
 </ul>
-<p><img src="img/it/02_menu_file.png" width="260" height="195"></p>
+<p><img src="img/it/02_menu_file.png" width="260" height="201"></p>
 
 <!-- ================================================================== -->
-<h2><a name="aggiungere"></a>3. Aggiungere video, audio e foto</h2>
+<h2><a name="aggiungere"></a>3. Aggiungere video, audio, foto e didascalie</h2>
 <h3>Tre modi per aggiungere un file</h3>
 <ol>
 <li>I pulsanti sotto la scaletta: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Foto</b>.</li>
@@ -110,12 +112,42 @@ nell'Ispettore: <b>Cue · Tempi → Durata Img</b> (per esempio 10 s; <code>0</c
 Per una sequenza di foto usa più cue di seguito con <b>Auto-GO</b>
 (capitolo 4) oppure un <a href="#gruppi">gruppo</a>.</p>
 
+<h3><a name="didascalie"></a>Didascalie (testo sullo schermo)</h3>
+<ol>
+<li>Premi <b>+ Testo</b> sotto la scaletta.</li>
+<li>Scrivi il testo (Invio = nuova riga), imposta <b>Dimensione carattere</b>, <b>Colore del testo</b>,
+<b>Posizione sullo schermo</b> (in basso / al centro / in alto) e se vuoi la
+<b>Fascia scura dietro il testo</b> e l'<b>Ombra</b>. In fondo alla finestra vedi subito
+l'anteprima di quello che apparirà sul proiettore.</li>
+<li><b>OK</b> – nella scaletta compare una cue con l'icona 📝. Viene messa sul layer
+<b>L3: Overlay</b> (la didascalia sta sopra video e foto) con dissolvenze morbide
+(Fade In / Out 0,5 s).</li>
+<li><b>Per cambiare il testo:</b> clic destro sulla cue → <b>✏ Modifica testo…</b>.</li>
+</ol>
+<p><img src="img/it/13_caption_dialog.png" width="420" height="442"> <img src="img/it/14_caption_on_screen.png" width="480" height="269"></p>
+<p>La didascalia si comporta come una foto: nell'Ispettore cambi posizione, scala, opacità,
+durata (<b>Durata Img</b>, 0 = fino alla dissolvenza), dissolvenze e crossfade.
+La didascalia è salvata nel file dello spettacolo e viene ricreata su un altro computer.</p>
+
+<h3>Una didascalia insieme alla musica (o a un video)</h3>
+<ol>
+<li>Nella scaletta metti prima la <b>cue della musica</b> e subito sotto la <b>cue della didascalia</b>.</li>
+<li>Seleziona la <b>cue della musica</b> e nell'Ispettore scegli <b>Dopo: Simult.</b>
+Un solo <kbd>Spazio</kbd> avvia la musica e mostra subito la didascalia.</li>
+<li>Nella cue della didascalia imposta <b>Durata Img</b>, per esempio la durata della canzone, e la
+didascalia sparisce da sola. Oppure lascia 0 e chiudila con <b>Fade Out</b> accanto al layer 3.</li>
+</ol>
+<p class="tip">💡 Lo stesso vale per un video: video su L1, didascalia su L3, <b>Simult.</b>
+sulla cue del video. Puoi anche selezionare le due cue e raggrupparle (<kbd>Ctrl+G</kbd>) in
+modalità <b>Simultaneo</b>.</p>
+<p><img src="img/it/15_list_with_caption.png" width="760" height="404"></p>
+
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Impostare una cue (Ispettore)</h2>
 <p>Fai clic su una cue nella scaletta: l'Ispettore a destra mostra le sue impostazioni.
 Puoi anche selezionare <b>più cue dello stesso tipo</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+clic)
 e modificarle tutte insieme.</p>
-<p><img src="img/it/04_inspector_video_cue.png" width="520" height="636"></p>
+<p><img src="img/it/04_inspector_video_cue.png" width="520" height="646"></p>
 
 <h3>La scheda "Cue · Tempi"</h3>
 <ul>
@@ -141,8 +173,8 @@ Le stesse tre modalità sono sotto la scaletta (<b>Blocco / Auto-GO / Simult.</b
 </ul>
 
 <!-- ================================================================== -->
-<h2><a name="transizioni"></a>5. Dissolvenze, effetti e immagine</h2>
-<p><img src="img/it/05_inspector_photo_picture.png" width="520" height="636"></p>
+<h2><a name="transizioni"></a>5. Dissolvenze, crossfade, effetti e immagine</h2>
+<p><img src="img/it/05_inspector_photo_picture.png" width="520" height="646"></p>
 <h3>Dissolvenze (entrata e uscita)</h3>
 <ul>
 <li>Scheda <b>Audio · Tagli → 2 · Dissolvenze</b>: <b>Fade In</b> (dal nero / dal silenzio)
@@ -151,6 +183,24 @@ e foto.</li>
 <li>La forma della rampa si sceglie sotto la forma d'onda: <b>Fade: Logaritmica</b>
 (la più naturale per l'audio), <b>S-Curve Morbida</b> oppure <b>Lineare</b>.</li>
 </ul>
+
+<h3><a name="crossfade"></a>Crossfade tra le cue</h3>
+<p>Con il <b>Crossfade</b> l'immagine precedente si scioglie dolcemente nella successiva,
+senza passare dal nero – foto in foto, foto in video, video in video.</p>
+<ol>
+<li>Seleziona la cue che deve <b>entrare</b> (per esempio la seconda foto).</li>
+<li>Scheda <b>Audio · Tagli → 2 · Dissolvenze</b> → campo <b>Crossfade</b>:
+scrivi un tempo, per esempio <b>2 s</b>.</li>
+<li>Imposta su quella cue <b>Fade In = 0</b> (il crossfade sostituisce l'entrata dal nero).</li>
+<li>Le due cue devono stare sullo <b>stesso layer</b> (di solito L1). Al GO l'immagine che
+era su quel layer si fonde nella nuova.</li>
+</ol>
+<p><img src="img/it/16_inspector_crossfade.png" width="440" height="546"> <img src="img/it/17_crossfade.png" width="480" height="269"></p>
+<p class="tip">💡 Una sequenza di foto con crossfade: più foto di seguito su L1, ognuna con
+<b>Crossfade 1–2 s</b>, <b>Durata Img</b> per esempio 5 s e <b>Dopo: Auto-GO</b> – le foto
+cambiano da sole, in modo morbido.</p>
+<p class="warn">Il crossfade riguarda l'immagine. L'audio del video precedente si interrompe
+nel momento del passaggio – se deve sfumare, dagli un <b>Fade Out</b> oppure metti la musica in una cue separata.</p>
 
 <h3>Immagine (la scheda "Video · Foto")</h3>
 <ul>
@@ -224,9 +274,9 @@ trascinando i blocchi decidi quando entra ciascuno (per esempio musica, dopo 3 s
 <ul>
 <li>Una nuova cue sullo <b>stesso</b> layer sostituisce la precedente. Una cue su un layer
 <b>diverso</b> si sovrappone.</li>
-
 <li>Vale anche per l'audio: musica e foto sullo stesso layer si spengono a vicenda.
-Metti la musica che deve suonare insieme alle foto su un altro layer (per esempio <b>L2</b>).</li>
+Per questo le nuove cue audio vanno di default su <b>L2</b>, foto e video su <b>L1</b>.</li>
+
 <li>Il tappo si cambia con <b>Show → Imposta Immagine di Tappo (Layer 0)…</b> oppure con il pulsante
 <b>Cambia Tappo…</b> – per esempio la locandina dello spettacolo o il nero.
 Il tappo predefinito è un pannello con il logo e una griglia per allineare il proiettore.</li>
@@ -241,16 +291,23 @@ Il tappo predefinito è un pannello con il logo e una griglia per allineare il p
 <li>Il programma <b>riconosce da solo</b> il secondo schermo e ci mostra l'immagine
 <b>a schermo intero, senza bordi né cursore</b>. Il tuo monitor resta per te.</li>
 <li>Con un solo monitor l'immagine compare in una piccola finestra
-<b>"Live Output [Monitor Simulato]"</b>.</li>
+<b>"Live Output [Monitor Simulato]"</b>. Fai clic sulla finestra e premi <kbd>F11</kbd>
+per vederla a schermo intero; <kbd>F11</kbd> di nuovo torna alla finestra.</li>
 <li>Schermo e modalità si scelgono in <b>Show → Dispositivi &amp; Hardware</b>
 (oppure <b>Dispositivi · Uscite</b> nella barra in basso) → <b>Schermo Live Output</b>.
 Con due proiettori puoi avere un'unica immagine distesa su entrambi oppure due
 uscite indipendenti A e B.</li>
 <li>Lì scegli anche l'<b>uscita audio</b> (casse della sala) e l'eventuale cuffia.</li>
+<li>Il programma <b>ricorda le casse scelte su questo computer</b> (non nel file dello spettacolo).
+Se mancano – per esempio scollegando un proiettore con casse – suona l'uscita predefinita del sistema
+e la barra di stato lo segnala; quando vengono ricollegate il programma torna a usarle da solo.
+<b>"Predefinito di sistema, segue il sistema"</b> vuol dire: non ricordare nulla, suona dove indica il sistema.</li>
+<li>Quando resta <b>solo il proiettore</b> (<kbd>Win+P</kbd> → <b>Solo secondo schermo</b>, o il portatile
+chiuso), il programma vi mostra la finestra di regia e l'anteprima dell'uscita in finestra.</li>
 <li><b>View → Mostra Guide sul Proiettore Live</b> (<kbd>Shift+F7</kbd>) –
 una griglia per mettere a fuoco e allineare il proiettore.</li>
 </ul>
-<p><img src="img/it/10_devices.png" width="520" height="637"></p>
+<p><img src="img/it/10_devices.png" width="520" height="617"></p>
 
 <!-- ================================================================== -->
 <h2><a name="live"></a>10. Condurre lo spettacolo (modalità LIVE)</h2>
@@ -294,7 +351,7 @@ e inquadra il codice QR con il telefono (telefono e computer sulla stessa rete W
 Sul telefono compaiono un grande pulsante GO, pausa, blackout e PANIC.
 Il secondo codice (<b>Monitor Regista</b>) dà una vista di sola lettura – per esempio per il regista
 in platea. L'accesso è protetto da un PIN di 6 cifre.</p>
-<p><img src="img/it/11_remote.png" width="560" height="472"></p>
+<p><img src="img/it/11_remote.png" width="560" height="452"></p>
 
 <h3>Studio Superfici di Proiezione &amp; Mapping – <kbd>F7</kbd></h3>
 <p>Quando il proiettore è storto o proietti su uno schermo particolare: correzione trapezoidale
@@ -327,7 +384,7 @@ maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettor
 <tr><td><kbd>Ctrl+S</kbd></td><td>salva</td></tr>
 <tr><td><kbd>F7</kbd> / <kbd>Shift+F7</kbd></td><td>studio superfici / guide sul proiettore</td></tr>
 <tr><td><kbd>F8</kbd></td><td>controllo remoto</td></tr>
-
+<tr><td><kbd>F11</kbd> (nella finestra di uscita)</td><td>finestra di uscita a schermo intero con un solo monitor</td></tr>
 <tr><td><kbd>F1</kbd></td><td>questo manuale</td></tr>
 </table>
 
@@ -345,6 +402,8 @@ fotocamera o dal telefono (bitrate molto alto) può scattare. Una versione Full 
 sospensione dello schermo nel sistema.</li>
 <li>Imposta un tappo (locandina o nero) così il pubblico non vede mai il desktop prima dell'inizio.</li>
 </ul>
+
+<p style="color:#64748b; margin-top:30px;">Manuale per BlindCue 0.1.</p>
 
 </body>
 </html>

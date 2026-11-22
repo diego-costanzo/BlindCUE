@@ -99,7 +99,7 @@ same layer, or <b>Fade Out</b>. Set the display time in the Inspector:
 <b>Cue · Timing → Image Time</b> (e.g. 10 s; <code>0</code> = no limit).
 For a slideshow use several photo cues in a row with <b>Auto-GO</b>
 (chapter 4), or a <a href="#groups">group</a>.</p>
-<!--IF:crossfade-->
+<!--IF:text_cues-->
 <h3><a name="captions"></a>Captions (text on screen)</h3>
 <ol>
 <li>Press <b>+ Text</b> under the cue list.</li>
@@ -128,7 +128,7 @@ fades out by itself. Or leave 0 and fade it out with <b>Fade Out</b> next to lay
 on the video cue. You can also select both cues and group them (<kbd>Ctrl+G</kbd>) in
 <b>Simultaneous</b> mode.</p>
 <p><img src="img/en/15_list_with_caption.png" width="760"></p>
-<!--/IF:crossfade-->
+<!--/IF:text_cues-->
 
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Setting up a cue (Inspector)</h2>
@@ -161,7 +161,7 @@ The same three modes are under the cue list (<b>Hold / Auto-GO / Simult.</b>).</
 </ul>
 
 <!-- ================================================================== -->
-<h2><a name="transitions"></a>5. Fades<!--IF:text_cues-->, crossfade<!--/IF:text_cues-->, effects and picture</h2>
+<h2><a name="transitions"></a>5. Fades<!--IF:crossfade-->, crossfade<!--/IF:crossfade-->, effects and picture</h2>
 <p><img src="img/en/05_inspector_photo_picture.png" width="520"></p>
 <h3>Fades (in and out)</h3>
 <ul>
@@ -288,9 +288,9 @@ With two projectors you can stretch one picture over both or run two
 independent outputs A and B.</li>
 <li>There you also choose the <b>audio output</b> (house speakers) and headphones.</li><!--IF:speakers-->
 <li>The program <b>remembers the chosen speakers on this computer</b> (not in the show file).
-If they are missing – for example a projector with speakers is unplugged – the Windows default output
+If they are missing – for example a projector with speakers is unplugged – the system default output
 plays and the status bar says so; when they are connected again the program goes back to them by itself.
-<b>"Windows default output"</b> means: remember nothing, play where Windows points.</li><!--/IF:speakers--><!--IF:projector_only-->
+<b>"System default output"</b> means: remember nothing, play where the system points.</li><!--/IF:speakers--><!--IF:projector_only-->
 <li>When <b>only the projector</b> is left (<kbd>Win+P</kbd> → <b>Second screen only</b>, or the laptop
 lid closed), the program shows the director window and the output preview window on it.</li><!--/IF:projector_only-->
 <li><b>View → Show Guides on the Live Projector</b> (<kbd>Shift+F7</kbd>) –

@@ -99,7 +99,7 @@ warstwie albo użyjesz <b>Wygaś</b>. Czas wyświetlania ustawisz w Inspektorze:
 <b>Cue · czasy → Czas obrazu</b> (np. 10 s; <code>0</code> = bez końca).
 Pokaz zdjęć zrobisz jako kilka cue ze zdjęciami po kolei z ustawionym <b>Auto-GO</b>
 (rozdział 4) albo jako <a href="#grupy">grupę</a>.</p>
-<!--IF:crossfade-->
+<!--IF:text_cues-->
 <h3><a name="napisy"></a>Napisy (tekst na ekranie)</h3>
 <ol>
 <li>Naciśnij <b>+ Tekst</b> pod listą cue.</li>
@@ -128,7 +128,7 @@ Jedno <kbd>Spacja</kbd> uruchomi muzykę i od razu pokaże napis.</li>
 na cue z filmem. Możesz też zaznaczyć oba cue i zgrupować je (<kbd>Ctrl+G</kbd>) w trybie
 <b>Wszystko naraz</b>.</p>
 <p><img src="img/pl/15_list_with_caption.png" width="760"></p>
-<!--/IF:crossfade-->
+<!--/IF:text_cues-->
 
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Ustawianie cue (Inspektor)</h2>
@@ -161,7 +161,7 @@ Te same trzy tryby są pod listą cue (przyciski <b>Stop / Auto-GO / Razem</b>).
 </ul>
 
 <!-- ================================================================== -->
-<h2><a name="przejscia"></a>5. Przejścia<!--IF:text_cues-->, przenikanie<!--/IF:text_cues-->, efekty i obraz</h2>
+<h2><a name="przejscia"></a>5. Przejścia<!--IF:crossfade-->, przenikanie<!--/IF:crossfade-->, efekty i obraz</h2>
 <p><img src="img/pl/05_inspector_photo_picture.png" width="520"></p>
 <h3>Przejścia (pojawianie i wygaszanie)</h3>
 <ul>
@@ -289,9 +289,9 @@ Przy dwóch projektorach możesz mieć jeden obraz rozciągnięty na oba albo dw
 niezależne wyjścia A i B.</li>
 <li>Tam też wybierasz <b>wyjście audio</b> (głośniki sali) i ewentualnie słuchawki.</li><!--IF:speakers-->
 <li>Program <b>zapamiętuje wybrane głośniki na tym komputerze</b> (nie w pliku przedstawienia).
-Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście Windows,
+Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście systemowe,
 a na pasku stanu pojawia się komunikat; po ponownym podłączeniu program sam do nich wraca.
-Pozycja <b>„Domyślne wyjście Windows”</b> znaczy: nic nie zapamiętuj, graj tam, gdzie wskazuje Windows.</li><!--/IF:speakers--><!--IF:projector_only-->
+Pozycja <b>„Domyślne wyjście systemowe”</b> znaczy: nic nie zapamiętuj, graj tam, gdzie wskazuje system.</li><!--/IF:speakers--><!--IF:projector_only-->
 <li>Gdy zostaje <b>tylko projektor</b> (<kbd>Win+P</kbd> → <b>Tylko drugi ekran</b> albo zamknięta klapa
 laptopa), program pokazuje na nim panel reżysera i podgląd wyjścia w oknie.</li><!--/IF:projector_only-->
 <li><b>Widok → Pokaż linie pomocnicze na projektorze</b> (<kbd>Shift+F7</kbd>) –

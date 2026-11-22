@@ -4,7 +4,7 @@ Memoria tecnica operativa delle verifiche, dei bug risolti e dei punti ancora da
 
 - **Data sessione:** 22 novembre 2026
 - **Obiettivo:** portare BlindCUE a uno standard sicuro per spettacoli dal vivo su Linux (Wayland nativo), risolvendo bug critici, race condition, leak di risorse e falle operative **senza aggiungere dipendenze esterne** e mantenendo il codice **100% open source** (solo stdlib Python + PySide6, NumPy, qrcode, FFmpeg/systemd-inhibit/vainfo).
-- **Esito verifiche automatiche:** `ruff check` = **0 errori**; `pytest -v tests/` = **150/150 PASS** (`exit code 0`, 0 warning), di cui **20 nuovi test di regressione** in [`tests/test_audit_regressions.py`](../tests/test_audit_regressions.py).
+- **Esito verifiche automatiche:** `ruff check` = **0 errori**; `pytest -v tests/` = **177/179 PASS** (`exit code 0`, 0 warning; 2 skipped su display headless/mock), di cui 20 test di regressione in [`tests/test_audit_regressions.py`](../tests/test_audit_regressions.py) e suite estesa isolata dalle impostazioni utente.
 
 Per il collaudo hardware precedente vedi [TEST_FINDINGS.md](TEST_FINDINGS.md).
 Per la guida architetturale e di fork vedi [ARCHITECTURE.md](ARCHITECTURE.md).
@@ -153,5 +153,87 @@ Grazie all'interfaccia pulita di `OutputWindow`, un'eventuale migrazione a Qt6 Q
 
 **Conclusione operativa attuale (v0.1):**
 Una volta superati i test reali con la scaletta di [LIVE_TEST_PLAYBOOK.md](LIVE_TEST_PLAYBOOK.md), BlindCUE è **stabile e robusto per spettacoli standard** (e, su macchine con CPU moderna/potente, regge bene anche **show più complessi**), mantenendo il progetto leggero, manutenibile e 100% open source.
+
+---
+
+## 5. Integrazione Pull Request #1–#20 & Nuove Pipeline di Sistema
+
+A seguito dell'audit di affidabilità, sono state integrate su `main` le 19 Pull Request del collaboratore (`ciechomir`), portando la suite di test automatizzati a **177 passed, 2 skipped** con isolamento totale dell'ambiente utente (`test/isolate-user-settings`).
+
+### 5.1 Riepilogo Completo delle 19 PR Integrate
+
+| PR | Branch / Commit | Categoria | Descrizione e Impatto Operativo |
+|---|---|---|---|
+| **#1** | `fix/eof-freeze` (`2b83fd0`) | Motore Live | Risolto il freeze permanente alla fine naturale di riproduzione di una cue. |
+| **#3** | `fix/portable-shows` (`55c7019`) | Persistenza | Mantenimento della modalità show portatile anche dopo la riapertura del progetto. |
+| **#4** | `fix/recent-projects-windows` (`a9afbca`) | UI / Piattaforma | Normalizzazione dei percorsi recenti su Windows per rimozione affidabile da elenco. |
+| **#5** | `fix/output-hotplug-fullscreen` (`5821f10`) | Display | Passaggio immediato a tutto schermo del proiettore collegato a caldo durante l'esecuzione. |
+| **#6** | `fix/single-instance` (`b4c77fd`) | Sistema | Istanza singola tramite `QLocalServer`/`QLocalSocket`: previene avvii doppi accidentali. |
+| **#7** | `feat/translations-and-manual` (`109b547`) | i18n / Docs | Livello di traduzione UI leggero (Italiano, English, Polski) e manuale utente completo in 3 lingue. |
+| **#9** | `feat/output-f11` (`15f0f47`) | UI / Output | Tasto `F11` (ed `Esc`) per alternare finestra e fullscreen nell'anteprima a schermo singolo. |
+| **#10** | `fix/preview-16-9` (`cd45b3e`) | Output | Mantenimento del formato nativo 16:9 nella finestra di anteprima flottante senza distorsioni. |
+| **#11** | `feat/audio-cues-layer2` (`0379b0e`) | Workflow | Assegnazione automatica delle nuove cue audio al Layer 2 per separarle dal video (L1). |
+| **#12** | `fix/cue-list-buttons-grid` (`15eee61`) | UI | Riorganizzazione dei pulsanti sotto la scaletta cue in griglia compatta 2×4. |
+| **#13** | `feat/crossfade` (`eb7358d`) | Rendering | Dissolvenza incrociata (crossfade) tra cue sullo stesso layer (foto/video/immagini). |
+| **#14** | `feat/text-cues` (`6054293`) | Cue Engine | Cue di testo e didascalie sovrapposte su Layer 3 (Overlay) con rendering vettoriale e dialog dedicato. |
+| **#15** | `fix/app-version` (`9390e35`) | Packaging | Centralizzazione della versione dell'applicazione in un unico file `blindcue/version.py`. |
+| **#16** | `fix/setup-run-install-bat` (`067c6eb`) | Setup Windows | Avvio robusto di `install.bat` come `.\install.bat` da PowerShell e ambienti Windows. |
+| **#17** | `feat/remember-speakers` (`4b2f9cc`) | Audio | Memorizzazione per-computer dell'uscita audio principale/cuffia con etichetta neutra di sistema. |
+| **#18** | `feat/manual-sources` (`dce2750`) | Documentazione | Sorgenti HTML modulari (`docs/manual/manual_*.src.html`) e toolchain di compilazione manuali (`tools/`). |
+| **#19** | `feat/windows-installer` (`160589f`) | CI/CD | Installer autonomo Inno Setup compilato via GitHub Actions (`.github/workflows/windows-installer.yml`). |
+| **#20** | `test/isolate-user-settings` (`344cae4`) | Testing | Isolamento completo del runner pytest da `QSettings` reali e autosave utente. |
+
+---
+
+### 5.2 Toolchain e Pipeline Automatizzate
+
+#### Pipeline del Manuale Multilingua (`tools/`)
+- `tools/make_manual_media.py`: Genera file multimediali neutri con FFmpeg (due gradienti colore, pattern video di test con tono a 330 Hz, toni audio 440/262 Hz) per evitare foto personali nella documentazione.
+- `tools/manual_screenshots.py`: Guida l'applicazione reale a finestra invisibile (off-screen a coordinate negative) nelle tre lingue (`it`, `en`, `pl`), catturando le 17 schermate ufficiali per ogni lingua.
+- `tools/build_manual.py`: Compila i sorgenti `docs/manual/manual_<lang>.src.html` iniettando stylesheet comune, versione, crediti e calcolando larghezza/altezza nativa delle immagini PNG. Risolve i blocchi condizionali `<!--IF:feature-->` tramite `tools/manual_features.py` e genera i file finali in `blindcue/help/manual_<lang>.html`.
+- `tools/i18n_check.py`: Effettua la scansione statica AST dei file Python in `blindcue/` per identificare stringhe prive di traduzione in `en.py` e `pl.py`.
+
+#### Pipeline Installer Windows CI/CD (`.github/workflows/windows-installer.yml`)
+- Esegue su runner GitHub Actions `windows-latest` con Python 3.13.
+- Scarica la build ufficiale FFmpeg release essentials da gyan.dev verificando l'hash SHA-256 prima dell'estrazione.
+- Installa Inno Setup 6 e invoca `packaging/windows/build.ps1` per generare `dist/BlindCue-Setup-*.exe`.
+- Attacca automaticamente il file di installazione come asset alla GitHub Release corrispondente quando viene pushato un tag `v*` (o salva l'artifact via `workflow_dispatch` con "Run workflow").
+
+---
+
+### 5.3 Checklist Verifiche Manuali sul Campo (Linux / Wayland)
+
+La seguente checklist raccoglie le verifiche operative consigliate da eseguire in ambiente Linux nativo Wayland prima del debutto sul palco:
+
+- [ ] **1. F11 / Esc su preview a schermo singolo e collegamento a caldo secondo monitor:**
+  - Avviare il software con un solo schermo attivo: l'uscita apre la finestra di anteprima flottante 16:9.
+  - Premere `F11` sulla finestra di anteprima: verificare che entri in fullscreen senza barre né bordi.
+  - Premere `Esc` o nuovamente `F11`: verificare il ritorno corretto alla finestra flottante.
+  - Con l'anteprima aperta, collegare un secondo monitor/videoproiettore via HDMI o DisplayPort: verificare che `OutputWindow` si sposti automaticamente sul secondo schermo aprendosi a tutto schermo in modo pulito.
+
+- [ ] **2. Single-instance (doppio avvio):**
+  - Con BlindCUE già aperto, lanciare una seconda volta il comando `blindcue` (o `run.sh`) da terminale o menu.
+  - Verificare che il secondo processo segnali che il programma è già in esecuzione, termini con codice pulito e porti in primo piano la finestra principale già attiva senza aprire doppi socket Web/OSC né conflitti audio.
+
+- [ ] **3. Cambio lingua (IT/EN/PL) e apertura manuale F1:**
+  - Dal menu impostazioni passare tra Italiano, English e Polski.
+  - Verificare che tutte le label della GUI (scaletta cue, ispettore, impostazioni dispositivi, pannelli) si aggiornino istantaneamente nella lingua scelta.
+  - Premere `F1`: verificare che si apra la finestra dell'Help con il manuale utente completo renderizzato nella lingua attiva con le immagini corrette.
+
+- [ ] **4. Crossfade video -> video con VA-API su Wayland:**
+  - Inserire due cue video su Layer 1 e impostare un tempo di crossfade (es. 1.5–2.0 s) sulla seconda cue con Fade In a 0.
+  - Lanciare la prima cue e poi premere GO per la seconda durante la riproduzione.
+  - Verificare con `vainfo` che la decodifica hardware VA-API resti attiva e che la transizione tra i due video avvenga in modo fluido senza freeze, tearing né frame neri.
+
+- [ ] **5. Resa font di fallback delle cue di testo su Linux:**
+  - Creare una cue di testo con il pulsante `+ Testo` inserendo caratteri accentati e simboli teatrali.
+  - Configurare grassetto, fascia scura dietro il testo e ombra con posizione in basso.
+  - Mandare in onda la cue su Layer 3 sopra un'immagine o video: verificare che il rendering dei font su Linux (es. DejaVu Sans / Noto Sans) sia nitido, centrato e privo di glifi mancanti o artefatti di antialiasing.
+
+- [ ] **6. Prova a vuoto GitHub Actions ("Run workflow") per l'installer Windows:**
+  - Dalla sezione *Actions* del repository GitHub, selezionare il workflow `Windows installer`.
+  - Cliccare su *Run workflow* (dispatch manuale su branch `main`).
+  - Verificare che la pipeline su `windows-latest` scarichi correttamente FFmpeg con validazione SHA-256, esegua Inno Setup 6 e produca l'artefatto `BlindCue-Setup-*.exe` scaricabile con esito verde.
+
 
 

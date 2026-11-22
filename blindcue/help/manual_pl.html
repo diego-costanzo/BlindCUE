@@ -1,7 +1,7 @@
 <html>
 <head>
 <meta charset="utf-8">
-<title>BlindCUE – instrukcja obsługi</title>
+<title>BlindCue – instrukcja obsługi</title>
 <style>
 body { font-family: "Segoe UI", sans-serif; font-size: 14px; }
 li { margin-bottom: 4px; }
@@ -18,18 +18,20 @@ a { color: #7dd3fc; }
 </head>
 <body>
 
-<h1>BlindCUE – instrukcja obsługi</h1>
-<p>BlindCUE to program do prowadzenia przedstawień: z jednego ekranu odpalasz
-kolejno muzykę, filmy i zdjęcia, a widownia widzi obraz na projektorze.
+<h1>BlindCue – instrukcja obsługi</h1>
+<p>BlindCue to program do prowadzenia przedstawień: z jednego ekranu odpalasz
+kolejno muzykę, filmy i zdjęcia oraz napisy, a widownia widzi obraz na projektorze.
 Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
+<p style="color:#94a3b8;">Wersja programu: <b>0.1</b> (sprawdzisz ją w
+<i>Pomoc → O programie</i>).</p>
 
 <h3>Spis treści</h3>
 <ol>
 <li><a href="#ekran">Ekran programu – co gdzie jest</a></li>
 <li><a href="#nowe">Nowe przedstawienie i zapisywanie</a></li>
-<li><a href="#dodawanie">Dodawanie wideo, audio i zdjęć</a></li>
+<li><a href="#dodawanie">Dodawanie wideo, audio, zdjęć i napisów</a></li>
 <li><a href="#cue">Ustawianie cue (Inspektor)</a></li>
-<li><a href="#przejscia">Przejścia, efekty i obraz</a></li>
+<li><a href="#przejscia">Przejścia, przenikanie, efekty i obraz</a></li>
 <li><a href="#dzwiek">Dźwięk: głośność, przycięcie, pętla, wyrównanie</a></li>
 <li><a href="#grupy">Grupy i sceny</a></li>
 <li><a href="#warstwy">Warstwy L1–L3 i zaślepka L0</a></li>
@@ -47,8 +49,8 @@ Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
 <ul>
 <li><b>Lista cue (lewa kolumna)</b> – kolejność przedstawienia. Każdy wiersz to jeden
 <i>cue</i> (punkt): film <code>VID</code>, dźwięk <code>AUD</code>, obraz <code>IMG</code> albo
-grupa <code>GRP</code>. Pod listą są przyciski
-<b>+ Wideo / + Audio / + Zdjęcie / + Grupa</b>,
+grupa <code>GRP</code>; napisy mają ikonę 📝. Pod listą są przyciski
+<b>+ Wideo / + Audio / + Zdjęcie / + Tekst / + Grupa</b>,
 przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>.</li>
 <li><b>Podgląd Pre-Viz (środek)</b> – prywatny podgląd tylko dla Ciebie. Widownia go nie widzi.
 Przyciski <b>Odtwórz / Pauza / Stop</b> sprawdzają zaznaczony cue.</li>
@@ -85,10 +87,10 @@ Oryginalne pliki nigdy nie są zmieniane.</li>
 <li><b>Edycja → Cofnij / Ponów</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) działa dla
 wszystkich zmian na liście i w inspektorze.</li>
 </ul>
-<p><img src="img/pl/02_menu_file.png" width="260" height="156"></p>
+<p><img src="img/pl/02_menu_file.png" width="260" height="160"></p>
 
 <!-- ================================================================== -->
-<h2><a name="dodawanie"></a>3. Dodawanie wideo, audio i zdjęć</h2>
+<h2><a name="dodawanie"></a>3. Dodawanie wideo, audio, zdjęć i napisów</h2>
 <h3>Trzy sposoby dodania pliku</h3>
 <ol>
 <li>Przyciski pod listą: <b>+ Wideo</b>, <b>+ Audio</b>, <b>+ Zdjęcie</b>.</li>
@@ -110,12 +112,41 @@ warstwie albo użyjesz <b>Wygaś</b>. Czas wyświetlania ustawisz w Inspektorze:
 Pokaz zdjęć zrobisz jako kilka cue ze zdjęciami po kolei z ustawionym <b>Auto-GO</b>
 (rozdział 4) albo jako <a href="#grupy">grupę</a>.</p>
 
+<h3><a name="napisy"></a>Napisy (tekst na ekranie)</h3>
+<ol>
+<li>Naciśnij <b>+ Tekst</b> pod listą cue.</li>
+<li>W oknie wpisz tekst (Enter = nowa linia), ustaw <b>wielkość liter</b>, <b>kolor</b>,
+<b>położenie</b> (na dole / na środku / na górze) i czy ma być <b>ciemny pasek</b> pod tekstem
+oraz <b>cień</b>. Na dole okna od razu widać podgląd tego, co pojawi się na projektorze.</li>
+<li><b>OK</b> – na liście pojawia się cue z ikoną 📝. Program sam ustawia mu warstwę
+<b>L3: Nakładka</b> (napis jest na wierzchu filmu lub zdjęcia) i łagodne pojawianie
+i znikanie (Fade In / Out 0,5 s).</li>
+<li><b>Zmiana treści:</b> prawy klik na cue z napisem → <b>✏ Edytuj napis…</b>.</li>
+</ol>
+<p><img src="img/pl/13_caption_dialog.png" width="420" height="442"> <img src="img/pl/14_caption_on_screen.png" width="480" height="270"></p>
+<p>Napis działa jak zdjęcie: w Inspektorze zmienisz jego położenie, skalę, krycie,
+czas wyświetlania (<b>Czas obrazu</b>, 0 = do wygaszenia), przejścia i przenikanie.
+Napis jest zapisany w pliku przedstawienia – na innym komputerze odtworzy się sam.</p>
+
+<h3>Napis równocześnie z muzyką (albo z filmem)</h3>
+<ol>
+<li>Na liście ustaw kolejno: <b>cue z muzyką</b>, a zaraz pod nim <b>cue z napisem</b>.</li>
+<li>Zaznacz <b>cue z muzyką</b> i w Inspektorze wybierz <b>Potem: Razem</b>.
+Jedno <kbd>Spacja</kbd> uruchomi muzykę i od razu pokaże napis.</li>
+<li>W cue z napisem ustaw <b>Czas obrazu</b>, np. na długość piosenki – napis sam zniknie
+(z Fade Out). Albo zostaw 0 i wygaś go przyciskiem <b>Wygaś</b> przy warstwie 3.</li>
+</ol>
+<p class="tip">💡 Ten sam sposób działa z filmem: film na L1, napis na L3, tryb <b>Razem</b>
+na cue z filmem. Możesz też zaznaczyć oba cue i zgrupować je (<kbd>Ctrl+G</kbd>) w trybie
+<b>Wszystko naraz</b>.</p>
+<p><img src="img/pl/15_list_with_caption.png" width="760" height="404"></p>
+
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Ustawianie cue (Inspektor)</h2>
 <p>Kliknij cue na liście – Inspektor po prawej pokaże jego ustawienia.
 Możesz też zaznaczyć <b>kilka cue tego samego typu</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+klik)
 i zmienić je wszystkie naraz.</p>
-<p><img src="img/pl/04_inspector_video_cue.png" width="520" height="636"></p>
+<p><img src="img/pl/04_inspector_video_cue.png" width="520" height="646"></p>
 
 <h3>Karta „Cue · czasy”</h3>
 <ul>
@@ -141,8 +172,8 @@ Te same trzy tryby są pod listą cue (przyciski <b>Stop / Auto-GO / Razem</b>).
 </ul>
 
 <!-- ================================================================== -->
-<h2><a name="przejscia"></a>5. Przejścia, efekty i obraz</h2>
-<p><img src="img/pl/05_inspector_photo_picture.png" width="520" height="636"></p>
+<h2><a name="przejscia"></a>5. Przejścia, przenikanie, efekty i obraz</h2>
+<p><img src="img/pl/05_inspector_photo_picture.png" width="520" height="646"></p>
 <h3>Przejścia (pojawianie i wygaszanie)</h3>
 <ul>
 <li>Karta <b>Audio · przycięcia → 2 · Przejścia</b>: <b>Fade In</b> (pojawianie z czerni / ciszy)
@@ -151,6 +182,24 @@ i zdjęć.</li>
 <li>Kształt narastania wybierzesz pod przebiegiem: <b>Fade: Logarytmiczna</b>
 (najbardziej naturalna dla dźwięku), <b>Łagodna krzywa S</b> albo <b>Liniowa</b>.</li>
 </ul>
+
+<h3><a name="przenikanie"></a>Przenikanie między cue</h3>
+<p><b>Przenikanie</b> sprawia, że poprzedni obraz płynnie „rozpływa się” w następny,
+bez czarnej przerwy – zdjęcie w zdjęcie, zdjęcie w film, film w film.</p>
+<ol>
+<li>Zaznacz cue, który ma <b>wejść</b> (np. drugie zdjęcie).</li>
+<li>Karta <b>Audio · przycięcia → 2 · Przejścia</b> → pole <b>Przenikanie</b>:
+wpisz czas, np. <b>2 s</b>.</li>
+<li>Ustaw temu cue <b>Fade In = 0</b> (przenikanie zastępuje pojawianie z czerni).</li>
+<li>Oba cue muszą być na <b>tej samej warstwie</b> (zwykle L1). Przy GO obraz, który był
+na tej warstwie, płynnie przejdzie w nowy.</li>
+</ol>
+<p><img src="img/pl/16_inspector_crossfade.png" width="440" height="546"> <img src="img/pl/17_crossfade.png" width="480" height="270"></p>
+<p class="tip">💡 Pokaz zdjęć z przenikaniem: kilka zdjęć po kolei na L1, każde z
+<b>Przenikanie 1–2 s</b>, <b>Czas obrazu</b> np. 5 s i <b>Potem: Auto-GO</b> – zdjęcia
+same będą się płynnie zmieniać.</p>
+<p class="warn">Przenikanie dotyczy obrazu. Dźwięk poprzedniego filmu kończy się w chwili
+przejścia – jeśli ma się wyciszać, daj mu <b>Fade Out</b> albo puść muzykę jako osobny cue.</p>
 
 <h3>Obraz (karta „Wideo · zdjęcie”)</h3>
 <ul>
@@ -225,9 +274,9 @@ przeciągając klocki ustawisz, kiedy który ma wejść (np. muzyka, po 3 s film
 <ul>
 <li>Nowy cue na <b>tej samej</b> warstwie zastępuje poprzedni. Cue na <b>innej</b> warstwie
 nakłada się na niego.</li>
-
 <li>Dotyczy to też dźwięku: muzyka i zdjęcie na tej samej warstwie wyłączają się nawzajem.
-Muzykę, która ma grać razem ze zdjęciami, ustaw na inną warstwę (np. <b>L2</b>).</li>
+Dlatego nowe cue audio trafiają domyślnie na <b>L2</b>, a zdjęcia i filmy na <b>L1</b>.</li>
+
 <li>Zaślepkę zmienisz w <b>Przedstawienie → Ustaw obraz zaślepki</b> albo przyciskiem
 <b>Zmień zaślepkę…</b> – np. na plakat przedstawienia lub czerń.
 Domyślna zaślepka to plansza z logo i siatką do ustawiania projektora.</li>
@@ -242,16 +291,23 @@ Domyślna zaślepka to plansza z logo i siatką do ustawiania projektora.</li>
 <li>Program <b>sam wykrywa</b> drugi ekran i wyświetla na nim obraz
 <b>na pełnym ekranie, bez ramek i kursora</b>. Monitor z programem zostaje dla Ciebie.</li>
 <li>Gdy jest tylko jeden monitor, obraz pokazuje się w małym oknie
-<b>„wyjście Live [monitor symulowany]”</b>.</li>
+<b>„wyjście Live [monitor symulowany]”</b>. Kliknij w nie i naciśnij <kbd>F11</kbd>,
+żeby zobaczyć je na pełnym ekranie; <kbd>F11</kbd> ponownie wraca do okna.</li>
 <li>Wybór ekranu i trybu: <b>Przedstawienie → Urządzenia i sprzęt</b>
 (lub <b>Urządzenia · wyjścia</b> na dolnym pasku) → <b>Ekran wyjścia Live</b>.
 Przy dwóch projektorach możesz mieć jeden obraz rozciągnięty na oba albo dwa
 niezależne wyjścia A i B.</li>
 <li>Tam też wybierasz <b>wyjście audio</b> (głośniki sali) i ewentualnie słuchawki.</li>
+<li>Program <b>zapamiętuje wybrane głośniki na tym komputerze</b> (nie w pliku przedstawienia).
+Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście systemowe,
+a na pasku stanu pojawia się komunikat; po ponownym podłączeniu program sam do nich wraca.
+Pozycja <b>„Domyślne wyjście systemowe”</b> znaczy: nic nie zapamiętuj, graj tam, gdzie wskazuje system.</li>
+<li>Gdy zostaje <b>tylko projektor</b> (<kbd>Win+P</kbd> → <b>Tylko drugi ekran</b> albo zamknięta klapa
+laptopa), program pokazuje na nim panel reżysera i podgląd wyjścia w oknie.</li>
 <li><b>Widok → Pokaż linie pomocnicze na projektorze</b> (<kbd>Shift+F7</kbd>) –
 siatka do ustawienia ostrości i położenia projektora.</li>
 </ul>
-<p><img src="img/pl/10_devices.png" width="520" height="618"></p>
+<p><img src="img/pl/10_devices.png" width="520" height="600"></p>
 
 <!-- ================================================================== -->
 <h2><a name="live"></a>10. Prowadzenie przedstawienia (tryb LIVE)</h2>
@@ -295,7 +351,7 @@ i zeskanuj kod QR telefonem (telefon i komputer w tej samej sieci Wi-Fi).
 W telefonie pojawi się duży przycisk GO, pauza, wygaszenie i PANIC.
 Drugi kod (<b>Monitor reżysera</b>) daje podgląd bez możliwości klikania – np. dla reżysera
 na widowni. Dostęp chroni 6-cyfrowy PIN.</p>
-<p><img src="img/pl/11_remote.png" width="560" height="472"></p>
+<p><img src="img/pl/11_remote.png" width="560" height="452"></p>
 
 <h3>Studio powierzchni projekcji (mapping) – <kbd>F7</kbd></h3>
 <p>Gdy projektor stoi krzywo albo wyświetlasz na nietypowym ekranie: korekcja trapezu
@@ -328,7 +384,7 @@ maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
 <tr><td><kbd>Ctrl+S</kbd></td><td>zapisz</td></tr>
 <tr><td><kbd>F7</kbd> / <kbd>Shift+F7</kbd></td><td>studio powierzchni / linie pomocnicze</td></tr>
 <tr><td><kbd>F8</kbd></td><td>zdalne sterowanie</td></tr>
-
+<tr><td><kbd>F11</kbd> (w oknie wyjścia)</td><td>pełny ekran okna wyjścia przy jednym monitorze</td></tr>
 <tr><td><kbd>F1</kbd></td><td>ta instrukcja</td></tr>
 </table>
 
@@ -346,6 +402,8 @@ na projektorze, a działa płynnie.</li>
 ekranu w systemie.</li>
 <li>Ustaw zaślepkę (plakat lub czerń), żeby przed startem widownia nie widziała pulpitu.</li>
 </ul>
+
+<p style="color:#64748b; margin-top:30px;">Instrukcja dla wersji BlindCue 0.1.</p>
 
 </body>
 </html>

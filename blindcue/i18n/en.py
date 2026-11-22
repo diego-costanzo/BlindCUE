@@ -1725,8 +1725,8 @@ T: dict[str, str] = {
     'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
         'Crossfade: the picture currently shown on this cue\'s layer dissolves into this cue over the given time (0 = hard cut). Set Fade In to 0 when using it.',
     # ── speakers remembered per computer (feature PR) ──
-    'Predefinito di sistema, segue Windows (ora: {})':
-        'Windows default output (now: {})',
+    'Predefinito di sistema, segue il sistema (ora: {})':
+        'System default output (now: {})',
     '{} (non collegato)':
         '{} (not connected)',
     'Uscita audio scelta non collegata ({}): suona l\'uscita predefinita ({})':

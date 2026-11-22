@@ -334,10 +334,10 @@ class DeviceSettingsDialog(QDialog):
             (self._combo_master, "master", cur_master),
             (self._combo_monitor, "monitor", cur_monitor),
         ):
-            # First entry: follow Windows (nothing remembered, also right on
+            # First entry: follow the system (nothing remembered, also right on
             # another computer). It stays selected unless speakers were chosen,
             # so applying a screen change never pins the speakers playing now.
-            combo.addItem(f"Predefinito di sistema, segue Windows (ora: {default_name})", None)
+            combo.addItem(f"Predefinito di sistema, segue il sistema (ora: {default_name})", None)
             selected = 0
             remembered = self.device_mgr.is_audio_remembered(role)
             missing = self.device_mgr.missing_audio_name(role)
@@ -412,7 +412,7 @@ class DeviceSettingsDialog(QDialog):
         self.device_mgr.set_hardware_profile(pref)
 
         # 2. Apply audio devices
-        # Remembered for this computer; None = follow Windows. A disabled
+        # Remembered for this computer; None = follow system. A disabled
         # headphone list (one sound card) cannot be a choice, so it changes nothing.
         master_dev = self._combo_master.currentData()
         monitor_dev = self._combo_monitor.currentData()

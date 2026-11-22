@@ -38,7 +38,7 @@ Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
 <li><b>Scaletta cue (colonna sinistra)</b> – l'ordine dello spettacolo. Ogni riga è una
 <i>cue</i>: video <code>VID</code>, audio <code>AUD</code>, immagine <code>IMG</code> oppure
 gruppo <code>GRP</code><!--IF:text_cues-->; le didascalie hanno l'icona 📝<!--/IF:text_cues-->. Sotto la scaletta ci sono i pulsanti
-<b>+ Video / + Audio / + Foto / <!--IF:text_cues-->+ Text / <!--/IF:text_cues-->+ Gruppo</b>,
+<b>+ Video / + Audio / + Foto / <!--IF:text_cues-->+ Testo / <!--/IF:text_cues-->+ Gruppo</b>,
 <b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
 <li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
 <b>Play / Pausa / Stop</b> provano la cue selezionata.</li>
@@ -99,18 +99,18 @@ successiva sullo stesso layer oppure <b>Fade Out</b>. Il tempo di visualizzazion
 nell'Ispettore: <b>Cue · Tempi → Durata Img</b> (per esempio 10 s; <code>0</code> = senza limite).
 Per una sequenza di foto usa più cue di seguito con <b>Auto-GO</b>
 (capitolo 4) oppure un <a href="#gruppi">gruppo</a>.</p>
-<!--IF:crossfade-->
+<!--IF:text_cues-->
 <h3><a name="didascalie"></a>Didascalie (testo sullo schermo)</h3>
 <ol>
-<li>Premi <b>+ Text</b> sotto la scaletta.</li>
-<li>Scrivi il testo (Invio = nuova riga), imposta <b>Font size</b>, <b>Text colour</b>,
-<b>Position on screen</b> (in basso / al centro / in alto) e se vuoi la
-<b>Dark band behind the text</b> e lo <b>Shadow</b>. In fondo alla finestra vedi subito
+<li>Premi <b>+ Testo</b> sotto la scaletta.</li>
+<li>Scrivi il testo (Invio = nuova riga), imposta <b>Dimensione carattere</b>, <b>Colore del testo</b>,
+<b>Posizione sullo schermo</b> (in basso / al centro / in alto) e se vuoi la
+<b>Fascia scura dietro il testo</b> e l'<b>Ombra</b>. In fondo alla finestra vedi subito
 l'anteprima di quello che apparirà sul proiettore.</li>
 <li><b>OK</b> – nella scaletta compare una cue con l'icona 📝. Viene messa sul layer
 <b>L3: Overlay</b> (la didascalia sta sopra video e foto) con dissolvenze morbide
 (Fade In / Out 0,5 s).</li>
-<li><b>Per cambiare il testo:</b> clic destro sulla cue → <b>✏ Edit text…</b>.</li>
+<li><b>Per cambiare il testo:</b> clic destro sulla cue → <b>✏ Modifica testo…</b>.</li>
 </ol>
 <p><img src="img/it/13_caption_dialog.png" width="420"> <img src="img/it/14_caption_on_screen.png" width="480"></p>
 <p>La didascalia si comporta come una foto: nell'Ispettore cambi posizione, scala, opacità,
@@ -129,7 +129,7 @@ didascalia sparisce da sola. Oppure lascia 0 e chiudila con <b>Fade Out</b> acca
 sulla cue del video. Puoi anche selezionare le due cue e raggrupparle (<kbd>Ctrl+G</kbd>) in
 modalità <b>Simultaneo</b>.</p>
 <p><img src="img/it/15_list_with_caption.png" width="760"></p>
-<!--/IF:crossfade-->
+<!--/IF:text_cues-->
 
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Impostare una cue (Ispettore)</h2>
@@ -162,7 +162,7 @@ Le stesse tre modalità sono sotto la scaletta (<b>Blocco / Auto-GO / Simult.</b
 </ul>
 
 <!-- ================================================================== -->
-<h2><a name="transizioni"></a>5. Dissolvenze<!--IF:text_cues-->, crossfade<!--/IF:text_cues-->, effetti e immagine</h2>
+<h2><a name="transizioni"></a>5. Dissolvenze<!--IF:crossfade-->, crossfade<!--/IF:crossfade-->, effetti e immagine</h2>
 <p><img src="img/it/05_inspector_photo_picture.png" width="520"></p>
 <h3>Dissolvenze (entrata e uscita)</h3>
 <ul>
@@ -289,9 +289,9 @@ Con due proiettori puoi avere un'unica immagine distesa su entrambi oppure due
 uscite indipendenti A e B.</li>
 <li>Lì scegli anche l'<b>uscita audio</b> (casse della sala) e l'eventuale cuffia.</li><!--IF:speakers-->
 <li>Il programma <b>ricorda le casse scelte su questo computer</b> (non nel file dello spettacolo).
-Se mancano – per esempio scollegando un proiettore con casse – suona l'uscita predefinita di Windows
+Se mancano – per esempio scollegando un proiettore con casse – suona l'uscita predefinita del sistema
 e la barra di stato lo segnala; quando vengono ricollegate il programma torna a usarle da solo.
-<b>"Predefinito di sistema, segue Windows"</b> vuol dire: non ricordare nulla, suona dove indica Windows.</li><!--/IF:speakers--><!--IF:projector_only-->
+<b>"Predefinito di sistema, segue il sistema"</b> vuol dire: non ricordare nulla, suona dove indica il sistema.</li><!--/IF:speakers--><!--IF:projector_only-->
 <li>Quando resta <b>solo il proiettore</b> (<kbd>Win+P</kbd> → <b>Solo secondo schermo</b>, o il portatile
 chiuso), il programma vi mostra la finestra di regia e l'anteprima dell'uscita in finestra.</li><!--/IF:projector_only-->
 <li><b>View → Mostra Guide sul Proiettore Live</b> (<kbd>Shift+F7</kbd>) –
