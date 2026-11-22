@@ -61,10 +61,12 @@ def show_hardware_info_dialog(parent: QWidget, custom_profile: str = PROFILE_AUT
 
 def show_about_dialog(parent: QWidget) -> None:
     """Display the About BlindCue dialog."""
+    from version import APP_NAME, APP_VERSION
+
     QMessageBox.about(
         parent,
         "About BlindCue",
-        "<h2>BlindCue v0.1</h2>"
+        f"<h2>{APP_NAME} v{APP_VERSION}</h2>"
         "<p>Minimal failsafe cue player for live shows.</p>"
         "<p>Layer 0 always active • 100% Native Wayland QtMultimedia</p>"
         "<p>© 2026 — Zero crash in live.</p>",
