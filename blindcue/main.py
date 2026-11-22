@@ -1445,6 +1445,14 @@ def main() -> int:
     except Exception:
         logger.warning("[MAIN] Could not freeze the GC", exc_info=True)
 
+    # Ask about an interrupted session only now, with the output windows,
+    # the DeviceManager and the monitor hotplug handling in place. Scheduled
+    # from the MainWindow constructor, the question ran inside the
+    # processEvents() of OutputWindow.configure_screen(), half-way through
+    # this boot: the output stayed full screen and on top, and unplugging the
+    # projector left it covering the director screen.
+    QTimer.singleShot(150, main_win._check_crash_recovery)
+
     return app.exec()
 
 

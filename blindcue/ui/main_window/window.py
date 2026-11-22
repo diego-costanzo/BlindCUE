@@ -157,6 +157,6 @@ class MainWindow(
         app = QApplication.instance()
         if app is not None:
             app.installEventFilter(self)
-
-        QTimer.singleShot(150, self._check_crash_recovery)
+        # The crash-recovery question is scheduled by main() once the whole
+        # boot is done (see the end of main.main()).
 
