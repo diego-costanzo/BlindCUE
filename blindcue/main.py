@@ -109,6 +109,26 @@ from models.cue import (
 _LOGO_PATH = _HERE / "assets" / "BlindCue-logo.jpeg"
 
 
+def _load_app_icon() -> QIcon:
+    """Carica l'icona dell'applicazione cercando nel tema di sistema e negli assets."""
+    theme_icon = QIcon.fromTheme("blindcue")
+    if not theme_icon.isNull():
+        return theme_icon
+
+    icon = QIcon()
+    assets = _HERE / "assets"
+    for name in ("blindcue.ico", "blindcue.png", "blindcue-256.png", "BlindCue-logo.jpeg"):
+        p = assets / name
+        if p.is_file():
+            icon.addFile(str(p))
+
+    if not icon.isNull():
+        return icon
+    if _LOGO_PATH.is_file():
+        return QIcon(str(_LOGO_PATH))
+    return icon
+
+
 def _install_file_logging() -> Path | None:
     """Mirror the log to a rotating file and record uncaught exceptions.
 
@@ -204,8 +224,9 @@ def main() -> int:
 
     _install_file_logging()
 
-    if _LOGO_PATH.is_file():
-        app.setWindowIcon(QIcon(str(_LOGO_PATH)))
+    app_icon = _load_app_icon()
+    if not app_icon.isNull():
+        app.setWindowIcon(app_icon)
 
     logger.info("Running on native platform: '%s'", app.platformName())
 

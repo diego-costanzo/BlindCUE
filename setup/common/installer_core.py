@@ -89,7 +89,13 @@ def icon_path(platform: str | None = None) -> Path:
     """Bundled icon for the graphical installer window."""
     platform = platform or current_platform()
     name = "blindcue.ico" if platform == "windows" else "blindcue-256.png"
-    return SETUP_DIR / "assets" / name
+    candidate = SETUP_DIR / "assets" / name
+    if candidate.is_file():
+        return candidate
+    candidate_app = SETUP_DIR.parent / "blindcue" / "assets" / name
+    if candidate_app.is_file():
+        return candidate_app
+    return candidate
 
 
 def engine_command(extra_args: list[str] | None = None) -> list[str]:
@@ -211,12 +217,15 @@ def uninstall(
     if platform == "linux":
         home = Path.home()
         data = Path(os.environ.get("XDG_DATA_HOME") or (home / ".local" / "share"))
+        icon_sizes = ["16x16", "24x24", "32x32", "48x48", "64x64", "128x128", "256x256", "512x512"]
+        icon_files = [data / "icons" / "hicolor" / s / "apps" / "blindcue.png" for s in icon_sizes]
         extras = [
             home / ".local" / "bin" / "blindcue",
             home / ".local" / "bin" / "blindcue-uninstall",
             data / "applications" / "blindcue.desktop",
             data / "applications" / "blindcue-uninstall.desktop",
-            data / "icons" / "hicolor" / "256x256" / "apps" / "blindcue.png",
+            *icon_files,
+            data / "pixmaps" / "blindcue.png",
             *_linux_desktop_shortcuts(),
         ]
     elif platform == "windows":
@@ -266,6 +275,8 @@ def uninstall(
         for command in (
             ["update-desktop-database", str(apps)],
             ["gtk-update-icon-cache", "-f", "-t", str(data_root / "icons" / "hicolor")],
+            ["kbuildsycoca6", "--noincremental"],
+            ["kbuildsycoca5", "--noincremental"],
         ):
             if shutil.which(command[0]):
                 try:

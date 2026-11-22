@@ -24,7 +24,10 @@ class _WindowSetupMixin:
         saved_theme = str(settings.value("ui/theme", "obsidian_slate"))
         self.apply_theme(saved_theme, save_pref=False)
 
-        if DEFAULT_LOGO_PATH.is_file():
+        app_icon = QApplication.windowIcon()
+        if not app_icon.isNull():
+            self.setWindowIcon(app_icon)
+        elif DEFAULT_LOGO_PATH.is_file():
             self.setWindowIcon(QIcon(str(DEFAULT_LOGO_PATH)))
 
         self.bind_to_primary_screen()
