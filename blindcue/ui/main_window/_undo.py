@@ -148,7 +148,8 @@ class _UndoRedoMixin:
     def _update_window_title(self) -> None:
         name = Path(self._current_project_path).name if self._current_project_path else "Nuovo Show"
         mod = " *" if self._is_modified else ""
-        self.setWindowTitle(f"BlindCue – [{name}{mod}] – Director Panel v0.1")
+        from version import APP_VERSION
+        self.setWindowTitle(f"BlindCue – [{name}{mod}] – Director Panel v{APP_VERSION}")
 
     def _mark_modified(self, modified: bool = True) -> None:
         self._is_modified = modified

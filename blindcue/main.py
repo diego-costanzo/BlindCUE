@@ -195,9 +195,12 @@ def main() -> int:
 
     # ── Qt Application (100% Native Wayland) ───────────────────────────
     app = QApplication(sys.argv)
+    from version import APP_NAME, APP_VERSION
+    # Keep the internal name "BlindCue": it decides where settings and autosave live.
     app.setApplicationName("BlindCue")
     app.setOrganizationName("BlindCue")
-    app.setApplicationVersion("0.1")
+    app.setApplicationVersion(APP_VERSION)
+    logger.info("[MAIN] %s %s", APP_NAME, APP_VERSION)
 
     _install_file_logging()
 
@@ -1349,7 +1352,7 @@ def main() -> int:
     timer.start(200)
     timer.timeout.connect(lambda: None)
 
-    logger.info("═══ BlindCue v0.1 started (100% Native Wayland) ═══")
+    logger.info("═══ %s %s started (platform: %s) ═══", APP_NAME, APP_VERSION, app.platformName())
 
     # ── Python GC tuning for live stability ───────────────────────────
     # Long-lived objects (Qt widget tree, modules, the loaded show) are moved
