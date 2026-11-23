@@ -327,8 +327,9 @@ a grid for focusing and lining up the projector.</li>
 
 <!-- ================================================================== -->
 <h2><a name="live"></a>10. Running the show (LIVE mode)</h2>
-<p>When the list is ready, switch to LIVE mode: the <b>GO LIVE</b> button or
-<kbd>F5</kbd>. The screen becomes simple and large – only what you need during the show.</p>
+<p>When the list is ready, switch to LIVE mode:<!--IFNOT:mode_tabs--> the <b>GO LIVE</b> button or
+<kbd>F5</kbd>.<!--/IFNOT:mode_tabs--><!--IF:mode_tabs--> the <b>● Show</b> tab at the top of the window, <kbd>F5</kbd>
+or <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> The screen becomes simple and large – only what you need during the show.</p>
 <p><img src="img/en/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Select the first cue – it gets the <b>STANDBY</b> badge (ready to fire).
@@ -355,7 +356,7 @@ the ticks go when you start from the top.</li><!--/IF:live_times-->
 softly ends that layer (hold it for a moment – protection against accidental clicks).</li>
 <!--IF:action_cues--><li>Notes and checklists of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.</li><!--/IF:action_cues-->
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
-<li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li>
+<!--IFNOT:mode_tabs--><li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Back to preparation</b>: hold the <b>○ Preparation</b> tab for 1.5 s or use <b>Show → End the show…</b> (<kbd>Ctrl+Shift+F5</kbd>); whatever plays keeps playing. <kbd>F5</kbd> and <kbd>Ctrl+L</kbd> only enter – a stray key press never takes you out of the show. Alt+F4 during a show asks first.</li><!--/IF:mode_tabs-->
 </ol>
 <p class="tip">💡 During the show keep the program window active (click it) so that
 <kbd>Space</kbd> goes to the program. Close other programs.<!--IF:focus_warning--> When the keyboard goes elsewhere (e.g. someone clicked the picture on the projector), a red bar appears in LIVE mode – click the program window.<!--/IF:focus_warning--></p>
@@ -406,7 +407,7 @@ round masks and cut-outs. Assign a cue to a surface in the Inspector
 <table class="k">
 <tr><td><kbd>Space</kbd></td><td>GO – next cue</td></tr>
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>select cue / change the next cue in LIVE</td></tr>
-<tr><td><kbd>F5</kbd></td><td>LIVE mode / back to the project</td></tr>
+<!--IFNOT:mode_tabs--><tr><td><kbd>F5</kbd></td><td>LIVE mode / back to the project</td></tr><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><tr><td><kbd>F5</kbd> / <kbd>Ctrl+L</kbd></td><td>enter the show (enter only)</td></tr><tr><td><kbd>Ctrl+Shift+F5</kbd></td><td>end the show (asks)</td></tr><tr><td><kbd>Ctrl+P</kbd></td><td>pause / resume all</td></tr><!--/IF:mode_tabs-->
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (in LIVE mode)<!--/IFNOT:esc_everywhere-->: twice within 0.6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>fade all (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Space</kbd></td><td>forced GO – also while an exclusive cue plays</td></tr><!--/IF:exclusive-->

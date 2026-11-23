@@ -329,8 +329,9 @@ una griglia per mettere a fuoco e allineare il proiettore.</li>
 
 <!-- ================================================================== -->
 <h2><a name="live"></a>10. Condurre lo spettacolo (modalità LIVE)</h2>
-<p>Quando la scaletta è pronta, passa in modalità LIVE: pulsante <b>VAI IN LIVE</b> oppure
-<kbd>F5</kbd>. Lo schermo diventa semplice e grande – solo ciò che serve durante lo spettacolo.</p>
+<p>Quando la scaletta è pronta, passa in modalità LIVE:<!--IFNOT:mode_tabs--> pulsante <b>VAI IN LIVE</b> oppure
+<kbd>F5</kbd>.<!--/IFNOT:mode_tabs--><!--IF:mode_tabs--> la scheda <b>● Spettacolo</b> in alto, <kbd>F5</kbd>
+o <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> Lo schermo diventa semplice e grande – solo ciò che serve durante lo spettacolo.</p>
 <p><img src="img/it/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Seleziona la prima cue – riceve il bollino <b>STANDBY</b> (pronta a partire).
@@ -357,7 +358,7 @@ diventa ambra se il prossimo GO tocca a te (la cue non ha Auto-GO). Le cue già 
 chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic accidentali).</li>
 <!--IF:action_cues--><li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu.</li><!--/IF:action_cues-->
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
-<li><b>Torna a Progetto</b> (<kbd>F5</kbd>) – torni alla modifica; quello che sta andando continua.</li>
+<!--IFNOT:mode_tabs--><li><b>Torna a Progetto</b> (<kbd>F5</kbd>) – torni alla modifica; quello che sta andando continua.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Ritorno alla preparazione</b>: tieni premuta la scheda <b>○ Preparazione</b> per 1,5 s oppure <b>Show → Termina lo spettacolo…</b> (<kbd>Ctrl+Maiusc+F5</kbd>); quello che sta andando continua. <kbd>F5</kbd> e <kbd>Ctrl+L</kbd> servono solo a entrare – un tasto premuto per sbaglio non ti fa uscire dallo spettacolo. Alt+F4 durante lo spettacolo chiede prima.</li><!--/IF:mode_tabs-->
 </ol>
 <p class="tip">💡 Durante lo spettacolo tieni attiva la finestra del programma (facci clic) perché
 <kbd>Spazio</kbd> arrivi al programma. Chiudi gli altri programmi.<!--IF:focus_warning--> Quando la tastiera va altrove (per esempio dopo un clic sull’immagine del proiettore), in modalità LIVE compare una barra rossa – fai clic sulla finestra del programma.<!--/IF:focus_warning--></p>
@@ -408,7 +409,7 @@ maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettor
 <table class="k">
 <tr><td><kbd>Spazio</kbd></td><td>GO – cue successiva</td></tr>
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>scegli la cue / cambia la successiva in LIVE</td></tr>
-<tr><td><kbd>F5</kbd></td><td>modalità LIVE / ritorno al progetto</td></tr>
+<!--IFNOT:mode_tabs--><tr><td><kbd>F5</kbd></td><td>modalità LIVE / ritorno al progetto</td></tr><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><tr><td><kbd>F5</kbd> / <kbd>Ctrl+L</kbd></td><td>entra nello spettacolo (solo entrata)</td></tr><tr><td><kbd>Ctrl+Maiusc+F5</kbd></td><td>termina lo spettacolo (con domanda)</td></tr><tr><td><kbd>Ctrl+P</kbd></td><td>pausa / riprendi tutto</td></tr><!--/IF:mode_tabs-->
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (in modalità LIVE)<!--/IFNOT:esc_everywhere-->: due volte entro 0,6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>dissolvenza totale (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Spazio</kbd></td><td>GO forzato – anche mentre va una cue esclusiva</td></tr><!--/IF:exclusive-->

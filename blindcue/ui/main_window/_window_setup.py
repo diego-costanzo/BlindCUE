@@ -256,7 +256,7 @@ class _WindowSetupMixin:
         QShortcut(QKeySequence(Qt.Key.Key_I), self, lambda: self._on_snap_shortcut(True))
         QShortcut(QKeySequence(Qt.Key.Key_O), self, lambda: self._on_snap_shortcut(False))
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_escape_pressed)
-        QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
+        QShortcut(QKeySequence("Ctrl+L"), self, self._enter_show_from_key)  # enters only
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
         self._install_focus_watch()

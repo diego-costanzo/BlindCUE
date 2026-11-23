@@ -74,6 +74,15 @@ class _MenuMixin:
             QAction("&Dissolvenza totale (Fade All)", self, shortcut=QKeySequence("Shift+Esc"),
                     triggered=self._on_fade_all)
         )
+        # Pause All had no key at all (mouse only); W3 of the accessibility review.
+        show_menu.addAction(
+            QAction("⏸ &Pausa / riprendi tutto", self, shortcut=QKeySequence("Ctrl+P"),
+                    triggered=lambda: self.pause_all_toggled.emit())
+        )
+        self._act_end_show = QAction("Termina lo spettacolo…", self, shortcut=QKeySequence("Ctrl+Shift+F5"),
+                                     triggered=self._on_end_show_requested)
+        self._act_end_show.setEnabled(False)
+        show_menu.addAction(self._act_end_show)
         show_menu.addSeparator()
         show_menu.addAction(
             QAction("Imposta Immagine di &Tappo (Layer 0)…", self, triggered=self._on_choose_layer0)
@@ -96,7 +105,7 @@ class _MenuMixin:
         view_menu = mb.addMenu("&View")
         self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)
         self._act_live_mode.setShortcut(QKeySequence(Qt.Key.Key_F5))
-        self._act_live_mode.toggled.connect(self.set_live_mode)
+        self._act_live_mode.toggled.connect(self._on_live_action_toggled)
         view_menu.addAction(self._act_live_mode)
         view_menu.addSeparator()
 
@@ -192,6 +201,52 @@ class _MenuMixin:
         }[code]
         QMessageBox.information(self, "BlindCue", msg)
 
+    def _design_control_bar_widget(self) -> QWidget:
+        """Top row of the editor: mode tabs left, Fade All and PANIC right.
+
+        The LIVE page has the same row (tabs in its top bar), so the mode and
+        the emergency buttons sit in the same place in both views.
+        """
+        from PySide6.QtWidgets import QHBoxLayout
+
+        from ui.mode_tabs import ModeTabs
+
+        bar = QWidget()
+        bar.setFixedHeight(44)
+        lay = QHBoxLayout(bar)
+        lay.setContentsMargins(10, 5, 10, 5)
+        lay.setSpacing(8)
+        self._mode_tabs = ModeTabs()
+        self._mode_tabs.enter_show_requested.connect(lambda: self.set_live_mode(True))
+        lay.addWidget(self._mode_tabs)
+        lay.addStretch(1)
+        btn_fade = QPushButton("🔉 DISSOLVI [⇧ESC]")
+        btn_fade.setFixedHeight(34)
+        btn_fade.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        btn_fade.setToolTip("Dissolvenza totale: tutto ciò che è in onda sfuma e si ferma [Maiusc+Esc]")
+        btn_fade.setStyleSheet(
+            "QPushButton { background-color: #3f2806; color: #fbbf24; border: 1px solid #d97706; "
+            "border-radius: 5px; font-weight: bold; font-size: 12px; padding: 0px 12px; } "
+            "QPushButton:hover { background-color: #5c3b09; color: #ffffff; } "
+            "QPushButton:focus { border: 2px solid #fde68a; }"
+        )
+        btn_fade.clicked.connect(self._on_fade_all)
+        lay.addWidget(btn_fade)
+        btn_panic = QPushButton("🚨 PANIC [ESC ×2]")
+        btn_panic.setFixedHeight(34)
+        btn_panic.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        btn_panic.setToolTip("PANIC: ferma subito tutto (0 ms) [Esc due volte]")
+        btn_panic.setStyleSheet(
+            "QPushButton { background-color: #7f1d1d; color: #ffffff; border: 2px solid #ef4444; "
+            "border-radius: 5px; font-weight: bold; font-size: 12px; padding: 0px 12px; } "
+            "QPushButton:hover { background-color: #dc2626; border-color: #fca5a5; } "
+            "QPushButton:focus { border: 2px solid #ffffff; }"
+        )
+        btn_panic.clicked.connect(self._on_panic)
+        lay.addWidget(btn_panic)
+        self._design_control_bar = bar
+        return bar
+
     def _build_ui(self) -> None:
         from ui.operator_note import OperatorNoteBanner
 
@@ -204,6 +259,7 @@ class _MenuMixin:
         self._note_banner = OperatorNoteBanner()
         self._note_banner.item_toggled.connect(self._on_note_item_toggled)
         self._note_banner.dismissed.connect(self._on_note_dismissed)
+        central_layout.addWidget(self._design_control_bar_widget())
         central_layout.addWidget(self._note_banner)
         central_layout.addWidget(self._central_stack, stretch=1)
         self.setCentralWidget(central)
@@ -240,6 +296,8 @@ class _MenuMixin:
         self._cue_list_panel.move_down_requested.connect(self._on_move_down)
         self._cue_list_panel.delete_requested.connect(self._on_delete_cue)
         self._cue_list_panel.go_live_mode_requested.connect(lambda: self.set_live_mode(True))
+        # The mode tabs above replace it (the same place in every view).
+        self._cue_list_panel.btn_go_live.setVisible(False)
         self._cue_list_panel.follow_mode_selected.connect(self._set_follow_mode)
         top_splitter.addWidget(self._cue_list_panel)
 

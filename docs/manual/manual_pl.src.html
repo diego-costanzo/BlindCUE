@@ -328,8 +328,9 @@ siatka do ustawienia ostrości i położenia projektora.</li>
 
 <!-- ================================================================== -->
 <h2><a name="live"></a>10. Prowadzenie przedstawienia (tryb LIVE)</h2>
-<p>Gdy lista jest gotowa, przejdź w tryb LIVE: przycisk <b>PRZEJDŹ DO LIVE</b> albo
-<kbd>F5</kbd>. Ekran robi się prosty i duży – tylko to, co potrzebne na przedstawieniu.</p>
+<p>Gdy lista jest gotowa, przejdź w tryb LIVE:<!--IFNOT:mode_tabs--> przycisk <b>PRZEJDŹ DO LIVE</b> albo
+<kbd>F5</kbd>.<!--/IFNOT:mode_tabs--><!--IF:mode_tabs--> zakładka <b>● Przedstawienie</b> u góry okna, <kbd>F5</kbd>
+albo <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> Ekran robi się prosty i duży – tylko to, co potrzebne na przedstawieniu.</p>
 <p><img src="img/pl/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Zaznacz pierwszy cue – dostaje znaczek <b>STANDBY</b> (gotowy do odpalenia).
@@ -356,7 +357,7 @@ i przygaszoną nazwę; znaczki znikają, gdy zaczynasz od początku.</li><!--/IF
 kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym kliknięciem).</li>
 <!--IF:action_cues--><li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.</li><!--/IF:action_cues-->
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
-<li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li>
+<!--IFNOT:mode_tabs--><li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Powrót do przygotowania</b>: przytrzymaj zakładkę <b>○ Przygotowanie</b> przez 1,5 s albo <b>Sterowanie → Zakończ przedstawienie…</b> (<kbd>Ctrl+Shift+F5</kbd>); to, co gra, gra dalej. <kbd>F5</kbd> i <kbd>Ctrl+L</kbd> tylko wchodzą – przypadkowe naciśnięcie nie wyrzuci Cię z przedstawienia. Alt+F4 w czasie przedstawienia najpierw pyta.</li><!--/IF:mode_tabs-->
 </ol>
 <p class="tip">💡 Przy prowadzeniu przedstawienia trzymaj okno programu aktywne
 (kliknij w nie), żeby <kbd>Spacja</kbd> trafiała do programu. Inne programy zamknij.<!--IF:focus_warning--> Gdy klawiatura trafia gdzie indziej (np. kliknięto obraz na projektorze), w trybie LIVE pojawia się czerwony pasek – kliknij okno programu.<!--/IF:focus_warning--></p>
@@ -406,7 +407,7 @@ maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
 <table class="k">
 <tr><td><kbd>Spacja</kbd></td><td>GO – następny cue</td></tr>
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>wybór cue / zmiana następnego w LIVE</td></tr>
-<tr><td><kbd>F5</kbd></td><td>tryb LIVE / powrót do projektu</td></tr>
+<!--IFNOT:mode_tabs--><tr><td><kbd>F5</kbd></td><td>tryb LIVE / powrót do projektu</td></tr><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><tr><td><kbd>F5</kbd> / <kbd>Ctrl+L</kbd></td><td>wejście w przedstawienie (tylko wejście)</td></tr><tr><td><kbd>Ctrl+Shift+F5</kbd></td><td>zakończ przedstawienie (z pytaniem)</td></tr><tr><td><kbd>Ctrl+P</kbd></td><td>pauza / wznów wszystko</td></tr><!--/IF:mode_tabs-->
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (w trybie LIVE)<!--/IFNOT:esc_everywhere-->: dwa razy w ciągu 0,6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>wygaś wszystko (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Spacja</kbd></td><td>GO wymuszone – także gdy trwa cue wyłączny</td></tr><!--/IF:exclusive-->

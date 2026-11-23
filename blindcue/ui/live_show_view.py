@@ -68,6 +68,7 @@ from ui.cue_table import (
     paint_live_progress,
 )
 from ui.hold_button import ElidedButton, HoldProgressButton
+from ui.mode_tabs import ModeTabs
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_GO, get_active_theme
 
@@ -767,11 +768,12 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             s_rect = QRect(sx, sy, sw, sh)
 
             b_width = 2.0 if (is_mono and is_live) else (1.5 if (is_live or is_standby) else 1.0)
-            painter.setPen(QPen(st_border, b_width))
-            painter.setBrush(st_bg)
-            painter.drawRoundedRect(s_rect, 4, 4)
-            painter.setPen(st_fg)
-            painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, st_label)
+            if st_label != "PRONTO":  # ready is the normal case: no pill (the empty cell says it)
+                painter.setPen(QPen(st_border, b_width))
+                painter.setBrush(st_bg)
+                painter.drawRoundedRect(s_rect, 4, 4)
+                painter.setPen(st_fg)
+                painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, st_label)
 
             painter.restore()
             return
@@ -849,6 +851,12 @@ class LiveShowPanel(QWidget):
         )
         self.btn_back_project.clicked.connect(self.exit_live_mode_requested)
         left_layout.addWidget(self.btn_back_project)
+        # Replaced by the mode tabs: leaving the show is a 1.5 s hold, never one click.
+        self.btn_back_project.setVisible(False)
+        self.mode_tabs = ModeTabs()
+        self.mode_tabs.set_live(True)
+        self.mode_tabs.leave_show_requested.connect(self.exit_live_mode_requested)
+        left_layout.addWidget(self.mode_tabs)
 
         self.lbl_show_badge = QLabel("● MODALITÀ LIVE (SHOW MODE)")
         self.lbl_show_badge.setFixedHeight(30)
@@ -856,6 +864,7 @@ class LiveShowPanel(QWidget):
             "QLabel { background-color: #064e3b; color: #69f0ae; border: 1px solid #10b981; "
             "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
         )
+        self.lbl_show_badge.setVisible(False)  # the tabs show the mode; the badge only shows a pause
         left_layout.addWidget(self.lbl_show_badge)
         left_layout.addStretch(1)
 
@@ -1281,6 +1290,7 @@ class LiveShowPanel(QWidget):
 
     def _apply_pause_btn_style(self, *, paused: bool) -> None:
         is_mono = get_active_theme().is_monochrome
+        self.lbl_show_badge.setVisible(paused)  # the mode is on the tabs; the badge says "paused"
         if paused:
             self.btn_pause_all.setText("▶  RIPRENDI TUTTO  [IN PAUSA]")
             if is_mono:

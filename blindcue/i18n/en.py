@@ -1976,4 +1976,44 @@ T: dict[str, str] = {
         'Stay in the program',
     'Chiudi il programma':
         'Close the program',
+    '○ Preparazione':
+        '○ Preparation',
+    '○ PREPARAZIONE':
+        '○ PREPARATION',
+    '○ Preparazione  (tieni 1,5 s)':
+        '○ Preparation  (hold 1.5 s)',
+    '● Spettacolo':
+        '● Show',
+    '● SPETTACOLO':
+        '● SHOW',
+    'Modalità preparazione (attiva)':
+        'Preparation mode (on)',
+    'Modalità spettacolo (attiva)':
+        'Show mode (on)',
+    'Entra nello spettacolo':
+        'Enter the show',
+    'Entra nello spettacolo [F5]':
+        'Enter the show [F5]',
+    'Torna alla preparazione: tieni premuto 1,5 secondi':
+        'Back to preparation: hold for 1.5 seconds',
+    'Tieni premuto 1,5 s per tornare alla preparazione (ciò che è in onda continua). Da tastiera: Ctrl+Maiusc+F5':
+        'Hold 1.5 s to go back to preparation (what plays keeps playing). Keyboard: Ctrl+Shift+F5',
+    'Dissolvenza totale: tutto ciò che è in onda sfuma e si ferma [Maiusc+Esc]':
+        'Fade all: everything on air fades out and stops [Shift+Esc]',
+    'PANIC: ferma subito tutto (0 ms) [Esc due volte]':
+        'PANIC: stops everything at once (0 ms) [Esc twice]',
+    '⏸ &Pausa / riprendi tutto':
+        '⏸ &Pause / resume all',
+    'Termina lo spettacolo…':
+        'End the show…',
+    'Termina lo spettacolo':
+        'End the show',
+    'Tornare alla preparazione? Ciò che è in onda continua a suonare.':
+        'Go back to preparation? What plays keeps playing.',
+    'Resta nello spettacolo':
+        'Stay in the show',
+    'Torna alla preparazione':
+        'Back to preparation',
+    'Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per 1,5 s oppure Ctrl+Maiusc+F5':
+        'To leave the show: hold "○ Preparation" for 1.5 s or press Ctrl+Shift+F5',
 }

@@ -247,18 +247,77 @@ class _CueTableMixin:
             self._act_live_mode.setChecked(enabled)
             self._act_live_mode.blockSignals(False)
         self._central_stack.setCurrentIndex(1 if enabled else 0)
+        # The LIVE page has its own top row (tabs, clock, Fade All, PANIC).
+        if hasattr(self, "_design_control_bar"):
+            self._design_control_bar.setVisible(not enabled)
+            self._mode_tabs.set_live(enabled)
+        if hasattr(self, "_live_show_panel"):
+            self._live_show_panel.mode_tabs.set_live(enabled)
+        if hasattr(self, "_act_end_show"):
+            self._act_end_show.setEnabled(enabled)
         if enabled:
             prof = self._device_mgr.get_effective_profile() if self._device_mgr else "auto"
             ShowRuntimeGuard.on_live_mode_enter(prof)
             self._sync_live_view()
             self._show_pending_checklist()
             self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]")
+            # Keyboard on the list at once: arrows move the next cue, Space = GO.
+            if hasattr(self, "_live_show_panel"):
+                self._live_show_panel.live_table.setFocus()
         else:
             ShowRuntimeGuard.on_live_mode_exit()
             QTimer.singleShot(0, self._apply_top_splitter_ratios)
             self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
         if hasattr(self, "_update_focus_warning"):
             self._update_focus_warning()
+
+    def _on_live_action_toggled(self, checked: bool) -> None:
+        """F5 / View menu: enters the show only; leaving needs a deliberate step."""
+        if checked:
+            self.set_live_mode(True)
+            return
+        if self._live_mode:
+            self._act_live_mode.blockSignals(True)
+            self._act_live_mode.setChecked(True)
+            self._act_live_mode.blockSignals(False)
+            self._explain_how_to_leave()
+
+    def _enter_show_from_key(self) -> None:
+        """Ctrl+L: like F5, enters only."""
+        if self._live_mode:
+            self._explain_how_to_leave()
+        else:
+            self.set_live_mode(True)
+
+    def _explain_how_to_leave(self) -> None:
+        self._status_label.setText(
+            "Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per 1,5 s oppure Ctrl+Maiusc+F5"
+        )
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_alert()
+
+    def _on_end_show_requested(self) -> None:
+        """Show menu → End the show…: asks, with "stay" as the safe default."""
+        if not self._live_mode:
+            return
+        box = QMessageBox(
+            QMessageBox.Icon.Question,
+            "Termina lo spettacolo",
+            "Tornare alla preparazione? Ciò che è in onda continua a suonare.",
+            QMessageBox.StandardButton.NoButton,
+            self,
+        )
+        stay = box.addButton("Resta nello spettacolo", QMessageBox.ButtonRole.RejectRole)
+        box.addButton("Torna alla preparazione", QMessageBox.ButtonRole.AcceptRole)
+        box.setDefaultButton(stay)
+        box.setEscapeButton(stay)
+        keys = _EmergencyKeysInDialog(self, box)
+        box.installEventFilter(keys)
+        for btn in box.buttons():
+            btn.installEventFilter(keys)
+        box.exec()
+        if box.clickedButton() is not stay:
+            self.set_live_mode(False)
 
     def _show_running(self) -> bool:
         """Something plays or waits for its start (pre-delay, Auto-GO).

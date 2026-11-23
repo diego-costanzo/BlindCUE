@@ -882,7 +882,7 @@ T: dict[str, str] = {
     "Azzera Cronometro Spettacolo e riarma l'avvio automatico al prossimo 1° GO":
         'Wyzeruj stoper przedstawienia i uzbrój automatyczny start przy pierwszym GO',
     '▶ STANDBY':
-        '▶ STANDBY',
+        '▶ NASTĘPNY',
     'Nessuna cue pronta in scaletta':
         'Brak gotowego cue na liście',
     '⏭ Esci da Loop Sezione':
@@ -1136,7 +1136,7 @@ T: dict[str, str] = {
     '↷ &Ripeti':
         '↷ &Ponów',
     '&Show':
-        '&Przedstawienie',
+        '&Sterowanie',
     '🎚 Modalità &Jam / Contest (Auto-Gain EBU R128)':
         '🎚 Tryb &Jam / konkurs (auto-wzmocnienie EBU R128)',
     'Abilita il livellamento automatico EBU R128 (-16 LUFS) per contest, jam session e file non calibrati.':
@@ -2194,4 +2194,48 @@ T: dict[str, str] = {
         'Zostań w programie',
     'Chiudi il programma':
         'Zamknij program',
+    '● LIVE':
+        '● GRA',
+    '○ Preparazione':
+        '○ Przygotowanie',
+    '○ PREPARAZIONE':
+        '○ PRZYGOTOWANIE',
+    '○ Preparazione  (tieni 1,5 s)':
+        '○ Przygotowanie  (trzymaj 1,5 s)',
+    '● Spettacolo':
+        '● Przedstawienie',
+    '● SPETTACOLO':
+        '● PRZEDSTAWIENIE',
+    'Modalità preparazione (attiva)':
+        'Tryb przygotowania (włączony)',
+    'Modalità spettacolo (attiva)':
+        'Tryb przedstawienia (włączony)',
+    'Entra nello spettacolo':
+        'Wejdź w przedstawienie',
+    'Entra nello spettacolo [F5]':
+        'Wejdź w przedstawienie [F5]',
+    'Torna alla preparazione: tieni premuto 1,5 secondi':
+        'Powrót do przygotowania: przytrzymaj 1,5 sekundy',
+    'Tieni premuto 1,5 s per tornare alla preparazione (ciò che è in onda continua). Da tastiera: Ctrl+Maiusc+F5':
+        'Przytrzymaj 1,5 s, aby wrócić do przygotowania (to, co gra, gra dalej). Z klawiatury: Ctrl+Shift+F5',
+    '🚨 PANIC [ESC ×2]':
+        '🚨 PANIC [ESC ×2]',
+    'Dissolvenza totale: tutto ciò che è in onda sfuma e si ferma [Maiusc+Esc]':
+        'Wygaś wszystko: wszystko, co gra, łagodnie wygasa i się zatrzymuje [Shift+Esc]',
+    'PANIC: ferma subito tutto (0 ms) [Esc due volte]':
+        'PANIC: natychmiast zatrzymuje wszystko (0 ms) [Esc dwa razy]',
+    '⏸ &Pausa / riprendi tutto':
+        '⏸ &Pauza / wznów wszystko',
+    'Termina lo spettacolo…':
+        'Zakończ przedstawienie…',
+    'Termina lo spettacolo':
+        'Zakończ przedstawienie',
+    'Tornare alla preparazione? Ciò che è in onda continua a suonare.':
+        'Wrócić do przygotowania? To, co gra, gra dalej.',
+    'Resta nello spettacolo':
+        'Zostań w przedstawieniu',
+    'Torna alla preparazione':
+        'Wróć do przygotowania',
+    'Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per 1,5 s oppure Ctrl+Maiusc+F5':
+        'Aby wyjść z przedstawienia: przytrzymaj „○ Przygotowanie” przez 1,5 s albo Ctrl+Shift+F5',
 }
