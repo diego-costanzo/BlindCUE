@@ -652,7 +652,7 @@ def test_summaries_translate_to_polish_and_english():
         assert i18n.tr(describe_action({"kind": ACTION_LEVEL, "mode": "relative", "db": -10,
                                         "duration": 2})) == "Poziom -10.0 dB w 2.0 s: wszystko, co gra"
         assert i18n.tr(describe_action({"kind": ACTION_FADE, "target": "layer", "layer": 2,
-                                        "duration": 3})) == "Wycisz w 3.0 s: Warstwa 2"
+                                        "duration": 3})) == "Wygaś w 3.0 s: Warstwa 2"
         i18n.set_language("en")
         assert i18n.tr(describe_action({"kind": ACTION_FADE, "duration": 3})) == \
             "Fade out in 3.0 s: everything playing"

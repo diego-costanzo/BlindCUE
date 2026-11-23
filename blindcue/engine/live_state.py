@@ -123,22 +123,29 @@ class LiveClocks:
         return CueTime(elapsed, None, -1.0, clock.looping_inf, "")
 
 
-def fmt_clock(seconds: float, *, up: bool = False) -> str:
-    """m:ss; a countdown rounds up so it shows 0:00 only at the very end."""
-    whole = math.ceil(seconds - 1e-6) if up else math.floor(seconds)
-    whole = max(0, int(whole))
-    return f"{whole // 60}:{whole % 60:02d}"
+def fmt_clock(seconds: float) -> str:
+    """MM:SS (H:MM:SS past an hour), whole seconds rounded down.
+
+    The same as the layer panels and the length column, so the operator never
+    sees two different numbers for the same cue.
+    """
+    whole = max(0, math.floor(seconds))
+    mins, secs = divmod(whole, 60)
+    hrs, mins = divmod(mins, 60)
+    if hrs:
+        return f"{hrs}:{mins:02d}:{secs:02d}"
+    return f"{mins:02d}:{secs:02d}"
 
 
 def short_time_text(t: CueTime) -> str:
     """Text for the narrow time slot of a cue row: what is left, or the wait."""
     if t.phase == PHASE_PRE:
-        return f"⏳-{fmt_clock(t.remaining or 0.0, up=True)}"
+        return f"⏳-{fmt_clock(t.remaining or 0.0)}"
     if t.phase == PHASE_POST:
-        return f"⏱-{fmt_clock(t.remaining or 0.0, up=True)}"
+        return f"⏱-{fmt_clock(t.remaining or 0.0)}"
     if t.remaining is None:
         return "∞" if t.looping_inf else fmt_clock(t.elapsed)
-    text = f"-{fmt_clock(t.remaining, up=True)}"
+    text = f"-{fmt_clock(t.remaining)}"
     return f"{text}∞" if t.looping_inf else text
 
 

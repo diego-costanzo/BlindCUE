@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import time
 from typing import Any
 
@@ -177,18 +178,20 @@ class LiveCueTable(QTableWidget):
             "QMenu::item { padding: 6px 18px; border-radius: 3px; font-weight: bold; font-size: 11px; } "
             "QMenu::item:selected { background-color: #1e293b; color: #38bdf8; }"
         )
-        act_go = menu.addAction("▶ Fai partire subito questa Cue (GO Forzato)")
-        act_go.triggered.connect(lambda: self.fire_row_requested.emit(row))
-
+        # The harmless choice comes first: a stray tap on a touchpad must not
+        # start a cue, so "start now" sits last, after a separator.
         act_sb = menu.addAction("🎯 Imposta come Prossima Cue (Standby)")
         act_sb.triggered.connect(lambda: self.standby_selected.emit(row))
 
         it_num = self.item(row, 0)
         if it_num and it_num.data(ROLE_IS_GROUP):
-            menu.addSeparator()
             is_col = bool(it_num.data(ROLE_GROUP_COLLAPSED))
             act_toggle = menu.addAction("▼ Espandi Gruppo" if is_col else "▶ Collassa Gruppo")
             act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(row))
+
+        menu.addSeparator()
+        act_go = menu.addAction("▶ Fai partire subito questa Cue (GO Forzato)")
+        act_go.triggered.connect(lambda: self.fire_row_requested.emit(row))
 
         menu.exec(event.globalPos())
 
@@ -206,6 +209,18 @@ class LiveCueRowDelegate(QStyledItemDelegate):
     _URGENT_NOTES_KEYWORDS = (
         "ATTENZIONE", "PERICOLO", "BUIO TOTALE", "STOP IMMEDIATO", "EMERGENZA", "AVVISO", "ALLARME"
     )
+    # Whole words (a stem may take an ending), in Italian, Polish and English,
+    # so that "stop" does not light up "stopniowo" and "wait" not "awaiting".
+    _URGENT_NOTES_RE = re.compile(
+        r"\b(?:" + "|".join(re.escape(k) for k in _URGENT_NOTES_KEYWORDS)
+        + r"|UWAGA|(?:PO)?CZEKAJ\w*|STOP|CIEMNO(?:ŚĆ)?|NIEBEZPIECZ\w*|ALARM|AWARI\w*|PILN[EI]E?"
+        + r"|WARNING|DANGER|WAIT|BLACKOUT|EMERGENCY|ALERT|URGENT|CAUTION)\b"
+    )
+
+    @classmethod
+    def is_urgent_note(cls, text: str) -> bool:
+        """A director's note to highlight in the LIVE list (danger, wait, blackout...)."""
+        return bool(text) and cls._URGENT_NOTES_RE.search(text.upper()) is not None
 
     def initStyleOption(self, option: QStyleOptionViewItem, index) -> None:  # noqa: N802
         """Attach the live-state colour computed by :meth:`paint`."""
@@ -492,7 +507,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             rect = opt.rect.adjusted(6, 3, -6, -3)
 
             if notes_text:
-                is_urgent = any(k in notes_text.upper() for k in self._URGENT_NOTES_KEYWORDS)
+                is_urgent = self.is_urgent_note(notes_text)
 
                 if is_urgent:
                     u_border = QColor("#a1a1aa") if is_mono else QColor("#d97706")
@@ -616,7 +631,8 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     painter.setPen(QColor("#ffffff") if is_mono else QColor("#fbbf24"))
                 else:
                     painter.setPen(QColor("#ffffff") if is_mono else QColor("#4ade80"))
-                painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, live_txt)
+                # "-00:45∞" / "⏳-00:03" are a little wider than a length
+                painter.drawText(dur_rect.adjusted(-6, 0, 6, 0), Qt.AlignmentFlag.AlignCenter, live_txt)
             else:
                 painter.setPen(QColor("#f4f4f5") if is_mono else QColor("#e2e8f0"))
                 painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
