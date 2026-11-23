@@ -2400,4 +2400,14 @@ T: dict[str, str] = {
         'Exit PIN of the show…',
     '{} torna da {}':
         '{} comes back from {}',
+    'Cuffie collegate: i suoni per la regia sono spenti (GO, blocchi, cambio di modalità)':
+        'Headphones connected: the operator sounds are off (GO, refusals, mode changes)',
+    'Accendi':
+        'Turn on',
+    'I suoni per la regia tacciono: le cuffie sono le casse del pubblico':
+        'The operator sounds keep quiet: the headphones are the audience speakers',
+    '⚠ Impossibile riprodurre{} (L{}): file mancante, danneggiato o non supportato':
+        '⚠ Cannot play{} (L{}): file missing, damaged or not supported',
+    'Tieni premuto più a lungo (1,5 s) per uscire dallo spettacolo':
+        'Hold longer (1.5 s) to leave the show',
 }

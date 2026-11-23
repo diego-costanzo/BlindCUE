@@ -196,3 +196,27 @@ def test_output_preview_runs_only_in_the_show(window):
     panel.btn_preview.click()
     window.set_live_mode(False)
     assert not window._preview_timer.isActive()
+
+
+def test_group_container_is_not_live_once_its_children_ended(window):
+    group = Cue.from_dict({"cue_id": 9150, "name": "scene", "media_type": MediaType.GROUP.value,
+                           "file_path": ""})
+    window._cues.insert(0, group)
+    child = window._cues[1]
+    child.parent_id = group.cue_id
+    group.status = CueStatus.LIVE
+    child.status = CueStatus.LIVE
+    window.finish_live_cue_status(child)
+    _pump(0.05)
+    assert group.status == CueStatus.LOADED
+
+
+def test_playback_error_is_said_in_the_operator_language(window):
+    import i18n
+
+    try:
+        i18n.set_language("pl")
+        text = i18n.tr("⚠ Impossibile riprodurre{} (L{}): file mancante, danneggiato o non supportato")
+        assert text.startswith("⚠ Nie można odtworzyć")
+    finally:
+        i18n.set_language("it")

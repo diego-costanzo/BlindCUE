@@ -568,6 +568,23 @@ class _RemoteMixin:
                 item.status = CueStatus.LOADED
         self._refresh_cue_list(keep_selection=True)
         self._sync_live_view()
+        # After the Auto-GO of a sequence had its chance (same event-loop turn).
+        QTimer.singleShot(0, self._settle_group_containers)
+
+    def _settle_group_containers(self) -> None:
+        """A group whose children no longer play or wait is not "LIVE" any more (QA C1)."""
+        changed = False
+        for group in self._cues:
+            if group.media_type != MediaType.GROUP or group.status != CueStatus.LIVE:
+                continue
+            kids = ShowEngine.children_of(self._cues, group.cue_id)
+            busy = any(k.status == CueStatus.LIVE or k.cue_id in self._live_phase_tags for k in kids)
+            if kids and not busy:
+                group.status = CueStatus.LOADED
+                changed = True
+        if changed:
+            self._refresh_cue_list(keep_selection=True)
+            self._sync_live_view()
 
     def trigger_auto_follow_from(self, finished_cue: Cue) -> None:
         """Start the next cue in sequence when an AUTO_FOLLOW cue completes.

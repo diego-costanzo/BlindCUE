@@ -2622,4 +2622,14 @@ T: dict[str, str] = {
         'PIN wyjścia z Przedstawienia…',
     '{} torna da {}':
         '{} wróci od {}',
+    'Cuffie collegate: i suoni per la regia sono spenti (GO, blocchi, cambio di modalità)':
+        'Słuchawki podłączone: sygnały dla operatora są wyłączone (GO, blokady, zmiana trybu)',
+    'Accendi':
+        'Włącz',
+    'I suoni per la regia tacciono: le cuffie sono le casse del pubblico':
+        'Sygnały dla operatora milczą: słuchawki to głośniki widowni',
+    '⚠ Impossibile riprodurre{} (L{}): file mancante, danneggiato o non supportato':
+        '⚠ Nie można odtworzyć{} (W{}): brak pliku, plik uszkodzony albo nieobsługiwany',
+    'Tieni premuto più a lungo (1,5 s) per uscire dallo spettacolo':
+        'Przytrzymaj dłużej (1,5 s), aby wyjść z Przedstawienia',
 }

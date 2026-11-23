@@ -207,9 +207,9 @@ class LiveCueRowDelegate(QStyledItemDelegate):
     """High-contrast, distraction-free delegate for Live Show table with custom pills, tree branches, and timing."""
 
     _MEDIA_BADGE = {
-        "VIDEO": ("VID", QColor("#0284c7"), QColor("#e0f2fe")),
-        "AUDIO": ("AUD", QColor("#0d9488"), QColor("#ccfbf1")),
-        "IMAGE": ("IMG", QColor("#d97706"), QColor("#fef3c7")),
+        "VIDEO": ("VID", QColor("#0369a1"), QColor("#ffffff")),
+        "AUDIO": ("AUD", QColor("#0f766e"), QColor("#f0fdfa")),
+        "IMAGE": ("IMG", QColor("#b45309"), QColor("#ffffff")),
         "GROUP": ("GRP", QColor("#6d28d9"), QColor("#ede9fe")),
     }
 
@@ -361,7 +361,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             if parent_id is not None:
                 branch_sym = "└── " if is_last_child else "├── "
                 painter.setFont(QFont("monospace", 10))
-                painter.setPen(QColor("#64748b"))
+                painter.setPen(QColor("#94a3b8"))
                 painter.drawText(
                     QRect(left_x, rect.top(), 24, rect.height()),
                     Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -743,7 +743,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     st_label = "PRONTO"
                     st_bg = QColor("#16171b")
                     st_border = QColor("#27272a")
-                    st_fg = QColor("#71717a")
+                    st_fg = QColor("#a1a1aa")
             else:
                 if is_live:
                     st_label = "● LIVE"
@@ -764,7 +764,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     st_label = "PRONTO"
                     st_bg = QColor("#101722")
                     st_border = QColor("#1e293b")
-                    st_fg = QColor("#64748b")
+                    st_fg = QColor("#94a3b8")
 
             if is_live and bool(index.data(ROLE_PAUSED)):
                 # Paused is a state of its own, in a word and a sign (W35).
@@ -1275,13 +1275,13 @@ class LiveShowPanel(QWidget):
             self.btn_go.setStyleSheet(
                 f"QPushButton {{ background-color: {bg}; color: {fg}; border: 2px solid {bd}; {base} }} "
                 "QPushButton:hover { border-color: #fde68a; } "
-                "QPushButton:pressed { background-color: #b45309; }"
+                "QPushButton:pressed { background-color: #d97706; }"
             )
         elif active_t.theme_id == "warm_amber_studio":
             self.btn_go.setStyleSheet(
                 f"QPushButton {{ background-color: #f59e0b; color: #151210; border: 1px solid #fbbf24; {base} }} "
                 "QPushButton:hover { background-color: #fbbf24; } "
-                "QPushButton:pressed { background-color: #b45309; }"
+                "QPushButton:pressed { background-color: #d97706; }"
             )
         else:
             self.btn_go.setStyleSheet(
@@ -1362,7 +1362,7 @@ class LiveShowPanel(QWidget):
                     )
                 else:
                     self.btn_stopwatch.setStyleSheet(
-                        "QPushButton { background-color: #16171b; color: #71717a; border: 1px solid #27272a; "
+                        "QPushButton { background-color: #16171b; color: #a1a1aa; border: 1px solid #27272a; "
                         "border-radius: 5px; font-family: monospace; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
                         "QPushButton:hover { background-color: #22232a; border-color: #3f404d; color: #a1a1aa; }"
                     )

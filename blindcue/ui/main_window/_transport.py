@@ -64,6 +64,8 @@ class _TransportMixin:
                     f"GO bloccato: '{blocker.name}' è esclusiva ed è in onda — Ctrl+Spazio per forzare"
                 )
                 logger.info("[GO] Refused: exclusive cue #%d is live", blocker.cue_id)
+                if hasattr(self, "_earcon_mgr"):
+                    self._earcon_mgr.play_alert()  # every refused GO is heard (W40)
                 return False
         return self._go_guard_allows()
 
@@ -93,6 +95,8 @@ class _TransportMixin:
         if guard_ms > 0 and last is not None and (now - last) * 1000.0 < guard_ms:
             self._status_label.setText(f"GO ignorato: secondo GO entro {guard_ms} ms")
             logger.info("[GO] Ignored second GO within %d ms", guard_ms)
+            if hasattr(self, "_earcon_mgr"):
+                self._earcon_mgr.play_alert()
             return False
         self._last_go_at = now
         return True
@@ -475,6 +479,8 @@ class _TransportMixin:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
         first_stopped = self._stopped_manual_go_index()
         self._undo_go_end()
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_stop()
         self._live_phase_tags.clear()
         ShowEngine.demote_all_live(self._cues)
         self._refresh_cue_list()

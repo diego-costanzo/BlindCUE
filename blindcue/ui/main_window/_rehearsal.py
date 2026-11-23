@@ -54,10 +54,25 @@ class _RehearsalMixin:
         for tabs in (self._mode_tabs, panel.mode_tabs):
             tabs.rehearsal_requested.connect(self._enter_rehearsal)
             tabs.preparation_requested.connect(lambda: self.set_live_mode(False))
+            for hold in (tabs.tab_prep_hold, tabs.tab_reh_hold):
+                hold.released_early.connect(self._hold_longer)
+
+    def _hold_longer(self) -> None:
+        """A tab of the show let go too early: say so instead of nothing happening (W29)."""
+        self._status_label.setText(tr("Tieni premuto più a lungo (1,5 s) per uscire dallo spettacolo"))
+        self.announce(self._status_label.text(), assertive=True)
 
     # ── Modes ─────────────────────────────────────────────────────────
     def _apply_mode_visuals(self) -> None:
         mode = self._current_mode()
+        before = getattr(self, "_mode_shown", "preparation")
+        self._mode_shown = mode
+        if hasattr(self, "_earcon_mgr") and mode != before:
+            # Into the show three notes up, out of it three down (W41).
+            if mode == "show":
+                self._earcon_mgr.play_enter_show()
+            elif before == "show":
+                self._earcon_mgr.play_exit_show()
         self._mode_tabs.set_mode(mode)
         self._live_show_panel.mode_tabs.set_mode(mode)
         self._live_show_panel.set_rehearsal(self._live_mode and self._rehearsal)

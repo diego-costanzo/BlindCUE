@@ -60,6 +60,7 @@ class HoldProgressButton(QPushButton):
 
     hold_completed = Signal()
     toggled_state = Signal(bool)
+    released_early = Signal()   # let go before the hold was complete (say "hold longer", W29)
 
     def __init__(
         self,
@@ -206,6 +207,40 @@ class HoldProgressButton(QPushButton):
         self._cancel_hold()
         super().leaveEvent(event)
 
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        """Enter held on the focused button works like holding the mouse (W30); repeats are ignored."""
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.isEnabled():
+            if not event.isAutoRepeat() and not self._is_pressed:
+                self._begin_hold()
+            event.accept()
+            return
+        super().keyPressEvent(event)
+
+    def keyReleaseEvent(self, event) -> None:  # noqa: N802
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            if not event.isAutoRepeat():
+                self._cancel_hold()
+            event.accept()
+            return
+        super().keyReleaseEvent(event)
+
+    def _begin_hold(self) -> None:
+        if self._is_toggle and self._is_active and self._deactivate_hold_ms == 0:
+            self._is_active = False
+            self._cancel_hold()
+            self.toggled_state.emit(False)
+            self.update()
+            return
+        self._is_pressed = True
+        self._press_start_mono = time.monotonic()
+        self._progress = 0.0
+        if self._is_toggle and self._is_active and self._deactivate_hold_ms > 0:
+            self._current_hold_ms = self._deactivate_hold_ms
+        else:
+            self._current_hold_ms = self._hold_ms
+        self._timer.start()
+        self.update()
+
     def mousePressEvent(self, event) -> None:  # noqa: N802
         """Start the hold countdown (or relock an already active toggle instantly)."""
         if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
@@ -241,6 +276,8 @@ class HoldProgressButton(QPushButton):
 
     def _cancel_hold(self) -> None:
         if self._is_pressed or self._timer.isActive():
+            if self._is_pressed and self._progress < 1.0:
+                self.released_early.emit()
             self._is_pressed = False
             self._timer.stop()
             self._progress = 0.0
@@ -339,7 +376,10 @@ class HoldProgressButton(QPushButton):
         rem_s = max(0.0, (1.0 - self._progress) * (self._current_hold_ms / 1000.0))
 
         if self._progress > 0.0:
-            txt_col = QColor("#ffffff")
+            fill = QColor(self._fill_color)
+            lum = 0.2126 * fill.redF() ** 2.2 + 0.7152 * fill.greenF() ** 2.2 + 0.0722 * fill.blueF() ** 2.2
+            # Contrast with white is 1.05 / (lum + 0.05), with black (lum + 0.05) / 0.05.
+            txt_col = QColor("#000000") if (lum + 0.05) / 0.05 > 1.05 / (lum + 0.05) else QColor("#ffffff")
 
         raw_text = tr(self._text_active if self._is_active else self._text_idle)
         lines = raw_text.split("\n")

@@ -164,6 +164,8 @@ class DeviceManager(QObject):
         if self._earcon_mgr is not None and self._monitor_device is not None:
             if hasattr(self._earcon_mgr, "set_audio_device"):
                 self._earcon_mgr.set_audio_device(self._monitor_device)
+        if self._earcon_mgr is not None and hasattr(self._earcon_mgr, "set_master_device"):
+            self._earcon_mgr.set_master_device(self._master_device)
 
     def register_output_window(self, output_window: Any | None) -> None:
         """Register output window to receive screen routing updates."""
@@ -225,6 +227,9 @@ class DeviceManager(QObject):
         for p in self._live_players:
             if hasattr(p, "set_audio_device"):
                 p.set_audio_device(device)
+        earcons = getattr(self, "_earcon_mgr", None)
+        if earcons is not None and hasattr(earcons, "set_master_device"):
+            earcons.set_master_device(device)  # earcons never on the audience speakers
         desc = self._device_label(device)
         logger.info("[DEVICE-MGR] Master audio device updated to '%s'", desc)
         self.master_device_changed.emit(desc)

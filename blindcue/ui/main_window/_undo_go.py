@@ -184,7 +184,7 @@ class _UndoGoMixin:
         logger.info("[UNDO-GO] %s: %s", first_ref, preview)
         self._undo_go_end()
         if hasattr(self, "_earcon_mgr"):
-            self._earcon_mgr.play_stop()
+            self._earcon_mgr.play_undo()
         self._refresh_cue_list(keep_selection=False)
         if row >= 0:
             self._cue_list.setCurrentRow(row)  # the GO points back at its first cue

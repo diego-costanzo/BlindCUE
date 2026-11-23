@@ -308,6 +308,8 @@ class _WindowSetupMixin:
                 "⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue"
             )
             logger.warning("[FOCUS] Director window lost keyboard focus during LIVE")
+            if hasattr(self, "_earcon_mgr"):
+                self._earcon_mgr.play_alert()  # heard while looking at the stage (W41)
         else:
             logger.info("[FOCUS] Keyboard back on the director window")
 

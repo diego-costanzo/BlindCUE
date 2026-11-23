@@ -103,6 +103,7 @@ from engine.show_engine import ShowEngine
 from engine.show_scheduler import ScheduledWindow, ShowScheduler
 from engine.sleep_inhibitor import SleepInhibitor
 from engine import undo_go
+from i18n import tr as main_win_tr
 from models.cue import (
     ACTION_CHECKLIST,
     ACTION_FADE,
@@ -1137,7 +1138,11 @@ def main() -> int:
                 c.status = CueStatus.LOADED
             main_win._reset_live_label(layer)
             main_win._refresh_cue_list()
-            main_win._status_label.setText(f"ATTENZIONE: Errore Live L{layer} ({err_msg})")
+            name = f" '{c.name}'" if c is not None else ""
+            main_win._status_label.setText(
+                main_win_tr("⚠ Impossibile riprodurre{} (L{}): file mancante, danneggiato o non supportato").format(
+                    name, layer))
+            main_win._status_label.setToolTip(err_msg)  # Qt's own words stay in the tooltip
         except Exception as exc:
             logger.error("[MAIN] Error during live fallback recovery on L%d: %s", layer, exc)
 

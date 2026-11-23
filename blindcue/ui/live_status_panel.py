@@ -394,12 +394,12 @@ class _LiveLayerBar(QWidget):
                 p.fillPath(clip_path, QColor("#16171b"))
                 p.setPen(QPen(QColor("#2c2d36"), 1))
                 p.drawPath(clip_path)
-                p.setPen(QColor("#71717a"))
+                p.setPen(QColor("#a1a1aa"))
             else:
                 p.fillPath(clip_path, QColor("#22262e"))
                 p.setPen(QPen(QColor("#4b5563"), 1))
                 p.drawPath(clip_path)
-                p.setPen(QColor("#7b8494"))
+                p.setPen(QColor("#94a3b8"))
             p.setFont(QFont("sans-serif", 10))
             p.drawText(rect.adjusted(10, 0, -10, 0), Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, f"{self._label}: —")
             p.end()
@@ -439,8 +439,8 @@ class _LiveLayerBar(QWidget):
                 edge_clr = QColor("#d4d4d8") if self._is_paused else QColor("#ffffff")
             else:
                 if self._is_paused:
-                    grad.setColorAt(0.0, QColor(180, 120, 12, 95))
-                    grad.setColorAt(1.0, QColor(245, 158, 11, 145))
+                    grad.setColorAt(0.0, QColor(180, 120, 12, 55))
+                    grad.setColorAt(1.0, QColor(245, 158, 11, 70))
                     edge_clr = QColor("#fbbf24")
                 elif self._phase == "PRE":
                     grad.setColorAt(0.0, QColor(14, 116, 144, 110))
@@ -451,8 +451,8 @@ class _LiveLayerBar(QWidget):
                     grad.setColorAt(1.0, QColor(192, 132, 252, 155))
                     edge_clr = QColor("#d8b4fe")
                 else:
-                    grad.setColorAt(0.0, QColor(16, 115, 54, 105))
-                    grad.setColorAt(1.0, QColor(0, 230, 118, 150))
+                    grad.setColorAt(0.0, QColor(16, 115, 54, 55))
+                    grad.setColorAt(1.0, QColor(0, 230, 118, 70))
                     edge_clr = QColor("#69f0ae")
             p.fillRect(QRectF(0.0, 0.0, fill_w, float(h)), grad)
             p.setPen(QPen(edge_clr, 2.0))

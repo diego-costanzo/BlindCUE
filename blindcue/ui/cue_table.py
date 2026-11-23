@@ -74,9 +74,9 @@ def paint_live_progress(painter: QPainter, rect: QRect, fraction: float, warn: b
 
 # Broadcast Default Media Badges (Obsidian Slate / Deep Indigo)
 _MEDIA_BADGE_BROADCAST = {
-    "VIDEO": ("VID", QColor("#0284c7"), QColor("#e0f2fe"), None),
-    "AUDIO": ("AUD", QColor("#0d9488"), QColor("#ccfbf1"), None),
-    "IMAGE": ("IMG", QColor("#d97706"), QColor("#fef3c7"), None),
+    "VIDEO": ("VID", QColor("#0369a1"), QColor("#ffffff"), None),
+    "AUDIO": ("AUD", QColor("#0f766e"), QColor("#f0fdfa"), None),
+    "IMAGE": ("IMG", QColor("#b45309"), QColor("#ffffff"), None),
     "GROUP": ("GRP", QColor("#6d28d9"), QColor("#ede9fe"), None),
     "ACTION": ("ACT", QColor("#be123c"), QColor("#ffe4e6"), None),
 }

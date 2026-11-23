@@ -26,6 +26,7 @@ SPEAKERS = "speakers"
 MEDIA = "media"
 POWER = "power"
 CHECKLIST = "checklist"
+EARCONS = "earcons"
 SHOW = "show"
 
 # Items of the checklist a new show starts with (Italian source; stored in
@@ -61,6 +62,8 @@ class Facts:
     power: tuple[bool, int] | None = None  # (on battery, percent); None = no battery
     checklist: tuple[int, int] | None = None  # (ticked, items); None = the show has none
     show_name: str = ""
+    earcons_on: bool = False            # operator sounds switched on
+    headphones: bool = False            # a monitor output other than the audience speakers
 
 
 @dataclass(frozen=True)
@@ -109,6 +112,12 @@ def checks(f: Facts) -> list[Check]:
     else:
         done, total = f.checklist
         rows.append(Check(CHECKLIST, OK if done >= total else PROBLEM, {"done": done, "total": total}))
+
+    # Operator sounds: offered when headphones are there, said when they keep quiet (W42, W44).
+    if f.headphones and not f.earcons_on:
+        rows.append(Check(EARCONS, INFO, {"offer": True}))
+    elif f.earcons_on and not f.headphones:
+        rows.append(Check(EARCONS, INFO, {"silent": True}))
 
     rows.append(Check(SHOW, INFO, {"name": f.show_name}))
     return rows

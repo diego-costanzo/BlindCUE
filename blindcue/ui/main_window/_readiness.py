@@ -18,6 +18,7 @@ from pathlib import Path
 from engine.readiness import (
     CHECKLIST,
     DEFAULT_CHECKLIST,
+    EARCONS,
     DEFAULT_CHECKLIST_NAME,
     MEDIA,
     OK,
@@ -126,6 +127,8 @@ class _ReadinessMixin:
             missing_dev = dm.missing_audio_name("master")
         else:
             speakers, pinned, missing_dev = QMediaDevices.defaultAudioOutput().description(), False, None
+        earcons = getattr(self, "_earcon_mgr", None)
+        headphones = earcons is not None and not earcons.on_audience_speakers()
         with_files = [(i, c) for i, c in enumerate(self._cues) if c.media_type.has_file]
         missing = tuple(f"{format_cue_ref(i, c)} '{c.name}'" for i, c in with_files
                         if not os.path.isfile(c.file_path or ""))
@@ -147,6 +150,7 @@ class _ReadinessMixin:
             heard=self._readiness_heard, playing=playing,
             missing=missing, media_total=len(with_files),
             power=power_status(), checklist=checklist, show_name=show,
+            earcons_on=bool(earcons is not None and earcons.enabled), headphones=headphones,
         )
 
     def _readiness_view(self, check: Check) -> RowView:
@@ -209,6 +213,13 @@ class _ReadinessMixin:
                 ticked=set(getattr(self, "_checklist_ticks", {}).get(cue.cue_id, set())) if cue else set(),
                 cue_id=cue.cue_id if cue else -1,
             )
+        if check.key == EARCONS:
+            if v.get("offer"):
+                return RowView(EARCONS, check.state, tr(
+                    "Cuffie collegate: i suoni per la regia sono spenti (GO, blocchi, cambio di modalità)"),
+                    [(tr("Accendi"), "earcons_on")])
+            return RowView(EARCONS, check.state, tr(
+                "I suoni per la regia tacciono: le cuffie sono le casse del pubblico"))
         changes = len(self._rehearsal_changes())
         if changes:
             return RowView(SHOW, check.state, tr("Spettacolo: {} · modifiche della prova: {}").format(
@@ -375,6 +386,11 @@ class _ReadinessMixin:
                 self._on_readiness_stay()  # files are replaced in Preparation
             if row >= 0 and not self._live_mode:
                 self._cue_list.setCurrentRow(row)
+        elif action == "earcons_on":
+            self._set_earcons_enabled(True)
+            if hasattr(self, "_act_earcons"):
+                self._act_earcons.setChecked(True)
+            self._readiness_refresh()
         elif action == "review_changes":
             self._review_rehearsal_changes()
         elif action == "add_checklist":
