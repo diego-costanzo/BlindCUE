@@ -738,6 +738,7 @@ class LiveShowPanel(QWidget):
     fade_all_requested = Signal()
     break_loop_requested = Signal()
     double_click_armed = Signal(int)
+    force_row_requested = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -847,8 +848,8 @@ class LiveShowPanel(QWidget):
         self.btn_fade_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_fade_all.setFixedHeight(34)
         self.btn_fade_all.setToolTip(
-            "Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme "
-            "(1 s), poi si fermano. Il prossimo GO riparte dalla prima cue fermata."
+            "Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme, "
+            "poi si fermano. Il prossimo GO riparte dalla cue avviata a mano che è stata fermata."
         )
         self.btn_fade_all.setStyleSheet(
             "QPushButton { background-color: #78350f; color: #ffffff; border: 2px solid #f59e0b; "
@@ -937,7 +938,7 @@ class LiveShowPanel(QWidget):
         self.live_table.force_go_requested.connect(self.force_go_requested)
         self.live_table.panic_requested.connect(self.panic_requested)
         self.live_table.standby_selected.connect(self.cue_row_clicked)
-        self.live_table.fire_row_requested.connect(self.cue_row_double_clicked)
+        self.live_table.fire_row_requested.connect(self.force_row_requested)
         self.live_table.group_collapse_toggled.connect(self.group_collapse_toggled)
         root.addWidget(self.live_table, stretch=1)
 
@@ -1174,7 +1175,7 @@ class LiveShowPanel(QWidget):
         A slip of the mouse must not start a cue during a show; GO, the
         right-click "GO Forzato" and ``live/double_click_fires`` still can.
         """
-        if row < 0:
+        if row < 0 or self._updating_table:
             return
         if live_double_click_fires():
             self.cue_row_double_clicked.emit(row)

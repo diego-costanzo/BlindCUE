@@ -29,8 +29,9 @@ def panel(qt_app):
     from ui.live_show_view import LiveShowPanel
 
     p = LiveShowPanel()
-    got: dict[str, list[int]] = {"armed": [], "clicked": [], "fire": []}
+    got: dict[str, list[int]] = {"armed": [], "clicked": [], "fire": [], "forced": []}
     p.double_click_armed.connect(got["armed"].append)
+    p.force_row_requested.connect(got["forced"].append)
     p.cue_row_clicked.connect(got["clicked"].append)
     p.cue_row_double_clicked.connect(got["fire"].append)
     p._got = got
@@ -40,7 +41,7 @@ def panel(qt_app):
 
 def test_double_click_arms_by_default(panel):
     panel._on_table_double_clicked(2, 1)
-    assert panel._got == {"armed": [2], "clicked": [2], "fire": []}
+    assert panel._got == {"armed": [2], "clicked": [2], "fire": [], "forced": []}
 
 
 def test_double_click_fires_when_opted_in(panel):
@@ -56,6 +57,14 @@ def test_double_click_fires_when_opted_in(panel):
     assert panel._got["armed"] == []
 
 
-def test_context_menu_force_go_still_fires(panel):
+def test_context_menu_force_go_is_its_own_signal(panel):
     panel.live_table.fire_row_requested.emit(3)
-    assert panel._got["fire"] == [3]
+    assert panel._got["forced"] == [3]
+    assert panel._got["fire"] == []
+
+
+def test_double_click_ignored_while_table_refreshes(panel):
+    panel._updating_table = True
+    panel._on_table_double_clicked(1, 0)
+    panel._updating_table = False
+    assert panel._got["armed"] == [] and panel._got["fire"] == []
