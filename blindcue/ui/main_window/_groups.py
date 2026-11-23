@@ -15,7 +15,7 @@ class _GroupsMixin:
     @Slot()
     def _on_add_group(self) -> None:
         """Create a new Group cue, wrapping any selected cues or inserting an empty group."""
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         sel_rows = self._selected_rows()
         sel_cues = [self._cues[r] for r in sel_rows if self._cues[r].media_type != MediaType.GROUP]
@@ -72,7 +72,7 @@ class _GroupsMixin:
     @Slot()
     def _ungroup_selected(self) -> None:
         """Dissolve the selected group (or parent of selected child), returning cues to root."""
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         anchor_row, cue = self._anchor_row_and_cue()
         if cue is None:
@@ -243,7 +243,7 @@ class _GroupsMixin:
     @Slot()
     def _on_open_group_timeline(self) -> None:
         """Open the dedicated 3-layer Studio Timeline Arranger Dialog for the selected group."""
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         anchor_row, cue = self._anchor_row_and_cue()
         if not cue:

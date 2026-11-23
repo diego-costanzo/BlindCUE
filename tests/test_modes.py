@@ -111,6 +111,57 @@ def test_end_show_menu_stays_by_default(window, monkeypatch):
     assert not window._act_end_show.isEnabled()
 
 
+def _fingerprint(win) -> str:
+    """The show document without runtime state (status, group folding)."""
+    import json
+
+    docs = []
+    for c in win._cues:
+        d = c.to_dict()
+        d.pop("status", None)
+        d.pop("collapsed", None)
+        docs.append(d)
+    return json.dumps(docs, sort_keys=True, default=str)
+
+
+def test_in_the_show_nothing_changes_the_document(window, tmp_path):
+    from models.cue import Cue, MediaType
+
+    media = tmp_path / "x.wav"
+    media.write_bytes(b"x")
+    window._cue_list.setCurrentRow(0)               # the top: no start question
+    window._inspector.slider_volume.setValue(13)    # an edit left in the hidden inspector
+    window.set_live_mode(True)
+    before = _fingerprint(window)
+
+    window._on_go()                                  # GO, autosave, save use to apply the inspector
+    window._auto_save()
+    window._on_remote_volume_change(0.2)            # phone remote level
+    window._on_delete_cue()
+    window._on_move_up()
+    window._on_undo()
+    window._on_add_group()
+    window._append_new_cue(Cue(name="new", media_type=MediaType.AUDIO, file_path=str(media)))
+    window._on_files_dropped_on_list([str(media)], 0)
+    assert _fingerprint(window) == before
+    assert "preparazione" in window._status_label.text()   # said why, not ignored in silence
+
+
+def test_in_preparation_the_same_edits_work(window, tmp_path):
+    from models.cue import Cue, MediaType
+
+    media = tmp_path / "x.wav"
+    media.write_bytes(b"x")
+    window._reset_undo_history()                    # the fixture's list is the starting point
+    before = _fingerprint(window)
+    window._append_new_cue(Cue(name="new", media_type=MediaType.AUDIO, file_path=str(media)))
+    assert _fingerprint(window) != before
+    window._on_undo()
+    assert _fingerprint(window) == before
+    window._on_remote_volume_change(0.4)            # in the editor the remote level edits the cue
+    assert abs(window._selected_cue().volume - 0.4) < 1e-6
+
+
 def test_pause_all_has_a_key(window):
     from PySide6.QtGui import QKeySequence
 

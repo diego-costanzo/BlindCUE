@@ -2016,4 +2016,10 @@ T: dict[str, str] = {
         'Back to preparation',
     'Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per 1,5 s oppure Ctrl+Maiusc+F5':
         'To leave the show: hold "○ Preparation" for 1.5 s or press Ctrl+Shift+F5',
+    'Nello spettacolo la scaletta non cambia: per modificarla torna alla preparazione (tieni premuto «○ Preparazione»)':
+        'In the show the list does not change: to edit it go back to preparation (hold "○ Preparation")',
+    'Nello spettacolo le cue non cambiano: per modificarle torna alla preparazione':
+        'In the show cues do not change: to edit them go back to preparation',
+    'Annulla non serve nello spettacolo: lo spettacolo non è stato cambiato':
+        'Undo is not needed in the show: the show has not been changed',
 }

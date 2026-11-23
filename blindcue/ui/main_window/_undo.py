@@ -119,7 +119,7 @@ class _UndoRedoMixin:
 
     @Slot()
     def _on_undo(self) -> None:
-        if self._live_mode:
+        if not self._change_allowed(UNDO):
             return
         if self._undo.is_debounce_active():
             self._commit_undo_point()
@@ -134,7 +134,7 @@ class _UndoRedoMixin:
 
     @Slot()
     def _on_redo(self) -> None:
-        if self._live_mode:
+        if not self._change_allowed(UNDO):
             return
         nxt = self._undo.pop_redo(self._cues, self._current_row_or_index())
         if nxt is None:

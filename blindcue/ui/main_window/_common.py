@@ -41,6 +41,7 @@ from engine.audio_analyzer import (
 )
 from engine.earcon import EarconManager
 from engine.live_state import LiveClocks, ends_soon, short_time_text
+from engine.show_mode import EDIT_CUE, EDIT_LIST, UNDO
 from engine.envelope import (
     evaluate_cue_level,
     merge_section_at,

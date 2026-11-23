@@ -79,6 +79,11 @@ class _InspectorMixin:
             self._mirror_active_cue_to_live()
 
     def _apply_inspector_to_cue(self) -> None:
+        # In the show the inspector is hidden and the document must not change:
+        # GO, autosave and save used to write its (stale) values into the
+        # selected cue.
+        if self._live_mode:
+            return
         sel_cues = self._selected_cues()
         if len(sel_cues) != 1:
             return

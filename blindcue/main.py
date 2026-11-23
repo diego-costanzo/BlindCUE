@@ -1217,7 +1217,8 @@ def main() -> int:
         for layer, c in active_live_cues.items():
             if c.cue_id == selected.cue_id and layer in live_players:
                 live_players[layer].set_volume(effective_vol_int)
-                selected.volume = vol / 100.0
+                if not main_win.is_live_mode():  # in the show only the player changes
+                    selected.volume = vol / 100.0
                 logger.debug("[MAIN] Live L%d volume adjusted to %d%% (eff %d%%) for cue '%s'", layer, vol, effective_vol_int, selected.name)
                 return
         mirror_layer = _effective_layer(selected)

@@ -44,6 +44,8 @@ class _CueManipMixin:
         See ``insert_position``: a cue tied to the next one (Simultaneous,
         Auto-GO, a group) gets the new cue after the end of its chain or group.
         """
+        if not self._change_allowed(EDIT_LIST):
+            return
         errors = cue.validate()
         if errors:
             QMessageBox.warning(self, "Validation Error", "\n".join(errors))
@@ -136,7 +138,7 @@ class _CueManipMixin:
         Below the last row they go to the end. Each new cue becomes the
         selected one, so several files keep the order they were dropped in.
         """
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         media = [p for p in paths if self._detect_media_type(p) is not None]
         skipped = [os.path.basename(p) for p in paths if p not in media]
@@ -189,19 +191,19 @@ class _CueManipMixin:
 
     @Slot()
     def _on_move_up(self) -> None:
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         self._move_selected_cue(-1)
 
     @Slot()
     def _on_move_down(self) -> None:
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         self._move_selected_cue(1)
 
     @Slot()
     def _on_delete_cue(self) -> None:
-        if self._live_mode:
+        if not self._change_allowed(EDIT_LIST):
             return
         focus_w = QApplication.focusWidget()
         if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox, QPlainTextEdit)):

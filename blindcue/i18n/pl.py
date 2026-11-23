@@ -2238,4 +2238,10 @@ T: dict[str, str] = {
         'Wróć do przygotowania',
     'Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per 1,5 s oppure Ctrl+Maiusc+F5':
         'Aby wyjść z przedstawienia: przytrzymaj „○ Przygotowanie” przez 1,5 s albo Ctrl+Shift+F5',
+    'Nello spettacolo la scaletta non cambia: per modificarla torna alla preparazione (tieni premuto «○ Preparazione»)':
+        'W przedstawieniu lista się nie zmienia: aby ją edytować, wróć do przygotowania (przytrzymaj „○ Przygotowanie”)',
+    'Nello spettacolo le cue non cambiano: per modificarle torna alla preparazione':
+        'W przedstawieniu cue się nie zmieniają: aby je edytować, wróć do przygotowania',
+    'Annulla non serve nello spettacolo: lo spettacolo non è stato cambiato':
+        'Cofanie nie jest potrzebne w przedstawieniu: pokaz nie został zmieniony',
 }

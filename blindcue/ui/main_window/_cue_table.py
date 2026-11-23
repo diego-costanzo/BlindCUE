@@ -319,6 +319,26 @@ class _CueTableMixin:
         if box.clickedButton() is not stay:
             self.set_live_mode(False)
 
+    def _current_mode(self) -> str:
+        from engine.show_mode import PREPARATION, SHOW
+
+        return SHOW if self._live_mode else PREPARATION
+
+    def _change_allowed(self, change: str) -> bool:
+        """Policy gate at every point that would change the show document.
+
+        Blocked changes say why on the status line (with the alert earcon)
+        instead of being ignored in silence.
+        """
+        from engine.show_mode import BLOCKED_MESSAGES, allows
+
+        if allows(self._current_mode(), change):
+            return True
+        self._status_label.setText(BLOCKED_MESSAGES.get(change, ""))
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_alert()
+        return False
+
     def _show_running(self) -> bool:
         """Something plays or waits for its start (pre-delay, Auto-GO).
 

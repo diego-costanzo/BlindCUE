@@ -288,11 +288,21 @@ class _RemoteMixin:
 
     @Slot(float)
     def _on_remote_volume_change(self, vol: float) -> None:
-        """Adjust volume from OSC or Web remote."""
+        """Adjust volume from OSC or Web remote.
+
+        In the show it changes only what plays (the player level), never the
+        cue in the document.
+        """
         cue = self._selected_cue()
         if cue:
-            cue.volume = max(0.0, min(1.0, vol))
-            self._inspector.spin_volume.setValue(int(cue.volume * 100))
+            level = max(0.0, min(1.0, vol))
+            if self._live_mode:
+                self.live_volume_changed.emit(int(round(level * 100)))
+            else:
+                cue.volume = level
+                # (it named a non-existent spin_volume: a remote level change in
+                # the editor raised AttributeError)
+                self._inspector.slider_volume.setValue(int(round(cue.volume * 100)))
             if self._remote_mgr:
                 self._remote_mgr.trigger_state_broadcast()
 
