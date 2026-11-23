@@ -47,9 +47,13 @@ from engine.envelope import (
     split_sections_at,
 )
 from engine.show_engine import (
+    START_FROM_TOP,
+    START_RESUME,
+    START_SELECTED,
     ShowEngine,
     chain_indices,
     demote_live_on_layer as _demote_live_on_layer,
+    live_start_choices,
 )
 from models.cue import (
     Cue,
@@ -101,7 +105,7 @@ from ui.hardware_info import (
     show_about_dialog,
     show_hardware_info_dialog,
 )
-from ui.hold_button import HoldProgressButton
+from ui.hold_button import ElidedButton, HoldProgressButton
 from ui.inspector_panel import CueInspectorPanel
 from ui.live_show_view import LiveShowPanel
 from ui.live_status_panel import LiveStatusPanel

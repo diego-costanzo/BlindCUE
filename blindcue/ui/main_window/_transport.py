@@ -116,16 +116,18 @@ class _TransportMixin:
 
         self._apply_inspector_to_cue()
 
-        row, _ = self._anchor_row_and_cue()
-        if 0 <= row < len(self._cues):
-            target_idx = row
-        elif 0 <= self._current_index < len(self._cues):
-            target_idx = self._current_index
-        else:
-            target_idx = 0
-
+        target_idx = self._go_target_index()
         self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
+
+    def _go_target_index(self) -> int:
+        """Row the next GO fires: the selected one, else the last fired, else the top."""
+        row, _ = self._anchor_row_and_cue()
+        if 0 <= row < len(self._cues):
+            return row
+        if 0 <= self._current_index < len(self._cues):
+            return self._current_index
+        return 0
 
     def _remember_manual_go(self, idx: int) -> None:
         """Note the cue an operator started by hand (GO, remote, forced start).

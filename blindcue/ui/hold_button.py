@@ -1,7 +1,8 @@
-"""Specialized PushButton with continuous-hold safety progress animation.
+"""Specialized PushButtons: continuous-hold safety progress, elided text.
 
-Designed for high-stakes broadcast and live theater environments to prevent
-accidental clicks on critical actions (Jam Mode global gain, layer unlock, layer cuts).
+The hold button is designed for high-stakes broadcast and live theater
+environments to prevent accidental clicks on critical actions (Jam Mode global
+gain, layer unlock, layer cuts).
 """
 
 import time
@@ -17,9 +18,41 @@ from PySide6.QtGui import (
     QPaintEvent,
     QPen,
 )
-from PySide6.QtWidgets import QPushButton, QWidget
+from PySide6.QtWidgets import QPushButton, QSizePolicy, QWidget
 
 from i18n import tr
+
+
+class ElidedButton(QPushButton):
+    """Push button that elides a long text to its width instead of widening the layout."""
+
+    def __init__(self, text: str = "", parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        policy = self.sizePolicy()
+        policy.setHorizontalPolicy(QSizePolicy.Policy.Ignored)
+        self.setSizePolicy(policy)
+        self._full_text = ""
+        self.set_full_text(text)
+
+    def full_text(self) -> str:
+        """The whole (translated) text, before eliding."""
+        return self._full_text
+
+    def set_full_text(self, text: str) -> None:
+        self._full_text = tr(text)
+        self._apply_elide()
+
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        super().resizeEvent(event)
+        self._apply_elide()
+
+    def _apply_elide(self) -> None:
+        avail = self.width() - 24
+        shown = self._full_text
+        if avail > 0:
+            shown = self.fontMetrics().elidedText(shown, Qt.TextElideMode.ElideRight, avail)
+        if self.text() != shown:
+            super().setText(shown)
 
 
 class HoldProgressButton(QPushButton):

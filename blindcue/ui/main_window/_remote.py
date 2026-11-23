@@ -168,13 +168,7 @@ class _RemoteMixin:
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_go()
         self._apply_inspector_to_cue()
-        row, _ = self._anchor_row_and_cue()
-        if 0 <= row < len(self._cues):
-            target_idx = row
-        elif 0 <= self._current_index < len(self._cues):
-            target_idx = self._current_index
-        else:
-            target_idx = 0
+        target_idx = self._go_target_index()
         self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
         if self._remote_mgr:
@@ -386,6 +380,7 @@ class _RemoteMixin:
             self._live_show_panel.set_global_paused(paused)
 
     def _sync_live_view(self) -> None:
+        self._update_go_button_text()
         if not hasattr(self, "_live_show_panel"):
             return
         standby_row, _ = self._anchor_row_and_cue()

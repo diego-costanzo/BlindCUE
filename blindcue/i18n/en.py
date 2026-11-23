@@ -1936,4 +1936,16 @@ T: dict[str, str] = {
         '? cue deleted from the list',
     'Stop: {}':
         'Stop: {}',
+    'GO: avvia la cue indicata sul pulsante [SPAZIO]':
+        'GO: starts the cue named on the button [SPACE]',
+    'Da dove parte lo spettacolo?':
+        'Where does the show start?',
+    "Il GO non partirebbe dall'inizio né dal punto in cui avevi lasciato LIVE.\nDa quale cue deve partire?":
+        'GO would start neither from the top nor where you left LIVE.\nWhich cue should it start from?',
+    "Dall'inizio: {}":
+        'From the top: {}',
+    'Riprendi da: {}':
+        'Resume from: {}',
+    'Dalla cue selezionata: {}':
+        'From the selected cue: {}',
 }

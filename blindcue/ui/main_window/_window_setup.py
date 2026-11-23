@@ -162,6 +162,20 @@ class _WindowSetupMixin:
                 QPushButton:pressed {{ background-color: #00c853; }}
             """)
 
+    def _update_go_button_text(self) -> None:
+        """The design-view GO names the cue it will fire (its target is the selection)."""
+        btn = getattr(self, "_btn_go", None)
+        if btn is None:
+            return
+        if self._cues:
+            row = self._go_target_index()
+            text = f"GO ▶ {format_cue_ref(row, self._cues[row])}  {self._cues[row].name}"
+        else:
+            text = "GO (Next Cue) — [ SPAZIO ]"
+        if text != getattr(self, "_go_button_source", None):
+            self._go_button_source = text
+            btn.set_full_text(text)
+
     def _set_earcons_enabled(self, enabled: bool) -> None:
         """Enable or disable auditory accessibility guidance chimes and persist setting."""
         if hasattr(self, "_earcon_mgr"):

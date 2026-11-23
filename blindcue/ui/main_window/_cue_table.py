@@ -201,6 +201,15 @@ class _CueTableMixin:
         enabled = bool(enabled)
         if self._live_mode == enabled:
             return
+        if enabled and not self._confirm_live_start():
+            if hasattr(self, "_act_live_mode"):
+                self._act_live_mode.blockSignals(True)
+                self._act_live_mode.setChecked(False)
+                self._act_live_mode.blockSignals(False)
+            return
+        if not enabled and self._cues:
+            # Where the show was left: coming back to LIVE continues from here.
+            self._live_resume_id = self._cues[self._go_target_index()].cue_id
         self._live_mode = enabled
         if hasattr(self, "_act_live_mode"):
             self._act_live_mode.blockSignals(True)
@@ -219,6 +228,58 @@ class _CueTableMixin:
             self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
         if hasattr(self, "_update_focus_warning"):
             self._update_focus_warning()
+
+    def _show_running(self) -> bool:
+        """Something plays or waits for its start (pre-delay, Auto-GO)."""
+        return any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags)
+
+    def _confirm_live_start(self) -> bool:
+        """Ask where the GO starts when it would not continue where the show was.
+
+        GO fires the selected cue, so a cue fixed in the editor would otherwise
+        open the show. Returns False when the operator cancels: LIVE stays off.
+        """
+        resume_id = getattr(self, "_live_resume_id", None)
+        resume_row = next(
+            (i for i, c in enumerate(self._cues) if c.cue_id == resume_id), None
+        ) if resume_id is not None else None
+        choices = live_start_choices(
+            len(self._cues), self._go_target_index(), resume_row, self._show_running()
+        )
+        if not choices:
+            return True
+        labels = {
+            START_FROM_TOP: "Dall'inizio: {}",
+            START_RESUME: "Riprendi da: {}",
+            START_SELECTED: "Dalla cue selezionata: {}",
+        }
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Icon.Question)
+        box.setWindowTitle("Da dove parte lo spettacolo?")
+        box.setText(
+            "Il GO non partirebbe dall'inizio né dal punto in cui avevi lasciato LIVE.\n"
+            "Da quale cue deve partire?"
+        )
+        rows: dict[object, int] = {}
+        for kind, row in choices:
+            cue = self._cues[row]
+            btn = box.addButton(
+                labels[kind].format(f"{format_cue_ref(row, cue)} '{cue.name}'"),
+                QMessageBox.ButtonRole.AcceptRole,
+            )
+            btn.setMinimumHeight(36)
+            rows[btn] = row
+            if len(rows) == 1:
+                box.setDefaultButton(btn)
+        box.addButton(QMessageBox.StandardButton.Cancel)
+        box.exec()
+        row = rows.get(box.clickedButton())
+        if row is None:
+            logger.info("[LIVE] Entering LIVE cancelled at the start question")
+            return False
+        logger.info("[LIVE] Show starts from row %d (#%d)", row, self._cues[row].cue_id)
+        self._cue_list.setCurrentRow(row)
+        return True
 
     @Slot()
     def toggle_live_mode(self) -> None:
