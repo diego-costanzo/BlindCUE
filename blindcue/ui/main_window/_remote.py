@@ -563,7 +563,11 @@ class _RemoteMixin:
     def promote_cue_to_live(self, cue: Cue) -> None:
         """Promote a cue to LIVE status once its Pre-Delay completes."""
         self._live_phase_tags.pop(cue.cue_id, None)
-        ShowEngine.promote_to_live(self._cues, cue, dual_active=self._dual_output_active)
+        if getattr(cue, "adlib", False) and cue.cue_id in self._slot_override:
+            cue.status = CueStatus.LIVE  # an effect on a spare player demotes nothing
+        else:
+            ShowEngine.promote_to_live(self._cues, cue, dual_active=self._dual_output_active,
+                                       exclude_ids=set(self._slot_override))
         self._update_live_layer_label(cue)
         self._refresh_cue_list(keep_selection=True)
         self._sync_live_view()
@@ -772,6 +776,8 @@ class _RemoteMixin:
     def _refresh_cue_list(self, keep_selection: bool = True,
                           select_row: int | None = None) -> None:
         """Rebuild the 3-column table from the cue list with progressive row numbers."""
+        if getattr(self, "_effects_on", False):
+            self._effects_sync()  # an effect edited in the rehearsal: its key and tile now
         self._layer_conflicts = detect_layer_conflicts(
             self._cues, dual_active=self._dual_output_active
         )

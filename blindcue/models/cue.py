@@ -472,6 +472,10 @@ class Cue:
     follow_mode: str = FollowMode.MANUAL.value
     exclusive: bool = False  # while LIVE, a manual GO is refused (Ctrl+GO forces it)
     confirm_start: bool = False  # starts only after an OK (keyboard, phone): the director's sign
+    fade_others: float = 0.0     # on start, what else plays (sound) fades out over this many s (1.16)
+    adlib: bool = False          # an effect on demand: outside the GO order, started by its key or tile (1.7)
+    hotkey: str = ""             # one letter or digit (several cues on one key = steps)
+    hotkey_mode: str = "trigger"  # trigger | toggle | note (plays while the key is held)
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
     parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
@@ -663,6 +667,10 @@ class Cue:
             "follow_mode": self.follow_mode,
             "exclusive": self.exclusive,
             "confirm_start": self.confirm_start,
+            "fade_others": self.fade_others,
+            "adlib": self.adlib,
+            "hotkey": self.hotkey,
+            "hotkey_mode": self.hotkey_mode,
             "color": _sanitize_hex_color(self.color),
             "parent_id": self.parent_id,
             "group_mode": self.group_mode,
@@ -745,6 +753,11 @@ class Cue:
             post_delay=_safe_float(data.get("post_delay", 0.0), 0.0, min_val=0.0),
             exclusive=bool(data.get("exclusive", False)),
             confirm_start=bool(data.get("confirm_start", False)),
+            fade_others=max(0.0, float(data.get("fade_others", 0.0) or 0.0)),
+            adlib=bool(data.get("adlib", False)),
+            hotkey=str(data.get("hotkey", "") or "")[:1].upper(),
+            hotkey_mode=str(data.get("hotkey_mode", "trigger") or "trigger")
+            if str(data.get("hotkey_mode", "trigger")) in ("trigger", "toggle", "note") else "trigger",
             follow_mode=(
                 data.get("follow_mode", FollowMode.MANUAL.value)
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES

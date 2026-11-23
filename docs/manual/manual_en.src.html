@@ -257,6 +257,7 @@ Easiest: click on the wave in the Waveform panel, then
 <b>Reset IN/OUT</b> brings back the whole file. Videos are trimmed the same way.</li>
 <li><b>Loop cue</b> – tick it and choose the number of repeats or "forever"
 (e.g. background music during the interval).</li>
+<!--IF:fade_others--><li><b>On start, fade the others</b> (<b>3 · Timing</b> card, outside the basic view) – when this cue starts, the other sounds and videos on air fade out over the given seconds. A change of music with one cue: the old music on the same layer fades out instead of being cut (meanwhile the new one plays on a free player). 0 = no.</li><!--/IF:fade_others-->
 <li><b>Split</b> – divides the file into sections A, B, C… (e.g. verse / chorus). Each section
 can repeat; <b>Exit Loop</b> moves on to the next one.</li>
 <li><b>Loudness levelling (EBU R128)</b>: <b>Analyse</b> measures how loud the track is and
@@ -423,6 +424,7 @@ the next cue waits for your GO (an actor is late, say) – <b>Pause All</b> woul
 top of the column, <b>Output preview</b> shows what the audience sees, small (up to 5 frames a second); <b>▾</b>
 folds it, and this computer remembers that.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Notes and checklists of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.<!--IF:now_playing--> During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.<!--/IF:now_playing--></li><!--/IF:action_cues-->
+<!--IF:effects--><li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b> or <b>Plays while the key is held</b>. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li><!--/IF:effects-->
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
 <!--IFNOT:mode_tabs--><li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Back to preparation</b>: hold the <b>○ Preparation</b> tab for 1.5 s or use <b>Show → End the show…</b> (<kbd>Ctrl+Shift+F5</kbd>); whatever plays keeps playing. <kbd>F5</kbd> and <kbd>Ctrl+L</kbd> only enter – a stray key press never takes you out of the show. Alt+F4 during a show asks first.</li><!--/IF:mode_tabs-->
 </ol>
@@ -479,6 +481,7 @@ round masks and cut-outs. Assign a cue to a surface in the Inspector
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (in LIVE mode)<!--/IFNOT:esc_everywhere-->: twice within 0.6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>fade all (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Space</kbd></td><td>forced GO – also while an exclusive cue plays</td></tr><!--/IF:exclusive-->
+<!--IF:effects--><tr><td><kbd>A</kbd>–<kbd>Z</kbd>, <kbd>0</kbd>–<kbd>9</kbd></td><td>effects on demand (in the rehearsal and the show, the key set in the cue)</td></tr><tr><td><kbd>Ctrl+R</kbd></td><td>repeat the last effect</td></tr><!--/IF:effects-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (cover)</td></tr>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>group / ungroup</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>move cue</td></tr>

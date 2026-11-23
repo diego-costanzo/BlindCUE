@@ -307,7 +307,7 @@ class _TransportMixin:
             self._last_manual_go_cue = self._cues[idx]
         self._dismiss_note_on_go()
 
-    def _fire_cue_chain(self, start_idx: int, auto: bool = False) -> None:
+    def _fire_cue_chain(self, start_idx: int, auto: bool = False, keep_pointer: bool = False) -> None:
         """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution.
 
         *auto*: started by an Auto-GO, not by the operator. Then the GO
@@ -319,17 +319,26 @@ class _TransportMixin:
         if not (0 <= start_idx < len(self._cues)):
             return
         start = self._cues[start_idx]
-        if getattr(start, "confirm_start", False) and getattr(self, "_gate_passing", -1) != start.cue_id:
+        if (getattr(start, "confirm_start", False) and not getattr(start, "adlib", False)
+                and getattr(self, "_gate_passing", -1) != start.cue_id):
             self._arm_gate(start_idx)  # 1.9: it starts on the director's OK, not now
             return
         if not auto:
             self._undo_go_begin(self._cues[start_idx])
         before = self._undo_go_collecting
-        self._undo_go_collecting = not auto or self._undo_go_takes_auto()
+        # An effect on demand is never part of what Undo GO takes back.
+        self._undo_go_collecting = not keep_pointer and (not auto or self._undo_go_takes_auto())
+        pointer = self._go_target_index() if keep_pointer else -1
+        current = self._current_index
         try:
             self._fire_cue_chain_now(start_idx, auto)
         finally:
             self._undo_go_collecting = before
+        if keep_pointer and 0 <= pointer < len(self._cues):
+            # An effect on demand never moves the GO pointer.
+            self._current_index = current
+            self._cue_list.setCurrentRow(pointer)
+            self._sync_live_view()
 
     def _fire_cue_chain_now(self, start_idx: int, auto: bool) -> None:
         held_row = self._go_target_index() if auto else -1
@@ -362,8 +371,14 @@ class _TransportMixin:
                 continue
             # An action cue takes no layer: it must not demote what plays there.
             if cue.pre_delay <= 0.02 and cue.media_type != MediaType.ACTION:
-                ShowEngine.promote_to_live(self._cues, cue, dual_active=self._dual_output_active)
-                self._update_live_layer_label(cue)
+                if getattr(cue, "adlib", False) and cue.media_type == MediaType.AUDIO:
+                    # A sound effect: main.py picks its player first, then
+                    # places its card (and promotes it when no spare is used).
+                    cue.status = CueStatus.LIVE
+                else:
+                    ShowEngine.promote_to_live(self._cues, cue, dual_active=self._dual_output_active,
+                                               exclude_ids=set(self._slot_override))
+                    self._update_live_layer_label(cue)
             self._current_index = c_idx
             self.cue_fired.emit(cue)
             logger.info("[GO] Fired cue #%d: %s", cue.cue_id, cue)
@@ -373,6 +388,8 @@ class _TransportMixin:
         first_cue = self._cues[start_idx]
         ref = format_cue_ref(start_idx, first_cue)
         next_idx = last_fired_idx + 1
+        while next_idx < len(self._cues) and getattr(self._cues[next_idx], "adlib", False):
+            next_idx += 1  # effects on demand are not in the GO order
         fired_cue = self._cues[last_fired_idx]
         if (ShowEngine.group_mode_of(self._cues, fired_cue) == GroupMode.LOOP.value
                 and fired_cue.parent_id not in self._released_groups):
@@ -506,7 +523,8 @@ class _TransportMixin:
             self._fire_group_cue(self._cues.index(child), child, depth + 1)
             return
         if child.pre_delay <= 0.02 and child.media_type != MediaType.ACTION:
-            ShowEngine.promote_to_live(self._cues, child, dual_active=self._dual_output_active)
+            ShowEngine.promote_to_live(self._cues, child, dual_active=self._dual_output_active,
+                                       exclude_ids=set(self._slot_override))
             self._update_live_layer_label(child)
         self._note_fired(child)
         self.cue_fired.emit(child)

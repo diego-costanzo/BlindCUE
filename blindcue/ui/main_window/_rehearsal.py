@@ -83,6 +83,7 @@ class _RehearsalMixin:
                 self._earcon_mgr.play_enter_show()
             elif before == "show":
                 self._earcon_mgr.play_exit_show()
+        self._effects_activate(mode != "preparation")
         self._mode_tabs.set_mode(mode)
         self._live_show_panel.mode_tabs.set_mode(mode)
         self._live_show_panel.set_rehearsal(self._live_mode and self._rehearsal)

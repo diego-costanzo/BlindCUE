@@ -269,6 +269,7 @@ Il modo più comodo: nel pannello Forma d'Onda fai clic su un punto dell'onda, p
 <b>Reset IN/OUT</b> ripristina il file intero. I video si tagliano allo stesso modo.</li>
 <li><b>Ripeti cue in loop</b> – spunta e scegli il numero di ripetizioni oppure "infinito"
 (per esempio la musica di sottofondo durante l'intervallo).</li>
+<li><b>All'avvio sfuma le altre</b> (scheda <b>3 · Tempi di incastro</b>, fuori dalla vista base) – quando questa cue parte, gli altri suoni e video in onda sfumano nei secondi indicati. Cambio di musica con una sola cue: la musica precedente sullo stesso layer sfuma invece di essere tagliata (intanto la nuova suona su un lettore libero). 0 = no.</li>
 <li><b>Dividi</b> – divide il file in sezioni A, B, C… (per esempio strofa / ritornello). Ogni sezione
 può ripetersi; <b>Esci Loop</b> passa alla successiva.</li>
 <li><b>Livellamento (EBU R128)</b>: <b>Analizza</b> misura il volume percepito del brano e
@@ -437,6 +438,7 @@ ritardo) – <b>Pausa tutto</b> fermerebbe anche la musica. In cima alla colonna
 ciò che vede il pubblico, in piccolo (fino a 5 fotogrammi al secondo); <b>▾</b> la chiude e questo computer se lo
 ricorda.</li>
 <li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu. Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.</li>
+<li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b> oppure <b>Suona finché tieni premuto</b>. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li>
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
 <li><b>Ritorno alla preparazione</b>: tieni premuta la scheda <b>○ Preparazione</b> per 1,5 s oppure <b>Show → Termina lo spettacolo…</b> (<kbd>Ctrl+Maiusc+F5</kbd>); quello che sta andando continua. <kbd>F5</kbd> e <kbd>Ctrl+L</kbd> servono solo a entrare – un tasto premuto per sbaglio non ti fa uscire dallo spettacolo. Alt+F4 durante lo spettacolo chiede prima.</li>
 </ol>
@@ -492,6 +494,7 @@ maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettor
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC: due volte entro 0,6 s</td></tr>
 <tr><td><kbd>Shift+Esc</kbd></td><td>dissolvenza totale (1 s)</td></tr>
 <tr><td><kbd>Ctrl+Spazio</kbd></td><td>GO forzato – anche mentre va una cue esclusiva</td></tr>
+<tr><td><kbd>A</kbd>–<kbd>Z</kbd>, <kbd>0</kbd>–<kbd>9</kbd></td><td>effetti a richiesta (nella prova e nello spettacolo, il tasto scelto nella cue)</td></tr><tr><td><kbd>Ctrl+R</kbd></td><td>ripeti l'ultimo effetto</td></tr>
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (tappo)</td></tr>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>raggruppa / separa</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>sposta la cue</td></tr>

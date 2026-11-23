@@ -44,6 +44,7 @@ from ui.main_window._announce import _AnnounceMixin
 from ui.main_window._rehearsal import _RehearsalMixin
 from ui.main_window._pin import _PinMixin
 from ui.main_window._variants import _VariantsMixin
+from ui.main_window._effects import _EffectsMixin
 
 
 class MainWindow(
@@ -75,6 +76,7 @@ class MainWindow(
     _RehearsalMixin,
     _PinMixin,
     _VariantsMixin,
+    _EffectsMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -180,6 +182,7 @@ class MainWindow(
         self._ramps: dict[int, tuple[str, float]] = {}  # runtime layer -> (ramp text, ends at)
         self._held_auto_go: set[int] = set()  # cues whose Auto-GO waits for a GO instead
         self._rehearsal = False               # the show's screen in the rehearsal mode
+        self._slot_override: dict[int, int] = {}  # cue_id -> spare player it borrowed (phase D)
         self._rehearsal_before: dict = {}     # (cue_id, field) -> value before the rehearsal
         self._rehearsal_undo: list = []       # (cue_id, field, before): Ctrl+Z in the rehearsal
         self._is_global_paused: bool = False
@@ -204,6 +207,7 @@ class MainWindow(
         self._now_playing_setup()  # right column of the show (stage 1 C2a step 8)
         self._rehearsal_setup()  # rehearsal drawer and tools (stage 1 C2a step 9)
         self._pin_setup()  # exit PIN of the show (stage 1 C2a step 10)
+        self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()

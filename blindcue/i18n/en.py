@@ -2520,4 +2520,40 @@ T: dict[str, str] = {
         'Layout {} restored: default panel widths and cue settings',
     'Standby: {} [{}]':
         'Next: {} [{}]',
+    "All'avvio sfuma le altre:":
+        'On start, fade the others:',
+    'no':
+        'no',
+    'Quando questa cue parte, gli altri suoni e video in onda sfumano in questi secondi (cambio di musica con una sola cue). Una musica sullo stesso layer sfuma invece di essere tagliata. 0 = no.':
+        'When this cue starts, the other sounds and videos on air fade out over these seconds (a change of music with one cue). Music on the same layer fades out instead of being cut. 0 = no.',
+    "all'avvio sfuma le altre in {} s":
+        'on start fades the others over {} s',
+    "🎵 Effetto a richiesta (fuori dall'ordine del GO)":
+        '🎵 Effect on demand (outside the GO order)',
+    'Il GO lo salta; parte dal suo tasto o dalla sua piastrella in «Ora in onda», su un lettore libero, senza spostare il GO e senza fermare ciò che suona.':
+        'GO skips it; it starts from its key or its tile in "Now playing", on a free player, without moving GO and without stopping what plays.',
+    'Tasto:':
+        'Key:',
+    "Una lettera o una cifra; nella prova e nello spettacolo fa partire l'effetto. Più cue sullo stesso tasto partono una dopo l'altra (passi).":
+        'A letter or a digit; in the rehearsal and the show it starts the effect. Several cues on the same key start one after the other (steps).',
+    "Tasto dell'effetto":
+        'Effect key',
+    'Avvia (di nuovo = da capo)':
+        'Start (again = from the top)',
+    'Avvia / ferma':
+        'Start / stop',
+    'Suona finché tieni premuto':
+        'Plays while the key is held',
+    'effetto a richiesta (tasto {})':
+        'effect on demand (key {})',
+    "Effetto: {} '{}' (il GO resta su {})":
+        "Effect: {} '{}' (GO stays on {})",
+    'Nessun effetto da ripetere':
+        'No effect to repeat',
+    "Tutti i lettori degli effetti sono occupati: '{}' lascia il posto":
+        "All effect players are busy: '{}' gives way",
+    "↻ Ripeti l'ultimo effetto  [Ctrl+R]":
+        '↻ Repeat the last effect  [Ctrl+R]',
+    "Nessun lettore libero per l'effetto '{}': non parte":
+        "No free player for the effect '{}': it does not start",
 }

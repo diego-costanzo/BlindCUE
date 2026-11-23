@@ -355,8 +355,14 @@ def main() -> int:
         except (NameError, AttributeError):
             return False
 
-    def _effective_layer(cue: Cue) -> int:
-        """Runtime layer 1-6 actually used by *cue* for the active output mode.
+    # A cue that borrowed a spare player (phase D): cue_id -> runtime slot.
+    # Shared with the window (``main_win._slot_override``) so the cards, the
+    # stop / fade / pause requests and Undo GO all reach the right player.
+    slot_override: dict[int, int] = {}
+    slot_started_at: dict[int, float] = {}
+
+    def _base_layer(cue: Cue) -> int:
+        """Runtime layer 1-6 of *cue* for the active output mode (its own layer).
 
         A cue assigned to output B while the dual mode is off would land on the
         hidden second window and never reach the audience, so it is projected
@@ -366,6 +372,61 @@ def main() -> int:
             cue.layer,
             resolve_output_target(cue.output_target, _dual_output_active()),
         )
+
+    def _effective_layer(cue: Cue) -> int:
+        """Runtime slot *cue* plays on: its layer, or the spare player it borrowed."""
+        return slot_override.get(cue.cue_id) or _base_layer(cue)
+
+    def _spare_slots() -> tuple[int, ...]:
+        """Players free for borrowing: those of output B while the dual mode is off."""
+        return () if _dual_output_active() else (4, 5, 6)
+
+    def _free_spare() -> int | None:
+        for slot in _spare_slots():
+            if (slot not in active_live_cues and slot not in fading_layers
+                    and scheduler.pending_for_layer(slot) is None):
+                return slot
+        return None
+
+    def _set_override(cue: Cue, slot: int | None) -> None:
+        if slot is None:
+            slot_override.pop(cue.cue_id, None)
+        else:
+            # One cue per player: whoever borrowed this one before has lost it.
+            for cid in [c for c, s in slot_override.items() if s == slot and c != cue.cue_id]:
+                slot_override.pop(cid, None)
+                main_win.set_slot_override(cid, None)
+            slot_override[cue.cue_id] = slot
+        main_win.set_slot_override(cue.cue_id, slot)
+
+    def _spare_running(cue: Cue) -> int | None:
+        """The spare player *cue* already plays or waits on (started again: same player)."""
+        for slot in _spare_slots():
+            on_air = active_live_cues.get(slot)
+            waiting = scheduler.pending_for_layer(slot, "PRE")
+            if (on_air is not None and on_air.cue_id == cue.cue_id) or (
+                    waiting is not None and waiting.cue.cue_id == cue.cue_id):
+                return slot
+        return None
+
+    def _drop_borrowed(stop: bool) -> None:
+        """Forget every borrowed player (output mode changed); *stop*: silence them too."""
+        for cid, slot in list(slot_override.items()):
+            if stop:
+                gone = active_live_cues.pop(slot, None)
+                layer_fire_gen[slot] = layer_fire_gen.get(slot, 0) + 1
+                scheduler.cancel_layer(slot)
+                player = live_players.get(slot)
+                if player is not None:
+                    player.stop()
+                main_win._reset_live_label(slot)
+                if gone is not None:
+                    gone.status = CueStatus.LOADED
+                    for item in main_win._cues:
+                        if item.cue_id == gone.cue_id and item.status == CueStatus.LIVE:
+                            item.status = CueStatus.LOADED
+            slot_override.pop(cid, None)
+            main_win.set_slot_override(cid, None)
 
     def _cue_window(cue: Cue) -> OutputWindow:
         return _out_window(_effective_layer(cue))
@@ -651,6 +712,8 @@ def main() -> int:
         active_on_layer = active_live_cues.get(layer)
         if active_on_layer is not None and active_on_layer.cue_id == cue.cue_id:
             active_live_cues.pop(layer, None)
+        if slot_override.get(cue.cue_id) == layer:
+            _set_override(cue, None)  # the spare player is free again
         paused_layers_by_global.discard(layer)
         main_win._reset_live_label(layer)
         main_win.finish_live_cue_status(cue)
@@ -680,6 +743,8 @@ def main() -> int:
         children on their own: the operator picked the mode, so the single
         child does not need to be marked AUTO-GO as well.
         """
+        if getattr(cue, "adlib", False):
+            return False  # an effect on demand never starts the next cue
         return cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(
             main_win._cues, cue
         ) in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value)
@@ -703,6 +768,40 @@ def main() -> int:
         else:
             _finalize_cue_exit(cue, layer, expected_gen=expected_gen)
 
+    def _fade_others_for(cue: Cue, layer: int, restoring: bool = False) -> None:
+        """What *cue* replaces elsewhere when it really starts (phase D, 1.16).
+
+        - "Fade the others (N s)": every other sound or video on air fades out
+          over N s, except what started together with this cue.
+        - A cue on its own layer replaces one that borrowed a spare player for
+          that layer (one cue per layer, as before the spares existed).
+        """
+        if restoring:
+            return  # Undo GO bringing a cue back must not fade the others again
+        now = time.monotonic()
+        seconds = float(getattr(cue, "fade_others", 0.0) or 0.0)
+        base = _base_layer(cue)
+        for slot, other in list(active_live_cues.items()):
+            if slot == layer or other.cue_id == cue.cue_id or slot in fading_layers:
+                continue
+            same_go = now - slot_started_at.get(slot, 0.0) < 0.25
+            if seconds > 0 and other.media_type in (MediaType.AUDIO, MediaType.VIDEO) and not same_go:
+                fade_secs = seconds
+            elif slot != base and slot_override.get(other.cue_id) == slot and _base_layer(other) == base \
+                    and layer == base and not getattr(other, "adlib", False):
+                fade_secs = 0.05
+            else:
+                continue
+            # Undo GO brings it back from where it was cut off.
+            cut_pos = live_positions.get(slot) if other.media_type in (MediaType.AUDIO, MediaType.VIDEO) else None
+            main_win.note_replaced(cue, other, cut_pos)
+            main_win.mark_layer_stopped(slot)
+            if scheduler.pending_for_layer(slot, "PRE") is not None:
+                _silence_layer(slot, fade_secs)  # another cue waits there: keep its start
+            else:
+                _on_layer_clear_requested(slot, fade_override=fade_secs)
+            logger.info("[FADE-OTHERS] '%s' fades '%s' (slot %d) over %.2fs", cue.name, other.name, slot, fade_secs)
+
     def _launch_cue_now(cue: Cue, layer: int, expected_gen: int, start_at: float | None = None) -> None:
         """Start actual Audio/Video/Image playback/display for *cue* on *layer*.
 
@@ -722,6 +821,7 @@ def main() -> int:
         # A cue silenced on this layer while this one waited in Pre-Delay is
         # replaced now: this cue's own end must count again.
         fading_layers.discard(layer)
+        _fade_others_for(cue, layer, restoring=start_at is not None)
         # Same for a cue (or timed picture) held there by Pause All: this one replaces it.
         if layer in paused_layers_by_global or "paused_at" in live_image_envelopes.get(layer, {}):
             paused_layers_by_global.discard(layer)
@@ -730,6 +830,7 @@ def main() -> int:
             if cue.status != CueStatus.LIVE:
                 main_win.promote_cue_to_live(cue)
             active_live_cues[layer] = cue
+            slot_started_at[layer] = time.monotonic()
             known_dur = known_file_durations.get(cue.file_path, 0.0)
             if known_dur <= 0 and main_win._selected_cue() is cue and main_win._active_test_duration > 0:
                 known_dur = main_win._active_test_duration
@@ -839,6 +940,8 @@ def main() -> int:
             live_image_envelopes.pop(layer, None)
             _clear_layer(layer)
             active_live_cues.pop(layer, None)
+            if slot_override.get(cue.cue_id) == layer:
+                _set_override(cue, None)
 
     def _on_scheduler_tick(win: ScheduledWindow) -> None:
         if layer_fire_gen.get(win.layer) != win.generation:
@@ -913,6 +1016,8 @@ def main() -> int:
             return
         main_win.set_cue_phase_badge(pre.cue.cue_id, "")
         scheduler.cancel_layer(layer, "PRE")
+        if slot_override.get(pre.cue.cue_id) == layer:
+            _set_override(pre.cue, None)  # the spare player it waited on is free again
         playing = active_live_cues.get(layer)
         if playing is not None:
             main_win._update_live_layer_label(playing, preserve_timing=True)
@@ -1029,7 +1134,59 @@ def main() -> int:
             # schedule or bump the generation of the layer it acts on.
             _fire_action_cue(cue)
             return
-        layer = _effective_layer(cue)
+        running = _spare_running(cue)
+        _set_override(cue, None)
+        layer = _base_layer(cue)
+        adlib_sound = getattr(cue, "adlib", False) and cue.media_type == MediaType.AUDIO
+        immediate = float(getattr(cue, "pre_delay", 0.0)) <= 0.02
+        if running is not None:
+            # Started again while it plays (or waits) on a spare player: from
+            # the top on that same player, never a second copy.
+            _set_override(cue, running)
+            layer = running
+            if adlib_sound and immediate:
+                main_win._update_live_layer_label(cue)
+        elif adlib_sound and _spare_slots():
+            # An effect on demand plays on a free player, never over the show's layers.
+            spare = _free_spare()
+            if spare is None:
+                effects = [(slot_started_at.get(s, 0.0), s) for s in _spare_slots()
+                           if getattr(active_live_cues.get(s), "adlib", False)]
+                if effects:
+                    _started, spare = min(effects)
+                    old = active_live_cues.get(spare)
+                    main_win.mark_layer_stopped(spare)
+                    _on_layer_clear_requested(spare, fade_override=0.05)
+                    if old is not None:
+                        _set_override(old, None)
+                    main_win._status_label.setText(main_win_tr(
+                        "Tutti i lettori degli effetti sono occupati: '{}' lascia il posto").format(old.name if old else ""))
+            if spare is None:
+                # Every spare player holds show cues: the effect must not cut the show's music.
+                main_win.finish_live_cue_status(cue)
+                main_win._status_label.setText(main_win_tr(
+                    "Nessun lettore libero per l'effetto '{}': non parte").format(cue.name))
+                return
+            _set_override(cue, spare)
+            layer = spare
+            if immediate:
+                main_win._update_live_layer_label(cue)
+        elif adlib_sound and immediate:
+            # No spare player (two outputs on): the effect takes its own layer
+            # like any cue, so what played there is shown as replaced.
+            main_win.promote_cue_to_live(cue)
+        playing = active_live_cues.get(layer)
+        if (running is None and getattr(cue, "fade_others", 0.0) > 0 and cue.media_type == MediaType.AUDIO
+                and playing is not None and playing.cue_id != cue.cue_id
+                and playing.media_type == MediaType.AUDIO and layer not in fading_layers):
+            # 1.16: the music on this layer fades out instead of being cut –
+            # the new one borrows a spare player (when one is free).
+            spare = _free_spare()
+            if spare is not None:
+                _set_override(cue, spare)
+                layer = spare
+                if immediate:
+                    main_win._update_live_layer_label(cue)  # its card on the spare player
         scheduler.cancel_layer(layer)
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
@@ -1181,6 +1338,8 @@ def main() -> int:
             c = active_live_cues.pop(layer, None)
             if c is not None:
                 c.status = CueStatus.LOADED
+                if slot_override.get(c.cue_id) == layer:
+                    _set_override(c, None)
             main_win._reset_live_label(layer)
             main_win._refresh_cue_list()
             name = f" '{c.name}'" if c is not None else ""
@@ -1382,7 +1541,9 @@ def main() -> int:
 
             def _clear_active_if_same(l_idx=layer, expected_gen=clear_gen) -> None:
                 if layer_fire_gen.get(l_idx) == expected_gen:
-                    active_live_cues.pop(l_idx, None)
+                    gone = active_live_cues.pop(l_idx, None)
+                    if gone is not None and slot_override.get(gone.cue_id) == l_idx:
+                        _set_override(gone, None)  # the spare player is free again
                     fading_layers.discard(l_idx)
                     live_durations[l_idx] = 0.0
                     live_positions[l_idx] = 0.0
@@ -1427,6 +1588,9 @@ def main() -> int:
                 lp.fade_out(0.2, stop_after=True)
             active_live_cues.clear()
             fading_layers.clear()
+            for cid in list(slot_override):
+                slot_override.pop(cid, None)
+                main_win.set_slot_override(cid, None)
             logger.info("[MAIN] Master Blackout executed across all layers (0.2s micro-fade)")
         except Exception as exc:
             logger.error("[MAIN] Error executing blackout: %s", exc)
@@ -1450,6 +1614,9 @@ def main() -> int:
                 lp.stop()
             active_live_cues.clear()
             fading_layers.clear()
+            for cid in list(slot_override):
+                slot_override.pop(cid, None)
+                main_win.set_slot_override(cid, None)
             logger.warning("[MAIN] 0ms PANIC STOP ALL completed")
         except Exception as exc:
             logger.error("[MAIN] Error executing PANIC: %s", exc)
@@ -1741,7 +1908,10 @@ def main() -> int:
         keeping a cue live there would leave audio running with no visible
         layer to control it.
         """
+        # Players 4-6 change role (spares <-> output B): nothing keeps a borrowed one.
+        _drop_borrowed(stop=str(mode) == "dual")
         if str(mode) == "dual":
+            main_win._refresh_cue_list()
             return
         stopped: list[str] = []
         for layer in (4, 5, 6):

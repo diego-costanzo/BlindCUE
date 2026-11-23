@@ -57,6 +57,7 @@ ROLE_LIVE_FRACTION = Qt.ItemDataRole.UserRole + 30   # 0..1 played, -1 when unkn
 ROLE_LIVE_WARN = Qt.ItemDataRole.UserRole + 31       # ends in a few seconds, next GO is manual
 ROLE_PLAYED = Qt.ItemDataRole.UserRole + 32          # started in this run of the show (✓, dimmed)
 ROLE_PAUSED = Qt.ItemDataRole.UserRole + 33          # on air but held by a pause (⏸, not ●)
+ROLE_EFFECT_KEY = Qt.ItemDataRole.UserRole + 34      # effect on demand: "⌨ B" ("⌨" without a key), else ""
 
 
 def paint_live_progress(painter: QPainter, rect: QRect, fraction: float, warn: bool) -> None:

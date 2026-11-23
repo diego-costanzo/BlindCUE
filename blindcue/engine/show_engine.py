@@ -24,8 +24,12 @@ def demote_live_on_layer(
     keep_cue_id: int,
     output_target: str = "A",
     dual_active: bool = True,
+    exclude_ids: set[int] | frozenset[int] = frozenset(),
 ) -> None:
     """Mark the previously LIVE media cue on *layer* as LOADED.
+
+    Cues in *exclude_ids* play on a borrowed spare player, not on their
+    layer, so a cue starting there does not take them off the air.
 
     ``output_target`` keeps the two independent projector outputs separate: a
     cue firing on output B must not demote a cue live on the same layer of
@@ -45,6 +49,7 @@ def demote_live_on_layer(
                 getattr(other, "output_target", "A"), dual_active
             ) == target
             and other.cue_id != keep_cue_id
+            and other.cue_id not in exclude_ids
             and other.status == CueStatus.LIVE
             and other.media_type != MediaType.GROUP
         ):
@@ -59,6 +64,8 @@ def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
     """
     if not (0 <= start_idx < len(cues)):
         return []
+    if getattr(cues[start_idx], "adlib", False):
+        return [start_idx]  # an effect on demand never pulls show cues with it
     indices: list[int] = []
     visited: set[int] = set()
     idx = start_idx
@@ -68,6 +75,8 @@ def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
         if cues[idx].follow_mode != FollowMode.SIMULTANEOUS.value:
             break
         idx += 1
+        while idx < len(cues) and getattr(cues[idx], "adlib", False):
+            idx += 1  # effects on demand are not in the order
     return indices
 
 
@@ -178,12 +187,14 @@ class ShowEngine:
         return nxt if nxt < len(cues) else last_fired_idx
 
     @staticmethod
-    def promote_to_live(cues: list[Cue], cue: Cue, dual_active: bool = True) -> None:
+    def promote_to_live(cues: list[Cue], cue: Cue, dual_active: bool = True,
+                        exclude_ids: set[int] | frozenset[int] = frozenset()) -> None:
         """Demote the same layer/output and mark *cue* LIVE (its pre-delay has elapsed)."""
         demote_live_on_layer(
             cues, cue.layer, cue.cue_id,
             output_target=getattr(cue, "output_target", "A"),
             dual_active=dual_active,
+            exclude_ids=exclude_ids,
         )
         cue.status = CueStatus.LIVE
 
@@ -200,8 +211,9 @@ class ShowEngine:
         layer: int,
         output_target: str | None = None,
         dual_active: bool = True,
+        exclude_ids: set[int] | frozenset[int] = frozenset(),
     ) -> None:
-        """Demote every LIVE cue on *layer*.
+        """Demote every LIVE cue on *layer* (not those on a borrowed player, *exclude_ids*).
 
         When *output_target* is ``"A"`` or ``"B"`` only that projector output
         is cleared; ``None`` clears the layer on both outputs.  When
@@ -211,7 +223,7 @@ class ShowEngine:
             output_target, dual_active
         )
         for cue in cues:
-            if cue.layer != layer or cue.status != CueStatus.LIVE:
+            if cue.layer != layer or cue.status != CueStatus.LIVE or cue.cue_id in exclude_ids:
                 continue
             if target is not None and resolve_output_target(
                 getattr(cue, "output_target", "A"), dual_active
@@ -250,6 +262,8 @@ class ShowEngine:
         *released_groups* (a "release loop" action reached it) plays the rest
         of its pass and then ends: no wrap, and no start of the next scene.
         """
+        if getattr(finished_cue, "adlib", False):
+            return -1  # an effect on demand never starts the next cue
         parent = ShowEngine.group_parent(cues, finished_cue)
         if parent is not None:
             kids = ShowEngine.children_of(cues, parent.cue_id)
@@ -278,4 +292,6 @@ class ShowEngine:
             if idx < 0:
                 return -1
         nxt = idx + 1
+        while nxt < len(cues) and getattr(cues[nxt], "adlib", False):
+            nxt += 1  # effects on demand are not in the order
         return nxt if 0 <= nxt < len(cues) else -1

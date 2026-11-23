@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QProgressBar,
@@ -309,6 +310,8 @@ class NowPlayingPanel(QFrame):
     to_end_requested = Signal(int)        # runtime layer: jump to 5 s before the end
     save_level_requested = Signal(int)    # cue_id: the corrected level becomes the cue's
     cancel_start_requested = Signal(int)  # runtime layer: the waiting cue never starts
+    effect_requested = Signal(int)        # cue_id of an effect tile
+    repeat_effect_requested = Signal()    # "repeat the last effect" (1.10)
     hold_longer = Signal()                # a jump button let go too early
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -350,6 +353,13 @@ class NowPlayingPanel(QFrame):
         self.lbl_preview.setStyleSheet("QLabel { background-color: #000000; border: 1px solid #334155; }")
         self.lbl_preview.setAccessibleName("Anteprima dell'uscita")
         root.addWidget(self.lbl_preview, alignment=Qt.AlignmentFlag.AlignHCenter)
+        # Effects on demand: one tile each, never in the GO order (1.7, 1.10).
+        self.effects_box = QWidget()
+        self._effects_layout = QGridLayout(self.effects_box)
+        self._effects_layout.setContentsMargins(0, 0, 0, 0)
+        self._effects_layout.setSpacing(4)
+        self.effects_box.setVisible(False)
+        root.addWidget(self.effects_box)
         self.lbl_header = QLabel("ORA IN ONDA")
         self.lbl_header.setFixedHeight(20)
         self.lbl_header.setStyleSheet("QLabel { color: #94a3b8; font-weight: bold; font-size: 11px; }")
@@ -400,6 +410,33 @@ class NowPlayingPanel(QFrame):
             card.set_rehearsal(self._rehearsal)
         if not on:
             self.show_drawer(False)
+
+    def set_effects(self, items: list[tuple[int, str]]) -> None:
+        """Tiles for the effects on demand (cue_id, "B · #5 Bell"), plus "repeat the last"."""
+        while self._effects_layout.count():
+            item = self._effects_layout.takeAt(0)
+            if item.widget() is not None:
+                item.widget().deleteLater()
+        self.effect_tiles: dict[int, QPushButton] = {}
+        for i, (cue_id, label) in enumerate(items):
+            btn = QPushButton(label)
+            btn.setFixedHeight(30)
+            btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Space stays GO
+            btn.setStyleSheet(
+                "QPushButton { background-color: #2e1065; color: #e9d5ff; border: 1px solid #7c3aed; "
+                "border-radius: 5px; font-weight: bold; font-size: 12px; padding: 0px 6px; text-align: left; }")
+            btn.setToolTip(label)
+            btn.clicked.connect(lambda _=False, c=cue_id: self.effect_requested.emit(c))
+            self._effects_layout.addWidget(btn, i // 2, i % 2)
+            self.effect_tiles[cue_id] = btn
+        if items:
+            again = QPushButton("↻ Ripeti l'ultimo effetto  [Ctrl+R]")
+            again.setFixedHeight(26)
+            again.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+            again.setStyleSheet(_BTN)
+            again.clicked.connect(self.repeat_effect_requested)
+            self._effects_layout.addWidget(again, (len(items) + 1) // 2, 0, 1, 2)
+        self.effects_box.setVisible(bool(items))
 
     def cards(self) -> dict[int, _Card]:
         return dict(self._cards)

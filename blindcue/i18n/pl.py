@@ -2742,4 +2742,40 @@ T: dict[str, str] = {
         'Przywrócono układ {}: domyślne szerokości paneli i ustawienia cue',
     'Standby: {} [{}]':
         'Następny: {} [{}]',
+    "All'avvio sfuma le altre:":
+        'Przy starcie wycisza inne:',
+    'no':
+        'nie',
+    'Quando questa cue parte, gli altri suoni e video in onda sfumano in questi secondi (cambio di musica con una sola cue). Una musica sullo stesso layer sfuma invece di essere tagliata. 0 = no.':
+        'Gdy ta pozycja startuje, inne grające dźwięki i filmy wyciszają się przez tyle sekund (zmiana muzyki jedną pozycją). Muzyka na tej samej warstwie wycisza się, zamiast zostać ucięta. 0 = nie.',
+    "all'avvio sfuma le altre in {} s":
+        'przy starcie wycisza inne w {} s',
+    "🎵 Effetto a richiesta (fuori dall'ordine del GO)":
+        '🎵 Efekt na żądanie (poza kolejnością GO)',
+    'Il GO lo salta; parte dal suo tasto o dalla sua piastrella in «Ora in onda», su un lettore libero, senza spostare il GO e senza fermare ciò che suona.':
+        'GO go pomija; startuje klawiszem albo kafelkiem w „Teraz gra”, na wolnym odtwarzaczu, bez przesuwania GO i bez zatrzymywania tego, co gra.',
+    'Tasto:':
+        'Klawisz:',
+    "Una lettera o una cifra; nella prova e nello spettacolo fa partire l'effetto. Più cue sullo stesso tasto partono una dopo l'altra (passi).":
+        'Litera albo cyfra; w próbie i przedstawieniu uruchamia efekt. Kilka pozycji na tym samym klawiszu startuje po kolei (kroki).',
+    "Tasto dell'effetto":
+        'Klawisz efektu',
+    'Avvia (di nuovo = da capo)':
+        'Start (ponownie = od początku)',
+    'Avvia / ferma':
+        'Start / stop',
+    'Suona finché tieni premuto':
+        'Gra, dopóki trzymasz klawisz',
+    'effetto a richiesta (tasto {})':
+        'efekt na żądanie (klawisz {})',
+    "Effetto: {} '{}' (il GO resta su {})":
+        'Efekt: {} „{}” (GO zostaje na {})',
+    'Nessun effetto da ripetere':
+        'Brak efektu do powtórzenia',
+    "Tutti i lettori degli effetti sono occupati: '{}' lascia il posto":
+        'Wszystkie odtwarzacze efektów zajęte: „{}” ustępuje miejsca',
+    "↻ Ripeti l'ultimo effetto  [Ctrl+R]":
+        '↻ Powtórz ostatni efekt  [Ctrl+R]',
+    "Nessun lettore libero per l'effetto '{}': non parte":
+        'Brak wolnego odtwarzacza dla efektu „{}”: nie startuje',
 }

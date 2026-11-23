@@ -33,6 +33,7 @@ from ui.cue_table import (
     ROLE_CHILD_COUNT,
     ROLE_CUE_COLOR,
     ROLE_DURATION_TXT,
+    ROLE_EFFECT_KEY,
     ROLE_FOLLOW_MODE,
     ROLE_GROUP_COLLAPSED,
     ROLE_GROUP_MODE,
@@ -602,9 +603,15 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     fm_w = 70
 
             right_x = rect.right()
+            effect_key = str(index.data(ROLE_EFFECT_KEY) or "")
+            if effect_key:
+                # An effect on demand is outside the GO order: its key instead of a sequence pill.
+                fm_txt, fm_bg, fm_border, fm_fg = effect_key, QColor("#2e1065"), QColor("#7c3aed"), QColor("#e9d5ff")
+                fm_w = max(40, painter.fontMetrics().horizontalAdvance(effect_key) + 14)
+                follow_mode = "EFFECT"
             # Only the exceptions get a pill (AUTO-GO, Simultaneous): a manual
             # cue is the normal case, and a pill on every row was just noise.
-            if follow_mode in ("AUTO_FOLLOW", "SIMULTANEOUS"):
+            if follow_mode in ("AUTO_FOLLOW", "SIMULTANEOUS", "EFFECT"):
                 fm_rect = QRect(right_x - fm_w, rect.top() + (rect.height() - 18) // 2, fm_w, 18)
                 painter.setPen(QPen(fm_border, 1))
                 painter.setBrush(fm_bg)
@@ -2060,6 +2067,8 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_CUE_COLOR, cue_color)
                     it.setData(ROLE_PREV_COLOR, prev_color)
                     it.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
+                    it.setData(ROLE_EFFECT_KEY, (
+                        f"⌨ {cue.hotkey}" if cue.hotkey else "⌨") if getattr(cue, "adlib", False) else "")
                     it.setData(ROLE_INCOMING_LINK, incoming_link)
                     it.setData(ROLE_IS_GROUP, is_group)
                     it.setData(ROLE_PARENT_ID, cue.parent_id)

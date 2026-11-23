@@ -44,15 +44,23 @@ class _ActionsMixin:
         """Mark what plays on runtime *layer* (1-6) as stopped, without touching the players."""
         self._reset_live_label(layer)
         runtime = int(layer)
+        borrowed = [cid for cid, s in self._slot_override.items() if s == runtime]
+        if borrowed:
+            # A spare player: only the cue that borrowed it stops (not output B's cues).
+            for cue in self._cues:
+                if cue.cue_id in borrowed and cue.status == CueStatus.LIVE:
+                    cue.status = CueStatus.LOADED
+            self._refresh_cue_list()
+            return
         if runtime > 3:
             ShowEngine.clear_layer(
                 self._cues, runtime - 3, output_target="B",
-                dual_active=self._dual_output_active,
+                dual_active=self._dual_output_active, exclude_ids=set(self._slot_override),
             )
         else:
             ShowEngine.clear_layer(
                 self._cues, runtime, output_target="A",
-                dual_active=self._dual_output_active,
+                dual_active=self._dual_output_active, exclude_ids=set(self._slot_override),
             )
         self._refresh_cue_list()
 

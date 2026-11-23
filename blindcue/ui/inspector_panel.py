@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QFontMetrics
+from PySide6.QtCore import QRegularExpression, QSize, Qt, Signal
+from PySide6.QtGui import QFontMetrics, QRegularExpressionValidator
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -653,6 +653,52 @@ class CueInspectorPanel(QGroupBox):
         self.chk_confirm.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_confirm.toggled.connect(lambda _c: self._emit_change("confirm_start"))
         l3.addWidget(self.chk_confirm)
+        # 1.16: change of music in one cue – what else plays fades out.
+        fo_row = QHBoxLayout()
+        self.lbl_fade_others = self._make_field_label("All'avvio sfuma le altre:")
+        fo_row.addWidget(self.lbl_fade_others)
+        self.spin_fade_others = SmartDoubleSpinBox()
+        self.spin_fade_others.setRange(0.0, 60.0)
+        self.spin_fade_others.setDecimals(1)
+        self.spin_fade_others.setSingleStep(0.5)
+        self.spin_fade_others.setSuffix(" s")
+        self.spin_fade_others.setSpecialValueText("no")
+        self.spin_fade_others.setToolTip(
+            "Quando questa cue parte, gli altri suoni e video in onda sfumano in questi secondi "
+            "(cambio di musica con una sola cue). Una musica sullo stesso layer sfuma invece di "
+            "essere tagliata. 0 = no.")
+        self.spin_fade_others.valueChanged.connect(lambda _v: self._emit_change("fade_others"))
+        fo_row.addWidget(self.spin_fade_others)
+        fo_row.addStretch(1)
+        l3.addLayout(fo_row)
+        # 1.7: an effect on demand (bell, thunder): outside the GO order, on a key or a tile.
+        fx_row = QHBoxLayout()
+        self.chk_adlib = QCheckBox("🎵 Effetto a richiesta (fuori dall'ordine del GO)")
+        self.chk_adlib.setToolTip(
+            "Il GO lo salta; parte dal suo tasto o dalla sua piastrella in «Ora in onda», "
+            "su un lettore libero, senza spostare il GO e senza fermare ciò che suona.")
+        self.chk_adlib.toggled.connect(lambda _c: self._emit_change("adlib"))
+        fx_row.addWidget(self.chk_adlib)
+        l3.addLayout(fx_row)
+        key_row = QHBoxLayout()
+        self.lbl_hotkey = self._make_field_label("Tasto:")
+        key_row.addWidget(self.lbl_hotkey)
+        self.edit_hotkey = QLineEdit()
+        self.edit_hotkey.setMaxLength(1)
+        self.edit_hotkey.setFixedWidth(40)
+        self.edit_hotkey.setValidator(QRegularExpressionValidator(QRegularExpression(r"[A-Za-z0-9]?"), self.edit_hotkey))
+        self.edit_hotkey.setToolTip("Una lettera o una cifra; nella prova e nello spettacolo fa partire l'effetto. "
+                                    "Più cue sullo stesso tasto partono una dopo l'altra (passi).")
+        self.edit_hotkey.setAccessibleName("Tasto dell'effetto")
+        self.edit_hotkey.editingFinished.connect(lambda: self._emit_change("hotkey"))
+        key_row.addWidget(self.edit_hotkey)
+        self.combo_hotkey_mode = QComboBox()
+        for value, label in (("trigger", "Avvia (di nuovo = da capo)"), ("toggle", "Avvia / ferma"),
+                             ("note", "Suona finché tieni premuto")):
+            self.combo_hotkey_mode.addItem(label, value)
+        self.combo_hotkey_mode.currentIndexChanged.connect(lambda _i: self._emit_change("hotkey_mode"))
+        key_row.addWidget(self.combo_hotkey_mode, stretch=1)
+        l3.addLayout(key_row)
         lay.addWidget(c3)
         lay.addStretch()
 
@@ -2241,6 +2287,10 @@ class CueInspectorPanel(QGroupBox):
         for w in (self._pipe_lbl, self.lbl_pre_field, self.spin_pre_delay, self.lbl_post_field,
                   self.spin_post_delay, self.chk_exclusive, self.chk_confirm):
             w.setVisible(not basic)
+        for w in (self.lbl_fade_others, self.spin_fade_others):
+            w.setVisible(not basic and not is_image)
+        for w in (self.chk_adlib, self.lbl_hotkey, self.edit_hotkey, self.combo_hotkey_mode):
+            w.setVisible(not basic and not is_image)
         if self.tab_widget.currentIndex() >= 0 and not self.tab_widget.isTabVisible(self.tab_widget.currentIndex()):
             self.tab_widget.setCurrentIndex(0)
         self.btn_more.setVisible(self._lite)
@@ -2274,6 +2324,10 @@ class CueInspectorPanel(QGroupBox):
                 parts.append(tr("il GO aspetta che finisca"))
             if getattr(cue, "confirm_start", False):
                 parts.append(tr("aspetta l'OK"))
+            if getattr(cue, "adlib", False):
+                parts.append(tr("effetto a richiesta (tasto {})").format(cue.hotkey or "—"))
+            if getattr(cue, "fade_others", 0.0) > 0:
+                parts.append(tr("all'avvio sfuma le altre in {} s").format(f"{cue.fade_others:.1f}"))
             if cue.loop:
                 parts.append(tr("suona in loop") if cue.loop_count <= 0 else tr("si ripete {}×").format(cue.loop_count))
             if cue.sections:
@@ -2426,6 +2480,16 @@ class CueInspectorPanel(QGroupBox):
                 self.set_follow_mode_silent(cue.follow_mode, enabled=True)
                 self.chk_exclusive.setChecked(bool(getattr(cue, "exclusive", False)))
                 self.chk_confirm.setChecked(bool(getattr(cue, "confirm_start", False)))
+                self.spin_fade_others.blockSignals(True)
+                self.spin_fade_others.setValue(float(getattr(cue, "fade_others", 0.0)))
+                self.spin_fade_others.blockSignals(False)
+                for w, setter in ((self.chk_adlib, lambda: self.chk_adlib.setChecked(bool(getattr(cue, "adlib", False)))),
+                                  (self.edit_hotkey, lambda: self.edit_hotkey.setText(getattr(cue, "hotkey", ""))),
+                                  (self.combo_hotkey_mode, lambda: self.combo_hotkey_mode.setCurrentIndex(
+                                      max(0, self.combo_hotkey_mode.findData(getattr(cue, "hotkey_mode", "trigger")))))):
+                    w.blockSignals(True)
+                    setter()
+                    w.blockSignals(False)
                 self._populate_media_fields(cue)
                 self.set_also(cue)
                 if cue.media_type == MediaType.ACTION:
@@ -2544,6 +2608,10 @@ class CueInspectorPanel(QGroupBox):
         cue.notes = self.edit_cue_notes.text().strip()
         cue.exclusive = self.chk_exclusive.isChecked()
         cue.confirm_start = self.chk_confirm.isChecked()
+        cue.fade_others = round(self.spin_fade_others.value(), 2)
+        cue.adlib = self.chk_adlib.isChecked()
+        cue.hotkey = self.edit_hotkey.text().strip()[:1].upper()
+        cue.hotkey_mode = self.combo_hotkey_mode.currentData() or "trigger"
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -2658,6 +2726,14 @@ class CueInspectorPanel(QGroupBox):
                 cue.exclusive = self.chk_exclusive.isChecked()
             elif field_key == "confirm_start":
                 cue.confirm_start = self.chk_confirm.isChecked()
+            elif field_key == "fade_others":
+                cue.fade_others = round(self.spin_fade_others.value(), 2)
+            elif field_key == "adlib":
+                cue.adlib = self.chk_adlib.isChecked()
+            elif field_key == "hotkey":
+                cue.hotkey = self.edit_hotkey.text().strip()[:1].upper()
+            elif field_key == "hotkey_mode":
+                cue.hotkey_mode = self.combo_hotkey_mode.currentData() or "trigger"
             elif field_key == "pos_x":
                 cue.position_x = round(self.spin_pos_x.value(), 3)
             elif field_key == "pos_y":

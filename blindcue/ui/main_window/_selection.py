@@ -187,8 +187,18 @@ class _SelectionMixin:
             if not has_live_visual:
                 out.clear_layer(cue.layer)
 
+    def set_slot_override(self, cue_id: int, slot: int | None) -> None:
+        """main.py: *cue_id* plays on a borrowed spare player (None: on its own layer again)."""
+        if slot is None:
+            self._slot_override.pop(cue_id, None)
+        else:
+            self._slot_override[cue_id] = int(slot)
+
     def _runtime_slot(self, cue: Cue) -> int:
-        """Runtime layer 1-6 actually used by *cue* under the current output mode."""
+        """Runtime slot *cue* plays on: its layer under the output mode, or a borrowed spare."""
+        borrowed = getattr(self, "_slot_override", {}).get(cue.cue_id)
+        if borrowed:
+            return borrowed
         return runtime_layer(
             cue.layer,
             resolve_output_target(getattr(cue, "output_target", "A"), self._dual_output_active),

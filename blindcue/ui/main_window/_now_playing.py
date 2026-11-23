@@ -128,7 +128,8 @@ class _NowPlayingMixin:
             slot = self._runtime_slot(cue)
             t = self._live_clocks.cue_time(cue.cue_id)
             title = f"{_ICONS.get(cue.media_type, '•')} {format_cue_ref(row, cue)} '{cue.name}'"
-            layer = f"B·L{cue.layer}" if slot > 3 else f"L{cue.layer}"
+            borrowed = cue.cue_id in self._slot_override
+            layer = f"B·L{cue.layer}" if slot > 3 and not borrowed else f"L{cue.layer}"
             timed = cue.media_type in (MediaType.AUDIO, MediaType.VIDEO) or (
                 cue.media_type == MediaType.IMAGE and cue.hold_time > 0)
             loop = bool(cue.loop) or any(s.loops == 0 and not s.skip for s in cue.sections)
