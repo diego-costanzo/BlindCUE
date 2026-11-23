@@ -1577,8 +1577,6 @@ T: dict[str, str] = {
         '🖥️ <b>CPU:</b> {} cores ({}) | 💾 <b>RAM:</b> {} GB (free: {} GB) | 🎮 <b>GPU:</b> {}',
     'VA-API Attiva':
         'VA-API active',
-    'PROSSIMA IN STANDBY:  ':
-        'NEXT IN STANDBY:  ',
     'PRONTO':
         'READY',
     'ATTESA':
@@ -1968,8 +1966,6 @@ T: dict[str, str] = {
         'LIVE MODE ACTIVE — Simplified control interface [ESC ×2 = PANIC]',
     'Sessione precedente messa da parte: {}':
         'Previous session set aside (not deleted): {}',
-    '📝 Note:':
-        '📝 Notes:',
     'Lo spettacolo è in corso.\nChiudere il programma ferma tutto ciò che è in onda.':
         'The show is running.\nClosing the program stops everything on air.',
     'Resta nel programma':
@@ -2046,4 +2042,16 @@ T: dict[str, str] = {
         'From the top',
     'Apri senza ripristinare':
         'Open without restoring',
+    '✓ ULTIMA':
+        '✓ LAST',
+    '· {} fa':
+        '· {} ago',
+    '+ {} insieme':
+        '+ {} together',
+    '· manuale (GO)':
+        '· by hand (GO)',
+    '· parte da sola tra {}':
+        '· starts by itself in {}',
+    '· parte da sola dopo {}':
+        '· starts by itself after {}',
 }

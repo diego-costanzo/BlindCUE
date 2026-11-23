@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import time
 
+from i18n import tr
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -155,6 +157,17 @@ class _TransportMixin:
             if kids and kids[0] is cue:
                 self._released_groups.discard(cue.parent_id)
 
+    def _show_last_started(self, idx: int, together: int, by_hand: bool) -> None:
+        """"Last" line of the show: what this GO started (+ N together) and its note."""
+        panel = getattr(self, "_live_show_panel", None)
+        if panel is None or not (0 <= idx < len(self._cues)):
+            return
+        cue = self._cues[idx]
+        text = f"{format_cue_ref(idx, cue)} '{cue.name}'"
+        if together > 0:
+            text += " " + tr("+ {} insieme").format(together)
+        panel.set_last_started(text, cue.notes or "", by_hand=by_hand)
+
     def _go_target_index(self) -> int:
         """Row the next GO fires: the selected one, else the last fired, else the top."""
         row, _ = self._anchor_row_and_cue()
@@ -196,10 +209,12 @@ class _TransportMixin:
                 self._toggle_group_collapsed(p_row)
 
         if start_cue.media_type == MediaType.GROUP:
+            self._show_last_started(start_idx, 0, by_hand=not auto)
             self._fire_group_cue(start_idx, start_cue)
             return
 
         chain = chain_indices(self._cues, start_idx)
+        self._show_last_started(start_idx, len(chain) - 1, by_hand=not auto)
         last_fired_idx = chain[-1]
         self._live_show_panel.notify_first_go()
         for c_idx in chain:

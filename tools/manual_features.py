@@ -43,6 +43,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "mode_tabs": ("blindcue/ui/mode_tabs.py", None),
     "master_volume": ("blindcue/ui/master_volume.py", None),
     "recovery_choice": ("blindcue/ui/main_window/_persistence.py", "Ripeti l'ultima"),
+    "last_started": ("blindcue/ui/live_show_view.py", "def set_last_started"),
 }
 
 

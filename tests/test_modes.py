@@ -203,3 +203,51 @@ def test_pause_all_has_a_key(window):
     window.pause_all_toggled.connect(lambda: toggles.append(1))
     acts[0].trigger()
     assert toggles == [1]
+
+
+def test_last_started_line_shows_what_the_last_go_started(window):
+    import i18n
+
+    panel = window._live_show_panel
+    assert not panel.last_bar.isVisibleTo(panel)        # nothing started yet
+    try:
+        i18n.set_language("pl")
+        window._cues[1].notes = "czekaj na brawa"
+        window._fire_cue_chain(1)                      # what every GO calls
+        assert panel.last_bar.isVisibleTo(panel)
+        text = panel.lbl_last_banner.text()
+        assert "#2" in text and "'c1'" in text and "0:00 temu" in text
+        assert "czekaj na brawa" in text
+        assert panel._last_hot                         # lit: the GO can still be undone
+        panel._last_at -= 125                          # two minutes later
+        panel._refresh_last_banner()
+        assert "2:05 temu" in panel.lbl_last_banner.text() and not panel._last_hot
+        window._show_last_started(0, 2, by_hand=False)  # an Auto-GO with two partners
+        assert "+ 2 razem" in panel.lbl_last_banner.text() and not panel._last_hot
+    finally:
+        i18n.set_language("it")
+
+
+def test_next_line_has_no_repeated_label(window):
+    window._cue_list.setCurrentRow(0)
+    window._sync_live_view()
+    panel = window._live_show_panel
+    text = panel.lbl_standby_banner.text()
+    assert text.startswith("#1 ") and "STANDBY" not in text
+    assert text.endswith("manuale (GO)") and panel.lbl_standby_note.text() == ""
+
+
+def test_next_line_counts_down_an_auto_go(window):
+    from models.cue import CueStatus, FollowMode
+
+    panel = window._live_show_panel
+    window._cues[0].follow_mode = FollowMode.AUTO_FOLLOW.value
+    window._cues[0].status = CueStatus.LIVE
+    window._cues[1].notes = "UWAGA: kabel"
+    window._cue_list.setCurrentRow(1)
+    window._sync_live_view()
+    assert panel.lbl_standby_banner.text().endswith("parte da sola dopo #1")
+    assert panel.lbl_standby_note.text() == "📝 UWAGA: kabel"
+    assert "#fca5a5" in panel.lbl_standby_note.styleSheet()   # urgent word: red
+    panel.set_live_times({window._cues[0].cue_id: ("-00:03", 0.9, True)})
+    assert panel.lbl_standby_banner.text().endswith("parte da sola tra 00:03")

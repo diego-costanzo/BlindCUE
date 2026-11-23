@@ -1010,9 +1010,38 @@ class LiveShowPanel(QWidget):
         self.live_table.group_collapse_toggled.connect(self.group_collapse_toggled)
         root.addWidget(self.live_table, stretch=1)
 
-        # Standby Hero Bar + optional Break Section Loop shortcut
+        # "Last started" line above "Next": what the last GO started, and when.
+        self.last_bar = QFrame()
+        self.last_bar.setFixedHeight(32)
+        lb_layout = QHBoxLayout(self.last_bar)
+        lb_layout.setContentsMargins(12, 2, 12, 2)
+        lb_layout.setSpacing(10)
+        self.lbl_last_pill = QLabel("✓ ULTIMA")
+        self.lbl_last_pill.setFixedHeight(24)
+        self.lbl_last_pill.setStyleSheet(
+            "QLabel { background-color: #064e3b; color: #69f0ae; border: 1px solid #10b981; "
+            "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 10px; }"
+        )
+        lb_layout.addWidget(self.lbl_last_pill)
+        self.lbl_last_banner = QLabel("")
+        self.lbl_last_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.lbl_last_banner.setTextFormat(Qt.TextFormat.PlainText)  # names are typed by people
+        lb_layout.addWidget(self.lbl_last_banner, stretch=1)
+        self.last_bar_layout = lb_layout  # step 6 puts "Undo GO" at its right end
+        self.last_bar.setVisible(False)  # until the first GO
+        self._last_text = ""
+        self._last_note = ""
+        self._last_at = 0.0
+        self._last_by_hand = False
+        self._last_hot: bool | None = None
+        self._set_last_hot(False)
+        root.addWidget(self.last_bar)
+
+        # Standby Hero Bar + optional Break Section Loop shortcut.
+        # Always two lines (the second one is the cue's note, kept even when
+        # empty so the layout never jumps).
         self.standby_bar = QFrame()
-        self.standby_bar.setFixedHeight(40)
+        self.standby_bar.setFixedHeight(52)
         sb_layout = QHBoxLayout(self.standby_bar)
         sb_layout.setContentsMargins(12, 2, 12, 2)
         sb_layout.setSpacing(10)
@@ -1021,13 +1050,26 @@ class LiveShowPanel(QWidget):
         self.lbl_standby_pill.setFixedHeight(26)
         sb_layout.addWidget(self.lbl_standby_pill)
 
+        sb_lines = QVBoxLayout()
+        sb_lines.setContentsMargins(0, 0, 0, 0)
+        sb_lines.setSpacing(0)
         self.lbl_standby_banner = QLabel("Nessuna cue pronta in scaletta")
         self.lbl_standby_banner.setMinimumWidth(0)
         self.lbl_standby_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.lbl_standby_banner.setTextFormat(Qt.TextFormat.PlainText)
         self.lbl_standby_banner.setStyleSheet(
             "QLabel { color: #f8fafc; font-size: 13px; font-weight: bold; border: none; background: transparent; }"
         )
-        sb_layout.addWidget(self.lbl_standby_banner, stretch=1)
+        sb_lines.addWidget(self.lbl_standby_banner)
+        self.lbl_standby_note = QLabel("")
+        self.lbl_standby_note.setMinimumWidth(0)
+        self.lbl_standby_note.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
+        self.lbl_standby_note.setTextFormat(Qt.TextFormat.PlainText)
+        self._set_standby_note("")
+        sb_lines.addWidget(self.lbl_standby_note)
+        sb_layout.addLayout(sb_lines, stretch=1)
+        self._standby_base = ""          # line 1 without "how it starts"
+        self._standby_waits_on: tuple[int, str] | None = None  # (cue_id, "#3") of an Auto-GO
 
         self.btn_break_loop = QPushButton("⏭ Esci da Loop Sezione")
         self.btn_break_loop.setVisible(False)
@@ -1267,7 +1309,82 @@ class LiveShowPanel(QWidget):
         if now_txt != self._last_clock_text:
             self._last_clock_text = now_txt
             self.lbl_clock.setText(now_txt)
+            self._refresh_last_banner()
         self._refresh_stopwatch_ui()
+
+    # Seconds the "Last" line stays lit after a GO given by hand: the same
+    # window in which that GO can be undone (stage 1.18).
+    LAST_HOT_SECONDS = 15.0
+
+    def set_last_started(self, text: str, note: str = "", by_hand: bool = True) -> None:
+        """The last GO started *text* (e.g. "#3 'Birds' + 2 together").
+
+        Shown with how long ago and the cue's *note*; lit for
+        :attr:`LAST_HOT_SECONDS` when the operator gave the GO (*by_hand*).
+        """
+        self._last_text = text
+        self._last_note = note
+        self._last_at = time.monotonic()
+        self._last_by_hand = by_hand
+        self.last_bar.setVisible(bool(text))
+        self._refresh_last_banner()
+
+    def last_started_age(self) -> float:
+        """Seconds since the last start shown on the "Last" line."""
+        return max(0.0, time.monotonic() - self._last_at)
+
+    def _refresh_last_banner(self) -> None:
+        if not self._last_text:
+            return
+        ago = int(self.last_started_age())
+        when = tr("· {} fa").format(f"{ago // 60}:{ago % 60:02d}")
+        note = f"   │   📝 {self._last_note}" if self._last_note else ""
+        self.lbl_last_banner.setText(f"{self._last_text}  {when}{note}")
+        self._set_last_hot(self._last_by_hand and ago < self.LAST_HOT_SECONDS)
+
+    def _set_last_hot(self, hot: bool) -> None:
+        """Lit (green) right after a GO, quiet (grey) afterwards."""
+        if hot == self._last_hot:
+            return
+        self._last_hot = hot
+        if hot:
+            self.last_bar.setStyleSheet(
+                "QFrame { background-color: #052e1f; border: 1px solid #10b981; border-radius: 6px; }")
+            self.lbl_last_pill.setStyleSheet(
+                "QLabel { background-color: #064e3b; color: #69f0ae; border: 1px solid #10b981; "
+                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 10px; }")
+            colour = "#ecfdf5"
+        else:
+            self.last_bar.setStyleSheet(
+                "QFrame { background-color: #0b111a; border: 1px solid #1e2d42; border-radius: 6px; }")
+            self.lbl_last_pill.setStyleSheet(
+                "QLabel { background-color: #1e293b; color: #cbd5e1; border: 1px solid #475569; "
+                "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 10px; }")
+            colour = "#cbd5e1"
+        self.lbl_last_banner.setStyleSheet(
+            f"QLabel {{ color: {colour}; font-size: 13px; font-weight: bold; border: none; background: transparent; }}")
+
+    def _set_standby_note(self, note: str) -> None:
+        """Second line of "Next": the cue's note, amber, red when it is urgent."""
+        urgent = LiveCueRowDelegate.is_urgent_note(note) if note else False
+        colour = "#fca5a5" if urgent else "#fcd34d"
+        weight = "bold" if urgent else "normal"
+        self.lbl_standby_note.setStyleSheet(
+            f"QLabel {{ color: {colour}; font-size: 15px; font-weight: {weight}; "
+            "border: none; background: transparent; }")
+        self.lbl_standby_note.setText(f"📝 {note}" if note else "")
+
+    def _refresh_standby_how(self) -> None:
+        """Line 1 of "Next" plus how that cue will start (by hand, or by itself in m:ss)."""
+        if not self._standby_base:
+            return
+        how = tr("· manuale (GO)")
+        if self._standby_waits_on is not None:
+            cue_id, ref = self._standby_waits_on
+            live = self._live_times.get(cue_id)
+            left = live[0][1:] if live and live[0].startswith("-") else ""
+            how = tr("· parte da sola tra {}").format(left) if left else tr("· parte da sola dopo {}").format(ref)
+        self.lbl_standby_banner.setText(f"{self._standby_base}  {how}")
 
     def _on_table_clicked(self, row: int, col: int) -> None:
         if not self._updating_table and row >= 0:
@@ -1594,6 +1711,8 @@ class LiveShowPanel(QWidget):
             item = self.live_table.item(row, 4) if row is not None else None
             if item is not None:
                 self._apply_live_time(item, times.get(cue_id))
+        if self._standby_waits_on is not None:
+            self._refresh_standby_how()  # "starts by itself in 0:03" counts down
 
     def sync_cues(
         self,
@@ -1779,11 +1898,19 @@ class LiveShowPanel(QWidget):
                     extra_tags.append(tr("🔁 Loop"))
 
                 extras_str = ("   │   " + " · ".join(extra_tags)) if extra_tags else ""
-                notes_str = f"   │   {tr('📝 Note:')} {sb_cue.notes}" if sb_cue.notes else ""
 
-                self.lbl_standby_banner.setText(
-                    f"PROSSIMA IN STANDBY:  #{standby_row + 1} {q_badge}'{sb_cue.name}'  {layer_badge} [{type_tag}]{extras_str}{notes_str}"
+                # The pill on the left already says what this line is; the
+                # note gets a line of its own.
+                self._standby_base = (
+                    f"#{standby_row + 1} {q_badge}'{sb_cue.name}'  {layer_badge} [{type_tag}]{extras_str}"
                 )
+                prev = cues[standby_row - 1] if standby_row > 0 else None
+                self._standby_waits_on = None
+                if (prev is not None and prev.follow_mode == FollowMode.AUTO_FOLLOW.value
+                        and prev.status == CueStatus.LIVE):
+                    self._standby_waits_on = (prev.cue_id, format_cue_ref(standby_row - 1, prev))
+                self._refresh_standby_how()
+                self._set_standby_note(sb_cue.notes or "")
                 # The GO text (with its state) comes from the main window: set_go_label.
                 self.btn_go.setToolTip(
                     f"Esegui cue in Standby: {ref} '{sb_cue.name}'\n"
@@ -1791,7 +1918,10 @@ class LiveShowPanel(QWidget):
                 )
             else:
                 self.live_table.clearSelection()
+                self._standby_base = ""
+                self._standby_waits_on = None
                 self.lbl_standby_banner.setText("Nessuna cue pronta in scaletta")
+                self._set_standby_note("")
                 self.btn_go.setToolTip(
                     "Esegui prossima cue\n"
                     "Scorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]"

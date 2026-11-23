@@ -198,7 +198,8 @@ def test_next_banner_is_translated_piece_by_piece(window):
         window._cue_list.setCurrentRow(0)
         window._sync_live_view()
         text = window._live_show_panel.lbl_standby_banner.text()
-        assert "Auto-GO na końcu" in text and "Uwagi:" in text
-        assert "al termine" not in text and "Note:" not in text
+        assert "Auto-GO na końcu" in text and "ręcznie (GO)" in text
+        assert "al termine" not in text and "manuale" not in text
+        assert window._live_show_panel.lbl_standby_note.text() == "📝 uwaga"
     finally:
         i18n.set_language("it")

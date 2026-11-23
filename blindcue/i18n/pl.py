@@ -1735,8 +1735,6 @@ T: dict[str, str] = {
         '🖥️ <b>CPU:</b> {} rdz. ({}) | 💾 <b>RAM:</b> {} GB (wolne: {} GB) | 🎮 <b>GPU:</b> {}',
     'VA-API Attiva':
         'VA-API aktywne',
-    'PROSSIMA IN STANDBY:  ':
-        'NASTĘPNY W STANDBY:  ',
     'PRONTO':
         'GOTOWY',
     'ATTESA':
@@ -2186,8 +2184,6 @@ T: dict[str, str] = {
         'TRYB LIVE AKTYWNY — uproszczony interfejs prowadzenia [ESC ×2 = PANIC]',
     'Sessione precedente messa da parte: {}':
         'Poprzednią sesję odłożono (nie usunięto): {}',
-    '📝 Note:':
-        '📝 Uwagi:',
     'Lo spettacolo è in corso.\nChiudere il programma ferma tutto ciò che è in onda.':
         'Trwa przedstawienie.\nZamknięcie programu zatrzyma wszystko, co gra.',
     'Resta nel programma':
@@ -2268,4 +2264,16 @@ T: dict[str, str] = {
         'Od początku',
     'Apri senza ripristinare':
         'Otwórz bez przywracania',
+    '✓ ULTIMA':
+        '✓ OSTATNIO',
+    '· {} fa':
+        '· {} temu',
+    '+ {} insieme':
+        '+ {} razem',
+    '· manuale (GO)':
+        '· ręcznie (GO)',
+    '· parte da sola tra {}':
+        '· rusza sam za {}',
+    '· parte da sola dopo {}':
+        '· rusza sam po {}',
 }

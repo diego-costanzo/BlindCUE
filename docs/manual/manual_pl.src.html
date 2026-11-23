@@ -334,7 +334,7 @@ albo <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> Ekran robi się prosty i duży – t
 <p><img src="img/pl/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Zaznacz pierwszy cue – dostaje znaczek <b>STANDBY</b> (gotowy do odpalenia).
-Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.<!--IF:live_start--> Jeśli przy wejściu
+<!--IFNOT:last_started-->Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.<!--/IFNOT:last_started--><!--IF:last_started-->Na dole są dwa pasy. <b>✓ OSTATNIO</b> – co uruchomiło ostatnie GO (z „+ 2 razem”, gdy ruszyło kilka naraz), ile czasu temu i jego uwaga; przez 15 s po GO pas świeci na zielono. <b>▶ NASTĘPNY</b> – co zrobi kolejne GO i jak ruszy: <b>ręcznie (GO)</b> albo <b>rusza sam za 0:03</b> (Auto-GO poprzedniego), a w drugiej linii jego uwaga – na czerwono, gdy są w niej słowa jak UWAGA, CZEKAJ, STOP.<!--/IF:last_started--><!--IF:live_start--> Jeśli przy wejściu
 w LIVE zaznaczony jest cue ze środka listy (np. właśnie poprawiany), program zapyta, skąd zacząć:
 <b>Od początku</b>, <b>Od zaznaczonego</b>, a po powrocie z projektu także <b>Wznów od</b> – miejsce,
 w którym przerwano LIVE. Gdy wracasz bez zmian, nie pyta.<!--/IF:live_start--></li>
