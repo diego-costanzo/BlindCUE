@@ -163,6 +163,7 @@ class _TransportMixin:
         self._live_show_panel.notify_first_go()
         for c_idx in chain:
             cue = self._cues[c_idx]
+            self._played_ids.add(cue.cue_id)
             if cue.media_type == MediaType.GROUP:
                 self._fire_group_child(cue, depth=0)
                 self._current_index = c_idx
@@ -216,6 +217,7 @@ class _TransportMixin:
         # The container is "executed" even when empty: keeping it LOADED made
         # the operator think the GO was swallowed.
         group_cue.status = CueStatus.LIVE
+        self._played_ids.add(group_cue.cue_id)
         if not children:
             self._refresh_cue_list(keep_selection=False)
             next_idx = group_idx + 1
@@ -306,6 +308,7 @@ class _TransportMixin:
         if child.pre_delay <= 0.02 and child.media_type != MediaType.ACTION:
             ShowEngine.promote_to_live(self._cues, child, dual_active=self._dual_output_active)
             self._update_live_layer_label(child)
+        self._played_ids.add(child.cue_id)
         self.cue_fired.emit(child)
 
     @Slot()

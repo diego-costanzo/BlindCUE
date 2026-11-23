@@ -110,6 +110,7 @@ class _PersistenceMixin:
                     logger.warning("[RECOVERY] Error recovering cue: %s", exc)
             self._current_index = recovery.get("current_cue_index", -1)
             self._live_resume_id = None
+            self._played_ids.clear()
             self._current_project_path = recovery.get("active_project_path")
             self._project_bundled = bool(self._current_project_path) and \
                 self._project_manager.uses_media_archive(self._current_project_path, self._cues)
@@ -177,6 +178,7 @@ class _PersistenceMixin:
         self._cues.clear()
         self._current_index = -1
         self._live_resume_id = None
+        self._played_ids.clear()
         self._current_project_path = None
         self._project_bundled = False
         self._surfaces = [create_default_surface()]
@@ -296,6 +298,7 @@ class _PersistenceMixin:
             self._cues = cues
             self._current_index = current_idx
             self._live_resume_id = None
+            self._played_ids.clear()
             self._current_project_path = file_path
             # A show saved as a portable bundle must stay one on the next Ctrl+S.
             self._project_bundled = self._project_manager.uses_media_archive(file_path, cues)

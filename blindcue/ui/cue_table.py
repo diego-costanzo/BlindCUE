@@ -50,6 +50,25 @@ ROLE_PHASE_TXT = Qt.ItemDataRole.UserRole + 25
 ROLE_LAYER_CONFLICT = Qt.ItemDataRole.UserRole + 26
 ROLE_TIMELINE_COMPOSED = Qt.ItemDataRole.UserRole + 27
 ROLE_OUTPUT_TARGET = Qt.ItemDataRole.UserRole + 28
+# Live timing, redrawn by the 10 Hz clock (engine/live_state.py) without a rebuild.
+ROLE_LIVE_TIME = Qt.ItemDataRole.UserRole + 29       # short text ("-0:45"), "" when idle
+ROLE_LIVE_FRACTION = Qt.ItemDataRole.UserRole + 30   # 0..1 played, -1 when unknown/idle
+ROLE_LIVE_WARN = Qt.ItemDataRole.UserRole + 31       # ends in a few seconds, next GO is manual
+ROLE_PLAYED = Qt.ItemDataRole.UserRole + 32          # started in this run of the show (✓, dimmed)
+
+
+def paint_live_progress(painter: QPainter, rect: QRect, fraction: float, warn: bool) -> None:
+    """Thin played-part bar along the bottom of a cue cell."""
+    if fraction < 0:
+        return
+    bar = QRect(rect.left() + 2, rect.bottom() - 3, max(0, rect.width() - 4), 3)
+    painter.save()
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.setBrush(QColor(255, 255, 255, 40))
+    painter.drawRect(bar)
+    painter.setBrush(QColor("#fbbf24" if warn else "#4ade80"))
+    painter.drawRect(QRect(bar.left(), bar.top(), int(bar.width() * min(1.0, fraction)), bar.height()))
+    painter.restore()
 
 # Broadcast Default Media Badges (Obsidian Slate / Deep Indigo)
 _MEDIA_BADGE_BROADCAST = {
@@ -594,6 +613,9 @@ class CueTableDelegate(QStyledItemDelegate):
                 elided_name,
             )
             painter.restore()
+            fraction = index.data(ROLE_LIVE_FRACTION)
+            if fraction is not None:
+                paint_live_progress(painter, opt.rect, float(fraction), bool(index.data(ROLE_LIVE_WARN)))
             return
 
         super().paint(painter, option, index)
