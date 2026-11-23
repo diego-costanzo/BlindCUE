@@ -71,7 +71,10 @@ class _TransportMixin:
         if self._is_text_input_focused():
             return
         self._go_force_once = True
-        self._on_go()
+        try:
+            self._on_go()
+        finally:
+            self._go_force_once = False
 
     def _go_guard_allows(self) -> bool:
         """Swallow a second GO that arrives within the guard window.
@@ -121,7 +124,17 @@ class _TransportMixin:
         else:
             target_idx = 0
 
+        self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
+
+    def _remember_manual_go(self, idx: int) -> None:
+        """Note the cue an operator started by hand (GO, remote, forced start).
+
+        After a stop the next GO points back at it, so a GO given too early
+        can simply be repeated at the right moment.
+        """
+        if 0 <= idx < len(self._cues):
+            self._last_manual_go_cue = self._cues[idx]
 
     def _fire_cue_chain(self, start_idx: int) -> None:
         """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution."""
@@ -304,22 +317,31 @@ class _TransportMixin:
         self._status_label.setText("BLACKOUT — Output ripristinato a Layer 0 (Tappo)")
         logger.info("[BLACKOUT] Activated")
 
-    def _first_running_index(self) -> int | None:
-        """Row of the first cue that is live or waiting in a pre/post delay."""
-        waiting = set(getattr(self, "_live_phase_tags", {}) or {})
-        for idx, cue in enumerate(self._cues):
-            if cue.media_type == MediaType.GROUP:
-                continue
-            if cue.status == CueStatus.LIVE or cue.cue_id in waiting:
-                return idx
-        return None
+    def _stopped_manual_go_index(self) -> int | None:
+        """Row of the last hand-started cue if it is still running or waiting.
+
+        Called before a stop. Only the cue the operator started counts:
+        background music started earlier in the act must not take the next
+        GO, and a cue already in its Post-Delay has finished playing.
+        """
+        cue = getattr(self, "_last_manual_go_cue", None)
+        if cue is None:
+            return None
+        idx = next((i for i, c in enumerate(self._cues) if c is cue), None)
+        if idx is None:
+            return None
+        tags = getattr(self, "_live_phase_tags", {}) or {}
+
+        def running(c: Cue) -> bool:
+            return c.status == CueStatus.LIVE or str(tags.get(c.cue_id, "")).startswith("PRE")
+
+        if cue.media_type == MediaType.GROUP:
+            kids = ShowEngine.children_of(self._cues, cue.cue_id)
+            return idx if any(running(k) for k in kids) else None
+        return idx if running(cue) else None
 
     def _standby_on_first_stopped(self, first_stopped: int | None) -> None:
-        """After a stop, put the next GO on the first cue that was running.
-
-        A GO pressed too early can then be undone by stopping and pressing GO
-        again at the right moment.
-        """
+        """After a stop, put the next GO back on the hand-started cue that was stopped."""
         if first_stopped is not None and 0 <= first_stopped < len(self._cues):
             self._current_index = first_stopped
             self._cue_list.setCurrentRow(first_stopped)
@@ -328,7 +350,7 @@ class _TransportMixin:
     def _on_fade_all(self) -> None:
         """Fade All: every layer fades out together (Shift+Esc), a softer PANIC."""
         seconds = read_fade_all_sec()
-        first_stopped = self._first_running_index()
+        first_stopped = self._stopped_manual_go_index()
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
         self._live_phase_tags.clear()
@@ -346,7 +368,7 @@ class _TransportMixin:
     @Slot()
     def _on_panic(self) -> None:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
-        first_stopped = self._first_running_index()
+        first_stopped = self._stopped_manual_go_index()
         self._live_phase_tags.clear()
         ShowEngine.demote_all_live(self._cues)
         self._refresh_cue_list()

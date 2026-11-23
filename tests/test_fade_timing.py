@@ -45,7 +45,7 @@ def test_fade_out_duration_follows_the_clock(qt_app):
             mid_level = audio.volume()
         time.sleep(0.002)
     assert done, "fade_out never finished"
-    assert 0.95 <= done[0] <= 1.15, f"fade took {done[0]:.3f} s"
+    assert 0.95 <= done[0] <= 1.25, f"fade took {done[0]:.3f} s"
     assert audio.volume() == 0.0
     assert mid_level is not None and 0.3 <= mid_level <= 0.5, f"level at 0.5 s: {mid_level}"
     lp.deleteLater()

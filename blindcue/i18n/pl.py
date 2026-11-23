@@ -1972,8 +1972,6 @@ T: dict[str, str] = {
         '&Wycisz wszystko (Fade All)',
     'Dissolvenza totale in {} s':
         'Wyciszanie wszystkiego w {} s',
-    'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme (1 s), poi si fermano. Il prossimo GO riparte dalla prima cue fermata.':
-        'Wycisz wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem (1 s), potem się zatrzymują. Następne GO rusza od pierwszego zatrzymanego cue.',
     '🔉 DISSOLVI [⇧ESC]':
         '🔉 WYCISZ [⇧ESC]',
     '⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. Clicca qui per riprenderla.':
@@ -1990,4 +1988,6 @@ T: dict[str, str] = {
         "GO zablokowane: '{}' jest wyłączny i trwa — Ctrl+Spacja, aby wymusić",
     'GO &forzato (ignora cue esclusiva)':
         'GO &wymuszone (pomija cue wyłączny)',
+    'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme, poi si fermano. Il prossimo GO riparte dalla cue avviata a mano che è stata fermata.':
+        'Wycisz wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem, potem się zatrzymują. Następne GO rusza od zatrzymanego cue, który uruchomiono ręcznie.',
 }

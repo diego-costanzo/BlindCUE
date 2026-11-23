@@ -356,6 +356,7 @@ class _MenuMixin:
         self._live_show_panel.panic_requested.connect(self._on_panic)
         self._live_show_panel.fade_all_requested.connect(self._on_fade_all)
         self._live_show_panel.double_click_armed.connect(self._on_live_double_click_armed)
+        self._live_show_panel.force_row_requested.connect(self._on_live_row_forced)
         self._live_show_panel.break_loop_requested.connect(self._on_break_section_loop)
         self._live_show_panel.live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
         self._live_show_panel.live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)

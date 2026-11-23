@@ -113,3 +113,22 @@ def test_inspector_checkbox_writes_the_field(window):
     window._inspector.chk_exclusive.setChecked(True)
     window._inspector.apply_to_cue(cue)
     assert cue.exclusive is True
+
+
+def test_remote_cue_go_and_double_click_respect_exclusive(window):
+    _make_live(window, 0)
+    window._on_remote_cue_go(2)          # 1-based number -> second cue
+    window._on_live_row_double_clicked(2)
+    assert window._fired == []
+    window._on_live_row_forced(2)        # right-click "start now" is deliberate
+    assert window._fired == [2]
+
+
+def test_forced_flag_does_not_survive_an_empty_list(window):
+    cues = window._cues
+    window._cues = []
+    window._on_go_forced()
+    window._cues = cues
+    _make_live(window, 0)
+    window._on_go()
+    assert window._fired == []

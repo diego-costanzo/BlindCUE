@@ -162,6 +162,8 @@ class _RemoteMixin:
         if not self._cues:
             return
         if not self._manual_go_allowed():
+            if self._remote_mgr:
+                self._remote_mgr.trigger_state_broadcast()
             return
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_go()
@@ -173,6 +175,7 @@ class _RemoteMixin:
             target_idx = self._current_index
         else:
             target_idx = 0
+        self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
         if self._remote_mgr:
             self._remote_mgr.trigger_state_broadcast()
@@ -263,8 +266,13 @@ class _RemoteMixin:
             return
         found_idx = self._resolve_remote_cue_index(target)
         if found_idx is not None and 0 <= found_idx < len(self._cues):
+            if not self._manual_go_allowed():
+                if self._remote_mgr:
+                    self._remote_mgr.trigger_state_broadcast()
+                return
             logger.info("[REMOTE] Jump and fire cue at index %d (#%d)", found_idx, self._cues[found_idx].cue_id)
             self._cue_list.setCurrentRow(found_idx)
+            self._remember_manual_go(found_idx)
             self._fire_cue_chain(found_idx)
             if self._remote_mgr:
                 self._remote_mgr.trigger_state_broadcast()
@@ -488,7 +496,16 @@ class _RemoteMixin:
 
     @Slot(int)
     def _on_live_row_double_clicked(self, row: int) -> None:
+        """Double-click on the live list (only when ``live/double_click_fires`` is on): a GO."""
+        if 0 <= row < len(self._cues) and self._manual_go_allowed():
+            self._remember_manual_go(row)
+            self._fire_cue_chain(row)
+
+    @Slot(int)
+    def _on_live_row_forced(self, row: int) -> None:
+        """Right-click "start this cue now": deliberate, skips the GO guards."""
         if 0 <= row < len(self._cues):
+            self._remember_manual_go(row)
             self._fire_cue_chain(row)
 
     @Slot(int, int)

@@ -90,30 +90,49 @@ def test_fade_all_default_is_one_second(window):
     assert window._emitted == [1.0]
 
 
-def test_fade_all_puts_standby_on_first_stopped_cue(window):
+def test_fade_all_returns_to_the_hand_started_cue(window):
     from models.cue import CueStatus
 
-    _set_live(window, 1, 2)
+    # #0 is background music started earlier; #2 was started by hand (too early)
+    _set_live(window, 0, 2)
+    window._remember_manual_go(2)
     window._cue_list.setCurrentRow(3)
     window._on_fade_all()
-    assert window._cue_list.currentRow() == 1
-    assert window._current_index == 1
+    assert window._cue_list.currentRow() == 2
+    assert window._current_index == 2
     assert all(c.status != CueStatus.LIVE for c in window._cues)
 
 
-def test_panic_puts_standby_on_first_stopped_cue(window):
-    _set_live(window, 2)
+def test_panic_returns_to_the_hand_started_cue(window):
+    _set_live(window, 0, 2)
+    window._remember_manual_go(2)
     window._cue_list.setCurrentRow(3)
     window._on_panic()
     assert window._cue_list.currentRow() == 2
 
 
-def test_cue_waiting_in_delay_counts_as_stopped(window):
-    window._live_phase_tags[window._cues[0].cue_id] = "PRE"
-    _set_live(window, 2)
+def test_hand_started_cue_waiting_in_pre_delay_counts(window):
+    window._live_phase_tags[window._cues[1].cue_id] = "PRE -1.0s"
+    window._remember_manual_go(1)
     window._cue_list.setCurrentRow(3)
     window._on_fade_all()
-    assert window._cue_list.currentRow() == 0
+    assert window._cue_list.currentRow() == 1
+
+
+def test_cue_in_post_delay_has_already_played(window):
+    window._live_phase_tags[window._cues[1].cue_id] = "POST -2.0s"
+    window._remember_manual_go(1)
+    window._cue_list.setCurrentRow(3)
+    window._on_fade_all()
+    assert window._cue_list.currentRow() == 3
+
+
+def test_background_cue_alone_does_not_take_the_next_go(window):
+    _set_live(window, 0)
+    window._remember_manual_go(2)  # finished meanwhile, not live
+    window._cue_list.setCurrentRow(3)
+    window._on_panic()
+    assert window._cue_list.currentRow() == 3
 
 
 def test_nothing_running_keeps_standby(window):

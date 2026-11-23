@@ -1760,8 +1760,6 @@ T: dict[str, str] = {
         '&Fade All',
     'Dissolvenza totale in {} s':
         'Fading everything out in {} s',
-    'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme (1 s), poi si fermano. Il prossimo GO riparte dalla prima cue fermata.':
-        'Fade All: audio, video and images on every layer fade out together (1 s), then stop. The next GO starts again from the first stopped cue.',
     '🔉 DISSOLVI [⇧ESC]':
         '🔉 FADE ALL [⇧ESC]',
     '⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. Clicca qui per riprenderla.':
@@ -1778,4 +1776,6 @@ T: dict[str, str] = {
         "GO blocked: '{}' is exclusive and still live — Ctrl+Space to force",
     'GO &forzato (ignora cue esclusiva)':
         '&Forced GO (ignores exclusive cue)',
+    'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme, poi si fermano. Il prossimo GO riparte dalla cue avviata a mano che è stata fermata.':
+        'Fade All: audio, video and images on every layer fade out together, then stop. The next GO starts again from the hand-started cue that was stopped.',
 }
