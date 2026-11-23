@@ -2778,4 +2778,70 @@ T: dict[str, str] = {
         '↻ Powtórz ostatni efekt  [Ctrl+R]',
     "Nessun lettore libero per l'effetto '{}': non parte":
         'Brak wolnego odtwarzacza dla efektu „{}”: nie startuje',
+    "🤖 L'assistente AI può modificare lo spettacolo":
+        '🤖 Asystent AI może zmieniać przedstawienie',
+    'Un assistente AI su questo computer (Claude Desktop o un altro client MCP) può leggere lo spettacolo aperto e modificarlo nella preparazione. Ogni modifica si annulla con Ctrl+Z.':
+        'Asystent AI na tym komputerze (Claude Desktop albo inny klient MCP) może czytać otwarte przedstawienie i zmieniać je w Przygotowaniu. Każdą zmianę cofa Ctrl+Z.',
+    "🤖 Modifiche dall'assistente AI…":
+        '🤖 Zmiany od asystenta AI…',
+    'Assistente AI: impossibile aprire il collegamento locale':
+        'Asystent AI: nie można otworzyć lokalnego połączenia',
+    '🤖 Assistente AI collegabile: può modificare lo spettacolo nella preparazione':
+        '🤖 Asystent AI może się połączyć: zmienia przedstawienie w Przygotowaniu',
+    '🤖 Assistente AI: {}':
+        '🤖 Asystent AI: {}',
+    'salvato lo spettacolo':
+        'zapisał przedstawienie',
+    "Nessuna modifica dall'assistente.":
+        'Brak zmian od asystenta.',
+    "Modifiche dall'assistente AI":
+        'Zmiany od asystenta AI',
+    'Ogni modifica è un passo di Annulla (Ctrl+Z).':
+        'Każda zmiana to jeden krok Cofnij (Ctrl+Z).',
+    '(nuovo spettacolo non salvato)':
+        '(nowe, niezapisane przedstawienie)',
+    'aggiunta la cue':
+        'dodał pozycję',
+    'aggiunta la didascalia':
+        'dodał napis',
+    "aggiunta l'azione":
+        'dodał akcję',
+    'aggiunta la scena':
+        'dodał scenę',
+    'modificata la cue':
+        'zmienił pozycję',
+    'spostata la cue':
+        'przesunął pozycję',
+    'eliminate le cue':
+        'usunął pozycje',
+    '🤖 Assistente AI…':
+        '🤖 Asystent AI…',
+    'Assistente AI (MCP)':
+        'Asystent AI (MCP)',
+    "Un assistente AI (per esempio Claude Desktop) può preparare lo spettacolo per te: crea la scaletta da una cartella di file, aggiunge didascalie, scene e note per l'operatore. Lavora solo nelle cartelle che scegli, non suona niente e non cambia mai uno spettacolo in corso. Ai fornitori di AI arrivano i nomi delle cue, le note e i nomi dei file, non il contenuto dei file.":
+        'Asystent AI (np. Claude Desktop) może przygotować przedstawienie za Ciebie: ułoży listę cue z folderu plików, doda napisy, sceny i notatki dla operatora. Działa tylko w folderach, które wskażesz, niczego nie odtwarza i nigdy nie zmienia trwającego przedstawienia. Do dostawcy AI trafiają nazwy cue, uwagi i nazwy plików, nie zawartość plików.',
+    "1. Aggiungi l'assistente a Claude Desktop (una volta per computer):":
+        '1. Dodaj asystenta do Claude Desktop (raz na komputer):',
+    'Aggiungi a Claude Desktop…':
+        'Dodaj do Claude Desktop…',
+    "Crea il file dell'estensione e lo apre: Claude Desktop chiede quali cartelle l'assistente può usare.":
+        'Tworzy plik rozszerzenia i go otwiera: Claude Desktop zapyta, z których folderów asystent może korzystać.',
+    'Copia le impostazioni per altri programmi':
+        'Kopiuj ustawienia dla innych programów',
+    'Impostazioni «mcpServers» (JSON) per Claude Code, Cursor e altri client MCP.':
+        'Ustawienia „mcpServers” (JSON) dla Claude Code, Cursora i innych klientów MCP.',
+    "2. Se vuoi che l'assistente modifichi lo spettacolo aperto qui (si vede subito, Ctrl+Z annulla), permettilo:":
+        '2. Jeśli asystent ma zmieniać przedstawienie otwarte tutaj (widać to od razu, Ctrl+Z cofa), pozwól mu:',
+    "L'assistente AI può modificare lo spettacolo (solo nella preparazione)":
+        'Asystent AI może zmieniać przedstawienie (tylko w Przygotowaniu)',
+    "Modifiche dall'assistente…":
+        'Zmiany od asystenta…',
+    'Impossibile creare il file: {}':
+        'Nie można utworzyć pliku: {}',
+    'Creato {}. Se Claude Desktop non si è aperto, trascina questo file nella sua finestra (Impostazioni → Estensioni).':
+        'Utworzono {}. Jeśli Claude Desktop się nie otworzył, przeciągnij ten plik do jego okna (Ustawienia → Rozszerzenia).',
+    "Creato {} e aperto: conferma l'installazione in Claude Desktop e scegli le cartelle.":
+        'Utworzono {} i otwarto: potwierdź instalację w Claude Desktop i wybierz foldery.',
+    'Impostazioni copiate (cartella: {}). Incollale nella configurazione del client MCP.':
+        'Skopiowano ustawienia (folder: {}). Wklej je do konfiguracji klienta MCP.',
 }

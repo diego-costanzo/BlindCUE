@@ -12,6 +12,10 @@ dependencies = [
     "qrcode>=7.4.2,<9",
 ]
 
+[project.optional-dependencies]
+# The show assistant (blindcue/mcp_server): an AI client prepares show files.
+assistant = ["mcp>=1.30,<2"]
+
 [tool.pytest.ini_options]
 # Collect only the real test suite. Without this, pytest also scans the
 # production package and tries to collect engine/player_test.py (the live

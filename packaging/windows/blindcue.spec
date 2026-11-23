@@ -53,4 +53,31 @@ exe = EXE(
     console=False,
     upx=False,
 )
-coll = COLLECT(exe, a.binaries, a.datas, name="BlindCue", upx=False)
+
+# The show assistant: an MCP server over stdio, started by an AI client
+# (Claude Desktop). A console program - a windowed PyInstaller build has no
+# stdin/stdout - sharing the program's _internal folder.
+b = Analysis(
+    [str(APP / "mcp_server" / "server.py")],
+    pathex=[str(APP)],
+    binaries=binaries,
+    datas=[d for d in datas if d[1] == "help"],
+    hiddenimports=["mcp.server.fastmcp", "mcp_server.show_tools", "mcp_server.program_link"],
+    runtime_hooks=[str(HERE / "rthook_ffmpeg.py")],
+    excludes=["tkinter", "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtWebEngineQuick",
+              "PySide6.Qt3DCore", "PySide6.QtQuick3D", "PySide6.QtCharts", "PySide6.QtDataVisualization",
+              "PySide6.QtGraphs", "PySide6.QtPdf", "PySide6.QtDesigner"],
+    noarchive=False,
+)
+pyz_b = PYZ(b.pure)
+exe_b = EXE(
+    pyz_b,
+    b.scripts,
+    [],
+    exclude_binaries=True,
+    name="BlindCue-Assistant",
+    icon=str(ROOT / "setup" / "assets" / "blindcue.ico"),
+    console=True,
+    upx=False,
+)
+coll = COLLECT(exe, exe_b, a.binaries, a.datas, b.binaries, b.datas, name="BlindCue", upx=False)

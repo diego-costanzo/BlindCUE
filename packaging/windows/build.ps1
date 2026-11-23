@@ -57,6 +57,9 @@ if (-not (Test-Path $venvPy)) {
     & $venvPy -m pip install -r requirements.txt pyinstaller
     if ($LASTEXITCODE -ne 0) { throw "pip install failed" }
 }
+# The show assistant (BlindCue-Assistant.exe) needs the MCP SDK in the build environment.
+& $venvPy -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('mcp') else 1)"
+if ($LASTEXITCODE -ne 0) { & $venvPy -m pip install "mcp>=1.30,<2" }
 
 Write-Host "[2/3] PyInstaller..."
 $env:BLINDCUE_FFMPEG_DIR = $FfmpegDir

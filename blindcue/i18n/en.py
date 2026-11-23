@@ -2556,4 +2556,70 @@ T: dict[str, str] = {
         '↻ Repeat the last effect  [Ctrl+R]',
     "Nessun lettore libero per l'effetto '{}': non parte":
         "No free player for the effect '{}': it does not start",
+    "🤖 L'assistente AI può modificare lo spettacolo":
+        '🤖 The AI assistant may change the show',
+    'Un assistente AI su questo computer (Claude Desktop o un altro client MCP) può leggere lo spettacolo aperto e modificarlo nella preparazione. Ogni modifica si annulla con Ctrl+Z.':
+        'An AI assistant on this computer (Claude Desktop or another MCP client) can read the open show and change it in Preparation. Ctrl+Z undoes every change.',
+    "🤖 Modifiche dall'assistente AI…":
+        '🤖 Changes from the AI assistant…',
+    'Assistente AI: impossibile aprire il collegamento locale':
+        'AI assistant: the local link cannot be opened',
+    '🤖 Assistente AI collegabile: può modificare lo spettacolo nella preparazione':
+        '🤖 The AI assistant can connect: it changes the show in Preparation',
+    '🤖 Assistente AI: {}':
+        '🤖 AI assistant: {}',
+    'salvato lo spettacolo':
+        'saved the show',
+    "Nessuna modifica dall'assistente.":
+        'No changes from the assistant.',
+    "Modifiche dall'assistente AI":
+        'Changes from the AI assistant',
+    'Ogni modifica è un passo di Annulla (Ctrl+Z).':
+        'Every change is one Undo step (Ctrl+Z).',
+    '(nuovo spettacolo non salvato)':
+        '(new show, not saved)',
+    'aggiunta la cue':
+        'added the cue',
+    'aggiunta la didascalia':
+        'added the caption',
+    "aggiunta l'azione":
+        'added the action',
+    'aggiunta la scena':
+        'added the scene',
+    'modificata la cue':
+        'changed the cue',
+    'spostata la cue':
+        'moved the cue',
+    'eliminate le cue':
+        'deleted cues',
+    '🤖 Assistente AI…':
+        '🤖 AI assistant…',
+    'Assistente AI (MCP)':
+        'AI assistant (MCP)',
+    "Un assistente AI (per esempio Claude Desktop) può preparare lo spettacolo per te: crea la scaletta da una cartella di file, aggiunge didascalie, scene e note per l'operatore. Lavora solo nelle cartelle che scegli, non suona niente e non cambia mai uno spettacolo in corso. Ai fornitori di AI arrivano i nomi delle cue, le note e i nomi dei file, non il contenuto dei file.":
+        'An AI assistant (for example Claude Desktop) can prepare the show for you: it builds the cue list from a folder of files and adds captions, scenes and notes for the operator. It works only in the folders you choose, plays nothing and never changes a running show. The AI provider receives cue names, notes and file names, not the content of the files.',
+    "1. Aggiungi l'assistente a Claude Desktop (una volta per computer):":
+        '1. Add the assistant to Claude Desktop (once per computer):',
+    'Aggiungi a Claude Desktop…':
+        'Add to Claude Desktop…',
+    "Crea il file dell'estensione e lo apre: Claude Desktop chiede quali cartelle l'assistente può usare.":
+        'Makes the extension file and opens it: Claude Desktop asks which folders the assistant may use.',
+    'Copia le impostazioni per altri programmi':
+        'Copy the settings for other programs',
+    'Impostazioni «mcpServers» (JSON) per Claude Code, Cursor e altri client MCP.':
+        '"mcpServers" settings (JSON) for Claude Code, Cursor and other MCP clients.',
+    "2. Se vuoi che l'assistente modifichi lo spettacolo aperto qui (si vede subito, Ctrl+Z annulla), permettilo:":
+        '2. If the assistant should change the show open here (you see it at once, Ctrl+Z undoes), allow it:',
+    "L'assistente AI può modificare lo spettacolo (solo nella preparazione)":
+        'The AI assistant may change the show (only in Preparation)',
+    "Modifiche dall'assistente…":
+        'Changes from the assistant…',
+    'Impossibile creare il file: {}':
+        'The file cannot be made: {}',
+    'Creato {}. Se Claude Desktop non si è aperto, trascina questo file nella sua finestra (Impostazioni → Estensioni).':
+        'Made {}. If Claude Desktop did not open, drag this file into its window (Settings → Extensions).',
+    "Creato {} e aperto: conferma l'installazione in Claude Desktop e scegli le cartelle.":
+        'Made {} and opened it: confirm the installation in Claude Desktop and choose the folders.',
+    'Impostazioni copiate (cartella: {}). Incollale nella configurazione del client MCP.':
+        "Settings copied (folder: {}). Paste them into the MCP client's configuration.",
 }

@@ -45,6 +45,7 @@ from ui.main_window._rehearsal import _RehearsalMixin
 from ui.main_window._pin import _PinMixin
 from ui.main_window._variants import _VariantsMixin
 from ui.main_window._effects import _EffectsMixin
+from ui.main_window._assistant import _AssistantMixin
 
 
 class MainWindow(
@@ -77,6 +78,7 @@ class MainWindow(
     _PinMixin,
     _VariantsMixin,
     _EffectsMixin,
+    _AssistantMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -208,6 +210,7 @@ class MainWindow(
         self._rehearsal_setup()  # rehearsal drawer and tools (stage 1 C2a step 9)
         self._pin_setup()  # exit PIN of the show (stage 1 C2a step 10)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
+        self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()

@@ -110,6 +110,15 @@ class _MenuMixin:
         show_menu.addAction(
             QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
         )
+        show_menu.addSeparator()
+        # Stage 1M, M2: an AI assistant (MCP) may change the open show - off by default.
+        self._act_assistant = QAction("🤖 L'assistente AI può modificare lo spettacolo", self, checkable=True)
+        self._act_assistant.setToolTip(
+            "Un assistente AI su questo computer (Claude Desktop o un altro client MCP) può leggere lo "
+            "spettacolo aperto e modificarlo nella preparazione. Ogni modifica si annulla con Ctrl+Z.")
+        self._act_assistant.toggled.connect(self._on_assistant_toggled)
+        show_menu.addAction(self._act_assistant)
+        show_menu.addAction(QAction("🤖 Assistente AI…", self, triggered=self._open_assistant_dialog))
 
         view_menu = mb.addMenu("&View")
         self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)

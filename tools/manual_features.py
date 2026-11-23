@@ -53,6 +53,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "view_variants": ("blindcue/ui/main_window/_variants.py", None),
     "fade_others": ("blindcue/models/cue.py", "fade_others: float"),
     "effects": ("blindcue/ui/main_window/_effects.py", None),
+    "assistant": ("blindcue/mcp_server/server.py", None),
 }
 
 
