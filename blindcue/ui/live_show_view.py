@@ -72,6 +72,7 @@ from ui.hold_button import ElidedButton, HoldProgressButton
 from ui.master_volume import MasterVolume
 from ui.mode_tabs import ModeTabs
 from ui.now_playing import NowPlayingPanel
+from ui.pin_bar import PinBar
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_GO, get_active_theme
 
@@ -982,6 +983,8 @@ class LiveShowPanel(QWidget):
         top_layout.addWidget(self.lbl_clock, stretch=0)
         top_layout.addWidget(right_box, stretch=1)
         root.addWidget(self.top_bar)
+        self.pin_bar = PinBar()  # the exit PIN, when one is set (C2a step 10)
+        root.addWidget(self.pin_bar)
 
         # Shown when the keyboard is not on the director window (Space/Esc lost).
         self.lbl_focus_warning = QLabel(

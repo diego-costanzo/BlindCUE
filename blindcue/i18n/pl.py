@@ -2596,4 +2596,30 @@ T: dict[str, str] = {
         'Koniec (gdzie się zatrzymuje; „koniec” = koniec pliku)',
     'Da / a':
         'Od / do',
+    'PIN per uscire dallo spettacolo:':
+        'PIN, aby wyjść z Przedstawienia:',
+    'Invio – esci':
+        'Enter – wyjdź',
+    'Inserisci il PIN per uscire dallo spettacolo (GO e PANIC funzionano)':
+        'Wpisz PIN, aby wyjść z Przedstawienia (GO i PANIC działają)',
+    'Hai dimenticato il PIN? Chiudi il programma (File → Esci): lo spettacolo si riapre in Preparazione.':
+        'Nie pamiętasz PIN-u? Zamknij program (Plik → Zakończ); pokaz otworzy się w Przygotowaniu.',
+    'PIN sbagliato.':
+        'Zły PIN.',
+    'Il PIN si cambia in Preparazione':
+        'PIN zmienia się w Przygotowaniu',
+    'PIN di uscita dallo spettacolo':
+        'PIN wyjścia z Przedstawienia',
+    '4 cifre per uscire dallo spettacolo su questo computer (vuoto = basta tenere premuto 1,5 s):':
+        '4 cyfry do wyjścia z Przedstawienia na tym komputerze (puste = wystarczy przytrzymać 1,5 s):',
+    'Il PIN deve avere 4 cifre':
+        'PIN musi mieć 4 cyfry',
+    'PIN di uscita impostato':
+        'Ustawiono PIN wyjścia',
+    'PIN di uscita tolto':
+        'Usunięto PIN wyjścia',
+    'PIN di uscita dallo spettacolo…':
+        'PIN wyjścia z Przedstawienia…',
+    '{} torna da {}':
+        '{} wróci od {}',
 }

@@ -85,6 +85,7 @@ class _MenuMixin:
         show_menu.addAction(self._act_undo_go)
         show_menu.addAction(QAction("◐ Prova", self, shortcut=QKeySequence("Shift+F5"),
                                     triggered=self._enter_rehearsal))
+        show_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
         show_menu.addAction(QAction("Aggiungi la checklist predefinita", self,
                                     triggered=self._add_default_checklist))
         self._act_end_show = QAction("Termina lo spettacolo…", self, shortcut=QKeySequence("Ctrl+Shift+F5"),
@@ -435,7 +436,7 @@ class _MenuMixin:
 
         # Dedicated distraction-free LIVE Show Mode page
         self._live_show_panel = LiveShowPanel()
-        self._live_show_panel.exit_live_mode_requested.connect(lambda: self.set_live_mode(False))
+        self._live_show_panel.exit_live_mode_requested.connect(lambda: self._leave_show_to("preparation"))
         lv = self._live_show_panel.master_volume
         lv.level_changed.connect(lambda v: self._set_master(level=v))
         lv.mute_changed.connect(lambda m: self._set_master(muted=m))

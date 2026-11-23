@@ -6,8 +6,7 @@ on the players and the output.
 
 One click, no dialog: a mistake costs one repeated GO. Only what that GO
 started is touched; a picture it replaced comes back; an audio or video it cut
-off does not come back yet (stage 1 C2a step 11 will bring it back from where
-it stopped).
+off comes back from where it stopped, fading in over 1 s (stage 1 C2a step 11).
 """
 
 from __future__ import annotations
@@ -40,6 +39,7 @@ class UndoRecord:
     started: float                                   # time.monotonic() of the GO
     ids: list[int] = field(default_factory=list)     # every cue it started, in order
     replaced: dict[int, int] = field(default_factory=dict)  # cue_id -> cue_id it pushed off its layer
+    cut_at: dict[int, float] = field(default_factory=dict)  # cue_id -> where the sound/video it cut was
     paused_total: float = 0.0                        # seconds spent in Pause All
     paused_since: float | None = None
 
@@ -71,7 +71,8 @@ class UndoStep:
     how: str
     seconds: float = 0.0
     restore_id: int | None = None   # RESTORE: the picture that comes back
-    cut_id: int | None = None       # audio/video this cue cut off (does not come back yet)
+    cut_id: int | None = None       # audio/video this cue cut off
+    resume_at: float | None = None  # where that audio/video comes back from (fades in over 1 s)
 
 
 def _is_picture(cue: Cue | None) -> bool:
@@ -110,13 +111,15 @@ def undo_plan(cues: list[Cue], record: UndoRecord, waiting: set[int]) -> list[Un
         if before is not None and before.cue_id in record.ids:
             before = None  # pushed off by its own GO: nothing to bring back
         cut = before.cue_id if _is_timed(before) else None
+        # The sound or video this GO cut off comes back from where it was (step 11).
+        resume = record.cut_at.get(cue_id) if cut is not None else None
         if _is_picture(cue):
             if _is_picture(before):
                 steps.append(UndoStep(cue_id, RESTORE, PICTURE_SECONDS, restore_id=before.cue_id))
             else:
-                steps.append(UndoStep(cue_id, LIFT, PICTURE_SECONDS, cut_id=cut))
+                steps.append(UndoStep(cue_id, LIFT, PICTURE_SECONDS, cut_id=cut, resume_at=resume))
         else:
-            steps.append(UndoStep(cue_id, FADE, FADE_SECONDS, cut_id=cut))
+            steps.append(UndoStep(cue_id, FADE, FADE_SECONDS, cut_id=cut, resume_at=resume))
     return steps
 
 

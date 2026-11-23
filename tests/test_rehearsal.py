@@ -128,3 +128,40 @@ def test_save_level_keeps_what_is_heard(window):
     window.layer_trim_requested.connect(lambda layer, t: trims.append((layer, t)))
     window._on_card_save_level(cue.cue_id)
     assert cue.volume == 0.4 and window._trims[slot] == 1.0 and trims == [(slot, 1.0)]
+
+
+def test_exit_pin_guards_every_way_out_of_the_show(window):
+    QSettings("BlindCue", "BlindCue").setValue("live/exit_pin", "1234")
+    try:
+        window.set_live_mode(True)
+        bar = window._live_show_panel.pin_bar
+        window._live_show_panel.mode_tabs.tab_prep_hold.hold_completed.emit()
+        assert window.is_live_mode() and bar.isVisibleTo(window._live_show_panel)
+        bar.pin_entered.emit("0000")
+        assert window.is_live_mode() and bar.lbl_hint.text() == "PIN sbagliato."
+        bar.pin_entered.emit("1111")
+        assert "File" in bar.lbl_hint.text()                    # the way out of a forgotten PIN
+        bar.pin_entered.emit("1234")
+        assert not window.is_live_mode() and not bar.isVisibleTo(window._live_show_panel)
+        window.set_live_mode(True)
+        window._live_show_panel.mode_tabs.tab_reh_hold.hold_completed.emit()
+        assert window._current_mode() == SHOW                   # asks first
+        bar.pin_entered.emit("1234")
+        assert window._current_mode() == REHEARSAL
+        window._live_show_panel.mode_tabs.tab_prep.click()      # out of the rehearsal: no PIN
+        assert not window.is_live_mode()
+    finally:
+        QSettings("BlindCue", "BlindCue").remove("live/exit_pin")
+
+
+def test_pin_never_blocks_go_or_panic(window):
+    QSettings("BlindCue", "BlindCue").setValue("live/exit_pin", "1234")
+    try:
+        window.set_live_mode(True)
+        window._live_show_panel.mode_tabs.tab_prep_hold.hold_completed.emit()
+        window._on_go()
+        assert 9301 in window._played_ids
+        window._on_panic()
+        assert window.is_live_mode()
+    finally:
+        QSettings("BlindCue", "BlindCue").remove("live/exit_pin")

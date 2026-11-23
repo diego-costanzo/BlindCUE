@@ -25,6 +25,7 @@ from engine.undo_go import (
     can_undo,
     undo_plan,
 )
+from engine.live_state import fmt_clock
 from i18n import tr
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
@@ -59,12 +60,14 @@ class _UndoGoMixin:
         rec = self._undo_go
         return rec is not None and self._undo_auto_source in rec.ids
 
-    def note_replaced(self, cue: Cue, before: Cue | None) -> None:
-        """main.py: *cue* goes on the layer where *before* was on air."""
+    def note_replaced(self, cue: Cue, before: Cue | None, position: float | None = None) -> None:
+        """main.py: *cue* goes on the layer where *before* was on air (at *position*, for audio/video)."""
         rec = self._undo_go
         if rec is None or before is None or before.cue_id == cue.cue_id or cue.cue_id not in rec.ids:
             return
         rec.replaced.setdefault(cue.cue_id, before.cue_id)
+        if position is not None:
+            rec.cut_at.setdefault(cue.cue_id, float(position))
 
     def _undo_go_pause(self, paused: bool) -> None:
         if self._undo_go is not None:
@@ -109,8 +112,13 @@ class _UndoGoMixin:
             parts.append(tr("{} non è ancora partita: la annullo").format(self._undo_ref(cid, False)))
         for cid in (s.cue_id for s in steps if s.how == ENDED):
             parts.append(tr("{} è già finita").format(self._undo_ref(cid, False)))
-        for cid in (s.cut_id for s in steps if s.cut_id is not None):
-            parts.append(tr("{} interrotta: non torna da sola").format(self._undo_ref(cid)))
+        for s in steps:
+            if s.cut_id is None:
+                continue
+            if s.resume_at is not None:
+                parts.append(tr("{} torna da {}").format(self._undo_ref(s.cut_id), fmt_clock(s.resume_at)))
+            else:
+                parts.append(tr("{} interrotta: non torna da sola").format(self._undo_ref(s.cut_id)))
         for cid in (s.cue_id for s in steps if s.how == KEEP):
             parts.append(tr("l'azione {} resta").format(self._undo_ref(cid, False)))
         parts.append(tr("prossima di nuovo {}").format(self._undo_ref(self._undo_go.first_id, False)))

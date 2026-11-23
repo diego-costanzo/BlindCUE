@@ -67,10 +67,7 @@ class _RehearsalMixin:
         if self._live_mode and self._rehearsal:
             return
         if self._live_mode:
-            self._rehearsal = True
-            self._apply_mode_visuals()
-            self._status_label.setText(tr("Prova: lo spettacolo con piccole correzioni (✎). Ciò che suona continua."))
-            self.announce(self._status_label.text(), assertive=True)
+            self._leave_show_to("rehearsal")  # out of the show: through the PIN when one is set
             return
         self._rehearsal = True
         self.set_live_mode(True)  # the start question when needed; no readiness check
@@ -78,6 +75,12 @@ class _RehearsalMixin:
             self._rehearsal = False
             self._apply_mode_visuals()
             return
+        self._status_label.setText(tr("Prova: lo spettacolo con piccole correzioni (✎). Ciò che suona continua."))
+        self.announce(self._status_label.text(), assertive=True)
+
+    def _switch_show_to_rehearsal(self) -> None:
+        self._rehearsal = True
+        self._apply_mode_visuals()
         self._status_label.setText(tr("Prova: lo spettacolo con piccole correzioni (✎). Ciò che suona continua."))
         self.announce(self._status_label.text(), assertive=True)
 

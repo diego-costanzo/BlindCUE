@@ -355,6 +355,12 @@ poprawiony poziom staje się poziomem cue, a słychać to samo); <b>−10 s / +1
 po przytrzymaniu 1,5 s. Dodawać, usuwać i przesuwać cue można tylko w Przygotowaniu. Z Próby do Przygotowania –
 jedno kliknięcie; do Przedstawienia – <kbd>F5</kbd> albo zakładka (przez stronę „Przed przedstawieniem”); z
 Przedstawienia do Próby – przytrzymanie zakładki <b>◐ Próba</b> 1,5 s.</p><!--/IF:rehearsal-->
+<!--IF:exit_pin--><p><b>PIN wyjścia</b> (opcja, <b>Sterowanie → PIN wyjścia z Przedstawienia…</b>, tylko
+w Przygotowaniu): 4 cyfry zapamiętane na tym komputerze, nigdy w pliku pokazu. Z PIN-em każde wyjście z Przedstawienia
+(przytrzymanie zakładki, <b>Zakończ przedstawienie…</b>) najpierw prosi o niego w polu pod górnym paskiem – nie w oknie;
+pole znika samo po 10 s bez pisania. Zły PIN tylko to mówi, bez blokady; po drugim program podpowiada wyjście
+(zamknięcie programu – pokaz otworzy się w Przygotowaniu). PIN nigdy nie blokuje GO, PANIC, WYGAŚ, Pauzy, głośności
+ani Cofnij GO. Chroni przed przypadkiem i ciekawskim uczniem, nie przed kimś zdeterminowanym.</p><!--/IF:exit_pin-->
 <p><img src="img/pl/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Zaznacz pierwszy cue – dostaje znaczek <b>STANDBY</b> (gotowy do odpalenia).
@@ -368,7 +374,8 @@ w którym przerwano LIVE. Gdy wracasz bez zmian, nie pyta.<!--/IF:live_start--><
 <!--IF:undo_go--><li><b>GO za wcześnie albo na zły cue?</b> Przez 15 s po GO na prawym końcu pasa
 <b>✓ OSTATNIO</b> jest przycisk <b>↶ Cofnij GO #5 · 12</b> (liczba = ile sekund zostało; <b>Pauza wszystko</b>
 wstrzymuje odliczanie). Jedno kliknięcie, bez pytania: wygasza tylko to, co uruchomiło to GO (dźwięk i wideo
-w 1 s, obraz w 0,5 s), przywraca obraz, który ten GO zastąpił, anuluje start jeszcze czekający w opóźnieniu
+w 1 s, obraz w 0,5 s), przywraca obraz, który ten GO zastąpił, wznawia przerwany przez niego dźwięk lub wideo od miejsca przerwania
+(narasta przez 1 s), anuluje start jeszcze czekający w opóźnieniu
 i ustawia GO z powrotem na ten cue – wystarczy dać GO jeszcze raz we właściwej chwili. Cue akcji zostają, jak
 były. Najedź na przycisk, a zobaczysz, co dokładnie zrobi. Z klawiatury: menu <b>Sterowanie → Cofnij ostatnie GO</b>
 (celowo bez skrótu). Następne GO, PANIC, WYGAŚ i zmiana trybu kończą tę możliwość.</li><!--/IF:undo_go-->

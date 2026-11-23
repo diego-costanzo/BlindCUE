@@ -42,6 +42,7 @@ from ui.main_window._readiness import _ReadinessMixin
 from ui.main_window._now_playing import _NowPlayingMixin
 from ui.main_window._announce import _AnnounceMixin
 from ui.main_window._rehearsal import _RehearsalMixin
+from ui.main_window._pin import _PinMixin
 
 
 class MainWindow(
@@ -71,6 +72,7 @@ class MainWindow(
     _NowPlayingMixin,
     _AnnounceMixin,
     _RehearsalMixin,
+    _PinMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -195,6 +197,7 @@ class MainWindow(
         self._readiness_setup()  # "Before the show" page (stage 1 C2a step 7)
         self._now_playing_setup()  # right column of the show (stage 1 C2a step 8)
         self._rehearsal_setup()  # rehearsal drawer and tools (stage 1 C2a step 9)
+        self._pin_setup()  # exit PIN of the show (stage 1 C2a step 10)
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()

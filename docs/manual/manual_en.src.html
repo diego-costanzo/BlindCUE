@@ -353,6 +353,12 @@ the end to rehearse it) and <b>Save level</b> (when the card's slider is not at 
 cue's own and it sounds the same); <b>−10 s / +10 s</b> act at once, in the show after a 1.5 s hold. Adding, deleting
 and moving cues happens in Preparation only. Rehearsal → Preparation is one click; → Show is <kbd>F5</kbd> or the tab
 (through the "Before the show" page); Show → Rehearsal is a 1.5 s hold on the <b>◐ Rehearsal</b> tab.</p><!--/IF:rehearsal-->
+<!--IF:exit_pin--><p><b>Exit PIN</b> (optional, <b>Show → Exit PIN of the show…</b>, in Preparation only):
+4 digits kept on this computer, never in the show file. With a PIN, every way out of the show (holding a tab,
+<b>End the show…</b>) first asks for it in a field under the top bar – not in a window; the field goes away by itself
+after 10 s without typing. A wrong PIN only says so, with no lock-out; after the second one the program names the way
+out (closing the program – the show opens in Preparation). The PIN never blocks GO, PANIC, FADE ALL, Pause, the volume
+or Undo GO. It protects against an accident and a curious pupil, not against someone determined.</p><!--/IF:exit_pin-->
 <p><img src="img/en/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Select the first cue – it gets the <b>STANDBY</b> badge (ready to fire).
@@ -366,7 +372,8 @@ editor also <b>Resume from</b> – where LIVE was left. Coming back without chan
 <!--IF:undo_go--><li><b>GO too early or on the wrong cue?</b> For 15 s after a GO the right end of the
 <b>✓ LAST</b> strip holds <b>↶ Undo GO #5 · 12</b> (the number = seconds left; <b>Pause All</b> stops the count).
 One click, no question: it fades out only what that GO started (sound and video in 1 s, a picture in 0.5 s),
-brings back a picture that GO replaced, cancels a start still waiting in its delay and points the GO back at
+brings back a picture that GO replaced, resumes a sound or video it cut off from where it stopped
+(fading in over 1 s), cancels a start still waiting in its delay and points the GO back at
 that cue – just give the GO again at the right moment. Action cues stay as they were. Hover over the button to
 see exactly what it will do. From the keyboard: <b>Show → Undo last GO</b> (on purpose without a shortcut).
 The next GO, PANIC, FADE ALL and a change of mode end the offer.</li><!--/IF:undo_go-->

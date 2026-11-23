@@ -2374,4 +2374,30 @@ T: dict[str, str] = {
         'End (where it stops; “end” = end of the file)',
     'Da / a':
         'From / to',
+    'PIN per uscire dallo spettacolo:':
+        'PIN to leave the show:',
+    'Invio – esci':
+        'Enter – leave',
+    'Inserisci il PIN per uscire dallo spettacolo (GO e PANIC funzionano)':
+        'Type the PIN to leave the show (GO and PANIC work)',
+    'Hai dimenticato il PIN? Chiudi il programma (File → Esci): lo spettacolo si riapre in Preparazione.':
+        'Forgot the PIN? Close the program (File → Quit): the show opens again in Preparation.',
+    'PIN sbagliato.':
+        'Wrong PIN.',
+    'Il PIN si cambia in Preparazione':
+        'The PIN is changed in Preparation',
+    'PIN di uscita dallo spettacolo':
+        'Exit PIN of the show',
+    '4 cifre per uscire dallo spettacolo su questo computer (vuoto = basta tenere premuto 1,5 s):':
+        '4 digits to leave the show on this computer (empty = holding for 1.5 s is enough):',
+    'Il PIN deve avere 4 cifre':
+        'The PIN must have 4 digits',
+    'PIN di uscita impostato':
+        'Exit PIN set',
+    'PIN di uscita tolto':
+        'Exit PIN removed',
+    'PIN di uscita dallo spettacolo…':
+        'Exit PIN of the show…',
+    '{} torna da {}':
+        '{} comes back from {}',
 }

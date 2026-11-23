@@ -48,6 +48,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "readiness": ("blindcue/engine/readiness.py", None),
     "now_playing": ("blindcue/ui/now_playing.py", None),
     "rehearsal": ("blindcue/ui/rehearsal_drawer.py", None),
+    "exit_pin": ("blindcue/ui/pin_bar.py", None),
 }
 
 

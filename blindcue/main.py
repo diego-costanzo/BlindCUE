@@ -702,8 +702,11 @@ def main() -> int:
         else:
             _finalize_cue_exit(cue, layer, expected_gen=expected_gen)
 
-    def _launch_cue_now(cue: Cue, layer: int, expected_gen: int) -> None:
-        """Start actual Audio/Video/Image playback/display for *cue* on *layer*."""
+    def _launch_cue_now(cue: Cue, layer: int, expected_gen: int, start_at: float | None = None) -> None:
+        """Start actual Audio/Video/Image playback/display for *cue* on *layer*.
+
+        *start_at*: resume from this point of the file (Undo GO), fading in over 1 s.
+        """
         if layer_fire_gen.get(layer) != expected_gen:
             return
         lp = live_players.get(layer)
@@ -722,7 +725,7 @@ def main() -> int:
             if known_dur <= 0 and main_win._selected_cue() is cue and main_win._active_test_duration > 0:
                 known_dur = main_win._active_test_duration
             live_durations[layer] = known_dur
-            live_positions[layer] = max(0.0, cue.in_point)
+            live_positions[layer] = max(0.0, cue.in_point if start_at is None else start_at)
             live_image_envelopes.pop(layer, None)
 
             if known_dur > 0 and cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
@@ -756,7 +759,7 @@ def main() -> int:
                     )
                     lp.load(
                         cue.file_path,
-                        start=cue.in_point,
+                        start=cue.in_point if start_at is None else start_at,
                         end=cue.out_point,
                     )
                     lp.set_aspect_ratio(cue.aspect_ratio)
@@ -765,6 +768,10 @@ def main() -> int:
                     _apply_cue_automation(lp, cue, hot=False)
                     lp.set_loop(cue.loop, cue.loop_count)
                     lp.play()
+                    if start_at is not None:
+                        lp.ramp_level(0.0, 0.0)
+                        lp.ramp_level(1.0, 1.0)
+                        _out_window(layer).set_layer_opacity(_local_layer(layer), 1.0)
                     logger.info("[MAIN] Video cue fired to live L%d: %s", layer, cue)
 
             elif cue.media_type == MediaType.AUDIO:
@@ -773,12 +780,15 @@ def main() -> int:
                     _clear_layer(layer)
                     lp.load(
                         cue.file_path,
-                        start=cue.in_point,
+                        start=cue.in_point if start_at is None else start_at,
                         end=cue.out_point,
                     )
                     _apply_cue_automation(lp, cue, hot=False)
                     lp.set_loop(cue.loop, cue.loop_count)
                     lp.play()
+                    if start_at is not None:
+                        lp.ramp_level(0.0, 0.0)
+                        lp.ramp_level(1.0, 1.0)
                     logger.info("[MAIN] Audio cue fired to live L%d: %s", layer, cue)
 
             elif cue.media_type == MediaType.IMAGE:
@@ -1010,8 +1020,12 @@ def main() -> int:
             _fire_action_cue(cue)
             return
         layer = _effective_layer(cue)
-        # Undo GO brings back a picture this cue pushes off its layer.
-        main_win.note_replaced(cue, active_live_cues.get(layer))
+        # Undo GO brings back a picture this cue pushes off its layer, and a
+        # sound or video from where it was cut off.
+        before = active_live_cues.get(layer)
+        cut_pos = live_positions.get(layer) if before is not None and before.media_type in (
+            MediaType.AUDIO, MediaType.VIDEO) else None
+        main_win.note_replaced(cue, before, cut_pos)
         scheduler.cancel_layer(layer)
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
@@ -1057,6 +1071,13 @@ def main() -> int:
                     if getattr(back, "crossfade", 0.0) <= 0:
                         _out_window(layer).begin_crossfade(_local_layer(layer), step.seconds)
                     _launch_cue_now(back, layer, gen)
+                elif step.cut_id is not None and step.resume_at is not None and by_id.get(step.cut_id):
+                    # The sound/video this GO cut off comes back from where it was (1 s fade in).
+                    cut = by_id[step.cut_id]
+                    scheduler.cancel_layer(layer)
+                    gen = layer_fire_gen.get(layer, 0) + 1
+                    layer_fire_gen[layer] = gen
+                    _launch_cue_now(cut, layer, gen, start_at=step.resume_at)
                 else:
                     main_win.mark_layer_stopped(layer)
                     _on_layer_clear_requested(layer, fade_override=step.seconds)

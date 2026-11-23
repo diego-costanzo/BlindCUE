@@ -344,9 +344,9 @@ class _CueTableMixin:
             btn.installEventFilter(keys)
         box.exec()
         if box.clickedButton() is to_rehearsal:
-            self._enter_rehearsal()
+            self._leave_show_to("rehearsal")
         elif box.clickedButton() is not stay:
-            self.set_live_mode(False)
+            self._leave_show_to("preparation")
 
     def _current_mode(self) -> str:
         from engine.show_mode import PREPARATION, REHEARSAL, SHOW

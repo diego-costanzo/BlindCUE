@@ -205,3 +205,19 @@ def test_replaced_picture_is_recorded(window):
     window.note_replaced(window._cues[0], window._cues[3])
     window.note_replaced(window._cues[2], window._cues[3])   # not from this GO: ignored
     assert window._undo_go.replaced == {8001: 8004}
+
+
+def test_cut_sound_comes_back_from_where_it_stopped():
+    cues = [_cue(1, MediaType.AUDIO, CueStatus.LOADED), _cue(2, MediaType.AUDIO)]
+    rec = UndoRecord(first_id=2, started=0.0, ids=[2], replaced={2: 1}, cut_at={2: 102.5})
+    step = undo_plan(cues, rec, waiting=set())[0]
+    assert step.how == FADE and step.cut_id == 1 and step.resume_at == 102.5
+
+
+def test_resume_is_said_in_the_preview(window):
+    window._fire_cue_chain(1)
+    window.note_replaced(window._cues[1], window._cues[0], 102.5)   # #2 cut #1 at 1:42
+    window._cues[1].status = CueStatus.LIVE
+    window._refresh_undo_go()
+    tip = window._live_show_panel.btn_undo_go.toolTip()
+    assert "#1 'c0' torna da 01:42" in tip
