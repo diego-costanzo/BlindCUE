@@ -1,0 +1,103 @@
+"""LIVE mode warns when the keyboard is not on the director window.
+
+Offscreen windows are never "active", so the active-window lookup is
+replaced per test.
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import time
+from pathlib import Path
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+ROOT = Path(__file__).resolve().parents[1]
+APP_DIR = ROOT / "blindcue"
+if str(APP_DIR) not in sys.path:
+    sys.path.insert(0, str(APP_DIR))
+
+import pytest
+from PySide6.QtCore import QCoreApplication
+from PySide6.QtWidgets import QApplication, QDialog
+
+
+@pytest.fixture(scope="module")
+def qt_app():
+    app = QApplication.instance() or QApplication([])
+    yield app
+
+
+def _pump(seconds: float = 0.05) -> None:
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        QCoreApplication.processEvents()
+        time.sleep(0.005)
+
+
+@pytest.fixture()
+def window(qt_app):
+    from ui.main_window import MainWindow
+    from ui.output_window import OutputWindow
+
+    output = OutputWindow()
+    win = MainWindow(output)
+    try:
+        yield win
+    finally:
+        win._force_closing = True
+        output.force_close()
+        win.close()
+        _pump()
+        win.deleteLater()
+        output.deleteLater()
+        _pump()
+
+
+def _active(monkeypatch, widget) -> None:
+    monkeypatch.setattr(QApplication, "activeWindow", staticmethod(lambda: widget))
+
+
+def _banner(win) -> bool:
+    return not win._live_show_panel.lbl_focus_warning.isHidden()
+
+
+def test_banner_shown_in_live_when_another_window_is_active(window, monkeypatch):
+    _active(monkeypatch, None)
+    window.set_live_mode(True)
+    assert _banner(window)
+
+
+def test_no_banner_when_director_is_active(window, monkeypatch):
+    _active(monkeypatch, window)
+    window.set_live_mode(True)
+    assert not _banner(window)
+
+
+def test_dialog_of_the_director_counts_as_director(window, monkeypatch):
+    dialog = QDialog(window)
+    _active(monkeypatch, dialog)
+    window.set_live_mode(True)
+    assert not _banner(window)
+    dialog.deleteLater()
+
+
+def test_no_banner_outside_live(window, monkeypatch):
+    _active(monkeypatch, None)
+    window._update_focus_warning()
+    assert not _banner(window)
+
+
+def test_banner_clears_when_focus_returns_and_on_leaving_live(window, monkeypatch):
+    _active(monkeypatch, None)
+    window.set_live_mode(True)
+    assert _banner(window)
+    _active(monkeypatch, window)
+    window._update_focus_warning()
+    assert not _banner(window)
+    _active(monkeypatch, None)
+    window._update_focus_warning()
+    assert _banner(window)
+    window.set_live_mode(False)
+    assert not _banner(window)

@@ -208,6 +208,8 @@ class _CueTableMixin:
             ShowRuntimeGuard.on_live_mode_exit()
             QTimer.singleShot(0, self._apply_top_splitter_ratios)
             self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
+        if hasattr(self, "_update_focus_warning"):
+            self._update_focus_warning()
 
     @Slot()
     def toggle_live_mode(self) -> None:

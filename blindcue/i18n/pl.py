@@ -1976,4 +1976,8 @@ T: dict[str, str] = {
         'Wycisz wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem (1 s), potem się zatrzymują. Następne GO rusza od pierwszego zatrzymanego cue.',
     '🔉 DISSOLVI [⇧ESC]':
         '🔉 WYCISZ [⇧ESC]',
+    '⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. Clicca qui per riprenderla.':
+        '⚠  KLAWIATURA NIE JEST NA PANELU REŻYSERA — SPACJA i ESC nie trafiają do BlindCue. Kliknij tutaj, aby ją odzyskać.',
+    '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
+        '⚠ Klawiatura nie jest na panelu reżysera: SPACJA i ESC nie trafiają do BlindCue',
 }

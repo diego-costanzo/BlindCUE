@@ -1764,4 +1764,8 @@ T: dict[str, str] = {
         'Fade All: audio, video and images on every layer fade out together (1 s), then stop. The next GO starts again from the first stopped cue.',
     '🔉 DISSOLVI [⇧ESC]':
         '🔉 FADE ALL [⇧ESC]',
+    '⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. Clicca qui per riprenderla.':
+        '⚠  KEYBOARD IS NOT ON THE DIRECTOR PANEL — SPACE and ESC do not reach BlindCue. Click here to take it back.',
+    '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
+        '⚠ Keyboard is not on the director panel: SPACE and ESC do not reach BlindCue',
 }

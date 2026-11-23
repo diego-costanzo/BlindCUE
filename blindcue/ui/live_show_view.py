@@ -868,6 +868,20 @@ class LiveShowPanel(QWidget):
         top_layout.addWidget(right_box, stretch=1)
         root.addWidget(self.top_bar)
 
+        # Shown when the keyboard is not on the director window (Space/Esc lost).
+        self.lbl_focus_warning = QLabel(
+            "⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. "
+            "Clicca qui per riprenderla."
+        )
+        self.lbl_focus_warning.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_focus_warning.setWordWrap(True)
+        self.lbl_focus_warning.setStyleSheet(
+            "QLabel { background-color: #b91c1c; color: #ffffff; font-weight: bold; "
+            "font-size: 15px; padding: 8px; border-radius: 4px; }"
+        )
+        self.lbl_focus_warning.setVisible(False)
+        root.addWidget(self.lbl_focus_warning)
+
         # ── 2. Center Hero Area: Extended 6-Column Live Scaletta ──────────────
         self.live_table = LiveCueTable()
         self.live_table.setHorizontalHeaderLabels([
@@ -1013,6 +1027,10 @@ class LiveShowPanel(QWidget):
         if self._sw_running:
             return self._sw_accum_sec + max(0.0, time.monotonic() - self._sw_started_mono)
         return self._sw_accum_sec
+
+    def set_focus_warning(self, visible: bool) -> None:
+        """Show or hide the 'keyboard is elsewhere' banner."""
+        self.lbl_focus_warning.setVisible(bool(visible))
 
     def notify_first_go(self) -> None:
         """Auto-start the show duration stopwatch on the very first GO if still armed."""
