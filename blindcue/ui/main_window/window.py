@@ -145,6 +145,11 @@ class MainWindow(
         # Cues started in this run of the show (✓ in the LIVE list); emptied
         # by "from the top" and when another show is loaded.
         self._played_ids: set[int] = set()
+        # cue_id -> order number of its last start (see trigger_auto_follow_from)
+        self._fired_at: dict[int, int] = {}
+        self._fire_seq = 0
+        # "Loop Scena" groups a release action reached: they end after this pass.
+        self._released_groups: set[int] = set()
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True

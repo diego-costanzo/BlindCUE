@@ -235,13 +235,17 @@ class ShowEngine:
         return getattr(parent, "group_mode", "") if parent is not None else ""
 
     @staticmethod
-    def auto_follow_target(cues: list[Cue], finished_cue: Cue) -> int:
+    def auto_follow_target(
+        cues: list[Cue], finished_cue: Cue, released_groups: set[int] | None = None
+    ) -> int:
         """Return the index to fire after *finished_cue*, or -1 if none.
 
         The container mode wins over the single child's follow flag: a
         SEQUENCE group cascades to the next child and a LOOP group wraps back
         to the first one, because that is what the operator selected
-        ("Cascata" / "Loop Scena") in the inspector.
+        ("Cascata" / "Loop Scena") in the inspector. A LOOP group in
+        *released_groups* (a "release loop" action reached it) plays the rest
+        of its pass and then ends: no wrap, and no start of the next scene.
         """
         parent = ShowEngine.group_parent(cues, finished_cue)
         if parent is not None:
@@ -251,6 +255,10 @@ class ShowEngine:
                 -1,
             )
             mode = getattr(parent, "group_mode", "")
+            if mode == GroupMode.LOOP.value and parent.cue_id in (released_groups or ()):
+                if pos < 0 or pos >= len(kids) - 1:
+                    return -1
+                mode = GroupMode.SEQUENCE.value
             if pos >= 0 and mode == GroupMode.SEQUENCE.value and pos < len(kids) - 1:
                 target = kids[pos + 1]
                 return next((i for i, c in enumerate(cues) if c is target), -1)

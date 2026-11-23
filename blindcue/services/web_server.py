@@ -842,7 +842,7 @@ _HTML_PAGE = """<!DOCTYPE html>
                   <span class="${typeClass}">${icon} ${escapeHtml(c.ref || ('#' + c.id))}</span>
                   <span class="cue-name">${escapeHtml(c.name)}</span>
                 </div>
-                <div class="cue-meta">${outPrefix}L${escapeHtml(c.layer)} · ${formatTime(c.duration)}${isOffline ? ' · ⚠ OFFLINE' : ''}</div>
+                <div class="cue-meta">${c.type === 'ACTION' ? '⚡' : outPrefix + 'L' + escapeHtml(c.layer)} · ${formatTime(c.duration)}${isOffline ? ' · ⚠ OFFLINE' : ''}</div>
               </div>
               <button class="btn-cue-go" onclick="event.stopPropagation(); doAction('cue_go', ${safeIdArg})">
                 ${isLive ? '● LIVE' : '▶ GO'}
@@ -1796,7 +1796,9 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       if (state.standby_cue) {
         sbName.textContent = `${state.standby_cue.ref} · ${state.standby_cue.name}`;
         sbMeta.innerHTML = `
-          <span class="standby-meta-item"><b>Layer:</b> L${escapeHtml(state.standby_cue.layer)}</span>
+          ${state.standby_cue.type === 'ACTION'
+            ? '<span class="standby-meta-item"><b>⚡</b></span>'
+            : `<span class="standby-meta-item"><b>Layer:</b> L${escapeHtml(state.standby_cue.layer)}</span>`}
           <span class="standby-meta-item"><b>Durata:</b> ${formatTime(state.standby_cue.duration)}</span>
           <span class="standby-meta-item"><b>Fade:</b> ${escapeHtml(state.standby_cue.fade_in || 0)}s IN / ${escapeHtml(state.standby_cue.fade_out || 0)}s OUT</span>
           ${state.standby_cue.notes ? `<span class="standby-meta-item"><b>Note:</b> ${escapeHtml(state.standby_cue.notes)}</span>` : ''}

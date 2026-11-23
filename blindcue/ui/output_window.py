@@ -471,6 +471,7 @@ class OutputWindow(QWidget):
         # Layer opacity set by an action cue: the containers of a layer dim
         # whatever plays on it, on top of the cue's own opacity/fades.
         self._master_fade_timers: dict[int, QTimer] = {}
+        self._master_fade_clocks: dict[int, list] = {}
 
         # Crossfade: frozen snapshot of a layer dissolving over new content
         self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
@@ -1187,19 +1188,34 @@ class OutputWindow(QWidget):
         if duration_sec <= 0 or abs(end - start) < 1e-3:
             self._set_layer_master(layer, end)
             return
-        started = time.monotonic()
+        # [start time, paused at]: Pause All holds the fades running when it
+        # starts (set_master_fades_paused); one started by a GO during the pause runs.
+        clock = [time.monotonic(), None]
+        self._master_fade_clocks[layer] = clock
         timer = QTimer(self)
         timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._master_fade_timers[layer] = timer
 
         def _step() -> None:
-            progress = min(1.0, (time.monotonic() - started) / duration_sec)
+            if clock[1] is not None:
+                return
+            progress = min(1.0, (time.monotonic() - clock[0]) / duration_sec)
             self._set_layer_master(layer, ramp_value(start, end, progress, curve))
             if progress >= 1.0:
                 self._stop_timer_entry(self._master_fade_timers, layer)
 
         timer.timeout.connect(_step)
         timer.start(15)
+
+    def set_master_fades_paused(self, paused: bool) -> None:
+        """Pause All: hold the running layer opacity fades, then go on from there."""
+        now = time.monotonic()
+        for clock in self._master_fade_clocks.values():
+            if paused and clock[1] is None:
+                clock[1] = now
+            elif not paused and clock[1] is not None:
+                clock[0] += now - clock[1]
+                clock[1] = None
 
     # ── Video Widget & Public API ─────────────────────────────────────
 

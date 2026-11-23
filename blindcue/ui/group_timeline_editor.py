@@ -424,6 +424,11 @@ class GroupTimelineCanvas(QWidget):
                 grad_c = QColor("#6d28d9")
                 border_c = QColor("#d8b4fe") if is_sel else QColor("#7c3aed")
                 type_tag = "FOTO"
+            elif clip.media_type == MediaType.ACTION:
+                base_c = QColor("#be185d") if not is_sel else QColor("#f472b6")
+                grad_c = QColor("#9d174d")
+                border_c = QColor("#fbcfe8") if is_sel else QColor("#be185d")
+                type_tag = "ACT"
             else:  # AUDIO
                 base_c = QColor("#d97706") if not is_sel else QColor("#fbbf24")
                 grad_c = QColor("#b45309")
@@ -515,7 +520,10 @@ class GroupTimelineStudioDialog(QDialog):
         self._clips: list[TimelineClip] = []
         for c in self._child_cues:
             # Estimate native duration
-            if c.out_point and c.out_point > c.in_point:
+            if c.media_type == MediaType.ACTION:
+                from engine.action_cues import action_duration
+                dur = max(0.5, action_duration(c.action_spec))
+            elif c.out_point and c.out_point > c.in_point:
                 dur = c.out_point - c.in_point
             elif c.media_type == MediaType.IMAGE:
                 dur = c.hold_time if c.hold_time > 0 else 10.0
@@ -838,13 +846,19 @@ class GroupTimelineStudioDialog(QDialog):
         self.list_items.blockSignals(True)
         self.list_items.clear()
         for clip in self._clips:
-            type_tag = "VID" if clip.media_type == MediaType.VIDEO else ("FOTO" if clip.media_type == MediaType.IMAGE else "AUD")
-            txt = f"[{type_tag}] {clip.name}  ➔  L{clip.layer} (+{clip.start_sec:.1f}s)"
+            if clip.media_type == MediaType.ACTION:
+                # An action has no layer of its own: only its start time counts here.
+                txt = f"[ACT] {clip.name}  ➔  +{clip.start_sec:.1f}s"
+            else:
+                type_tag = "VID" if clip.media_type == MediaType.VIDEO else ("FOTO" if clip.media_type == MediaType.IMAGE else "AUD")
+                txt = f"[{type_tag}] {clip.name}  ➔  L{clip.layer} (+{clip.start_sec:.1f}s)"
             item = QListWidgetItem(txt)
             if clip.media_type == MediaType.VIDEO:
                 item.setForeground(QColor("#38bdf8"))
             elif clip.media_type == MediaType.IMAGE:
                 item.setForeground(QColor("#c084fc"))
+            elif clip.media_type == MediaType.ACTION:
+                item.setForeground(QColor("#f472b6"))
             else:
                 item.setForeground(QColor("#fbbf24"))
             self.list_items.addItem(item)
@@ -869,11 +883,12 @@ class GroupTimelineStudioDialog(QDialog):
             self.slider_op.setEnabled(False)
             return
 
-        self.combo_layer.setEnabled(True)
+        is_media = clip.media_type != MediaType.ACTION  # an action: start time only
+        self.combo_layer.setEnabled(is_media)
         self.spin_start.setEnabled(True)
-        self.spin_in.setEnabled(True)
-        self.spin_fi.setEnabled(True)
-        self.spin_fo.setEnabled(True)
+        self.spin_in.setEnabled(is_media)
+        self.spin_fi.setEnabled(is_media)
+        self.spin_fo.setEnabled(is_media)
         self.slider_vol.setEnabled(clip.media_type in (MediaType.VIDEO, MediaType.AUDIO))
         self.slider_op.setEnabled(clip.media_type in (MediaType.VIDEO, MediaType.IMAGE))
 
@@ -1042,8 +1057,10 @@ class GroupTimelineStudioDialog(QDialog):
         self._timer_play.stop()
         for clip in self._clips:
             c = clip.cue
-            c.layer = clip.layer
             c.pre_delay = max(0.0, round(clip.start_sec, 2))
+            if c.media_type == MediaType.ACTION:
+                continue  # its volume, IN/OUT and fades are not the action's business
+            c.layer = clip.layer
             c.in_point = max(0.0, round(clip.in_point, 2))
             if clip.out_point is not None:
                 c.out_point = max(c.in_point + 0.1, round(clip.out_point, 2))

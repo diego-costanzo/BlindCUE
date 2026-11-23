@@ -533,10 +533,35 @@ class _RemoteMixin:
         self._sync_live_view()
 
     def trigger_auto_follow_from(self, finished_cue: Cue) -> None:
-        """Start the next cue in sequence when an AUTO_FOLLOW cue completes."""
-        next_idx = ShowEngine.auto_follow_target(self._cues, finished_cue)
-        if next_idx >= 0:
-            self._fire_cue_chain(next_idx)
+        """Start the next cue in sequence when an AUTO_FOLLOW cue completes.
+
+        Not when the operator already started that cue by hand while this one
+        was still playing or waiting for its Auto-GO: it would start twice.
+        """
+        next_idx = ShowEngine.auto_follow_target(self._cues, finished_cue, self._released_groups)
+        if next_idx < 0:
+            return
+        target = self._cues[next_idx]
+        source_at = self._fired_at.get(finished_cue.cue_id)
+        target_at = self._fired_at.get(target.cue_id)
+        if source_at is not None and target_at is not None and target_at > source_at:
+            logger.info("[AUTO-GO] '%s' already started by hand: no second start", target.name)
+            return
+        self._fire_cue_chain(next_idx)
+
+    def release_loop_scene_of(self, cue: Cue | None) -> bool:
+        """A release-loop action reached *cue*: its "Loop Scena" group ends after this pass.
+
+        Returns True when *cue* belongs to such a group (released now).
+        """
+        parent = ShowEngine.group_parent(self._cues, cue) if cue is not None else None
+        if parent is None or getattr(parent, "group_mode", "") != GroupMode.LOOP.value:
+            return False
+        if parent.cue_id in self._released_groups:
+            return False
+        self._released_groups.add(parent.cue_id)
+        logger.info("[ACTION] Loop group '%s' released: it ends after this pass", parent.name)
+        return True
 
     @Slot(int)
     def _on_live_double_click_armed(self, row: int) -> None:

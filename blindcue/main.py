@@ -597,6 +597,8 @@ def main() -> int:
         if paused == scheduler.is_paused() and bool(getattr(main_win, "_is_global_paused", False)) == paused:
             return
         scheduler.set_paused(paused)
+        for out in (output_win, output_win_b):
+            out.set_master_fades_paused(paused)  # layer opacity changes from action cues
         now = time.monotonic()
         if paused:
             paused_layers_by_global.clear()
@@ -941,7 +943,13 @@ def main() -> int:
                         # The layer already waits for a cue that is not a
                         # target (it replaces the chosen one when its
                         # Pre-Delay ends): silence the old cue, keep the start.
+                        # The silenced cue is no longer on air for the lists.
                         _silence_layer(l_idx, fade)
+                        main_win.mark_layer_stopped(l_idx)
+                        pre = scheduler.pending_for_layer(l_idx, "PRE")
+                        if pre is not None:  # the panel keeps the countdown of the waiting cue
+                            main_win.update_live_layer_phase(
+                                l_idx, pre.cue, "PRE", pre.elapsed_sec, pre.total_sec)
                     elif how == STOP_CANCEL_START:
                         _cancel_waiting_start(l_idx)
                     else:
@@ -953,7 +961,15 @@ def main() -> int:
                         if _is_action_slot(key):
                             _cancel_action_wait(key - _ACTION_SLOT_BASE, except_slot=_action_slot(cue))
             elif kind == ACTION_RELEASE:
-                layers = [l_idx for l_idx in layers if live_players[l_idx].release_loop()]
+                released = []
+                for l_idx in layers:
+                    # A looping file or section, and/or a "Loop Scena" group
+                    # that would start its first child again: both end after this pass.
+                    by_player = live_players[l_idx].release_loop()
+                    by_group = main_win.release_loop_scene_of(active_live_cues.get(l_idx))
+                    if by_player or by_group:
+                        released.append(l_idx)
+                layers = released
             elif kind == ACTION_LEVEL:
                 for l_idx in layers:
                     lp = live_players[l_idx]
