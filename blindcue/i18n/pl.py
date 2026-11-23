@@ -2258,4 +2258,14 @@ T: dict[str, str] = {
         '🔇 Wszystko wyciszone (głośność główna) — Ctrl+M włącza dźwięk',
     'Volume generale {} %':
         'Głośność główna {} %',
+    'Lo spettacolo era in corso: si torna nello spettacolo.':
+        'Trwało przedstawienie: program wróci do przedstawienia.',
+    'Riprendi: prossima {}':
+        'Wznów: następny {}',
+    "Ripeti l'ultima: {}":
+        'Jeszcze raz ostatni: {}',
+    "Dall'inizio":
+        'Od początku',
+    'Apri senza ripristinare':
+        'Otwórz bez przywracania',
 }

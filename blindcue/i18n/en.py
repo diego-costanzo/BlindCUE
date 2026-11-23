@@ -2036,4 +2036,14 @@ T: dict[str, str] = {
         '🔇 Everything muted (master volume) — Ctrl+M to unmute',
     'Volume generale {} %':
         'Master volume {} %',
+    'Lo spettacolo era in corso: si torna nello spettacolo.':
+        'The show was running: the program goes back into the show.',
+    'Riprendi: prossima {}':
+        'Resume: next {}',
+    "Ripeti l'ultima: {}":
+        'Play the last one again: {}',
+    "Dall'inizio":
+        'From the top',
+    'Apri senza ripristinare':
+        'Open without restoring',
 }

@@ -42,6 +42,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "drop_on_list": ("blindcue/ui/cue_table.py", "files_dropped = Signal"),
     "mode_tabs": ("blindcue/ui/mode_tabs.py", None),
     "master_volume": ("blindcue/ui/master_volume.py", None),
+    "recovery_choice": ("blindcue/ui/main_window/_persistence.py", "Ripeti l'ultima"),
 }
 
 

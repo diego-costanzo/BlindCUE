@@ -128,6 +128,49 @@ def test_recovery_esc_restores_and_no_keeps_a_copy(window, tmp_path, monkeypatch
     assert (tmp_path / "autosave.discarded.json").exists()  # set aside, never deleted
 
 
+def _recovery(cue_count: int, last: int, live: bool) -> dict:
+    from models.cue import MediaType
+
+    cues = [{"cue_id": 6100 + i, "name": f"r{i}", "media_type": MediaType.AUDIO.value,
+             "file_path": f"/nonexistent/r{i}.wav"} for i in range(cue_count)]
+    return {"saved_at": "now", "cues": cues, "cues_count": cue_count,
+            "current_cue_index": last, "settings": {"live_mode": live}}
+
+
+@pytest.mark.parametrize("pick, row", [("Riprendi", 2), ("Ripeti", 1), ("Dall'inizio", 0)])
+def test_recovery_offers_where_to_go_on(window, monkeypatch, pick, row):
+    from models.project_manager import ProjectManager
+
+    monkeypatch.setattr(ProjectManager, "check_crash_recovery", lambda self: _recovery(4, 1, False))
+
+    def choose(box):
+        next(b for b in box.buttons() if b.text().startswith(pick)).click()
+        return 0
+
+    monkeypatch.setattr(QMessageBox, "exec", choose)
+    window._cues = []
+    window._check_crash_recovery()
+    assert len(window._cues) == 4
+    assert window._go_target_index() == row
+    assert not window.is_live_mode()
+
+
+def test_recovery_after_a_crash_in_the_show_goes_back_into_it(window, monkeypatch):
+    from models.project_manager import ProjectManager
+
+    monkeypatch.setattr(ProjectManager, "check_crash_recovery", lambda self: _recovery(4, 1, True))
+
+    def press_esc(box):
+        assert "si torna nello spettacolo" in box.text()
+        box.escapeButton().click()                 # the safe default: resume, next cue
+        return 0
+
+    monkeypatch.setattr(QMessageBox, "exec", press_esc)
+    window._cues = []
+    window._check_crash_recovery()
+    assert window.is_live_mode() and window._go_target_index() == 2
+
+
 def test_closing_during_a_show_asks_and_stays_by_default(window, monkeypatch):
     asked: list[str] = []
 

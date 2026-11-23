@@ -52,6 +52,8 @@ class _PersistenceMixin:
             output = self._output_settings()
             if output:
                 settings["output"] = output
+            # After a crash during the show the restore question offers to go back into it.
+            settings["live_mode"] = bool(self._live_mode)
             payload = self._project_manager.build_autosave_payload(
                 self._cues,
                 current_index=self._current_index,
@@ -84,22 +86,52 @@ class _PersistenceMixin:
             return
 
         saved_at = recovery.get("saved_at", "sconosciuto")
-        cues_count = recovery.get("cues_count", len(recovery.get("cues", [])))
-        box = QMessageBox(
-            QMessageBox.Icon.Question,
-            "BlindCue — Ripristino Sessione (Crash Recovery)",
+        cue_dicts = recovery.get("cues", [])
+        cues_count = recovery.get("cues_count", len(cue_dicts))
+        last = recovery.get("current_cue_index", -1)
+        rec_settings_peek = recovery.get("settings", {})
+        was_live = bool(rec_settings_peek.get("live_mode")) if isinstance(rec_settings_peek, dict) else False
+
+        def ref(i: int) -> str:
+            name = str(cue_dicts[i].get("name", "")) if 0 <= i < len(cue_dicts) else ""
+            return f"#{i + 1} '{name}'"
+
+        nxt = last + 1 if 0 <= last < len(cue_dicts) - 1 else (0 if last < 0 else last)
+        text = (
             f"È stata rilevata una sessione precedente interrotta o non salvata!\n\n"
             f"• Data ultimo autosave: {saved_at}\n"
             f"• Cue recuperabili: {cues_count}\n\n"
-            f"Vuoi ripristinare il progetto da dove era stato interrotto?",
+            f"Vuoi ripristinare il progetto da dove era stato interrotto?"
+        )
+        if was_live:
+            text += "\nLo spettacolo era in corso: si torna nello spettacolo."
+        box = QMessageBox(
+            QMessageBox.Icon.Question,
+            "BlindCue — Ripristino Sessione (Crash Recovery)",
+            text,
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             self,
         )
+        # The safe default (Enter and a reflex Esc): restore and go on with the
+        # next cue. "Again" replays the last one, which suits background music
+        # but not a bell. "No" sets the show aside, never deletes it.
+        box.button(QMessageBox.StandardButton.Yes).setText(f"Riprendi: prossima {ref(nxt)}")
+        btn_again = btn_top = None
+        if 0 <= last < len(cue_dicts) and last != nxt:
+            btn_again = box.addButton(f"Ripeti l'ultima: {ref(last)}", QMessageBox.ButtonRole.AcceptRole)
+        if nxt != 0 and cue_dicts:
+            btn_top = box.addButton("Dall'inizio", QMessageBox.ButtonRole.AcceptRole)
+        box.button(QMessageBox.StandardButton.No).setText("Apri senza ripristinare")
         box.setDefaultButton(QMessageBox.StandardButton.Yes)
-        # A reflex Esc restores (nothing is lost); only "No" sets the show aside.
         box.setEscapeButton(QMessageBox.StandardButton.Yes)
         box.exec()
-        reply = box.standardButton(box.clickedButton())
+        clicked = box.clickedButton()
+        reply = box.standardButton(clicked)
+        start_row = nxt
+        if clicked is not None and clicked is btn_again:
+            reply, start_row = QMessageBox.StandardButton.Yes, last
+        elif clicked is not None and clicked is btn_top:
+            reply, start_row = QMessageBox.StandardButton.Yes, 0
 
         if reply == QMessageBox.StandardButton.Yes:
             self._cues.clear()
@@ -144,14 +176,18 @@ class _PersistenceMixin:
             self._apply_output_settings(rec_settings)
 
             self._refresh_cue_list(keep_selection=False)
-            if 0 <= self._current_index < len(self._cues):
-                self._cue_list.setCurrentRow(self._current_index)
+            if 0 <= start_row < len(self._cues):
+                self._cue_list.setCurrentRow(start_row)  # the GO starts where the operator chose
             elif self._cues:
                 self._cue_list.setCurrentRow(0)
             self._reset_undo_history()
             self._mark_modified(True)
             self._status_label.setText(f"Sessione ripristinata con successo ({len(self._cues)} cue)")
-            logger.info("[RECOVERY] Restored %d cues from autosave", len(self._cues))
+            logger.info("[RECOVERY] Restored %d cues from autosave, GO on row %d", len(self._cues), start_row)
+            if was_live and self._cues:
+                # Back into the show at the chosen cue (no second start question).
+                self._live_resume_id = self._cues[self._go_target_index()].cue_id
+                self.set_live_mode(True)
         else:
             kept = self._project_manager.discard_autosave()
             if kept is not None:
