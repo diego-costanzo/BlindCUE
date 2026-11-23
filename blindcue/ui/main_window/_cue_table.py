@@ -10,7 +10,33 @@ from ui.main_window._common import (  # noqa: F401
     _demote_live_on_layer,
 )
 
+import time
+
 from engine.action_cues import describe_action
+
+
+class _EmergencyKeysInDialog(QObject):
+    """Esc and Shift+Esc keep their emergency meaning inside a modal question.
+
+    A modal dialog takes the keyboard from the window shortcuts, so with a
+    show running PANIC needed three Esc and Shift+Esc did nothing. Here Esc
+    closes the question and counts as the first press of Esc Esc = PANIC,
+    and Shift+Esc closes it and fades everything out.
+    """
+
+    def __init__(self, window, box: QMessageBox) -> None:
+        super().__init__(box)
+        self._window = window
+        self._box = box
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Escape:
+            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+                self._box.reject()
+                QTimer.singleShot(0, self._window._on_fade_all)
+                return True
+            self._window._last_esc_press_mono = time.monotonic()
+        return False
 
 
 class _CueTableMixin:
@@ -226,7 +252,7 @@ class _CueTableMixin:
             ShowRuntimeGuard.on_live_mode_enter(prof)
             self._sync_live_view()
             self._show_pending_checklist()
-            self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]")
+            self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]")
         else:
             ShowRuntimeGuard.on_live_mode_exit()
             QTimer.singleShot(0, self._apply_top_splitter_ratios)
@@ -284,6 +310,10 @@ class _CueTableMixin:
             if len(rows) == 1:
                 box.setDefaultButton(btn)
         box.addButton(QMessageBox.StandardButton.Cancel)
+        keys = _EmergencyKeysInDialog(self, box)
+        box.installEventFilter(keys)
+        for btn in box.buttons():
+            btn.installEventFilter(keys)
         box.exec()
         row = rows.get(box.clickedButton())
         if row is None:

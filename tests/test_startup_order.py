@@ -47,9 +47,13 @@ def test_restore_question_is_not_asked_from_the_constructor(qt_app, tmp_path, mo
     asked: list[str] = []
     monkeypatch.setattr(ProjectManager, "check_crash_recovery",
                         lambda self: {"saved_at": "now", "cues": [], "cues_count": 0})
-    monkeypatch.setattr(QMessageBox, "question",
-                        staticmethod(lambda *a, **k: asked.append("q") or QMessageBox.StandardButton.No))
-    monkeypatch.setattr(ProjectManager, "clear_autosave", lambda self: None)
+    def answer_no(box):
+        asked.append("q")
+        box.button(QMessageBox.StandardButton.No).click()
+        return 0
+
+    monkeypatch.setattr(QMessageBox, "exec", answer_no)
+    monkeypatch.setattr(ProjectManager, "discard_autosave", lambda self: None)
 
     from ui.main_window import MainWindow
     from ui.output_window import OutputWindow

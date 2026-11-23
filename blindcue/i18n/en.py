@@ -787,8 +787,6 @@ T: dict[str, str] = {
         'IMMEDIATE STOP',
     'Scaletta Regia LIVE Show':
         'LIVE Show Control Cue List',
-    'Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.':
-        'High-contrast cue list for live. Up and Down arrows for standby, Space for GO, Esc for Panic.',
     '▶ Fai partire subito questa Cue (GO Forzato)':
         '▶ Start this Cue now (Forced GO)',
     '🎯 Imposta come Prossima Cue (Standby)':
@@ -941,8 +939,6 @@ T: dict[str, str] = {
         '— No file selected —',
     'Tempi: ':
         'Timing: ',
-    'MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]':
-        'LIVE MODE ACTIVE — Simplified control interface [ESC = PANIC]',
     'MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate':
         'PROJECT MODE — Cue editing and preview re-enabled',
     'Punti envelope azzerati':
@@ -1966,4 +1962,18 @@ T: dict[str, str] = {
         "⏳ GO waits (Ctrl+Space forces it): '{}' is exclusive",
     '↻ Già in onda, riparte — GO: {}':
         '↻ Already playing, restarts — GO: {}',
+    'Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc due volte per il Panic.':
+        'High-contrast cue list for live. Up and Down arrows for standby, Space for GO, Esc twice for PANIC.',
+    'MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]':
+        'LIVE MODE ACTIVE — Simplified control interface [ESC ×2 = PANIC]',
+    'Sessione precedente messa da parte: {}':
+        'Previous session set aside (not deleted): {}',
+    '📝 Note:':
+        '📝 Notes:',
+    'Lo spettacolo è in corso.\nChiudere il programma ferma tutto ciò che è in onda.':
+        'The show is running.\nClosing the program stops everything on air.',
+    'Resta nel programma':
+        'Stay in the program',
+    'Chiudi il programma':
+        'Close the program',
 }

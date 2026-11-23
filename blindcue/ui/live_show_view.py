@@ -71,6 +71,8 @@ from ui.hold_button import ElidedButton, HoldProgressButton
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_GO, get_active_theme
 
+from i18n import tr
+
 _LINK_ICONS = {
     FollowMode.MANUAL.value: "⏹",
     FollowMode.AUTO_FOLLOW.value: "⤵",
@@ -145,7 +147,7 @@ class LiveCueTable(QTableWidget):
         """Create the high-contrast live rundown table."""
         super().__init__(0, 6, parent)
         self.setAccessibleName("Scaletta Regia LIVE Show")
-        self.setAccessibleDescription("Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.")
+        self.setAccessibleDescription("Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc due volte per il Panic.")
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         """Keyboard shortcuts on the live list (GO, arrows). ESC propagates to MainWindow double-ESC guard."""
@@ -1753,15 +1755,17 @@ class LiveShowPanel(QWidget):
                 extra_tags: list[str] = []
                 if sb_cue.pre_delay > 0:
                     extra_tags.append(f"⏳ Pre +{sb_cue.pre_delay:.1f}s")
+                # Each piece is translated on its own: glued into one string
+                # they no longer matched the dictionary (Italian on a Polish screen).
                 if sb_cue.follow_mode == FollowMode.AUTO_FOLLOW.value:
-                    extra_tags.append("⤵ Auto-GO al termine")
+                    extra_tags.append(tr("⤵ Auto-GO al termine"))
                 elif sb_cue.follow_mode == FollowMode.SIMULTANEOUS.value:
-                    extra_tags.append("⇉ + Cue successiva simultanea")
+                    extra_tags.append(tr("⇉ + Cue successiva simultanea"))
                 if sb_cue.loop:
-                    extra_tags.append("🔁 Loop")
+                    extra_tags.append(tr("🔁 Loop"))
 
                 extras_str = ("   │   " + " · ".join(extra_tags)) if extra_tags else ""
-                notes_str = f"   │   📝 Note: {sb_cue.notes}" if sb_cue.notes else ""
+                notes_str = f"   │   {tr('📝 Note:')} {sb_cue.notes}" if sb_cue.notes else ""
 
                 self.lbl_standby_banner.setText(
                     f"PROSSIMA IN STANDBY:  #{standby_row + 1} {q_badge}'{sb_cue.name}'  {layer_badge} [{type_tag}]{extras_str}{notes_str}"
