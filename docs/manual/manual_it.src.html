@@ -159,6 +159,7 @@ Si vede in modalità LIVE.</li>
 (per esempio una foto e la musica insieme).</li>
 </ul>
 Le stesse tre modalità sono sotto la scaletta (<b>Blocco / Auto-GO / Simult.</b>).</li>
+<!--IF:exclusive--><li><b>⛔ Esclusiva</b> – finché questa cue è in onda il GO manuale viene rifiutato (anche da remoto), così un GO dato per errore non la copre; <kbd>Ctrl+Spazio</kbd> forza comunque il GO. Attenzione alle immagini senza durata – restano finché non le fermi.</li><!--/IF:exclusive-->
 </ul>
 
 <!-- ================================================================== -->
@@ -309,16 +310,16 @@ una griglia per mettere a fuoco e allineare il proiettore.</li>
 In basso vedi <b>PROSSIMA IN STANDBY</b> con il nome e le note.</li>
 <li>Premi <kbd>Spazio</kbd> (o il grande pulsante <b>GO</b>) – la cue parte, riceve il bollino
 <b>LIVE</b> e lo STANDBY passa alla successiva.</li>
-<li>Ogni <kbd>Spazio</kbd> successivo = il punto successivo dello spettacolo.</li>
+<li>Ogni <kbd>Spazio</kbd> successivo = il punto successivo dello spettacolo.<!--IF:go_guard--> Una seconda pressione entro 0,4 s viene ignorata – protezione dal doppio GO.<!--/IF:go_guard--></li>
 <li><kbd>↑</kbd> / <kbd>↓</kbd> cambiano la cue successiva (per esempio per saltare qualcosa).
-Un doppio clic su una riga la lancia subito.</li>
+<!--IFNOT:live_dblclick-->Un doppio clic su una riga la lancia subito.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Un doppio clic su una riga la rende solo la prossima cue (la lanci con <kbd>Spazio</kbd>); per lanciarla subito, clic destro → <b>Fai partire subito questa Cue</b>.<!--/IF:live_dblclick--></li>
 <li>Il pannello <b>Monitor Uscita Layer Live</b> mostra cosa va su L1–L3; <b>Fade Out</b>
 chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic accidentali).</li>
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
 <li><b>Torna a Progetto</b> (<kbd>F5</kbd>) – torni alla modifica; quello che sta andando continua.</li>
 </ol>
 <p class="tip">💡 Durante lo spettacolo tieni attiva la finestra del programma (facci clic) perché
-<kbd>Spazio</kbd> arrivi al programma. Chiudi gli altri programmi.</p>
+<kbd>Spazio</kbd> arrivi al programma. Chiudi gli altri programmi.<!--IF:focus_warning--> Quando la tastiera va altrove (per esempio dopo un clic sull’immagine del proiettore), in modalità LIVE compare una barra rossa – fai clic sulla finestra del programma.<!--/IF:focus_warning--></p>
 <p class="tip">💡 Anche un telefono può fare da telecomando – vedi il <a href="#extra">capitolo 12</a>.</p>
 
 <!-- ================================================================== -->
@@ -328,6 +329,7 @@ chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic 
 clic riprende dallo stesso punto – per esempio mentre un attore aspetta l'applauso.</td></tr>
 <tr><td><b>Fade Out</b> (accanto a un layer)</td><td>chiude dolcemente solo quel layer.</td></tr>
 <tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>sfuma tutto e mostra il tappo.</td></tr>
+<!--IF:fade_all--><tr><td><b>DISSOLVI</b> <kbd>Shift+Esc</kbd></td><td>audio e immagine su tutti i layer sfumano insieme (1 s) e si fermano – un PANIC più calmo. Dopo DISSOLVI e dopo PANIC il prossimo GO riparte dalla prima cue fermata, così un GO dato troppo presto si può semplicemente ripetere.</td></tr><!--/IF:fade_all-->
 <tr><td><b>PANIC</b> <kbd>Esc</kbd> due volte entro 0,6 s (in modalità LIVE)</td><td>taglia tutto all'istante (0 ms) – ultima risorsa.</td></tr>
 <tr><td><b>Blocco layer</b></td><td>in modalità LIVE i comandi dei layer sono bloccati;
 tieni premuto il lucchetto 1,2 s per sbloccare scorrimento e pausa dei singoli layer.</td></tr>
@@ -365,6 +367,8 @@ maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettor
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>scegli la cue / cambia la successiva in LIVE</td></tr>
 <tr><td><kbd>F5</kbd></td><td>modalità LIVE / ritorno al progetto</td></tr>
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (in modalità LIVE): due volte entro 0,6 s</td></tr>
+<!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>dissolvenza totale (1 s)</td></tr><!--/IF:fade_all-->
+<!--IF:exclusive--><tr><td><kbd>Ctrl+Spazio</kbd></td><td>GO forzato – anche mentre va una cue esclusiva</td></tr><!--/IF:exclusive-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (tappo)</td></tr>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>raggruppa / separa</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>sposta la cue</td></tr>

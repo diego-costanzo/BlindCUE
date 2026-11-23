@@ -25,6 +25,11 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "audio_l2": ("blindcue/ui/main_window/_cue_manip.py", "cue.layer = 2"),
     "speakers": ("blindcue/engine/device_manager.py", "def saved_audio_choice"),
     "projector_only": ("blindcue/ui/main_window/_cue_table.py", "def _ensure_director_visible"),
+    "go_guard": ("blindcue/ui/main_window/_transport.py", "def _go_guard_allows"),
+    "fade_all": ("blindcue/ui/main_window/_transport.py", "def _on_fade_all"),
+    "focus_warning": ("blindcue/ui/main_window/_window_setup.py", "def _update_focus_warning"),
+    "live_dblclick": ("blindcue/ui/live_show_view.py", "def live_double_click_fires"),
+    "exclusive": ("blindcue/models/cue.py", "exclusive: bool"),
 }
 
 

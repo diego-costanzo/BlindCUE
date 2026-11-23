@@ -158,6 +158,7 @@ Widać ją w trybie LIVE.</li>
 (np. zdjęcie i muzyka jednocześnie).</li>
 </ul>
 Te same trzy tryby są pod listą cue (przyciski <b>Stop / Auto-GO / Razem</b>).</li>
+<!--IF:exclusive--><li><b>⛔ Wyłączny</b> – dopóki ten cue trwa, ręczne GO jest odrzucane (także z pilota), więc przypadkowe GO go nie przykryje; <kbd>Ctrl+Spacja</kbd> mimo to wymusza GO. Uwaga na zdjęcia bez czasu trwania – trwają, dopóki ich nie zatrzymasz.</li><!--/IF:exclusive-->
 </ul>
 
 <!-- ================================================================== -->
@@ -309,16 +310,16 @@ siatka do ustawienia ostrości i położenia projektora.</li>
 Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.</li>
 <li>Naciśnij <kbd>Spacja</kbd> (albo duży przycisk <b>GO</b>) – cue gra, dostaje znaczek
 <b>LIVE</b>, a STANDBY przeskakuje na następny.</li>
-<li>Kolejne <kbd>Spacja</kbd> = kolejne punkty przedstawienia.</li>
+<li>Kolejne <kbd>Spacja</kbd> = kolejne punkty przedstawienia.<!--IF:go_guard--> Drugie naciśnięcie w ciągu 0,4 s jest pomijane – ochrona przed podwójnym GO.<!--/IF:go_guard--></li>
 <li><kbd>↑</kbd> / <kbd>↓</kbd> zmieniają, który cue jest następny (np. żeby coś pominąć).
-Dwuklik na wierszu odpala go od razu.</li>
+<!--IFNOT:live_dblclick-->Dwuklik na wierszu odpala go od razu.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Dwuklik na wierszu tylko ustawia go jako następny (odpalisz go <kbd>Spacją</kbd>); żeby odpalić od razu, kliknij prawym przyciskiem → <b>Uruchom ten cue teraz</b>.<!--/IF:live_dblclick--></li>
 <li>Panel <b>Podgląd warstw Live</b> pokazuje, co gra na L1–L3; <b>Wygaś</b> łagodnie
 kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym kliknięciem).</li>
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li>
 </ol>
 <p class="tip">💡 Przy prowadzeniu przedstawienia trzymaj okno programu aktywne
-(kliknij w nie), żeby <kbd>Spacja</kbd> trafiała do programu. Inne programy zamknij.</p>
+(kliknij w nie), żeby <kbd>Spacja</kbd> trafiała do programu. Inne programy zamknij.<!--IF:focus_warning--> Gdy klawiatura trafia gdzie indziej (np. kliknięto obraz na projektorze), w trybie LIVE pojawia się czerwony pasek – kliknij okno programu.<!--/IF:focus_warning--></p>
 <p class="tip">💡 Pilotem może być też telefon – patrz <a href="#dodatki">rozdział 12</a>.</p>
 
 <!-- ================================================================== -->
@@ -328,6 +329,7 @@ kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym klikn
 kliknięcie wznawia od tego samego miejsca – np. gdy aktor czeka na brawa.</td></tr>
 <tr><td><b>Wygaś</b> (przy warstwie)</td><td>łagodnie kończy tylko jedną warstwę.</td></tr>
 <tr><td><b>Wygaszenie główne</b> <kbd>Ctrl+B</kbd></td><td>płynnie wygasza wszystko i pokazuje zaślepkę.</td></tr>
+<!--IF:fade_all--><tr><td><b>WYCISZ</b> <kbd>Shift+Esc</kbd></td><td>dźwięk i obraz na wszystkich warstwach łagodnie wygasają razem (1 s) i się zatrzymują – spokojniejsza wersja PANIC. Po WYCISZ i po PANIC następne GO rusza od pierwszego zatrzymanego cue, więc za wcześnie dane GO można po prostu powtórzyć.</td></tr><!--/IF:fade_all-->
 <tr><td><b>PANIC</b> <kbd>Esc</kbd> dwa razy w ciągu 0,6 s (w trybie LIVE)</td><td>natychmiast ucina wszystko (0 ms) – ostateczność.</td></tr>
 <tr><td><b>Blokada warstw</b></td><td>w trybie LIVE sterowanie warstwami jest zablokowane;
 przytrzymaj kłódkę 1,2 s, żeby odblokować przewijanie/pauzę pojedynczych warstw.</td></tr>
@@ -365,6 +367,8 @@ maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>wybór cue / zmiana następnego w LIVE</td></tr>
 <tr><td><kbd>F5</kbd></td><td>tryb LIVE / powrót do projektu</td></tr>
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (w trybie LIVE): dwa razy w ciągu 0,6 s</td></tr>
+<!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>wycisz wszystko (1 s)</td></tr><!--/IF:fade_all-->
+<!--IF:exclusive--><tr><td><kbd>Ctrl+Spacja</kbd></td><td>GO wymuszone – także gdy trwa cue wyłączny</td></tr><!--/IF:exclusive-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>wygaszenie główne (zaślepka)</td></tr>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>grupuj / rozgrupuj</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>przesuń cue</td></tr>

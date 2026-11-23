@@ -169,6 +169,7 @@ It is visible in LIVE mode.</li>
 (e.g. a photo and music together).</li>
 </ul>
 The same three modes are under the cue list (<b>Hold / Auto-GO / Simult.</b>).</li>
+<li><b>⛔ Exclusive</b> – while this cue plays, a manual GO is refused (also from the remote), so a GO given by mistake cannot cover it; <kbd>Ctrl+Space</kbd> still forces the GO. Careful with images without a duration – they stay until you stop them.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -318,16 +319,16 @@ a grid for focusing and lining up the projector.</li>
 At the bottom you see <b>NEXT IN STANDBY</b> with its name and notes.</li>
 <li>Press <kbd>Space</kbd> (or the big <b>GO</b> button) – the cue plays, gets the
 <b>LIVE</b> badge, and STANDBY jumps to the next one.</li>
-<li>Each further <kbd>Space</kbd> = the next point of the show.</li>
+<li>Each further <kbd>Space</kbd> = the next point of the show. A second press within 0.4 s is ignored – protection against a double GO.</li>
 <li><kbd>↑</kbd> / <kbd>↓</kbd> change which cue is next (e.g. to skip something).
-Double-click a row to fire it right away.</li>
+Double-clicking a row only makes it the next cue (start it with <kbd>Space</kbd>); to start it at once, right-click → <b>Start this Cue now</b>.</li>
 <li>The <b>Live Layer Output Monitor</b> panel shows what plays on L1–L3; <b>Fade Out</b>
 softly ends that layer (hold it for a moment – protection against accidental clicks).</li>
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
 <li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li>
 </ol>
 <p class="tip">💡 During the show keep the program window active (click it) so that
-<kbd>Space</kbd> goes to the program. Close other programs.</p>
+<kbd>Space</kbd> goes to the program. Close other programs. When the keyboard goes elsewhere (e.g. someone clicked the picture on the projector), a red bar appears in LIVE mode – click the program window.</p>
 <p class="tip">💡 A phone can be the remote too – see <a href="#extras">chapter 12</a>.</p>
 
 <!-- ================================================================== -->
@@ -337,6 +338,7 @@ softly ends that layer (hold it for a moment – protection against accidental c
 click resumes from the same point – e.g. while an actor waits for applause.</td></tr>
 <tr><td><b>Fade Out</b> (next to a layer)</td><td>softly ends just that layer.</td></tr>
 <tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>fades everything out and shows the cover.</td></tr>
+<tr><td><b>FADE ALL</b> <kbd>Shift+Esc</kbd></td><td>sound and picture on every layer fade out together (1 s) and stop – a calmer PANIC. After FADE ALL and after PANIC the next GO starts from the first stopped cue, so a GO given too early can simply be repeated.</td></tr>
 <tr><td><b>PANIC</b> <kbd>Esc</kbd> twice within 0.6 s (in LIVE mode)</td><td>cuts everything instantly (0 ms) – last resort.</td></tr>
 <tr><td><b>Layer lock</b></td><td>in LIVE mode the layer controls are locked;
 hold the padlock for 1.2 s to unlock seeking/pausing single layers.</td></tr>
@@ -374,6 +376,8 @@ round masks and cut-outs. Assign a cue to a surface in the Inspector
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>select cue / change the next cue in LIVE</td></tr>
 <tr><td><kbd>F5</kbd></td><td>LIVE mode / back to the project</td></tr>
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (in LIVE mode): twice within 0.6 s</td></tr>
+<tr><td><kbd>Shift+Esc</kbd></td><td>fade all (1 s)</td></tr>
+<tr><td><kbd>Ctrl+Space</kbd></td><td>forced GO – also while an exclusive cue plays</td></tr>
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (cover)</td></tr>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>group / ungroup</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>move cue</td></tr>
