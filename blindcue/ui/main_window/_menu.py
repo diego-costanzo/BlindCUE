@@ -64,6 +64,10 @@ class _MenuMixin:
             QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go_shortcut)
         )
         show_menu.addAction(
+            QAction("GO &forzato (ignora cue esclusiva)", self, shortcut=QKeySequence("Ctrl+Space"),
+                    triggered=self._on_go_forced)
+        )
+        show_menu.addAction(
             QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"), triggered=self._on_blackout)
         )
         show_menu.addAction(
@@ -344,6 +348,7 @@ class _MenuMixin:
         self._live_show_panel = LiveShowPanel()
         self._live_show_panel.exit_live_mode_requested.connect(lambda: self.set_live_mode(False))
         self._live_show_panel.go_requested.connect(self._on_go)
+        self._live_show_panel.force_go_requested.connect(self._on_go_forced)
         self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))
         self._live_show_panel.cue_row_double_clicked.connect(self._on_live_row_double_clicked)
         self._live_show_panel.group_collapse_toggled.connect(self._toggle_group_collapsed)

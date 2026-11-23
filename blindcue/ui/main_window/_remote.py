@@ -161,7 +161,7 @@ class _RemoteMixin:
         logger.info("[REMOTE] Triggering GO from Remote")
         if not self._cues:
             return
-        if not self._go_guard_allows():
+        if not self._manual_go_allowed():
             return
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_go()

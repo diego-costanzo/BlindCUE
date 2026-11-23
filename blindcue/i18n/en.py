@@ -1770,4 +1770,12 @@ T: dict[str, str] = {
         '⚠ Keyboard is not on the director panel: SPACE and ESC do not reach BlindCue',
     '{} pronta — premi GO per avviarla (il doppio clic in LIVE non avvia)':
         '{} ready — press GO to start it (a double-click does not start cues in LIVE)',
+    '⛔ Esclusiva: blocca il GO finché è in onda':
+        '⛔ Exclusive: blocks GO while it plays',
+    "Mentre questa cue è in onda il GO manuale viene rifiutato (anche da remoto), così un GO dato per errore non la copre. Ctrl+Spazio forza comunque il GO.\nAttenzione: un'immagine senza durata resta in onda finché non viene fermata.":
+        'While this cue is live a manual GO is refused (also from the remote), so a GO given by mistake cannot cover it. Ctrl+Space still forces the GO.\nNote: an image without a duration stays live until it is stopped.',
+    "GO bloccato: '{}' è esclusiva ed è in onda — Ctrl+Spazio per forzare":
+        "GO blocked: '{}' is exclusive and still live — Ctrl+Space to force",
+    'GO &forzato (ignora cue esclusiva)':
+        '&Forced GO (ignores exclusive cue)',
 }

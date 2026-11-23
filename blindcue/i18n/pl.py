@@ -1982,4 +1982,12 @@ T: dict[str, str] = {
         '⚠ Klawiatura nie jest na panelu reżysera: SPACJA i ESC nie trafiają do BlindCue',
     '{} pronta — premi GO per avviarla (il doppio clic in LIVE non avvia)':
         '{} gotowy — naciśnij GO, aby go uruchomić (podwójne kliknięcie w trybie LIVE nie uruchamia)',
+    '⛔ Esclusiva: blocca il GO finché è in onda':
+        '⛔ Wyłączny: blokuje GO, dopóki trwa',
+    "Mentre questa cue è in onda il GO manuale viene rifiutato (anche da remoto), così un GO dato per errore non la copre. Ctrl+Spazio forza comunque il GO.\nAttenzione: un'immagine senza durata resta in onda finché non viene fermata.":
+        'Dopóki ten cue trwa, ręczne GO jest odrzucane (także z pilota), więc przypadkowe GO go nie przykryje. Ctrl+Spacja mimo to wymusza GO.\nUwaga: obraz bez czasu trwania trwa, dopóki go nie zatrzymasz.',
+    "GO bloccato: '{}' è esclusiva ed è in onda — Ctrl+Spazio per forzare":
+        "GO zablokowane: '{}' jest wyłączny i trwa — Ctrl+Spacja, aby wymusić",
+    'GO &forzato (ignora cue esclusiva)':
+        'GO &wymuszone (pomija cue wyłączny)',
 }
