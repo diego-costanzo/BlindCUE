@@ -10,10 +10,11 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any
 from collections.abc import Callable, Sequence
 
-from PySide6.QtCore import QObject, QTimer, QUrl, Signal
+from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
 
 from engine.envelope import SectionSequencer, evaluate_cue_level
@@ -977,20 +978,18 @@ class LivePlayer(QObject):
                     callback()
                 return
 
-            steps = max(1, int(duration_sec * 30))
-            step_interval = int(1000 / 30)
-            step_decrement = start_norm / steps
-            current_step = 0
+            # Progress follows the clock, not the tick count: Windows delivers
+            # 33 ms timers late, which stretched a 1 s fade to about 1.4 s.
+            started = time.monotonic()
 
             timer = QTimer(self)
+            timer.setTimerType(Qt.TimerType.PreciseTimer)
             self._fade_timer = timer
 
             def _tick() -> None:
-                nonlocal current_step
-                current_step += 1
-                new_vol = max(0.0, start_norm - (current_step * step_decrement))
-                self._deck_pair()[1].setVolume(new_vol)
-                if current_step >= steps:
+                progress = min(1.0, (time.monotonic() - started) / duration_sec)
+                self._deck_pair()[1].setVolume(max(0.0, start_norm * (1.0 - progress)))
+                if progress >= 1.0:
                     self._stop_fade_timer()
                     self._deck_pair()[1].setVolume(0.0)
                     if stop_after:
@@ -999,7 +998,7 @@ class LivePlayer(QObject):
                         callback()
 
             timer.timeout.connect(_tick)
-            timer.start(step_interval)
+            timer.start(15)
         except Exception as exc:
             logger.error("[LIVE] fade_out() failed: %s", exc)
             self._deck_pair()[1].setVolume(0.0)
