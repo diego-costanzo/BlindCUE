@@ -101,6 +101,7 @@ class LivePlayer(QObject):
         self._level_trim: float = 1.0
         self._level_timer: QTimer | None = None
         self._level_ramp_clock: list = [0.0, None]  # [ramp start, paused at] - see ramp_level
+        self._master_gain: float = 1.0  # master volume of the show (set_master_gain)
         # Section boundary latch: after a jump/continuation we must not react to
         # the stale position report of the section we just left, otherwise the
         # sequencer advances twice and silently eats one loop or one cut.
@@ -423,7 +424,17 @@ class LivePlayer(QObject):
             base_level=self._base_volume,
             apply_fade_out_at_end=allow_fo,
         )
-        return max(0.0, min(1.0, level * self._level_trim))
+        return max(0.0, min(1.0, level * self._level_trim * self._master_gain))
+
+    def set_master_gain(self, gain: float) -> None:
+        """Master volume of the whole show (0..1, MUTE = 0): multiplies everything.
+
+        The gain stack is envelope (cue fades, points) × level change from an
+        action cue × this master; it is never stored in a cue.
+        """
+        self._master_gain = max(0.0, min(1.0, float(gain)))
+        if self.is_playing() and not self._manual_fade_active:
+            self._apply_current_level()
 
     def _apply_envelope_at(self, pos_sec: float) -> None:
         if self._manual_fade_active:
@@ -901,7 +912,7 @@ class LivePlayer(QObject):
                 self._manual_fade_active = False
             _, audio = self._deck_pair()
             if not self._volume_points and not self._manual_fade_active:
-                audio.setVolume(max(0.0, min(1.0, vol_norm * self._level_trim)))
+                audio.setVolume(max(0.0, min(1.0, vol_norm * self._level_trim * self._master_gain)))
             else:
                 player, _ = self._deck_pair()
                 self._apply_envelope_at(player.position() / 1000.0)

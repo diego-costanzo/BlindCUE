@@ -2244,4 +2244,18 @@ T: dict[str, str] = {
         'W przedstawieniu cue się nie zmieniają: aby je edytować, wróć do przygotowania',
     'Annulla non serve nello spettacolo: lo spettacolo non è stato cambiato':
         'Cofanie nie jest potrzebne w przedstawieniu: pokaz nie został zmieniony',
+    'Volume generale dello spettacolo':
+        'Głośność główna przedstawienia',
+    'Volume generale di tutto ciò che suona [Ctrl+↑ / Ctrl+↓]':
+        'Głośność główna wszystkiego, co gra [Ctrl+↑ / Ctrl+↓]',
+    'Silenzia':
+        'Wycisz',
+    '🔇 SILENZIATO':
+        '🔇 WYCISZONE',
+    "Silenzia tutto (l'anteprima resta) [Ctrl+M]":
+        'Wycisz wszystko (podgląd zostaje) [Ctrl+M]',
+    '🔇 Tutto silenziato (volume generale) — Ctrl+M per riattivare':
+        '🔇 Wszystko wyciszone (głośność główna) — Ctrl+M włącza dźwięk',
+    'Volume generale {} %':
+        'Głośność główna {} %',
 }

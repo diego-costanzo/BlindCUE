@@ -1345,6 +1345,13 @@ def main() -> int:
     main_win.blackout_requested.connect(_on_blackout_requested)
     main_win.panic_requested.connect(_on_panic_requested)
     main_win.pause_all_toggled.connect(lambda: _set_global_paused(not scheduler.is_paused()))
+
+    def _on_master_gain(gain: float) -> None:
+        """Master volume × mute on every live player (the preview player is not one)."""
+        for lp in live_players.values():
+            lp.set_master_gain(gain)
+
+    main_win.master_gain_changed.connect(_on_master_gain)
     main_win.pause_all_set.connect(_set_global_paused)
 
     def _on_layer_play_pause_requested(layer: int) -> None:

@@ -2022,4 +2022,18 @@ T: dict[str, str] = {
         'In the show cues do not change: to edit them go back to preparation',
     'Annulla non serve nello spettacolo: lo spettacolo non è stato cambiato':
         'Undo is not needed in the show: the show has not been changed',
+    'Volume generale dello spettacolo':
+        'Master volume of the show',
+    'Volume generale di tutto ciò che suona [Ctrl+↑ / Ctrl+↓]':
+        'Master volume of everything that plays [Ctrl+↑ / Ctrl+↓]',
+    'Silenzia':
+        'Mute',
+    '🔇 SILENZIATO':
+        '🔇 MUTED',
+    "Silenzia tutto (l'anteprima resta) [Ctrl+M]":
+        'Mute everything (the preview stays) [Ctrl+M]',
+    '🔇 Tutto silenziato (volume generale) — Ctrl+M per riattivare':
+        '🔇 Everything muted (master volume) — Ctrl+M to unmute',
+    'Volume generale {} %':
+        'Master volume {} %',
 }

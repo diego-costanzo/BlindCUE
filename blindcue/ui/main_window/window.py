@@ -82,6 +82,7 @@ class MainWindow(
     panic_requested = Signal()                           # emits instant 0ms Panic stop all
     fade_all_requested = Signal(float)                   # emits Fade All duration in seconds
     pause_all_toggled = Signal()                         # emits global Show Pause/Resume toggle
+    master_gain_changed = Signal(float)                  # master volume × mute, 0..1 (all live players)
     pause_all_set = Signal(bool)                         # emits idempotent global pause/resume state
 
     def __init__(self, output_window: OutputWindow,
@@ -148,6 +149,9 @@ class MainWindow(
         # cue_id -> order number of its last start (see trigger_auto_follow_from)
         self._fired_at: dict[int, int] = {}
         self._fire_seq = 0
+        # Master volume of the show: 100 % at every start, never saved.
+        self._master_level: float = 1.0
+        self._master_muted: bool = False
         # "Loop Scena" groups a release action reached: they end after this pass.
         self._released_groups: set[int] = set()
         self._is_global_paused: bool = False

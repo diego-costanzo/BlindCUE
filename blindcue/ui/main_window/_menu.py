@@ -220,6 +220,12 @@ class _MenuMixin:
         self._mode_tabs.enter_show_requested.connect(lambda: self.set_live_mode(True))
         lay.addWidget(self._mode_tabs)
         lay.addStretch(1)
+        from ui.master_volume import MasterVolume
+
+        self._master_volume = MasterVolume()
+        self._master_volume.level_changed.connect(lambda v: self._set_master(level=v))
+        self._master_volume.mute_changed.connect(lambda m: self._set_master(muted=m))
+        lay.addWidget(self._master_volume)
         btn_fade = QPushButton("🔉 DISSOLVI [⇧ESC]")
         btn_fade.setFixedHeight(34)
         btn_fade.setFocusPolicy(Qt.FocusPolicy.TabFocus)
@@ -422,6 +428,9 @@ class _MenuMixin:
         # Dedicated distraction-free LIVE Show Mode page
         self._live_show_panel = LiveShowPanel()
         self._live_show_panel.exit_live_mode_requested.connect(lambda: self.set_live_mode(False))
+        lv = self._live_show_panel.master_volume
+        lv.level_changed.connect(lambda v: self._set_master(level=v))
+        lv.mute_changed.connect(lambda m: self._set_master(muted=m))
         self._live_show_panel.go_requested.connect(self._on_go)
         self._live_show_panel.force_go_requested.connect(self._on_go_forced)
         self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))

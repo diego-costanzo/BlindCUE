@@ -120,6 +120,29 @@ class _TransportMixin:
         self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
 
+    def _set_master(self, level: float | None = None, muted: bool | None = None) -> None:
+        """Master volume of the show (both copies of the control stay in step)."""
+        if level is not None:
+            self._master_level = max(0.0, min(1.0, float(level)))
+        if muted is not None:
+            self._master_muted = bool(muted)
+        for mv in (getattr(self, "_master_volume", None),
+                   getattr(getattr(self, "_live_show_panel", None), "master_volume", None)):
+            if mv is not None:
+                mv.set_state(self._master_level, self._master_muted)
+        gain = 0.0 if self._master_muted else self._master_level
+        self.master_gain_changed.emit(gain)
+        if self._master_muted:
+            self._status_label.setText("🔇 Tutto silenziato (volume generale) — Ctrl+M per riattivare")
+        else:
+            self._status_label.setText(f"Volume generale {int(round(self._master_level * 100))} %")
+
+    def _nudge_master(self, delta: float) -> None:
+        self._set_master(level=self._master_level + delta)
+
+    def _toggle_master_mute(self) -> None:
+        self._set_master(muted=not self._master_muted)
+
     def _note_fired(self, cue: Cue) -> None:
         """A cue was started (GO, Auto-GO, chain, group): ✓ in the list, and in which order."""
         self._played_ids.add(cue.cue_id)

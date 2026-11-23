@@ -162,6 +162,37 @@ def test_in_preparation_the_same_edits_work(window, tmp_path):
     assert abs(window._selected_cue().volume - 0.4) < 1e-6
 
 
+def test_master_volume_and_mute(window):
+    gains: list[float] = []
+    window.master_gain_changed.connect(gains.append)
+    window._nudge_master(-0.05)                     # Ctrl+Down
+    assert abs(gains[-1] - 0.95) < 1e-9
+    live_copy = window._live_show_panel.master_volume
+    assert live_copy.slider.value() == 95 and window._master_volume.slider.value() == 95
+    window._toggle_master_mute()                    # Ctrl+M
+    assert gains[-1] == 0.0 and live_copy.btn_mute.isChecked()
+    window._live_show_panel.master_volume.slider.setValue(50)   # the LIVE copy drives it too
+    assert window._master_volume.slider.value() == 50 and gains[-1] == 0.0   # still muted
+    window._toggle_master_mute()
+    assert abs(gains[-1] - 0.5) < 1e-9
+    window._nudge_master(+1.0)
+    assert gains[-1] == 1.0                         # clamped
+
+
+def test_player_master_gain_multiplies_the_level(qt_app):
+    from engine.player_live import LivePlayer
+
+    lp = LivePlayer()
+    lp.set_volume(80)
+    _, audio = lp._deck_pair()
+    assert abs(audio.volume() - 0.8) < 1e-3
+    lp.set_master_gain(0.5)
+    lp.set_volume(80)
+    assert abs(audio.volume() - 0.4) < 1e-3          # 0.8 × 0.5
+    lp.stop()
+    lp.deleteLater()
+
+
 def test_pause_all_has_a_key(window):
     from PySide6.QtGui import QKeySequence
 

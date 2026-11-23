@@ -68,6 +68,7 @@ from ui.cue_table import (
     paint_live_progress,
 )
 from ui.hold_button import ElidedButton, HoldProgressButton
+from ui.master_volume import MasterVolume
 from ui.mode_tabs import ModeTabs
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_GO, get_active_theme
@@ -922,6 +923,9 @@ class LiveShowPanel(QWidget):
             "QPushButton:pressed { background-color: #92400e; }"
         )
         self.btn_fade_all.clicked.connect(self.fade_all_requested)
+        # Master volume of the show, the same control as in the editor's top row.
+        self.master_volume = MasterVolume()
+        right_layout.addWidget(self.master_volume)
         right_layout.addWidget(self.btn_fade_all)
 
         # Far away from bottom GO trigger: Crimson PANIC Stop button

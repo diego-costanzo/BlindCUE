@@ -257,6 +257,10 @@ class _WindowSetupMixin:
         QShortcut(QKeySequence(Qt.Key.Key_O), self, lambda: self._on_snap_shortcut(False))
         QShortcut(QKeySequence(Qt.Key.Key_Escape), self, self._on_escape_pressed)
         QShortcut(QKeySequence("Ctrl+L"), self, self._enter_show_from_key)  # enters only
+        # Master volume of the show (C2a step 3); W3 of the accessibility review.
+        QShortcut(QKeySequence("Ctrl+Up"), self, lambda: self._nudge_master(0.05))
+        QShortcut(QKeySequence("Ctrl+Down"), self, lambda: self._nudge_master(-0.05))
+        QShortcut(QKeySequence("Ctrl+M"), self, self._toggle_master_mute)
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
         self._install_focus_watch()
