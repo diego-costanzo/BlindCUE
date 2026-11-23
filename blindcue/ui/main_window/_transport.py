@@ -180,7 +180,7 @@ class _TransportMixin:
         text = f"{format_cue_ref(idx, cue)} '{cue.name}'"
         if together > 0:
             text += " " + tr("+ {} insieme").format(together)
-        panel.set_last_started(text, cue.notes or "", by_hand=by_hand)
+        panel.set_last_started(text, cue.notes or "", by_hand=by_hand, cue_id=cue.cue_id)
 
     def _go_target_index(self) -> int:
         """Row the next GO fires: the selected one, else the last fired, else the top."""

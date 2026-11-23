@@ -41,6 +41,7 @@ from ui.main_window._undo_go import _UndoGoMixin
 from ui.main_window._readiness import _ReadinessMixin
 from ui.main_window._now_playing import _NowPlayingMixin
 from ui.main_window._announce import _AnnounceMixin
+from ui.main_window._rehearsal import _RehearsalMixin
 
 
 class MainWindow(
@@ -69,6 +70,7 @@ class MainWindow(
     _ReadinessMixin,
     _NowPlayingMixin,
     _AnnounceMixin,
+    _RehearsalMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -80,6 +82,7 @@ class MainWindow(
     undo_go_requested = Signal(object)             # list[UndoStep]: take back the last GO
     release_loop_requested = Signal(int)           # runtime layer: its loop ends after this pass
     layer_trim_requested = Signal(int, float)      # runtime layer, operator level correction 0..1
+    layer_stop_requested = Signal(int)             # runtime layer: stop at once (rehearsal card)
     blackout_requested = Signal()                        # emits when blackout triggered
     preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start
@@ -170,6 +173,7 @@ class MainWindow(
         self._trims: dict[int, float] = {}    # runtime layer -> operator level correction
         self._ramps: dict[int, tuple[str, float]] = {}  # runtime layer -> (ramp text, ends at)
         self._held_auto_go: set[int] = set()  # cues whose Auto-GO waits for a GO instead
+        self._rehearsal = False               # the show's screen in the rehearsal mode
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True
@@ -190,6 +194,7 @@ class MainWindow(
         self._build_ui()
         self._readiness_setup()  # "Before the show" page (stage 1 C2a step 7)
         self._now_playing_setup()  # right column of the show (stage 1 C2a step 8)
+        self._rehearsal_setup()  # rehearsal drawer and tools (stage 1 C2a step 9)
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()

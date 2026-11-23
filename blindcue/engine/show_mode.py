@@ -35,6 +35,20 @@ BLOCKED_MESSAGES: dict[str, str] = {
 }
 
 
+# The rehearsal allows the drawer's fixes, never a change of the list (M3).
+REHEARSAL_BLOCKED_MESSAGES: dict[str, str] = {
+    EDIT_LIST: "Nella prova si correggono solo livello, tempi e note. Aggiungere, togliere e spostare: "
+               "clicca «○ Preparazione»",
+}
+
+
+def blocked_message(mode: str, change: str) -> str:
+    """Why *change* is not allowed in *mode* (for the status line and screen readers)."""
+    if mode == REHEARSAL and change in REHEARSAL_BLOCKED_MESSAGES:
+        return REHEARSAL_BLOCKED_MESSAGES[change]
+    return BLOCKED_MESSAGES.get(change, "")
+
+
 def allows(mode: str, change: str) -> bool:
     """True when *change* is allowed in *mode* (an unknown mode allows only RUN)."""
     return change in _ALLOWED.get(mode, frozenset({RUN}))

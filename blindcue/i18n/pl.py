@@ -2492,4 +2492,108 @@ T: dict[str, str] = {
         'PODGLĄD WYJŚCIA',
     "Anteprima dell'uscita":
         'Podgląd wyjścia',
+    '◐ Prova':
+        '◐ Próba',
+    '◐ PROVA':
+        '◐ PRÓBA',
+    'Prova: lo spettacolo come in scena, con piccole correzioni [Maiusc+F5]':
+        'Próba: przedstawienie jak na scenie, z drobnymi poprawkami [Shift+F5]',
+    '◐ Prova  (tieni 1,5 s)':
+        '◐ Próba  (trzymaj 1,5 s)',
+    'Tieni premuto 1,5 s per passare alla prova (ciò che è in onda continua)':
+        'Przytrzymaj 1,5 s, żeby przejść do próby (to, co gra, gra dalej)',
+    'Passa alla prova: tieni premuto 1,5 secondi':
+        'Przejdź do próby: przytrzymaj 1,5 sekundy',
+    'Modalità prova (attiva)':
+        'Tryb próby (włączony)',
+    'Passa alla prova':
+        'Przejdź do próby',
+    'Correzioni della prova':
+        'Poprawki z próby',
+    'Chiudi le correzioni (le modifiche restano)':
+        'Zamknij poprawki (zmiany zostają)',
+    'Chiudi le correzioni':
+        'Zamknij poprawki',
+    'Nome':
+        'Nazwa',
+    'Note':
+        'Uwagi',
+    'Livello della cue':
+        'Poziom cue',
+    'Livello':
+        'Poziom',
+    'Entra':
+        'Pojawianie',
+    'Inizio':
+        'Początek',
+    'Fine':
+        'Koniec',
+    'fine':
+        'koniec',
+    'Poi':
+        'Potem',
+    'Manuale (GO)':
+        'Ręcznie (GO)',
+    'Insieme alla successiva':
+        'Razem z następnym',
+    'Rivedi':
+        'Przejrzyj',
+    'Altre impostazioni → Preparazione':
+        'Więcej ustawień → Przygotowanie',
+    'Si cambia quando la cue non suona':
+        'Zmienisz, gdy cue nie gra',
+    'nome':
+        'nazwa',
+    'note':
+        'uwagi',
+    'livello':
+        'poziom',
+    'entrata':
+        'pojawianie',
+    'sfumatura':
+        'wygaszanie',
+    'inizio':
+        'początek',
+    'poi':
+        'potem',
+    'Prova: lo spettacolo con piccole correzioni (✎). Ciò che suona continua.':
+        'Próba: przedstawienie z drobnymi poprawkami (✎). To, co gra, gra dalej.',
+    "✎ CORREGGI {} '{}'":
+        "✎ POPRAWIASZ {} '{}'",
+    'Modifiche della prova: {}':
+        'Zmiany z próby: {}',
+    'Prova: {} {} {} → {}':
+        'Próba: {} {} {} → {}',
+    'Modifiche della prova':
+        'Zmiany z próby',
+    'Nessuna modifica nella prova.':
+        'Brak zmian z próby.',
+    'Correggi questa cue (prova)':
+        'Popraw ten cue (próba)',
+    'Correggi questa cue':
+        'Popraw ten cue',
+    'Ferma subito questa cue':
+        'Zatrzymaj ten cue od razu',
+    'Salta a 5 s dalla fine (per provare il finale)':
+        'Skocz na 5 s przed końcem (żeby przećwiczyć zakończenie)',
+    'Salva livello':
+        'Zapisz poziom',
+    'Il livello corretto diventa quello della cue':
+        'Poprawiony poziom staje się poziomem cue',
+    'Nella prova si correggono solo livello, tempi e note. Aggiungere, togliere e spostare: clicca «○ Preparazione»':
+        'W Próbie poprawiasz tylko poziom, czasy i uwagi. Dodawanie, usuwanie i przesuwanie: kliknij „○ Przygotowanie”',
+    'Spettacolo: {} · modifiche della prova: {}':
+        'Pokaz: {} · zmiany z próby: {}',
+    'Annulla modifica':
+        'Cofnij',
+    'Entra (dissolvenza in entrata)':
+        'Pojawianie (narastanie)',
+    'Sfuma (dissolvenza in uscita)':
+        'Wygaszanie',
+    'Inizio (dove parte il file)':
+        'Początek (skąd rusza plik)',
+    'Fine (dove si ferma; «fine» = fine del file)':
+        'Koniec (gdzie się zatrzymuje; „koniec” = koniec pliku)',
+    'Da / a':
+        'Od / do',
 }

@@ -810,6 +810,7 @@ class LiveShowPanel(QWidget):
     undo_go_requested = Signal()
     readiness_review_requested = Signal()
     hold_auto_go_requested = Signal(int)   # cue_id whose Auto-GO should wait for a GO
+    edit_cue_requested = Signal(int)       # rehearsal "✎": cue_id to fix in the drawer
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -1065,6 +1066,10 @@ class LiveShowPanel(QWidget):
         self.lbl_last_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_last_banner.setTextFormat(Qt.TextFormat.PlainText)  # names are typed by people
         lb_layout.addWidget(self.lbl_last_banner, stretch=1)
+        self.btn_edit_last = self._edit_button()
+        self.btn_edit_last.clicked.connect(lambda: self._emit_edit(self._last_cue_id))
+        lb_layout.addWidget(self.btn_edit_last)
+        self._last_cue_id = -1
         self.last_bar_layout = lb_layout
         # Undo the last GO (1.18): a fixed 180 px place at the right end, empty
         # when there is nothing to undo (not greyed out). No keyboard focus:
@@ -1127,6 +1132,11 @@ class LiveShowPanel(QWidget):
         self._set_standby_note("")
         sb_lines.addWidget(self.lbl_standby_note)
         sb_layout.addLayout(sb_lines, stretch=1)
+        self.btn_edit_next = self._edit_button()
+        self.btn_edit_next.clicked.connect(lambda: self._emit_edit(self._standby_cue_id))
+        sb_layout.addWidget(self.btn_edit_next)
+        self._standby_cue_id = -1
+        self._rehearsal = False
         # "Hold": the coming Auto-GO waits for a GO (an actor is late); Pause
         # All would stop the music as well.
         self.btn_hold_auto = QPushButton("Trattieni")
@@ -1397,7 +1407,32 @@ class LiveShowPanel(QWidget):
     # window in which that GO can be undone (stage 1.18).
     LAST_HOT_SECONDS = 15.0
 
-    def set_last_started(self, text: str, note: str = "", by_hand: bool = True) -> None:
+    @staticmethod
+    def _edit_button() -> QPushButton:
+        btn = QPushButton("✎")
+        btn.setFixedSize(30, 24)
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Space stays GO
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setToolTip("Correggi questa cue (prova)")
+        btn.setAccessibleName("Correggi questa cue")
+        btn.setStyleSheet(
+            "QPushButton { background-color: #0c4a6e; color: #bae6fd; border: 1px solid #38bdf8; "
+            "border-radius: 4px; font-weight: bold; font-size: 13px; }")
+        btn.setVisible(False)
+        return btn
+
+    def _emit_edit(self, cue_id: int) -> None:
+        if cue_id >= 0:
+            self.edit_cue_requested.emit(cue_id)
+
+    def set_rehearsal(self, on: bool) -> None:
+        """The rehearsal adds "✎" next to the named cues (Last, Next, the cards)."""
+        self._rehearsal = bool(on)
+        self.btn_edit_last.setVisible(on and self._last_cue_id >= 0)
+        self.btn_edit_next.setVisible(on and self._standby_cue_id >= 0)
+        self.now_playing.set_rehearsal(on)
+
+    def set_last_started(self, text: str, note: str = "", by_hand: bool = True, cue_id: int = -1) -> None:
         """The last GO started *text* (e.g. "#3 'Birds' + 2 together").
 
         Shown with how long ago and the cue's *note*; lit for
@@ -1405,6 +1440,8 @@ class LiveShowPanel(QWidget):
         """
         self._last_text = text
         self._last_note = note
+        self._last_cue_id = cue_id
+        self.btn_edit_last.setVisible(self._rehearsal and cue_id >= 0)
         self._last_at = time.monotonic()
         self._last_by_hand = by_hand
         self.last_bar.setVisible(bool(text))
@@ -2012,6 +2049,8 @@ class LiveShowPanel(QWidget):
             if 0 <= standby_row < len(cues):
                 self.live_table.selectRow(standby_row)
                 sb_cue = cues[standby_row]
+                self._standby_cue_id = sb_cue.cue_id
+                self.btn_edit_next.setVisible(self._rehearsal)
                 ref = format_cue_ref(standby_row, sb_cue)
 
                 q_badge = f"[{sb_cue.q_label.strip()}] " if (sb_cue.q_label and sb_cue.q_label.strip()) else ""
@@ -2066,6 +2105,8 @@ class LiveShowPanel(QWidget):
                 self.live_table.clearSelection()
                 self._standby_base = ""
                 self._standby_waits_on = None
+                self._standby_cue_id = -1
+                self.btn_edit_next.setVisible(False)
                 self.btn_hold_auto.setVisible(False)
                 self.lbl_standby_banner.setText("Nessuna cue pronta in scaletta")
                 self._set_standby_note("")

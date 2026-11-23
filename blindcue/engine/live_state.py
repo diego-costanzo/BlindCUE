@@ -108,6 +108,11 @@ class LiveClocks:
         clock = self._layers.get(layer)
         return clock.pos if clock is not None and clock.timed else None
 
+    def layer_end(self, layer: int) -> float | None:
+        """End (seconds in the file) of the cue on *layer*, when known."""
+        clock = self._layers.get(layer)
+        return clock.end if clock is not None and clock.timed and clock.end > clock.start else None
+
     def is_empty(self) -> bool:
         return not self._layers and not self._waits
 

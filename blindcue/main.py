@@ -1082,6 +1082,8 @@ def main() -> int:
             lp.ramp_level(trim, 0.15)
 
     main_win.layer_trim_requested.connect(_on_layer_trim)
+    # The rehearsal card's stop: at once (a 50 ms fade, no click in the speakers).
+    main_win.layer_stop_requested.connect(lambda layer: _on_layer_clear_requested(layer, fade_override=0.05))
 
     # ── Handle per-layer EOF & Error cleanly ──────────────────────────
     def _on_live_eof(layer: int) -> None:

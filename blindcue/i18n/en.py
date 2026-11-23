@@ -2270,4 +2270,108 @@ T: dict[str, str] = {
         'OUTPUT PREVIEW',
     "Anteprima dell'uscita":
         'Output preview',
+    '◐ Prova':
+        '◐ Rehearsal',
+    '◐ PROVA':
+        '◐ REHEARSAL',
+    'Prova: lo spettacolo come in scena, con piccole correzioni [Maiusc+F5]':
+        'Rehearsal: the show as on stage, with small fixes [Shift+F5]',
+    '◐ Prova  (tieni 1,5 s)':
+        '◐ Rehearsal  (hold 1.5 s)',
+    'Tieni premuto 1,5 s per passare alla prova (ciò che è in onda continua)':
+        'Hold for 1.5 s to go to the rehearsal (what plays keeps playing)',
+    'Passa alla prova: tieni premuto 1,5 secondi':
+        'Go to the rehearsal: hold for 1.5 seconds',
+    'Modalità prova (attiva)':
+        'Rehearsal mode (on)',
+    'Passa alla prova':
+        'Go to the rehearsal',
+    'Correzioni della prova':
+        'Rehearsal fixes',
+    'Chiudi le correzioni (le modifiche restano)':
+        'Close the fixes (the changes stay)',
+    'Chiudi le correzioni':
+        'Close the fixes',
+    'Nome':
+        'Name',
+    'Note':
+        'Notes',
+    'Livello della cue':
+        'Level of the cue',
+    'Livello':
+        'Level',
+    'Entra':
+        'Fade in',
+    'Inizio':
+        'Start',
+    'Fine':
+        'End',
+    'fine':
+        'end',
+    'Poi':
+        'Then',
+    'Manuale (GO)':
+        'By hand (GO)',
+    'Insieme alla successiva':
+        'Together with the next',
+    'Rivedi':
+        'Review',
+    'Altre impostazioni → Preparazione':
+        'More settings → Preparation',
+    'Si cambia quando la cue non suona':
+        'Changes when the cue does not play',
+    'nome':
+        'name',
+    'note':
+        'notes',
+    'livello':
+        'level',
+    'entrata':
+        'fade in',
+    'sfumatura':
+        'fade out',
+    'inizio':
+        'start',
+    'poi':
+        'then',
+    'Prova: lo spettacolo con piccole correzioni (✎). Ciò che suona continua.':
+        'Rehearsal: the show with small fixes (✎). What plays keeps playing.',
+    "✎ CORREGGI {} '{}'":
+        "✎ FIXING {} '{}'",
+    'Modifiche della prova: {}':
+        'Rehearsal changes: {}',
+    'Prova: {} {} {} → {}':
+        'Rehearsal: {} {} {} → {}',
+    'Modifiche della prova':
+        'Rehearsal changes',
+    'Nessuna modifica nella prova.':
+        'No changes from the rehearsal.',
+    'Correggi questa cue (prova)':
+        'Fix this cue (rehearsal)',
+    'Correggi questa cue':
+        'Fix this cue',
+    'Ferma subito questa cue':
+        'Stop this cue at once',
+    'Salta a 5 s dalla fine (per provare il finale)':
+        'Jump to 5 s before the end (to rehearse the ending)',
+    'Salva livello':
+        'Save level',
+    'Il livello corretto diventa quello della cue':
+        "The corrected level becomes the cue's own",
+    'Nella prova si correggono solo livello, tempi e note. Aggiungere, togliere e spostare: clicca «○ Preparazione»':
+        'In the rehearsal you fix only levels, times and notes. To add, delete or move: click “○ Preparation”',
+    'Spettacolo: {} · modifiche della prova: {}':
+        'Show: {} · rehearsal changes: {}',
+    'Annulla modifica':
+        'Undo',
+    'Entra (dissolvenza in entrata)':
+        'Fade in',
+    'Sfuma (dissolvenza in uscita)':
+        'Fade out',
+    'Inizio (dove parte il file)':
+        'Start (where the file begins)',
+    'Fine (dove si ferma; «fine» = fine del file)':
+        'End (where it stops; “end” = end of the file)',
+    'Da / a':
+        'From / to',
 }

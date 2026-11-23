@@ -83,6 +83,8 @@ class _MenuMixin:
         self._act_undo_go = QAction("↶ Annulla l'ultimo GO", self, triggered=self._on_undo_go)
         self._act_undo_go.setEnabled(False)
         show_menu.addAction(self._act_undo_go)
+        show_menu.addAction(QAction("◐ Prova", self, shortcut=QKeySequence("Shift+F5"),
+                                    triggered=self._enter_rehearsal))
         show_menu.addAction(QAction("Aggiungi la checklist predefinita", self,
                                     triggered=self._add_default_checklist))
         self._act_end_show = QAction("Termina lo spettacolo…", self, shortcut=QKeySequence("Ctrl+Shift+F5"),
@@ -223,7 +225,7 @@ class _MenuMixin:
         lay.setContentsMargins(10, 5, 10, 5)
         lay.setSpacing(8)
         self._mode_tabs = ModeTabs()
-        self._mode_tabs.enter_show_requested.connect(lambda: self.set_live_mode(True))
+        self._mode_tabs.enter_show_requested.connect(self._enter_show_from_key)
         lay.addWidget(self._mode_tabs)
         lay.addStretch(1)
         from ui.master_volume import MasterVolume
@@ -439,6 +441,7 @@ class _MenuMixin:
         lv.mute_changed.connect(lambda m: self._set_master(muted=m))
         self._live_show_panel.go_requested.connect(self._on_go)
         self._live_show_panel.undo_go_requested.connect(self._on_undo_go)
+        self._live_show_panel.mode_tabs.enter_show_requested.connect(self._enter_show_from_key)
         self._live_show_panel.readiness_review_requested.connect(lambda: self._show_readiness(review=True))
         self._live_show_panel.force_go_requested.connect(self._on_go_forced)
         self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))

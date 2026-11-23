@@ -116,6 +116,11 @@ class HoldProgressButton(QPushButton):
 
     # ── State Accessors & Compatibility Helpers ───────────────────────
 
+    def set_hold_ms(self, hold_ms: int) -> None:
+        """How long the button must be held (the rehearsal needs less than the show)."""
+        self._hold_ms = max(200, int(hold_ms))
+        self._current_hold_ms = self._hold_ms
+
     def is_active(self) -> bool:
         """True while the button is held (or latched active)."""
         return self._is_active

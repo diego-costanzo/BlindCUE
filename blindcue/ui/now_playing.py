@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from ui.hold_button import HoldProgressButton
+from ui.rehearsal_drawer import RehearsalDrawer
 
 TIMED = "timed"    # audio / video / picture with a hold time: full card
 STILL = "still"    # picture, caption without an end: one line
@@ -109,6 +110,11 @@ class _Card(QFrame):
         outer.setSpacing(2)
         line1 = QHBoxLayout()
         line1.setSpacing(6)
+        self.btn_edit = self._button("✎", "Correggi questa cue (prova)")
+        self.btn_edit.setMinimumSize(26, 22)
+        self.btn_edit.clicked.connect(lambda: panel.edit_requested.emit(self.cue_id))
+        self.btn_edit.setVisible(False)
+        line1.addWidget(self.btn_edit)
         self.lbl_title = QLabel()
         self.lbl_title.setTextFormat(Qt.TextFormat.PlainText)
         self.lbl_title.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
@@ -168,6 +174,23 @@ class _Card(QFrame):
             self.lbl_trim.setStyleSheet("QLabel { color: #cbd5e1; font-size: 11px; }")
             line3.addWidget(self.lbl_trim)
             outer.addLayout(line3)
+            # Rehearsal only: stop at once, jump near the end, keep the level.
+            self.rehearsal_row = QWidget()
+            line4 = QHBoxLayout(self.rehearsal_row)
+            line4.setContentsMargins(0, 0, 0, 0)
+            line4.setSpacing(6)
+            self.btn_stop = self._button("⏹", "Ferma subito questa cue")
+            self.btn_stop.clicked.connect(lambda: panel.stop_requested.emit(self.slot))
+            line4.addWidget(self.btn_stop)
+            self.btn_to_end = self._button("⇥ −5 s", "Salta a 5 s dalla fine (per provare il finale)")
+            self.btn_to_end.clicked.connect(lambda: panel.to_end_requested.emit(self.slot))
+            line4.addWidget(self.btn_to_end)
+            self.btn_save_level = self._button("Salva livello", "Il livello corretto diventa quello della cue")
+            self.btn_save_level.clicked.connect(lambda: panel.save_level_requested.emit(self.cue_id))
+            line4.addWidget(self.btn_save_level)
+            line4.addStretch(1)
+            outer.addWidget(self.rehearsal_row)
+            self.rehearsal_row.setVisible(False)
             self._panel = panel
         else:
             self.setFixedHeight(34)
@@ -188,7 +211,7 @@ class _Card(QFrame):
 
     @staticmethod
     def _hold_button(text: str, tip: str) -> HoldProgressButton:
-        btn = HoldProgressButton(text_idle=text, hold_ms=500, is_toggle=False, fill_color="#38bdf8")
+        btn = HoldProgressButton(text_idle=text, hold_ms=1500, is_toggle=False, fill_color="#38bdf8")
         btn.setToolTip(tip)
         btn.setAccessibleName(tip)
         btn.setFixedSize(52, 26)
@@ -205,6 +228,16 @@ class _Card(QFrame):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         btn.setStyleSheet(_BTN)
         return btn
+
+    def set_rehearsal(self, on: bool) -> None:
+        """Rehearsal tools on the card; jumps need a long hold only in the show."""
+        self.btn_edit.setVisible(on)
+        if self.kind == TIMED:
+            self.rehearsal_row.setVisible(on)
+            self.setFixedHeight(112 if on else 84)
+            for btn in (self.btn_back, self.btn_fwd):
+                btn.set_hold_ms(200 if on else 1500)
+        self._last = None  # redraw with the new tools
 
     def show_state(self, st: CardState) -> None:
         if st == self._last:
@@ -231,6 +264,8 @@ class _Card(QFrame):
         self.btn_release.setVisible(st.loop)
         self.btn_back.setVisible(st.seekable)
         self.btn_fwd.setVisible(st.seekable)
+        self.btn_to_end.setVisible(st.seekable)
+        self.btn_save_level.setVisible(st.trim < 0.995)
         if not self.slider.isSliderDown() and not self.slider.hasFocus():
             self._setting = True
             self.slider.setValue(round(st.trim * 100))
@@ -248,6 +283,10 @@ class NowPlayingPanel(QFrame):
     seek_requested = Signal(int, float)   # runtime layer, seconds (-10 / +10)
     trim_requested = Signal(int, float)   # runtime layer, level correction 0..1
     preview_toggled = Signal(bool)        # the output preview opened / folded
+    edit_requested = Signal(int)          # cue_id: open the rehearsal drawer on it
+    stop_requested = Signal(int)          # runtime layer: stop at once (rehearsal)
+    to_end_requested = Signal(int)        # runtime layer: jump to 5 s before the end
+    save_level_requested = Signal(int)    # cue_id: the corrected level becomes the cue's
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -259,6 +298,10 @@ class NowPlayingPanel(QFrame):
         root = QVBoxLayout(self)
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(4)
+        # The rehearsal drawer takes the place of the preview while it is open.
+        self.drawer = RehearsalDrawer()
+        root.addWidget(self.drawer)
+        self._rehearsal = False
         # What the audience sees, small, on top; folds to its header ("▾").
         self.btn_preview = QPushButton("▾ ANTEPRIMA USCITA")
         self.btn_preview.setCheckable(True)
@@ -314,6 +357,18 @@ class NowPlayingPanel(QFrame):
     def preview_shown(self) -> bool:
         return self.btn_preview.isChecked()
 
+    def show_drawer(self, shown: bool) -> None:
+        self.drawer.setVisible(shown)
+        self.btn_preview.setVisible(not shown)
+        self.lbl_preview.setVisible(not shown and self.btn_preview.isChecked())
+
+    def set_rehearsal(self, on: bool) -> None:
+        self._rehearsal = bool(on)
+        for card in self._cards.values():
+            card.set_rehearsal(self._rehearsal)
+        if not on:
+            self.show_drawer(False)
+
     def cards(self) -> dict[int, _Card]:
         return dict(self._cards)
 
@@ -328,6 +383,7 @@ class NowPlayingPanel(QFrame):
             card = self._cards.get(st.cue_id)
             if card is None:
                 card = _Card(self, st.kind)
+                card.set_rehearsal(self._rehearsal)
                 self._cards[st.cue_id] = card
                 # New cards go after the ones already there (before the stretch).
                 self._cards_layout.insertWidget(self._cards_layout.count() - 1, card)

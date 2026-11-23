@@ -236,7 +236,7 @@ class _CueTableMixin:
         enabled = bool(enabled)
         if self._live_mode == enabled:
             return
-        if enabled and not checked and self._readiness_wanted():
+        if enabled and not checked and not self._rehearsal and self._readiness_wanted():
             if hasattr(self, "_act_live_mode"):
                 self._act_live_mode.blockSignals(True)
                 self._act_live_mode.setChecked(False)
@@ -257,6 +257,9 @@ class _CueTableMixin:
             # Where the show was left: coming back to LIVE continues from here.
             self._live_resume_id = self._cues[self._go_target_index()].cue_id
         self._live_mode = enabled
+        if not enabled:
+            self._rehearsal = False
+            self._close_drawer()
         self._undo_go_end()  # a change of mode ends the Undo GO offer
         self._note_banner.set_docked(enabled)  # in the show a plain note is a card of "Now playing"
         if hasattr(self, "_act_live_mode"):
@@ -267,9 +270,7 @@ class _CueTableMixin:
         # The LIVE page has its own top row (tabs, clock, Fade All, PANIC).
         if hasattr(self, "_design_control_bar"):
             self._design_control_bar.setVisible(not enabled)
-            self._mode_tabs.set_live(enabled)
-        if hasattr(self, "_live_show_panel"):
-            self._live_show_panel.mode_tabs.set_live(enabled)
+        self._apply_mode_visuals()
         if hasattr(self, "_act_end_show"):
             self._act_end_show.setEnabled(enabled)
         if enabled:
@@ -300,11 +301,16 @@ class _CueTableMixin:
             self._act_live_mode.blockSignals(True)
             self._act_live_mode.setChecked(True)
             self._act_live_mode.blockSignals(False)
+            if self._rehearsal:
+                self._show_from_rehearsal()  # F5 in the rehearsal enters the show
+                return
             self._explain_how_to_leave()
 
     def _enter_show_from_key(self) -> None:
         """Ctrl+L: like F5, enters only."""
-        if self._live_mode:
+        if self._live_mode and self._rehearsal:
+            self._show_from_rehearsal()
+        elif self._live_mode:
             self._explain_how_to_leave()
         else:
             self.set_live_mode(True)
@@ -328,6 +334,7 @@ class _CueTableMixin:
             self,
         )
         stay = box.addButton("Resta nello spettacolo", QMessageBox.ButtonRole.RejectRole)
+        to_rehearsal = box.addButton("Passa alla prova", QMessageBox.ButtonRole.ActionRole)
         box.addButton("Torna alla preparazione", QMessageBox.ButtonRole.AcceptRole)
         box.setDefaultButton(stay)
         box.setEscapeButton(stay)
@@ -336,13 +343,17 @@ class _CueTableMixin:
         for btn in box.buttons():
             btn.installEventFilter(keys)
         box.exec()
-        if box.clickedButton() is not stay:
+        if box.clickedButton() is to_rehearsal:
+            self._enter_rehearsal()
+        elif box.clickedButton() is not stay:
             self.set_live_mode(False)
 
     def _current_mode(self) -> str:
-        from engine.show_mode import PREPARATION, SHOW
+        from engine.show_mode import PREPARATION, REHEARSAL, SHOW
 
-        return SHOW if self._live_mode else PREPARATION
+        if not self._live_mode:
+            return PREPARATION
+        return REHEARSAL if getattr(self, "_rehearsal", False) else SHOW
 
     def _change_allowed(self, change: str) -> bool:
         """Policy gate at every point that would change the show document.
@@ -350,11 +361,11 @@ class _CueTableMixin:
         Blocked changes say why on the status line (with the alert earcon)
         instead of being ignored in silence.
         """
-        from engine.show_mode import BLOCKED_MESSAGES, allows
+        from engine.show_mode import allows, blocked_message
 
         if allows(self._current_mode(), change):
             return True
-        self._status_label.setText(BLOCKED_MESSAGES.get(change, ""))
+        self._status_label.setText(blocked_message(self._current_mode(), change))
         self.announce(self._status_label.text(), assertive=True)
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_alert()

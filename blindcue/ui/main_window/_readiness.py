@@ -209,6 +209,10 @@ class _ReadinessMixin:
                 ticked=set(getattr(self, "_checklist_ticks", {}).get(cue.cue_id, set())) if cue else set(),
                 cue_id=cue.cue_id if cue else -1,
             )
+        changes = len(self._rehearsal_changes())
+        if changes:
+            return RowView(SHOW, check.state, tr("Spettacolo: {} · modifiche della prova: {}").format(
+                v.get("name", ""), changes), [(tr("Rivedi"), "review_changes")])
         return RowView(SHOW, check.state, tr("Spettacolo: {}").format(v.get("name", "")))
 
     # ── Page ──────────────────────────────────────────────────────────
@@ -248,8 +252,11 @@ class _ReadinessMixin:
         self._readiness_signature = None
         self._readiness_refresh()
         self._central_stack.setCurrentWidget(self._readiness_page)
+        # The show page has its own top bar: over this page the editor's bar
+        # (mode tabs, Fade All, PANIC) stays in sight.
+        self._design_control_bar.setVisible(True)
         if not review:
-            self._mode_tabs.set_live(False)
+            self._mode_tabs.set_mode(self._current_mode())
         self._readiness_timer.start()
         default = self._readiness_page.default_button()
         (default or self._readiness_page).setFocus()
@@ -309,19 +316,33 @@ class _ReadinessMixin:
             self._cue_list.setCurrentRow(row)
         logger.info("[READY] Show entered from row %d (problems: %s)", row,
                     self._readiness_entered_with_problems)
-        self.set_live_mode(True, checked=True)
+        if self._live_mode:
+            # From the rehearsal: the same screen, now the show.
+            self._rehearsal = False
+            self._close_drawer()
+            self._central_stack.setCurrentIndex(1)
+            self._design_control_bar.setVisible(False)
+            self._apply_mode_visuals()
+            self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]")
+            self.announce(self._status_label.text(), assertive=True)
+            self._live_show_panel.live_table.setFocus()
+        else:
+            self.set_live_mode(True, checked=True)
         self._update_readiness_warning()
 
     @Slot()
     def _on_readiness_stay(self) -> None:
         self._readiness_timer.stop()
-        if self._readiness_review:
-            self._readiness_review = False
-            self._central_stack.setCurrentIndex(1 if self._live_mode else 0)
-            if self._live_mode:
-                self._live_show_panel.live_table.setFocus()
+        self._readiness_review = False
+        if self._live_mode:
+            # Back to the show's screen (the review from the show, or the rehearsal).
+            self._central_stack.setCurrentIndex(1)
+            self._design_control_bar.setVisible(False)
+            self._apply_mode_visuals()
+            self._live_show_panel.live_table.setFocus()
             return
         self._central_stack.setCurrentIndex(0)
+        self._apply_mode_visuals()
         self._cue_list.setFocus()
 
     @Slot(int, int, bool)
@@ -354,6 +375,8 @@ class _ReadinessMixin:
                 self._on_readiness_stay()  # files are replaced in Preparation
             if row >= 0 and not self._live_mode:
                 self._cue_list.setCurrentRow(row)
+        elif action == "review_changes":
+            self._review_rehearsal_changes()
         elif action == "add_checklist":
             self._add_default_checklist()
             self._readiness_refresh()
