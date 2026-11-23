@@ -100,6 +100,7 @@ class LivePlayer(QObject):
         # (fades, volume points) and is reset when a new cue is loaded.
         self._level_trim: float = 1.0
         self._level_timer: QTimer | None = None
+        self._level_ramp_clock: list = [0.0, None]  # [ramp start, paused at] - see ramp_level
         # Section boundary latch: after a jump/continuation we must not react to
         # the stale position report of the section we just left, otherwise the
         # sequencer advances twice and silently eats one loop or one cut.
@@ -716,6 +717,10 @@ class LivePlayer(QObject):
                 player.mediaStatus() == QMediaPlayer.MediaStatus.BufferedMedia
             )
 
+            clock = self._level_ramp_clock
+            if clock[1] is not None:  # a level ramp held by pause() goes on from where it was
+                clock[0] += time.monotonic() - clock[1]
+                clock[1] = None
             self._apply_envelope_at(pos_ms / 1000.0)
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
                 player.play()
@@ -800,6 +805,8 @@ class LivePlayer(QObject):
             self._load_watchdog.stop()
             self._watchdog_armed = False
             self._driver_timer.stop()
+            if self._level_timer is not None and self._level_ramp_clock[1] is None:
+                self._level_ramp_clock[1] = time.monotonic()  # hold a running level ramp
             player, _ = self._deck_pair()
             _pause_unless_at_end(player)
             logger.debug("[LIVE] pause()")
@@ -1057,15 +1064,17 @@ class LivePlayer(QObject):
             self._level_trim = target
             self._apply_current_level()
             return
-        started = time.monotonic()
+        # [start time, paused at]: pause() holds the ramp, play() moves its
+        # start by the time spent paused, so Pause All freezes it too.
+        clock = self._level_ramp_clock = [time.monotonic(), None]
         timer = QTimer(self)
         timer.setTimerType(Qt.TimerType.PreciseTimer)
         self._level_timer = timer
 
         def _tick() -> None:
-            if self._level_timer is not timer:
+            if self._level_timer is not timer or clock[1] is not None:
                 return
-            progress = min(1.0, (time.monotonic() - started) / duration_sec)
+            progress = min(1.0, (time.monotonic() - clock[0]) / duration_sec)
             self._level_trim = ramp_value(start, target, progress, curve)
             self._apply_current_level()
             if progress >= 1.0:

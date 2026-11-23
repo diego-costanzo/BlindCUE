@@ -48,6 +48,7 @@ from models.cue import (
     CueSection,
     CueStatus,
     FollowMode,
+    GroupMode,
     MediaType,
     detect_layer_conflicts,
     sanitize_action_spec,
@@ -367,6 +368,53 @@ def test_ramp_level_yields_to_a_stop_fade(qt_app):
     lp.deleteLater()
 
 
+def test_pause_holds_a_level_ramp(qt_app):
+    """Pause All pauses the players: a running level change waits with them (1.15)."""
+    from engine.player_live import LivePlayer
+
+    lp = LivePlayer()
+    lp.ramp_level(1.0, 0.0)
+    lp.ramp_level(0.0, 0.6, "linear")
+    _pump(0.2)
+    lp.pause()
+    held = lp.level_trim()
+    _pump(0.8)                       # longer than the whole ramp
+    assert lp.level_trim() == pytest.approx(held, abs=1e-6)
+    assert 0.4 < held < 0.9
+    lp.play()
+    _pump(0.1)
+    assert 0.0 < lp.level_trim() < held   # goes on from where it was, not finished
+    _pump(0.6)
+    assert lp.level_trim() == pytest.approx(0.0, abs=1e-6)
+    lp.stop()
+    lp.deleteLater()
+
+
+def test_pause_holds_a_layer_opacity_fade(qt_app):
+    from ui.output_window import OutputWindow
+
+    out = OutputWindow()
+    try:
+        out.fade_layer_master(2, 0.0, 0.6, "linear")
+        _pump(0.2)
+        out.set_master_fades_paused(True)
+        held = out.layer_master_opacity(2)
+        _pump(0.8)
+        assert out.layer_master_opacity(2) == pytest.approx(held, abs=1e-6)
+        assert 0.4 < held < 0.9
+        out.fade_layer_master(3, 0.5, 0.2)          # a fade started during the pause runs
+        _pump(0.4)
+        assert out.layer_master_opacity(3) == pytest.approx(0.5, abs=1e-3)
+        out.set_master_fades_paused(False)
+        _pump(0.1)
+        assert 0.0 < out.layer_master_opacity(2) < held
+        _pump(0.6)
+        assert out.layer_master_opacity(2) == pytest.approx(0.0, abs=1e-6)
+    finally:
+        out.force_close()
+        out.deleteLater()
+
+
 def test_release_loop_on_a_plain_cue(qt_app):
     from engine.player_live import LivePlayer
 
@@ -460,6 +508,64 @@ def test_go_on_an_action_keeps_the_layer_live(window):
     assert window._fired == [act]
     assert music.status == CueStatus.LIVE  # not demoted by the action
     assert act.status != CueStatus.LIVE
+
+
+def test_auto_go_skips_a_cue_started_by_hand(window):
+    """GO given by hand during an Auto-GO wait must not start that cue twice (1.15)."""
+    act = _action(84, kind=ACTION_NOTE)
+    act.follow_mode = FollowMode.AUTO_FOLLOW.value
+    nxt = _media(85, layer=2)
+    window._cues = [act, nxt]
+    window._refresh_cue_list()
+    window._fire_cue_chain(0)            # the action waits for its Auto-GO
+    window._fire_cue_chain(1)            # the operator starts the next cue meanwhile
+    started = list(window._fired)
+    window.trigger_auto_follow_from(act)
+    assert window._fired == started      # no second start
+    window._fire_cue_chain(0)            # another run: the Auto-GO works again
+    window.trigger_auto_follow_from(act)
+    assert window._fired[-1] is nxt
+
+
+def test_released_loop_scene_ends_after_its_pass(window):
+    from engine.show_engine import ShowEngine
+
+    grp = Cue(name="g", media_type=MediaType.GROUP, file_path="", cue_id=90)
+    grp.group_mode = GroupMode.LOOP.value
+    a, b, after = _media(91), _media(92), _media(93)
+    a.parent_id = b.parent_id = 90
+    window._cues = [grp, a, b, after]
+    window._refresh_cue_list()
+    assert ShowEngine.auto_follow_target(window._cues, b) == 1          # wraps to a
+    assert window.release_loop_scene_of(a) is True
+    assert window.release_loop_scene_of(a) is False                     # once is enough
+    assert window.release_loop_scene_of(after) is False                 # not in a loop scene
+    assert ShowEngine.auto_follow_target(window._cues, a, window._released_groups) == 2
+    assert ShowEngine.auto_follow_target(window._cues, b, window._released_groups) == -1
+    window._fire_cue_chain(0)                                           # the scene runs again
+    assert 90 not in window._released_groups
+
+
+def test_group_studio_keeps_action_cues_as_actions(window):
+    """The group timeline studio shows actions as ACT and writes back only their start."""
+    from ui.group_timeline_editor import GroupTimelineStudioDialog
+
+    grp = Cue(name="g", media_type=MediaType.GROUP, file_path="", cue_id=86)
+    act = _action(87, kind=ACTION_FADE, duration=2.0)
+    act.parent_id = 86
+    act.volume, act.in_point, act.layer = 0.7, 0.0, 1
+    dlg = GroupTimelineStudioDialog(grp, [act], window)
+    try:
+        assert dlg.list_items.item(0).text().startswith("[ACT]")
+        dlg._clips[0].start_sec = 1.5
+        dlg._clips[0].volume = 0.2
+        dlg._clips[0].layer = 3
+        dlg._clips[0].in_point = 4.0
+        dlg._on_save_and_apply()
+        assert act.pre_delay == 1.5
+        assert (act.volume, act.layer, act.in_point) == (0.7, 1, 0.0)
+    finally:
+        dlg.deleteLater()
 
 
 def test_action_in_a_group_does_not_go_live(window):
