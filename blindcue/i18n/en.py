@@ -1768,4 +1768,6 @@ T: dict[str, str] = {
         '⚠  KEYBOARD IS NOT ON THE DIRECTOR PANEL — SPACE and ESC do not reach BlindCue. Click here to take it back.',
     '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
         '⚠ Keyboard is not on the director panel: SPACE and ESC do not reach BlindCue',
+    '{} pronta — premi GO per avviarla (il doppio clic in LIVE non avvia)':
+        '{} ready — press GO to start it (a double-click does not start cues in LIVE)',
 }

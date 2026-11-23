@@ -1980,4 +1980,6 @@ T: dict[str, str] = {
         '⚠  KLAWIATURA NIE JEST NA PANELU REŻYSERA — SPACJA i ESC nie trafiają do BlindCue. Kliknij tutaj, aby ją odzyskać.',
     '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
         '⚠ Klawiatura nie jest na panelu reżysera: SPACJA i ESC nie trafiają do BlindCue',
+    '{} pronta — premi GO per avviarla (il doppio clic in LIVE non avvia)':
+        '{} gotowy — naciśnij GO, aby go uruchomić (podwójne kliknięcie w trybie LIVE nie uruchamia)',
 }
