@@ -659,8 +659,14 @@ def test_design_mode_escape_twice_is_panic_too(qapp, tmp_path):
         win.panic_requested.connect(lambda: panics.append(1))
         win._btn_test_stop.clicked.connect(lambda: stops.append(1))
 
+        win._on_escape_pressed()          # nothing plays: two Esc only stop the preview
+        win._on_escape_pressed()
+        assert panics == [] and stops == [1, 1]
+
+        win._live_phase_tags[9999] = "PRE -1.0s"   # a cue waits for its start
+        win._last_esc_press_mono = 0.0
         win._on_escape_pressed()          # one Esc: only the preview stops
-        assert panics == [] and stops == [1]
+        assert panics == []
         win._on_escape_pressed()          # the second one within 0.6 s: PANIC
         assert len(panics) == 1
 

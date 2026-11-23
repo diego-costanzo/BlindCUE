@@ -248,10 +248,10 @@ class CueListPanel(QGroupBox):
 
         self.lbl_follow_hint = QLabel("⏹ Blocco: attende il prossimo GO manuale")
         self.lbl_follow_hint.setWordWrap(True)
-        self.lbl_follow_hint.setFixedHeight(34)
+        self.lbl_follow_hint.setFixedHeight(36)
         self.lbl_follow_hint.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
         self.lbl_follow_hint.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Fixed)
-        self.lbl_follow_hint.setStyleSheet("color: #64748b; font-size: 9px; border: none; background: transparent;")
+        self.lbl_follow_hint.setStyleSheet("color: #94a3b8; font-size: 11px; border: none; background: transparent;")
         link_layout.addWidget(self.lbl_follow_hint)
         layout.addWidget(self.link_box)
 
@@ -330,7 +330,7 @@ class CueListPanel(QGroupBox):
             for m, btn in self._follow_buttons.items():
                 if obj is btn:
                     self.lbl_follow_hint.setText(self._follow_hints[m])
-                    self.lbl_follow_hint.setStyleSheet("color: #cbd5e1; font-size: 9px; border: none; background: transparent;")
+                    self.lbl_follow_hint.setStyleSheet("color: #cbd5e1; font-size: 11px; border: none; background: transparent;")
                     break
         elif event.type() == QEvent.Type.Leave:
             self._refresh_follow_caption()
@@ -339,10 +339,10 @@ class CueListPanel(QGroupBox):
     def _refresh_follow_caption(self) -> None:
         if self._active_follow_mode and self._active_follow_mode in self._follow_hints:
             self.lbl_follow_hint.setText(self._follow_hints[self._active_follow_mode])
-            self.lbl_follow_hint.setStyleSheet("color: #94a3b8; font-size: 9px; border: none; background: transparent;")
+            self.lbl_follow_hint.setStyleSheet("color: #94a3b8; font-size: 11px; border: none; background: transparent;")
         else:
             self.lbl_follow_hint.setText("Selezione multipla mista — clicca una modalità per applicarla a tutte")
-            self.lbl_follow_hint.setStyleSheet("color: #f59e0b; font-size: 9px; border: none; background: transparent;")
+            self.lbl_follow_hint.setStyleSheet("color: #f59e0b; font-size: 11px; border: none; background: transparent;")
 
     def set_follow_mode_checked(self, mode: str | None, *, enabled: bool = True) -> None:
         """Highlight the follow-mode button matching *mode*, without emitting.
@@ -358,7 +358,7 @@ class CueListPanel(QGroupBox):
             btn.blockSignals(False)
         if not enabled:
             self.lbl_follow_hint.setText("Seleziona una o più cue per scegliere Blocco / Auto-GO / Simultanea")
-            self.lbl_follow_hint.setStyleSheet("color: #475569; font-size: 9px; border: none; background: transparent;")
+            self.lbl_follow_hint.setStyleSheet("color: #94a3b8; font-size: 11px; border: none; background: transparent;")
         else:
             self._refresh_follow_caption()
 

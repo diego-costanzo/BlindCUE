@@ -509,7 +509,7 @@ class _MenuMixin:
             fill_color="#10b981",
         )
         self._btn_jam_mode.setFixedHeight(22)
-        self._btn_jam_mode.setMinimumWidth(160)
+        self._btn_jam_mode.setMinimumWidth(180)  # room for "(hold 5 s)" in every language
         self._btn_jam_mode.setFont(QFont("sans-serif", 10, QFont.Weight.Bold))
         self._btn_jam_mode.setToolTip(
             "Modalità Jam / Contest (Default: OFF).\n"

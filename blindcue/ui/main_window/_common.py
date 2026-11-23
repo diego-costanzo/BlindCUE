@@ -52,6 +52,7 @@ from engine.show_engine import (
     START_RESUME,
     START_SELECTED,
     ShowEngine,
+    block_end,
     chain_indices,
     demote_live_on_layer as _demote_live_on_layer,
     insert_position,

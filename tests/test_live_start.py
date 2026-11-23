@@ -114,6 +114,16 @@ def test_insert_after_a_child_stays_in_its_group():
     assert insert_position(cues, 1) == (3, 1)     # after the chain, still inside the group
 
 
+def test_a_chain_leaving_a_group_is_followed_outside():
+    from engine.show_engine import insert_position
+
+    # the last child is tied to the row after its group: inserting there would split them
+    cues = _cues((1, "MANUAL", None, True), (2, "MANUAL", 1, False), (3, "AUTO_FOLLOW", 1, False),
+                 (4, "MANUAL", None, False), (5, "MANUAL", None, False))
+    assert insert_position(cues, 2) == (4, None)
+    assert insert_position(cues, 1) == (2, 1)       # an untied child: right after it, in the group
+
+
 def test_a_chain_of_groups_is_skipped_whole():
     from engine.show_engine import insert_position
 
@@ -251,9 +261,22 @@ def test_selection_moved_in_design_offers_resume(window, answer):
 
 def test_new_show_forgets_where_live_was_left(window):
     window._live_resume_id = 7003
+    window._released_groups.add(7001)
     window._is_modified = False
     window._on_new_show()
     assert window._live_resume_id is None
+    assert window._released_groups == set()
+
+
+def test_resume_follows_the_show_while_the_editor_is_open(window, answer):
+    window._cue_list.setCurrentRow(0)
+    window.set_live_mode(True)
+    window._cue_list.setCurrentRow(1)
+    window.set_live_mode(False)                    # LIVE left at #2
+    window._fire_cue_chain(1)                      # the show goes on (e.g. an Auto-GO)
+    assert window._go_target_index() == 2
+    window.set_live_mode(True)                     # back at the show's own position: no question
+    assert answer.asked == [] and window._go_target_index() == 2
 
 
 def test_new_cue_goes_after_the_selected_one(window, tmp_path):
@@ -299,11 +322,49 @@ def test_files_dropped_on_the_list(window, tmp_path):
     assert window._cues[-1].name == "d1.wav" and len(window._cues) == 8
 
 
-def test_go_button_names_its_cue(window):
+def test_one_drop_is_one_undo_step_and_skips_other_files(window, tmp_path):
+    files = []
+    for name in ("u1.wav", "u2.wav", "notes.txt"):
+        p = tmp_path / name
+        p.write_bytes(b"x")
+        files.append(str(p))
+    window._reset_undo_history()
+    window._on_files_dropped_on_list(files, 1)
+    assert [c.name for c in window._cues][2:4] == ["u1.wav", "u2.wav"]
+    assert "notes.txt" in window._status_label.text()            # skipped, no dialog
+    window._on_undo()
+    assert [c.name for c in window._cues] == ["c0", "c1", "c2", "c3", "c4"]
+
+
+def test_empty_group_never_splits_a_group(window):
+    from models.cue import Cue, MediaType
+
+    grp = Cue(name="g", media_type=MediaType.GROUP, file_path="", cue_id=7100)
+    window._cues[1].parent_id = window._cues[2].parent_id = 7100
+    window._cues.insert(1, grp)                     # c0, g[c1, c2], c3, c4
+    window._refresh_cue_list(keep_selection=False)
+    window._cue_list.setCurrentRow(1)               # the group header
+    window._on_add_group()
+    names = [c.name for c in window._cues]
+    assert names[:4] == ["c0", "g", "c1", "c2"]     # its children stay with it
+    assert window._cues[4].media_type == MediaType.GROUP and window._cues[4].parent_id is None
+
+
+def test_renaming_on_the_list_updates_the_go(window):
+    window._cue_list.setCurrentRow(2)
+    item = window._cue_list.item(2, 2)
+    item.setText("Burza")                           # inline edit of the name cell
+    assert "Burza" in window._btn_go.full_text()
+
+
+def test_go_button_names_its_cue(window, tmp_path):
     from models.cue import CueStatus
 
     window._cue_list.setCurrentRow(3)
-    for c in window._cues:      # the fixture's files do not exist: selecting marks them OFFLINE
+    for c in window._cues:      # real files: the label checks that the file exists
+        f = tmp_path / f"{c.name}.wav"
+        f.write_bytes(b"x")
+        c.file_path = str(f)
         c.status = CueStatus.LOADED
     window._refresh_cue_list()
     live_go = window._live_show_panel.btn_go
@@ -312,23 +373,28 @@ def test_go_button_names_its_cue(window):
 
     window._cues[3].status = CueStatus.OFFLINE          # the file is gone
     window._refresh_cue_list()
-    assert window._btn_go.full_text() == "⚠ GO: #4 'c3' — file mancante"
+    assert window._btn_go.full_text() == "⚠ File mancante — GO: #4 'c3'"
     assert window._live_show_panel._go_warn            # amber, never red
+    window._cues[3].status = CueStatus.LOADED           # a failed GO leaves it LOADED...
+    Path(window._cues[3].file_path).unlink()
+    window._refresh_cue_list()
+    assert window._btn_go.full_text().startswith("⚠ File mancante")   # ...the file decides
+    Path(window._cues[3].file_path).write_bytes(b"x")
 
     window._cues[3].status = CueStatus.LIVE             # GO would restart it
     window._refresh_cue_list()
-    assert window._btn_go.full_text().startswith("↻ GO: #4 'c3'")
+    assert window._btn_go.full_text() == "↻ Già in onda, riparte — GO: #4 'c3'"
 
     window._cues[3].status = CueStatus.LOADED
     window._cues[0].exclusive = True                    # an exclusive cue holds the GO
     window._cues[0].status = CueStatus.LIVE
     window._refresh_cue_list()
-    assert window._btn_go.full_text().startswith("⏳ GO in attesa: 'c0'")
+    assert window._btn_go.full_text() == "⏳ GO in attesa (Ctrl+Spazio per forzare): 'c0' è esclusiva"
 
     window._cues[0].status = CueStatus.LOADED
     window._focus_lost_shown = True                     # keyboard in another window
     window._update_go_button_text()
-    assert window._btn_go.full_text().startswith("⌨ GO: #4 'c3'")
+    assert window._btn_go.full_text() == "⌨ Clicca qui: la tastiera è altrove — GO: #4 'c3'"
     window._focus_lost_shown = False
 
     window._cues = []

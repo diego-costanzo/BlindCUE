@@ -709,6 +709,10 @@ def main() -> int:
         # A cue silenced on this layer while this one waited in Pre-Delay is
         # replaced now: this cue's own end must count again.
         fading_layers.discard(layer)
+        # Same for a cue (or timed picture) held there by Pause All: this one replaces it.
+        if layer in paused_layers_by_global or "paused_at" in live_image_envelopes.get(layer, {}):
+            paused_layers_by_global.discard(layer)
+            main_win.set_live_layer_paused(layer, False)
         try:
             if cue.status != CueStatus.LIVE:
                 main_win.promote_cue_to_live(cue)
@@ -1007,13 +1011,10 @@ def main() -> int:
         scheduler.cancel_layer(layer)
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
-        paused_layers_by_global.discard(layer)
-        if "paused_at" in live_image_envelopes.get(layer, {}):
-            live_image_envelopes.pop(layer, None)  # the held picture is being replaced
-        if scheduler.is_paused():
-            main_win.set_live_layer_paused(layer, False)
-        # fading_layers is cleared when this cue really starts (_launch_cue_now):
-        # until then the cue fading out there must not start its Auto-GO.
+        # fading_layers and the Pause All hold of this layer are cleared when
+        # this cue really starts (_launch_cue_now): until then the cue fading
+        # out there must not start its Auto-GO, and a cue held by the pause
+        # stays held (it resumes with the others if the pause ends first).
 
         pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0)))
         if pre_d > 0.02:
@@ -1282,6 +1283,8 @@ def main() -> int:
         try:
             scheduler.cancel_all()
             scheduler.set_paused(False)
+            for out in (output_win, output_win_b):
+                out.set_master_fades_paused(False)
             paused_layers_by_global.clear()
             main_win.set_global_paused(False, silent=True)
             live_image_envelopes.clear()
@@ -1303,6 +1306,8 @@ def main() -> int:
         try:
             scheduler.cancel_all()
             scheduler.set_paused(False)
+            for out in (output_win, output_win_b):
+                out.set_master_fades_paused(False)
             paused_layers_by_global.clear()
             main_win.set_global_paused(False, silent=True)
             live_image_envelopes.clear()
@@ -1324,6 +1329,8 @@ def main() -> int:
         try:
             scheduler.cancel_all()
             scheduler.set_paused(False)
+            for out in (output_win, output_win_b):
+                out.set_master_fades_paused(False)
             paused_layers_by_global.clear()
             main_win.set_global_paused(False, silent=True)
             for layer in list(active_live_cues):

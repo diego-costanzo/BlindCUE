@@ -166,8 +166,9 @@ class _WindowSetupMixin:
         """What the next GO will do, in words, and whether that is not a plain start.
 
         The state is said in text and an icon first (colour comes last and is
-        never red). Order: keyboard elsewhere > the cue cannot play > GO held
-        by an exclusive cue > the cue already plays (GO restarts it) > ready.
+        never red), before the cue name: a long name is cut, the state never.
+        Order: keyboard elsewhere > the cue cannot play > GO held by an
+        exclusive cue > the cue already plays (GO restarts it) > ready.
         """
         if not self._cues:
             return "GO (Next Cue) — [ SPAZIO ]", False
@@ -175,14 +176,17 @@ class _WindowSetupMixin:
         cue = self._cues[row]
         target = f"{format_cue_ref(row, cue)} '{cue.name}'"
         if getattr(self, "_focus_lost_shown", False):
-            return f"⌨ GO: {target} — clicca qui: la tastiera è altrove", True
-        if cue.status == CueStatus.OFFLINE:
-            return f"⚠ GO: {target} — file mancante", True
+            return f"⌨ Clicca qui: la tastiera è altrove — GO: {target}", True
+        # The file itself, not the status: a failed GO leaves the cue LOADED.
+        if cue.status == CueStatus.OFFLINE or (
+            cue.media_type.has_file and not os.path.isfile(cue.file_path or "")
+        ):
+            return f"⚠ File mancante — GO: {target}", True
         blocker = self._exclusive_blocker()
-        if blocker is not None and blocker is not cue:
-            return f"⏳ GO in attesa: '{blocker.name}' è esclusiva — Ctrl+Spazio per forzare", True
+        if blocker is not None:  # _manual_go_allowed refuses every GO meanwhile
+            return f"⏳ GO in attesa (Ctrl+Spazio per forzare): '{blocker.name}' è esclusiva", True
         if cue.status == CueStatus.LIVE:
-            return f"↻ GO: {target} — è già in onda, riparte", True
+            return f"↻ Già in onda, riparte — GO: {target}", True
         return f"▶ GO: {target}", False
 
     def _update_go_button_text(self) -> None:
@@ -313,11 +317,19 @@ class _WindowSetupMixin:
     def _on_escape_pressed(self) -> None:
         if hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState:
             return
+        if not self._live_mode and self._is_text_input_focused():
+            # Esc in an editor field only leaves the field: it never counts
+            # towards PANIC there (people press Esc to back out of typing).
+            self._last_esc_press_mono = 0.0
+            self._cue_list.setFocus()
+            return
         # Esc twice is PANIC in every view: the emergency key must not depend
-        # on the mode (a rehearsal run from the editor needs it too).
+        # on the mode (a rehearsal run from the editor needs it too). In the
+        # editor only while something plays or waits: there is nothing to
+        # stop otherwise, and PANIC would black out the projector.
         now = time.monotonic()
         last = getattr(self, "_last_esc_press_mono", 0.0)
-        if last > 0.0 and (now - last) <= 0.6:
+        if last > 0.0 and (now - last) <= 0.6 and (self._live_mode or self._show_running()):
             self._last_esc_press_mono = 0.0
             self._on_panic()
             return

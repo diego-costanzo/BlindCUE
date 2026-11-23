@@ -457,13 +457,27 @@ class _RemoteMixin:
             t = self._live_clocks.cue_time(cue.cue_id)
             if t is None:
                 continue
-            warn = ends_soon(t) and cue.follow_mode != FollowMode.AUTO_FOLLOW.value
+            warn = ends_soon(t) and not self._hands_over_by_itself(cue)
             times[cue.cue_id] = (short_time_text(t), t.fraction, warn)
         if hasattr(self, "_live_show_panel"):
             self._live_show_panel.set_live_times(times)
         self._set_live_fractions({cid: (v[1], v[2]) for cid, v in times.items()})
         if self._live_clocks.is_empty():
             self._live_clock_timer.stop()
+
+    def _hands_over_by_itself(self, cue: Cue) -> bool:
+        """The end of *cue* starts the next one without a GO (as main.py decides).
+
+        Auto-GO, or a child of a "Cascata" / "Loop Scena" group; the last
+        child of a released Loop Scena does not (the scene ends there).
+        """
+        if cue.follow_mode == FollowMode.AUTO_FOLLOW.value:
+            return True
+        mode = ShowEngine.group_mode_of(self._cues, cue)
+        if mode == GroupMode.LOOP.value and cue.parent_id in self._released_groups:
+            kids = ShowEngine.children_of(self._cues, cue.parent_id)
+            return not (kids and kids[-1] is cue)
+        return mode in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value)
 
     def _set_live_fractions(self, fractions: dict[int, tuple[float, bool]]) -> None:
         """Played bar in the name cell of the design list (see _populate_cue_row)."""
@@ -547,7 +561,7 @@ class _RemoteMixin:
         if source_at is not None and target_at is not None and target_at > source_at:
             logger.info("[AUTO-GO] '%s' already started by hand: no second start", target.name)
             return
-        self._fire_cue_chain(next_idx)
+        self._fire_cue_chain(next_idx, auto=True)
 
     def release_loop_scene_of(self, cue: Cue | None) -> bool:
         """A release-loop action reached *cue*: its "Loop Scena" group ends after this pass.
@@ -561,6 +575,15 @@ class _RemoteMixin:
             return False
         self._released_groups.add(parent.cue_id)
         logger.info("[ACTION] Loop group '%s' released: it ends after this pass", parent.name)
+        # The GO may already point back at the first child (the last one has
+        # started): move it past the scene, which will not loop any more.
+        kids = ShowEngine.children_of(self._cues, parent.cue_id)
+        target = self._go_target_index()
+        if kids and 0 <= target < len(self._cues) and self._cues[target] is kids[0]:
+            p_row = next((i for i, c in enumerate(self._cues) if c is parent), -1)
+            after = block_end(self._cues, p_row) + 1 if p_row >= 0 else -1
+            if 0 <= after < len(self._cues):
+                self._cue_list.setCurrentRow(after)
         return True
 
     @Slot(int)
@@ -638,6 +661,7 @@ class _RemoteMixin:
         self._updating_cue_list = False
 
         self._sync_inspector_header_and_text(row, cue)
+        self._update_go_button_text()  # the GO buttons name the cue
         if cue.status == CueStatus.LIVE:
             self._update_live_layer_label(cue, preserve_timing=True)
         self._commit_undo_point()

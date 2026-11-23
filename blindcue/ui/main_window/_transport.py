@@ -125,6 +125,12 @@ class _TransportMixin:
         self._played_ids.add(cue.cue_id)
         self._fire_seq += 1
         self._fired_at[cue.cue_id] = self._fire_seq
+        if cue.parent_id in self._released_groups:
+            # A released Loop Scena never comes back to its first child by
+            # itself: starting that child again starts the loop again.
+            kids = ShowEngine.children_of(self._cues, cue.parent_id)
+            if kids and kids[0] is cue:
+                self._released_groups.discard(cue.parent_id)
 
     def _go_target_index(self) -> int:
         """Row the next GO fires: the selected one, else the last fired, else the top."""
@@ -146,10 +152,16 @@ class _TransportMixin:
             self._last_manual_go_cue = self._cues[idx]
         self._dismiss_note_on_go()
 
-    def _fire_cue_chain(self, start_idx: int) -> None:
-        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution."""
+    def _fire_cue_chain(self, start_idx: int, auto: bool = False) -> None:
+        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution.
+
+        *auto*: started by an Auto-GO, not by the operator. Then the GO
+        pointer only moves forward: if the operator already set it past this
+        cue (e.g. to the cue after a released Loop Scena), it stays there.
+        """
         if not (0 <= start_idx < len(self._cues)):
             return
+        held_row = self._go_target_index() if auto else -1
 
         start_cue = self._cues[start_idx]
 
@@ -189,15 +201,19 @@ class _TransportMixin:
         ref = format_cue_ref(start_idx, first_cue)
         next_idx = last_fired_idx + 1
         fired_cue = self._cues[last_fired_idx]
-        if ShowEngine.group_mode_of(self._cues, fired_cue) == GroupMode.LOOP.value:
+        if (ShowEngine.group_mode_of(self._cues, fired_cue) == GroupMode.LOOP.value
+                and fired_cue.parent_id not in self._released_groups):
             # Loop Scena: the standby returns to the first element instead of
-            # falling past the container once the last child has fired.
+            # falling past the container once the last child has fired
+            # (not after a release: then the scene ends and the show goes on).
             kids = ShowEngine.children_of(self._cues, fired_cue.parent_id)
             inside = next_idx < len(self._cues) and any(
                 kid is self._cues[next_idx] for kid in kids)
             if kids and not inside:
                 next_idx = next(
                     (i for i, c in enumerate(self._cues) if c is kids[0]), next_idx)
+        if held_row > last_fired_idx and held_row < len(self._cues):
+            next_idx = held_row  # an Auto-GO never pulls the GO pointer back
         # An action cue has already written what it did on the status line.
         is_action = first_cue.media_type == MediaType.ACTION
         if next_idx < len(self._cues):
@@ -213,6 +229,10 @@ class _TransportMixin:
                 self._status_label.setText(
                     f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) — Fine scaletta (premi GO per rilanciare)"
                 )
+        if not self._live_mode and self._live_resume_id is not None:
+            # The show moved on while the editor is open: LIVE resumes from here.
+            row = next_idx if next_idx < len(self._cues) else last_fired_idx
+            self._live_resume_id = self._cues[row].cue_id
 
         self._sync_live_view()
         self._auto_save()

@@ -25,6 +25,7 @@ from ui.live_show_view import LiveCueRowDelegate
     "czekaj na znak reżysera",
     "STOP, jeśli aktor nie wszedł",
     "Ciemno na scenie",
+    "w ciemności czekaj na dzwonek",
     "Wait for the bell",
     "Danger: pyro",
     "blackout before act 2",
