@@ -649,6 +649,30 @@ def test_live_mode_escape_requires_double_press(qapp, tmp_path):
         _cleanup_window(win, out)
 
 
+def test_design_mode_escape_twice_is_panic_too(qapp, tmp_path):
+    """The emergency key works the same in the editor (stage 1 phase C1)."""
+    win, out = _make_window(qapp, tmp_path)
+    try:
+        assert not win.is_live_mode()
+        panics: list[int] = []
+        stops: list[int] = []
+        win.panic_requested.connect(lambda: panics.append(1))
+        win._btn_test_stop.clicked.connect(lambda: stops.append(1))
+
+        win._on_escape_pressed()          # one Esc: only the preview stops
+        assert panics == [] and stops == [1]
+        win._on_escape_pressed()          # the second one within 0.6 s: PANIC
+        assert len(panics) == 1
+
+        win._last_esc_press_mono = 0.0
+        win._on_escape_pressed()
+        win._last_esc_press_mono -= 1.0   # too late for a double press
+        win._on_escape_pressed()
+        assert len(panics) == 1
+    finally:
+        _cleanup_window(win, out)
+
+
 # ── B4 & M3: Engine never imports UI & hardware probe caches cleanly ─────────
 
 def test_engine_has_no_ui_imports_and_hardware_profile_caches():

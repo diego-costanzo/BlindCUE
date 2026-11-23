@@ -1948,4 +1948,6 @@ T: dict[str, str] = {
         'Resume from: {}',
     'Dalla cue selezionata: {}':
         'From the selected cue: {}',
+    '⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms)':
+        '⚠ Press ESC again within 0.6 s for PANIC (0 ms)',
 }

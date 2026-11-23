@@ -2162,4 +2162,6 @@ T: dict[str, str] = {
         'Wznów od: {}',
     'Dalla cue selezionata: {}':
         'Od zaznaczonego: {}',
+    '⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms)':
+        '⚠ Naciśnij ESC jeszcze raz w ciągu 0,6 s, aby włączyć PANIC (0 ms)',
 }
