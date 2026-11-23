@@ -1386,7 +1386,7 @@ T: dict[str, str] = {
     '🔴 MIRROR: ON':
         '🔴 MIRROR: WŁ.',
     '🔒 MUTE: ON':
-        '🔒 WYCISZ: WŁ.',
+        '🔒 ODSŁUCH: WYŁ.',
     '🔊 CUFFIA: ON':
         '🔊 SŁUCHAWKI: WŁ.',
     "\n<b>Indirizzo OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>\n• <b style='color:#4ade80;'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>\n• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>\n• <b style='color:#f87171;'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>\n• <b style='color:#fbbf24;'>/pause</b> oppure <b>/resume</b> &nbsp;→&nbsp; Mette in pausa o riprende l'emissione<br>\n• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>\n• <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>\n• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti\n        ":
@@ -1969,11 +1969,11 @@ T: dict[str, str] = {
     'GO ignorato: secondo GO entro {} ms':
         'GO zignorowane: drugie GO w ciągu {} ms',
     '&Dissolvenza totale (Fade All)':
-        '&Wycisz wszystko (Fade All)',
+        '&Wygaś wszystko (Fade All)',
     'Dissolvenza totale in {} s':
-        'Wyciszanie wszystkiego w {} s',
+        'Wygaszanie wszystkiego w {} s',
     '🔉 DISSOLVI [⇧ESC]':
-        '🔉 WYCISZ [⇧ESC]',
+        '🔉 WYGAŚ [⇧ESC]',
     '⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. Clicca qui per riprenderla.':
         '⚠  KLAWIATURA NIE JEST NA PANELU REŻYSERA — SPACJA i ESC nie trafiają do BlindCue. Kliknij tutaj, aby ją odzyskać.',
     '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
@@ -1989,15 +1989,15 @@ T: dict[str, str] = {
     'GO &forzato (ignora cue esclusiva)':
         'GO &wymuszone (pomija cue wyłączny)',
     'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme, poi si fermano. Il prossimo GO riparte dalla cue avviata a mano che è stata fermata.':
-        'Wycisz wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem, potem się zatrzymują. Następne GO rusza od zatrzymanego cue, który uruchomiono ręcznie.',
+        'Wygaś wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem, potem się zatrzymują. Następne GO rusza od zatrzymanego cue, który uruchomiono ręcznie.',
     '+ Azione':
         '+ Akcja',
     'Aggiungi Azione':
         'Dodaj akcję',
     'Aggiungi una cue senza file: ferma, dissolve, cambia livello o opacità di altre cue, oppure mostra una nota per la regia':
-        'Dodaj cue bez pliku: zatrzymuje, wycisza, zmienia poziom lub krycie innych cue albo pokazuje notatkę dla operatora',
+        'Dodaj cue bez pliku: zatrzymuje, wygasza, zmienia poziom lub krycie innych cue albo pokazuje notatkę dla operatora',
     '🔉 Dissolvi e ferma':
-        '🔉 Wycisz i zatrzymaj',
+        '🔉 Wygaś i zatrzymaj',
     '⏹ Ferma subito':
         '⏹ Zatrzymaj od razu',
     '🔁 Rilascia loop':
@@ -2123,7 +2123,7 @@ T: dict[str, str] = {
     'Stop: {}':
         'Zatrzymaj: {}',
     'Dissolvi in {} s: {}':
-        'Wycisz w {} s: {}',
+        'Wygaś w {} s: {}',
     'Rilascia loop: {}':
         'Zwolnij pętlę: {}',
     'Livello {} dB in {} s: {}':
@@ -2147,7 +2147,7 @@ T: dict[str, str] = {
     'Nascondi la nota (non ferma niente)':
         'Ukryj notatkę (niczego nie zatrzymuje)',
     'Dissolvi e ferma':
-        'Wycisz i zatrzymaj',
+        'Wygaś i zatrzymaj',
     '? cue eliminata dalla scaletta':
         '? cue usunięty z listy',
     'GO: avvia la cue indicata sul pulsante [SPAZIO]':

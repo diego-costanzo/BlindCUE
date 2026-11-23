@@ -40,7 +40,7 @@ def test_playing_cue_reports_what_is_left():
     t = clocks.cue_time(7)
     assert t is not None
     assert t.elapsed == 15.0 and t.remaining == 45.0 and t.fraction == 0.25
-    assert short_time_text(t) == "-0:45"
+    assert short_time_text(t) == "-00:45"
     assert not ends_soon(t)
 
 
@@ -58,7 +58,7 @@ def test_last_seconds_warn():
     clocks.progress(2, 56.2, start=0.0, end=60.0)
     t = clocks.cue_time(7)
     assert ends_soon(t)
-    assert short_time_text(t) == "-0:04"   # a countdown rounds up
+    assert short_time_text(t) == "-00:03"   # whole seconds, as in the layer panel
 
 
 def test_endless_loop_never_warns():
@@ -67,7 +67,7 @@ def test_endless_loop_never_warns():
     clocks.progress(2, 9.0, start=0.0, end=10.0, looping_inf=True)
     t = clocks.cue_time(7)
     assert not ends_soon(t)
-    assert short_time_text(t) == "-0:01∞"
+    assert short_time_text(t) == "-00:01∞"
     clocks.progress(2, 9.0, start=0.0, end=0.0)
     assert short_time_text(clocks.cue_time(7)) == "∞"
 
@@ -78,7 +78,7 @@ def test_unknown_length_shows_elapsed():
     clocks.progress(2, 72.9)
     t = clocks.cue_time(7)
     assert t.remaining is None and t.fraction == -1.0
-    assert short_time_text(t) == "1:12"
+    assert short_time_text(t) == "01:12"
 
 
 def test_waits_show_their_countdown():
@@ -86,10 +86,10 @@ def test_waits_show_their_countdown():
     clocks.phase(3, 9, PHASE_PRE, 1.0, 4.0)
     t = clocks.cue_time(9)
     assert t.phase == PHASE_PRE and t.remaining == 3.0
-    assert short_time_text(t) == "⏳-0:03"
+    assert short_time_text(t) == "⏳-00:03"
     assert not ends_soon(t)
     clocks.phase(3, 9, PHASE_POST, 0.5, 2.0)
-    assert short_time_text(clocks.cue_time(9)) == "⏱-0:02"
+    assert short_time_text(clocks.cue_time(9)) == "⏱-00:01"
 
 
 def test_picture_without_hold_time_has_no_clock():
@@ -111,10 +111,10 @@ def test_forget_and_clear():
 
 
 def test_fmt_clock():
-    assert fmt_clock(0.0) == "0:00"
-    assert fmt_clock(59.9) == "0:59"
-    assert fmt_clock(59.1, up=True) == "1:00"
-    assert fmt_clock(600.0, up=True) == "10:00"
+    assert fmt_clock(0.0) == "00:00"
+    assert fmt_clock(59.9) == "00:59"
+    assert fmt_clock(600.0) == "10:00"
+    assert fmt_clock(3725.0) == "1:02:05"
 
 
 # ── Director window ──────────────────────────────────────────────────
@@ -177,7 +177,7 @@ def test_clock_fills_only_the_time_cells(window):
     assert window._live_clock_timer.isActive()
     window._on_live_clock_tick()
     live_cell = window._live_show_panel.live_table.item(1, 4)
-    assert live_cell.data(ROLE_LIVE_TIME) == "-0:45"
+    assert live_cell.data(ROLE_LIVE_TIME) == "-00:45"
     assert not live_cell.data(ROLE_LIVE_WARN)
     assert abs(window._cue_list.item(1, 2).data(ROLE_LIVE_FRACTION) - 0.25) < 1e-6
     # the other rows keep their length
@@ -215,7 +215,7 @@ def test_live_time_survives_a_list_rebuild(window):
     _on_air(window, 1, 15.0, 60.0)
     window._on_live_clock_tick()
     window._refresh_cue_list()
-    assert window._live_show_panel.live_table.item(1, 4).data(ROLE_LIVE_TIME) == "-0:45"
+    assert window._live_show_panel.live_table.item(1, 4).data(ROLE_LIVE_TIME) == "-00:45"
 
 
 def test_played_cues_are_marked_until_a_run_from_the_top(window):
