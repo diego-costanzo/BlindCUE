@@ -163,6 +163,11 @@ class _RemoteMixin:
         logger.info("[REMOTE] Triggering GO from Remote")
         if not self._cues:
             return
+        if self._gate_waiting() >= 0:
+            self._confirm_gate()  # the director's phone gives the OK (1.9)
+            if self._remote_mgr:
+                self._remote_mgr.trigger_state_broadcast()
+            return
         if not self._manual_go_allowed():
             if self._remote_mgr:
                 self._remote_mgr.trigger_state_broadcast()

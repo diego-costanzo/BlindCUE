@@ -442,6 +442,7 @@ class _MenuMixin:
         lv.mute_changed.connect(lambda m: self._set_master(muted=m))
         self._live_show_panel.go_requested.connect(self._on_go)
         self._live_show_panel.undo_go_requested.connect(self._on_undo_go)
+        self._live_show_panel.gate_ok_requested.connect(self._confirm_gate)
         self._live_show_panel.mode_tabs.enter_show_requested.connect(self._enter_show_from_key)
         self._live_show_panel.readiness_review_requested.connect(lambda: self._show_readiness(review=True))
         self._live_show_panel.force_go_requested.connect(self._on_go_forced)

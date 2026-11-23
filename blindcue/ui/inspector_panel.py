@@ -625,6 +625,14 @@ class CueInspectorPanel(QGroupBox):
         self.chk_exclusive.setCursor(Qt.CursorShape.PointingHandCursor)
         self.chk_exclusive.toggled.connect(lambda _c: self._emit_change("exclusive"))
         l3.addWidget(self.chk_exclusive)
+        self.chk_confirm = QCheckBox("✋ Aspetta l'OK: parte solo dopo la conferma")
+        self.chk_confirm.setToolTip(
+            "Il GO su questa cue la prepara e aspetta l'OK: Invio sulla lista, il pulsante OK "
+            "o il GO del telecomando nel telefono. Se nel frattempo parte un'altra cue, l'attesa decade."
+        )
+        self.chk_confirm.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_confirm.toggled.connect(lambda _c: self._emit_change("confirm_start"))
+        l3.addWidget(self.chk_confirm)
         lay.addWidget(c3)
         lay.addStretch()
 
@@ -2308,6 +2316,7 @@ class CueInspectorPanel(QGroupBox):
                 self.set_color_silent(getattr(cue, "color", ""))
                 self.set_follow_mode_silent(cue.follow_mode, enabled=True)
                 self.chk_exclusive.setChecked(bool(getattr(cue, "exclusive", False)))
+                self.chk_confirm.setChecked(bool(getattr(cue, "confirm_start", False)))
                 self._populate_media_fields(cue)
                 if cue.media_type == MediaType.ACTION:
                     self.action_editor.load(cue.action_spec, cue.cue_id)
@@ -2383,6 +2392,7 @@ class CueInspectorPanel(QGroupBox):
             self.set_color_silent(common_color)
             self.set_follow_mode_silent(common_mode, enabled=True)
             self.chk_exclusive.setChecked(all(getattr(c, "exclusive", False) for c in cues))
+            self.chk_confirm.setChecked(all(getattr(c, "confirm_start", False) for c in cues))
             self._populate_media_fields(lead)
             if mtype == MediaType.ACTION:
                 self.action_editor.load(lead.action_spec, lead.cue_id)
@@ -2423,6 +2433,7 @@ class CueInspectorPanel(QGroupBox):
             cue.name = new_name
         cue.notes = self.edit_cue_notes.text().strip()
         cue.exclusive = self.chk_exclusive.isChecked()
+        cue.confirm_start = self.chk_confirm.isChecked()
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -2535,6 +2546,8 @@ class CueInspectorPanel(QGroupBox):
         for cue in cues:
             if field_key == "exclusive":
                 cue.exclusive = self.chk_exclusive.isChecked()
+            elif field_key == "confirm_start":
+                cue.confirm_start = self.chk_confirm.isChecked()
             elif field_key == "pos_x":
                 cue.position_x = round(self.spin_pos_x.value(), 3)
             elif field_key == "pos_y":

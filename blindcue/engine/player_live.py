@@ -163,6 +163,57 @@ class LivePlayer(QObject):
         self._standby_player.mediaStatusChanged.connect(lambda st: self._on_deck_status(1, st))
         self._standby_player.errorOccurred.connect(lambda err, msg: self._on_deck_error(1, err, msg))
 
+    # ── Level meter (stage 1 C3, 1.14) ──────────────────────────────────
+    def enable_level_tap(self) -> None:
+        """Report the peak level of what plays (for the VU meter next to the master volume).
+
+        The buffers come from the decoder thread; the slot runs queued on the
+        main thread and only takes a peak, so playback never waits for Python.
+        """
+        from PySide6.QtMultimedia import QAudioBufferOutput
+
+        self._peak = 0.0
+        self._level_taps = []
+        self._ensure_standby_deck()
+        for player in (self._player, self._standby_player):
+            if player is None:
+                continue
+            tap = QAudioBufferOutput(self)
+            player.setAudioBufferOutput(tap)
+            tap.audioBufferReceived.connect(self._on_level_buffer, Qt.ConnectionType.QueuedConnection)
+            self._level_taps.append(tap)
+
+    def _on_level_buffer(self, buffer) -> None:
+        try:
+            fmt = buffer.format()
+            raw = bytes(buffer.constData())
+            if not raw:
+                return
+            sample = fmt.sampleFormat()
+            from PySide6.QtMultimedia import QAudioFormat
+            import numpy as np
+
+            if sample == QAudioFormat.SampleFormat.Float:
+                peak = float(np.max(np.abs(np.frombuffer(raw, dtype=np.float32))))
+            elif sample == QAudioFormat.SampleFormat.Int16:
+                peak = float(np.max(np.abs(np.frombuffer(raw, dtype=np.int16)))) / 32768.0
+            elif sample == QAudioFormat.SampleFormat.Int32:
+                peak = float(np.max(np.abs(np.frombuffer(raw, dtype=np.int32)))) / 2147483648.0
+            else:
+                return
+            sender = self.sender()
+            audio = self._audio if (self._level_taps and sender is self._level_taps[0]) else self._standby_audio
+            volume = audio.volume() if audio is not None else 1.0
+            self._peak = max(self._peak, min(1.0, peak * volume))
+        except Exception:  # noqa: BLE001 - a meter must never disturb playback
+            return
+
+    def take_peak(self) -> float:
+        """Peak level since the last call (0..1), then start again."""
+        peak = getattr(self, "_peak", 0.0)
+        self._peak = 0.0
+        return peak
+
     def _deck_pair(self, idx: int | None = None) -> tuple[QMediaPlayer, QAudioOutput]:
         target = self._active_deck if idx is None else idx
         if target == 1 and self._standby_player is not None and self._standby_audio is not None:

@@ -2632,4 +2632,24 @@ T: dict[str, str] = {
         '⚠ Nie można odtworzyć{} (W{}): brak pliku, plik uszkodzony albo nieobsługiwany',
     'Tieni premuto più a lungo (1,5 s) per uscire dallo spettacolo':
         'Przytrzymaj dłużej (1,5 s), aby wyjść z Przedstawienia',
+    'Nessuna immagine nella scaletta':
+        'W pokazie nie ma obrazów',
+    "Nessun'altra immagine in questa direzione":
+        'Nie ma dalszego obrazu w tę stronę',
+    "✋ Aspetta l'OK: parte solo dopo la conferma":
+        '✋ Czeka na OK: rusza dopiero po potwierdzeniu',
+    "Il GO su questa cue la prepara e aspetta l'OK: Invio sulla lista, il pulsante OK o il GO del telecomando nel telefono. Se nel frattempo parte un'altra cue, l'attesa decade.":
+        'GO na tym cue tylko go przygotowuje i czeka na OK: Enter na liście, przycisk OK albo GO z pilota w telefonie. Jeśli w międzyczasie ruszy inny cue, czekanie przepada.',
+    "✋ {} aspetta l'OK: Invio, il pulsante OK o il GO del telefono":
+        '✋ {} czeka na OK: Enter, przycisk OK albo GO z telefonu',
+    "Nessuna cue aspetta l'OK":
+        'Żaden cue nie czeka na OK',
+    "Aspetta l'OK: Invio o il pulsante OK (il GO non basta)":
+        'Czeka na OK: Enter albo przycisk OK (samo GO nie wystarczy)',
+    'Conferma: la cue parte adesso (anche Invio sulla lista)':
+        'Potwierdź: cue rusza teraz (także Enter na liście)',
+    "· ✋ aspetta l'OK":
+        '· ✋ czeka na OK',
+    'Livello di uscita':
+        'Poziom wyjścia',
 }

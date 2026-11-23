@@ -261,6 +261,15 @@ class _WindowSetupMixin:
         QShortcut(QKeySequence("Ctrl+Up"), self, lambda: self._nudge_master(0.05))
         QShortcut(QKeySequence("Ctrl+Down"), self, lambda: self._nudge_master(-0.05))
         QShortcut(QKeySequence("Ctrl+M"), self, self._toggle_master_mute)
+        # Slides: previous / next picture, only while the show's list has the keyboard
+        # (text fields keep Ctrl+arrows for words).
+        table = self._live_show_panel.live_table
+        QShortcut(QKeySequence("Ctrl+Right"), table, lambda: self._go_picture(1),
+                  context=Qt.ShortcutContext.WidgetShortcut)
+        QShortcut(QKeySequence("Ctrl+Left"), table, lambda: self._go_picture(-1),
+                  context=Qt.ShortcutContext.WidgetShortcut)
+        for key in ("Return", "Enter"):  # the OK of a cue waiting for confirmation (1.9)
+            QShortcut(QKeySequence(key), table, self._confirm_gate, context=Qt.ShortcutContext.WidgetShortcut)
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
         self._install_focus_watch()

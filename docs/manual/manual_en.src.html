@@ -359,6 +359,14 @@ and moving cues happens in Preparation only. Rehearsal → Preparation is one cl
 after 10 s without typing. A wrong PIN only says so, with no lock-out; after the second one the program names the way
 out (closing the program – the show opens in Preparation). The PIN never blocks GO, PANIC, FADE ALL, Pause, the volume
 or Undo GO. It protects against an accident and a curious pupil, not against someone determined.</p><!--/IF:exit_pin-->
+<!--IF:show_list--><p><b>The list during the show.</b> Cues that start by themselves with the one before
+(Auto-GO, "together") fold under it – its name shows <b>⤵+2</b>; a click on its number opens and folds them. The next
+cue always scrolls to the middle of the list. <kbd>Ctrl+→</kbd> / <kbd>Ctrl+←</kbd> on the list are the next /
+previous picture (like slides) – an ordinary GO, so Undo GO works too. A cue marked <b>✋ Waits for an OK</b> in the
+inspector only gets ready on GO: the NEXT bar shows <b>✋ OK</b>, and it starts on the OK – <kbd>Enter</kbd> on the
+list, the <b>✋ OK</b> button or GO on the phone remote (in the director's hand, say). GO alone does not start it; the
+wait lapses when another cue starts. Under the master volume slider a thin bar shows how loud the show plays now
+(amber just before clipping).</p><!--/IF:show_list-->
 <p><img src="img/en/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Select the first cue – it gets the <b>STANDBY</b> badge (ready to fire).

@@ -2410,4 +2410,24 @@ T: dict[str, str] = {
         '⚠ Cannot play{} (L{}): file missing, damaged or not supported',
     'Tieni premuto più a lungo (1,5 s) per uscire dallo spettacolo':
         'Hold longer (1.5 s) to leave the show',
+    'Nessuna immagine nella scaletta':
+        'The show has no pictures',
+    "Nessun'altra immagine in questa direzione":
+        'No more pictures that way',
+    "✋ Aspetta l'OK: parte solo dopo la conferma":
+        '✋ Waits for an OK: starts only after it is confirmed',
+    "Il GO su questa cue la prepara e aspetta l'OK: Invio sulla lista, il pulsante OK o il GO del telecomando nel telefono. Se nel frattempo parte un'altra cue, l'attesa decade.":
+        'A GO on this cue only arms it and waits for an OK: Enter on the list, the OK button or GO on the phone remote. If another cue starts meanwhile, the wait lapses.',
+    "✋ {} aspetta l'OK: Invio, il pulsante OK o il GO del telefono":
+        '✋ {} waits for an OK: Enter, the OK button or GO on the phone',
+    "Nessuna cue aspetta l'OK":
+        'No cue is waiting for an OK',
+    "Aspetta l'OK: Invio o il pulsante OK (il GO non basta)":
+        'Waiting for the OK: Enter or the OK button (GO is not enough)',
+    'Conferma: la cue parte adesso (anche Invio sulla lista)':
+        'Confirm: the cue starts now (also Enter on the list)',
+    "· ✋ aspetta l'OK":
+        '· ✋ waits for the OK',
+    'Livello di uscita':
+        'Output level',
 }

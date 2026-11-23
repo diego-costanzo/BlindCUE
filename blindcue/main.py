@@ -82,7 +82,7 @@ if sys.platform.startswith("linux") and not os.environ.get("QT_QPA_PLATFORM"):
         )
         raise SystemExit(1)
 
-from PySide6.QtCore import QStandardPaths, QTimer
+from PySide6.QtCore import QSettings, QStandardPaths, QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMessageBox
 
@@ -1104,6 +1104,23 @@ def main() -> int:
             lp.ramp_level(trim, 0.15)
 
     main_win.layer_trim_requested.connect(_on_layer_trim)
+
+    # VU meter next to the master volume (1.14): peaks of every live player, 10 Hz.
+    if QSettings("BlindCue", "BlindCue").value("live/vu_meter", True, type=bool):
+        for lp in live_players.values():
+            try:
+                lp.enable_level_tap()
+            except Exception as exc:  # noqa: BLE001 - no meter is better than no show
+                logger.warning("[VU] level tap not available: %s", exc)
+        vu_timer = QTimer(main_win)
+        vu_timer.setInterval(100)
+
+        def _vu_tick() -> None:
+            level = max((lp.take_peak() for lp in live_players.values()), default=0.0)
+            main_win.set_vu_level(level)
+
+        vu_timer.timeout.connect(_vu_tick)
+        vu_timer.start()
     # The rehearsal card's stop: at once (a 50 ms fade, no click in the speakers).
     main_win.layer_stop_requested.connect(lambda layer: _on_layer_clear_requested(layer, fade_override=0.05))
 

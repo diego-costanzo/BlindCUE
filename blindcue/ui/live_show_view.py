@@ -812,6 +812,7 @@ class LiveShowPanel(QWidget):
     readiness_review_requested = Signal()
     hold_auto_go_requested = Signal(int)   # cue_id whose Auto-GO should wait for a GO
     edit_cue_requested = Signal(int)       # rehearsal "✎": cue_id to fix in the drawer
+    gate_ok_requested = Signal()           # the OK of a cue waiting for confirmation (1.9)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -1098,6 +1099,11 @@ class LiveShowPanel(QWidget):
         self._last_text = ""
         self._last_note = ""
         self._paused_ids: set[int] = set()
+        # Helper cues (started by the cue before: Auto-GO, "together") fold
+        # under the head of their chain; a click on its number opens it (1.13).
+        self._open_chains: set[int] = set()
+        self._chain_head: dict[int, int] = {}     # row -> row of its chain head
+        self._centred_row = -1
         self._last_at = 0.0
         self._last_by_hand = False
         self._last_hot: bool | None = None
@@ -1135,6 +1141,18 @@ class LiveShowPanel(QWidget):
         self._set_standby_note("")
         sb_lines.addWidget(self.lbl_standby_note)
         sb_layout.addLayout(sb_lines, stretch=1)
+        self.btn_gate_ok = QPushButton("✋ OK")
+        self.btn_gate_ok.setFixedHeight(28)
+        self.btn_gate_ok.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Space stays GO
+        self.btn_gate_ok.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_gate_ok.setToolTip("Conferma: la cue parte adesso (anche Invio sulla lista)")
+        self.btn_gate_ok.setStyleSheet(
+            "QPushButton { background-color: #fbbf24; color: #1c1203; border: 2px solid #f59e0b; "
+            "border-radius: 4px; font-weight: bold; font-size: 14px; padding: 0px 14px; }")
+        self.btn_gate_ok.clicked.connect(self.gate_ok_requested)
+        self.btn_gate_ok.setVisible(False)
+        sb_layout.addWidget(self.btn_gate_ok)
+        self._gate_id = -1
         self.btn_edit_next = self._edit_button()
         self.btn_edit_next.clicked.connect(lambda: self._emit_edit(self._standby_cue_id))
         sb_layout.addWidget(self.btn_edit_next)
@@ -1517,7 +1535,9 @@ class LiveShowPanel(QWidget):
             return
         how = tr("· manuale (GO)")
         waits = self._standby_waits_on
-        if waits is not None and waits[0] in self._held_ids:
+        if self._gate_id >= 0 and self._gate_id == self._standby_cue_id:
+            how = tr("· ✋ aspetta l'OK")
+        elif waits is not None and waits[0] in self._held_ids:
             how = tr("· aspetta il GO (Auto-GO fermato)")
         elif waits is not None:
             cue_id, ref = waits
@@ -1528,6 +1548,12 @@ class LiveShowPanel(QWidget):
         self.btn_hold_auto.setVisible(waits is not None)
         if waits is not None:
             self.btn_hold_auto.setText(tr("Riprendi Auto-GO") if waits[0] in self._held_ids else tr("Trattieni"))
+
+    def set_gate(self, cue_id: int, ref: str) -> None:
+        """A cue waits at the start gate (cue_id < 0: nothing waits)."""
+        self._gate_id = cue_id
+        self.btn_gate_ok.setVisible(cue_id >= 0)
+        self._refresh_standby_how()
 
     def _on_hold_auto_clicked(self) -> None:
         if self._standby_waits_on is not None:
@@ -1545,7 +1571,27 @@ class LiveShowPanel(QWidget):
                 if it and it.data(ROLE_IS_GROUP):
                     self.group_collapse_toggled.emit(row)
                     return
+                if row in self._chain_head.values():
+                    self.toggle_chain(row)
             self.cue_row_clicked.emit(row)
+
+    def toggle_chain(self, head_row: int) -> None:
+        """Open / fold the helper cues under the chain head at *head_row*."""
+        name_item = self.live_table.item(head_row, 2)
+        id_row = next((cid for cid, r in self._cue_id_to_row.items() if r == head_row), None)
+        if id_row is None:
+            return
+        opening = id_row not in self._open_chains
+        if opening:
+            self._open_chains.add(id_row)
+        else:
+            self._open_chains.discard(id_row)
+        helpers = [r for r, h in self._chain_head.items() if h == head_row]
+        for r in helpers:
+            self.live_table.setRowHidden(r, not opening)
+        if name_item is not None:
+            base = name_item.text().split("   ⤵+")[0]
+            name_item.setText(base if opening else f"{base}   ⤵+{len(helpers)}")
 
     def _on_table_double_clicked(self, row: int, _col: int) -> None:
         """Double-click only arms the cue as next, unless the operator opted in.
@@ -1922,6 +1968,16 @@ class LiveShowPanel(QWidget):
                 self._cue_id_to_row[c.cue_id] = idx
                 if c.parent_id is not None:
                     children_by_parent.setdefault(c.parent_id, []).append(c)
+            self._chain_head = {}
+            helpers_of: dict[int, int] = {}
+            for idx in range(1, len(cues)):
+                prev = cues[idx - 1]
+                if (prev.follow_mode in (FollowMode.AUTO_FOLLOW.value, FollowMode.SIMULTANEOUS.value)
+                        and prev.parent_id == cues[idx].parent_id
+                        and cues[idx].media_type != MediaType.GROUP):
+                    head = self._chain_head.get(idx - 1, idx - 1)
+                    self._chain_head[idx] = head
+                    helpers_of[head] = helpers_of.get(head, 0) + 1
 
             for r, cue in enumerate(cues):
                 is_live = (cue.status == CueStatus.LIVE)
@@ -1980,10 +2036,11 @@ class LiveShowPanel(QWidget):
                 status_txt = "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
                 status_clr = "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8"))
 
+                folded = helpers_of.get(r, 0) if cue.cue_id not in self._open_chains else 0
                 col_texts = (
                     f"{r + 1}",
                     (cue.q_label or "").strip() or "—",
-                    cue.name,
+                    f"{cue.name}   ⤵+{folded}" if folded else cue.name,
                     cue.notes or "",
                     dur_str,
                     status_txt,
@@ -2042,15 +2099,26 @@ class LiveShowPanel(QWidget):
                         it.setToolTip("")
 
                 # Set row visibility based on parent collapsed state
+                hidden = False
                 if cue.parent_id is not None:
                     parent = cue_by_id.get(cue.parent_id)
-                    self.live_table.setRowHidden(r, bool(parent and parent.collapsed))
-                else:
-                    self.live_table.setRowHidden(r, False)
+                    hidden = bool(parent and parent.collapsed)
+                head = self._chain_head.get(r)
+                if (head is not None and cues[head].cue_id not in self._open_chains
+                        and r != standby_row):
+                    hidden = True  # a helper cue, folded under its chain head (1.13)
+                self.live_table.setRowHidden(r, hidden)
 
             self.live_table.setColumnHidden(1, not any((c.q_label or "").strip() for c in cues))
             if 0 <= standby_row < len(cues):
                 self.live_table.selectRow(standby_row)
+                if standby_row != self._centred_row:
+                    # The next cue sits in the middle of the list (1.13); only when
+                    # it moves, so scrolling by hand is not fought on every refresh.
+                    self._centred_row = standby_row
+                    centre = self.live_table.item(standby_row, 2)
+                    if centre is not None:
+                        self.live_table.scrollToItem(centre, QAbstractItemView.ScrollHint.PositionAtCenter)
                 sb_cue = cues[standby_row]
                 self._standby_cue_id = sb_cue.cue_id
                 self.btn_edit_next.setVisible(self._rehearsal)

@@ -471,6 +471,7 @@ class Cue:
     post_delay: float = 0.0
     follow_mode: str = FollowMode.MANUAL.value
     exclusive: bool = False  # while LIVE, a manual GO is refused (Ctrl+GO forces it)
+    confirm_start: bool = False  # starts only after an OK (keyboard, phone): the director's sign
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
     parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
@@ -661,6 +662,7 @@ class Cue:
             "post_delay": round(float(self.post_delay), 3),
             "follow_mode": self.follow_mode,
             "exclusive": self.exclusive,
+            "confirm_start": self.confirm_start,
             "color": _sanitize_hex_color(self.color),
             "parent_id": self.parent_id,
             "group_mode": self.group_mode,
@@ -742,6 +744,7 @@ class Cue:
             pre_delay=_safe_float(data.get("pre_delay", 0.0), 0.0, min_val=0.0),
             post_delay=_safe_float(data.get("post_delay", 0.0), 0.0, min_val=0.0),
             exclusive=bool(data.get("exclusive", False)),
+            confirm_start=bool(data.get("confirm_start", False)),
             follow_mode=(
                 data.get("follow_mode", FollowMode.MANUAL.value)
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES

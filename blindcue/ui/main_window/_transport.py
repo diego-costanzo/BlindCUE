@@ -120,6 +120,12 @@ class _TransportMixin:
         if not self._cues:
             self._status_label.setText("Scaletta vuota — Aggiungi prima dei file multimediali")
             return
+        if self._gate_waiting() >= 0:
+            self._status_label.setText(tr("Aspetta l'OK: Invio o il pulsante OK (il GO non basta)"))
+            if hasattr(self, "_earcon_mgr"):
+                self._earcon_mgr.play_alert()
+            self.announce(self._status_label.text(), assertive=True)
+            return
         if not self._manual_go_allowed():
             self.announce(self._status_label.text(), assertive=True)  # a blocked GO says why (W17)
             return
@@ -132,6 +138,84 @@ class _TransportMixin:
         target_idx = self._go_target_index()
         self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
+        self.announce(self._status_label.text())
+
+    # ── Start confirmation gate (1.9) ─────────────────────────────────
+    def _arm_gate(self, idx: int) -> None:
+        cue = self._cues[idx]
+        self._gate_cue_id = cue.cue_id
+        ref = f"{format_cue_ref(idx, cue)} '{cue.name}'"
+        self._cue_list.setCurrentRow(idx)
+        self._sync_live_view()
+        self._live_show_panel.set_gate(cue.cue_id, ref)
+        self._status_label.setText(tr("✋ {} aspetta l'OK: Invio, il pulsante OK o il GO del telefono").format(ref))
+        self.announce(self._status_label.text(), assertive=True)
+        logger.info("[GATE] #%d waits for an OK", cue.cue_id)
+
+    def _gate_waiting(self) -> int:
+        return getattr(self, "_gate_cue_id", -1)
+
+    def _clear_gate(self) -> None:
+        if self._gate_waiting() >= 0:
+            self._gate_cue_id = -1
+            self._live_show_panel.set_gate(-1, "")
+
+    def _confirm_gate(self) -> None:
+        """The OK: the cue waiting at the gate starts now. An extra OK is refused with a word."""
+        cue_id = self._gate_waiting()
+        idx = next((i for i, c in enumerate(self._cues) if c.cue_id == cue_id), -1)
+        if idx < 0:
+            self._clear_gate()
+            self._status_label.setText(tr("Nessuna cue aspetta l'OK"))
+            if hasattr(self, "_earcon_mgr"):
+                self._earcon_mgr.play_alert()
+            self.announce(self._status_label.text(), assertive=True)
+            return
+        self._clear_gate()
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_go()
+        self._gate_passing = cue_id
+        try:
+            self._remember_manual_go(idx)
+            self._fire_cue_chain(idx)
+        finally:
+            self._gate_passing = -1
+        self.announce(self._status_label.text())
+
+    def _go_picture(self, step: int) -> None:
+        """Ctrl+Right / Ctrl+Left in the show: the next / previous picture after the one on screen.
+
+        For shows run like a slide presentation (1.13): a GO by hand on that
+        picture cue (Undo GO, the guards and the Last line all apply).
+        """
+        if not self._live_mode or not self._cues:
+            return
+        pictures = [i for i, c in enumerate(self._cues) if c.media_type == MediaType.IMAGE]
+        if not pictures:
+            self._status_label.setText(tr("Nessuna immagine nella scaletta"))
+            return
+        on_air = [i for i in pictures if self._cues[i].status == CueStatus.LIVE]
+        if on_air:
+            here = on_air[-1]
+        else:
+            fired = [i for i in pictures if self._cues[i].cue_id in self._fired_at]
+            here = max(fired, key=lambda i: self._fired_at[self._cues[i].cue_id]) if fired else -1
+        if step > 0:
+            target = next((i for i in pictures if i > here), -1)
+        else:
+            target = next((i for i in reversed(pictures) if i < here), -1) if here >= 0 else -1
+        if target < 0:
+            self._status_label.setText(tr("Nessun'altra immagine in questa direzione"))
+            if hasattr(self, "_earcon_mgr"):
+                self._earcon_mgr.play_alert()
+            return
+        if not self._manual_go_allowed():
+            self.announce(self._status_label.text(), assertive=True)
+            return
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_go()
+        self._remember_manual_go(target)
+        self._fire_cue_chain(target)
         self.announce(self._status_label.text())
 
     def _set_master(self, level: float | None = None, muted: bool | None = None) -> None:
@@ -155,6 +239,13 @@ class _TransportMixin:
         if mute_changed:
             self.announce(self._status_label.text(), assertive=True)
 
+    def set_vu_level(self, level: float) -> None:
+        """main.py, 10 Hz: the peak of what plays, on both master volume bars."""
+        for mv in (getattr(self, "_master_volume", None),
+                   getattr(getattr(self, "_live_show_panel", None), "master_volume", None)):
+            if mv is not None:
+                mv.set_vu(level)
+
     def _nudge_master(self, delta: float) -> None:
         self._set_master(level=self._master_level + delta)
 
@@ -164,6 +255,8 @@ class _TransportMixin:
     def _note_fired(self, cue: Cue) -> None:
         """A cue was started (GO, Auto-GO, chain, group): ✓ in the list, and in which order."""
         self._played_ids.add(cue.cue_id)
+        if self._gate_waiting() >= 0 and self._gate_waiting() != cue.cue_id:
+            self._clear_gate()  # another cue started: the waiting OK lapses (1.9)
         self._undo_go_collect(cue)
         self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again
         self._fire_seq += 1
@@ -216,6 +309,10 @@ class _TransportMixin:
         over by a cue that GO started.
         """
         if not (0 <= start_idx < len(self._cues)):
+            return
+        start = self._cues[start_idx]
+        if getattr(start, "confirm_start", False) and getattr(self, "_gate_passing", -1) != start.cue_id:
+            self._arm_gate(start_idx)  # 1.9: it starts on the director's OK, not now
             return
         if not auto:
             self._undo_go_begin(self._cues[start_idx])
@@ -479,6 +576,7 @@ class _TransportMixin:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
         first_stopped = self._stopped_manual_go_index()
         self._undo_go_end()
+        self._clear_gate()
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
         self._live_phase_tags.clear()
