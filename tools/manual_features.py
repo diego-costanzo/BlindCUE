@@ -39,6 +39,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "pause_go": ("blindcue/engine/show_scheduler.py", "frozen: bool"),
     "urgent_words": ("blindcue/ui/live_show_view.py", "_URGENT_NOTES_RE"),
     "release_scene": ("blindcue/engine/show_engine.py", "released_groups"),
+    "drop_on_list": ("blindcue/ui/cue_table.py", "files_dropped = Signal"),
 }
 
 

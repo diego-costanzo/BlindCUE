@@ -275,6 +275,30 @@ def test_new_cue_goes_after_the_selected_one(window, tmp_path):
     assert "fine della catena" in window._status_label.text()
 
 
+def test_files_dropped_on_the_list(window, tmp_path):
+    """Files from the file manager dropped on a row go after it, in order (1.12)."""
+    from PySide6.QtCore import QMimeData, QPointF, Qt, QUrl
+    from PySide6.QtGui import QDropEvent
+
+    files = []
+    for name in ("d1.wav", "d2.wav"):
+        p = tmp_path / name
+        p.write_bytes(b"x")
+        files.append(p)
+    table = window._cue_list
+    table.resize(400, 400)
+    mime = QMimeData()
+    mime.setUrls([QUrl.fromLocalFile(str(f)) for f in files])
+    y = table.visualRect(table.model().index(1, 2)).center().y()
+    event = QDropEvent(QPointF(20, y), Qt.DropAction.CopyAction, mime,
+                       Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
+    table.dropEvent(event)
+    assert [c.name for c in window._cues][:5] == ["c0", "c1", "d1.wav", "d2.wav", "c2"]
+
+    window._on_files_dropped_on_list([str(files[0])], -1)   # below the last row: at the end
+    assert window._cues[-1].name == "d1.wav" and len(window._cues) == 8
+
+
 def test_go_button_names_its_cue(window):
     from models.cue import CueStatus
 

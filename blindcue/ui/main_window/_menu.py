@@ -226,6 +226,7 @@ class _MenuMixin:
         self._cue_list.cellDoubleClicked.connect(self._on_cue_cell_double_clicked)
         self._cue_list.itemChanged.connect(self._on_cue_item_changed)
         self._cue_list.color_selected.connect(self._set_cue_color)
+        self._cue_list.files_dropped.connect(self._on_files_dropped_on_list)
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
         self._cue_list_panel.add_group_requested.connect(self._on_add_group)
         self._cue_list_panel.add_text_requested.connect(self._on_add_text_cue)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 
 from PySide6.QtCore import QItemSelectionModel, QPointF, QRect, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPen, QPixmap, QPolygonF
@@ -655,6 +656,8 @@ class CueSequenceTable(QTableWidget):
     extract_child_requested = Signal()
     open_timeline_requested = Signal()
     edit_text_requested = Signal()
+    # Media files dropped on the list: (paths, row they were dropped on, -1 = below the last row)
+    files_dropped = Signal(list, int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the cue sequence table with its three columns and selection rules."""
@@ -689,6 +692,39 @@ class CueSequenceTable(QTableWidget):
 
         self.setItemDelegate(CueTableDelegate(self))
         self.currentCellChanged.connect(self._on_current_cell_changed)
+        # Files from the file manager can be dropped straight on the list
+        # (the rows themselves are not dragged: order changes use Up/Down).
+        self.setAcceptDrops(True)
+        self.setDragDropMode(QAbstractItemView.DragDropMode.DropOnly)
+        self.setDropIndicatorShown(True)
+
+    @staticmethod
+    def _dropped_files(event) -> list[str]:
+        mime = event.mimeData()
+        if mime is None or not mime.hasUrls():
+            return []
+        return [u.toLocalFile() for u in mime.urls() if u.isLocalFile() and os.path.isfile(u.toLocalFile())]
+
+    def dragEnterEvent(self, event) -> None:  # noqa: N802
+        if self._dropped_files(event):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event) -> None:  # noqa: N802
+        if self._dropped_files(event):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event) -> None:  # noqa: N802
+        paths = self._dropped_files(event)
+        if not paths:
+            event.ignore()
+            return
+        row = self.rowAt(event.position().toPoint().y())
+        event.acceptProposedAction()
+        self.files_dropped.emit(paths, row)
 
     def _on_current_cell_changed(self, curr_row: int, _curr_col: int,
                                  prev_row: int, _prev_col: int) -> None:
