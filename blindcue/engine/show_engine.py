@@ -71,6 +71,46 @@ def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
     return indices
 
 
+def block_end(cues: list[Cue], idx: int) -> int:
+    """Last row of *idx* together with all its descendants (a group's children)."""
+    cue = cues[idx]
+    if cue.media_type != MediaType.GROUP:
+        return idx
+    ids = {cue.cue_id}
+    end = idx
+    j = idx + 1
+    while j < len(cues) and cues[j].parent_id in ids:
+        if cues[j].media_type == MediaType.GROUP:
+            ids.add(cues[j].cue_id)
+        end = j
+        j += 1
+    return end
+
+
+def insert_position(cues: list[Cue], selected_row: int) -> tuple[int, int | None]:
+    """Where a new cue goes when the operator adds one: (index, parent_id).
+
+    Right after the selected cue, in the same group, so the show is built in
+    order. Following cues are tied to their position ("Simultaneous" pulls the
+    next row into its GO, Auto-GO starts the next row, a group owns the rows
+    below it), so when the selected cue is tied to the next one the new cue
+    goes after the end of that chain or group instead of silently joining it.
+    No selection: at the end of the list.
+    """
+    n = len(cues)
+    if not (0 <= selected_row < n):
+        return n, None
+    parent = cues[selected_row].parent_id
+    i = selected_row
+    while True:
+        end = block_end(cues, i)
+        nxt = end + 1
+        tied = cues[i].follow_mode != FollowMode.MANUAL.value
+        if not tied or nxt >= n or cues[nxt].parent_id != parent:
+            return end + 1, parent
+        i = nxt
+
+
 # Where the show can continue from when the operator enters LIVE.
 START_FROM_TOP = "top"
 START_RESUME = "resume"

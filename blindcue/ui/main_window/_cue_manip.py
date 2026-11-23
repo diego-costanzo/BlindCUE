@@ -39,7 +39,11 @@ class _CueManipMixin:
         self._append_new_cue(cue)
 
     def _append_new_cue(self, cue: Cue) -> None:
-        """Validate *cue*, append it to the list, select it and record undo."""
+        """Validate *cue*, insert it after the selected one, select it and record undo.
+
+        See ``insert_position``: a cue tied to the next one (Simultaneous,
+        Auto-GO, a group) gets the new cue after the end of its chain or group.
+        """
         errors = cue.validate()
         if errors:
             QMessageBox.warning(self, "Validation Error", "\n".join(errors))
@@ -48,14 +52,23 @@ class _CueManipMixin:
         if self._undo.is_debounce_active():
             self._commit_undo_point()
         cue.status = CueStatus.LOADED
-        self._cues.append(cue)
+        sel_row = self._anchor_row_and_cue()[0] if self._selected_rows() else -1
+        pos, parent_id = insert_position(self._cues, sel_row)
+        cue.parent_id = parent_id
+        self._cues.insert(pos, cue)
         self._refresh_cue_list()
-        self._cue_list.setCurrentRow(len(self._cues) - 1)
+        self._cue_list.setCurrentRow(pos)
         self._commit_undo_point()
         self._mark_modified(True)
-        self._status_label.setText(f"Added: {cue}")
+        if 0 <= sel_row and pos != sel_row + 1:
+            self._status_label.setText(
+                f"Aggiunta dopo '{self._cues[pos - 1].name}', alla fine della catena "
+                "Simultanea / Auto-GO o del gruppo"
+            )
+        else:
+            self._status_label.setText(f"Added: {cue}")
         self._auto_save()
-        logger.info("Added cue: %s", cue)
+        logger.info("Added cue at row %d: %s", pos, cue)
 
     # ── Text cues (captions) ──────────────────────────────────────────
     def _on_add_text_cue(self) -> None:
