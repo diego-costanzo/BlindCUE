@@ -18,6 +18,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+import warnings
 from collections import OrderedDict
 from pathlib import Path
 from collections.abc import Callable
@@ -73,6 +74,18 @@ from ui.tappo_pattern import is_default_tappo_path, render_default_tappo_pixmap
 from ui.theme import DEFAULT_LOGO_PATH
 
 logger = logging.getLogger(__name__)
+
+
+def _disconnect(signal) -> None:
+    """Disconnect a Qt signal, safely ignoring if nothing was connected or C++ object is dead."""
+    if signal is None:
+        return
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", (RuntimeWarning, UserWarning))
+            signal.disconnect()
+    except (RuntimeError, TypeError, AttributeError):
+        pass
 
 # Logo di fallback (Layer 0): asset di runtime dentro il pacchetto, così esiste
 # anche dopo l'installazione in una cartella diversa dal repository.
@@ -473,10 +486,6 @@ class OutputWindow(QWidget):
         self._master_fade_timers: dict[int, QTimer] = {}
         self._master_fade_clocks: dict[int, list] = {}
 
-        # Crossfade: frozen snapshot of a layer dissolving over new content
-        self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
-        self._xfade_timers: dict[int, QTimer] = {}
-
         logger.info("[OUTPUT] Native Wayland Output Window created")
 
     # ── Layer 0 ───────────────────────────────────────────────────────
@@ -636,8 +645,12 @@ class OutputWindow(QWidget):
     def _stop_timer_entry(timer_map: dict[int, QTimer], layer: int) -> None:
         old_timer = timer_map.pop(layer, None)
         if old_timer is not None:
-            if old_timer.isActive():
-                old_timer.stop()
+            try:
+                if old_timer.isActive():
+                    old_timer.stop()
+            except RuntimeError:
+                pass
+            _disconnect(getattr(old_timer, "timeout", None))
             old_timer.deleteLater()
 
     def _cancel_fallback_timer(self) -> None:
@@ -646,8 +659,12 @@ class OutputWindow(QWidget):
         timer = self._fallback_timer
         self._fallback_timer = None
         if timer is not None:
-            if timer.isActive():
-                timer.stop()
+            try:
+                if timer.isActive():
+                    timer.stop()
+            except RuntimeError:
+                pass
+            _disconnect(getattr(timer, "timeout", None))
             timer.deleteLater()
 
     # ── Layers 1-3 (Images & Overlays) ────────────────────────────────
@@ -1912,16 +1929,29 @@ class OutputWindow(QWidget):
         """Close the output reliably during shutdown, bypassing hide logic."""
         self._force_close_allowed = True
         self._cancel_fallback_timer()
-        for timer_map in (self._video_fade_timers, self._layer_fade_timers, self._deck_swap_timers,
-                          self._master_fade_timers):
+        for timer_map in (
+            self._video_fade_timers,
+            self._layer_fade_timers,
+            self._deck_swap_timers,
+            self._master_fade_timers,
+            self._xfade_timers,
+        ):
             for t in list(timer_map.values()):
-                if t.isActive():
-                    t.stop()
+                try:
+                    if t.isActive():
+                        t.stop()
+                except RuntimeError:
+                    pass
+                _disconnect(getattr(t, "timeout", None))
                 t.deleteLater()
             timer_map.clear()
         self._surface_mask_cache.clear()
         self._image_pixmap_cache.clear()
+        for v_item in list(self._video_items.values()) + list(self._secondary_video_items.values()):
+            _disconnect(getattr(v_item, "nativeSizeChanged", None))
         self.close()
+
+    close_strictly = force_close
 
     # ── Overrides ─────────────────────────────────────────────────────
 

@@ -104,8 +104,13 @@ _PLAY_TO_END = textwrap.dedent(
 )
 
 
-@pytest.mark.skipif(not QMediaDevices.audioOutputs(), reason="no audio output device")
-def test_play_to_end_then_stop_does_not_freeze(tmp_path) -> None:
+def test_play_to_end_then_stop_does_not_freeze(qt_app, tmp_path) -> None:
+    # Do NOT probe QMediaDevices at import time (in a skipif decorator): that
+    # initialises the QtMultimedia FFmpeg backend before a QApplication exists
+    # and makes it segfault in its static destructor at exit(). Probe here,
+    # after the qt_app session fixture has created the application.
+    if not QMediaDevices.audioOutputs():
+        pytest.skip("no audio output device")
     script = tmp_path / "play_to_end.py"
     script.write_text(_PLAY_TO_END, encoding="utf-8")
     proc = subprocess.run(
