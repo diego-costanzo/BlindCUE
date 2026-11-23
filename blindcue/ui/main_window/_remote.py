@@ -384,6 +384,7 @@ class _RemoteMixin:
         paused = bool(paused)
         changed = (getattr(self, "_is_global_paused", False) != paused)
         self._is_global_paused = paused
+        self._undo_go_pause(paused)  # Pause All stops the Undo GO countdown
         if not silent and changed and hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_pause()
         if hasattr(self, "_live_show_panel"):
@@ -571,7 +572,11 @@ class _RemoteMixin:
         if source_at is not None and target_at is not None and target_at > source_at:
             logger.info("[AUTO-GO] '%s' already started by hand: no second start", target.name)
             return
-        self._fire_cue_chain(next_idx, auto=True)
+        self._undo_auto_source = finished_cue.cue_id  # Undo GO follows its own chain
+        try:
+            self._fire_cue_chain(next_idx, auto=True)
+        finally:
+            self._undo_auto_source = None
 
     def release_loop_scene_of(self, cue: Cue | None) -> bool:
         """A release-loop action reached *cue*: its "Loop Scena" group ends after this pass.

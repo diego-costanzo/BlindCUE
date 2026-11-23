@@ -2054,4 +2054,36 @@ T: dict[str, str] = {
         '· starts by itself in {}',
     '· parte da sola dopo {}':
         '· starts by itself after {}',
+    "↶ Annulla l'ultimo GO":
+        '↶ Undo last GO',
+    'sfumo {} (1 s)':
+        'fade out {} (1 s)',
+    'tolgo {} dallo schermo':
+        'take {} off the screen',
+    "l'immagine {} torna":
+        'picture {} comes back',
+    '{} non è ancora partita: la annullo':
+        '{} has not started yet: cancel it',
+    '{} è già finita':
+        '{} has already ended',
+    '{} interrotta: non torna da sola':
+        '{} was cut off and will not come back by itself',
+    "l'azione {} resta":
+        'action {} stays',
+    'prossima di nuovo {}':
+        'next again {}',
+    'Annullo:':
+        'Undo:',
+    '↶ Annulla GO {} · {}':
+        '↶ Undo GO {} · {}',
+    'Questo GO non si annulla (azione)':
+        'This GO cannot be undone (action)',
+    'Annulla GO {} ({} s)':
+        'Undo GO {} ({} s)',
+    'Nessun GO da annullare':
+        'No GO to undo',
+    '↶ GO {} annullato':
+        '↶ GO {} undone',
+    'GO {} annullato · prossima: {}':
+        'GO {} undone · next: {}',
 }

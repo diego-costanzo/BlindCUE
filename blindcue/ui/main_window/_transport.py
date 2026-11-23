@@ -148,6 +148,7 @@ class _TransportMixin:
     def _note_fired(self, cue: Cue) -> None:
         """A cue was started (GO, Auto-GO, chain, group): ✓ in the list, and in which order."""
         self._played_ids.add(cue.cue_id)
+        self._undo_go_collect(cue)
         self._fire_seq += 1
         self._fired_at[cue.cue_id] = self._fire_seq
         if cue.parent_id in self._released_groups:
@@ -194,9 +195,21 @@ class _TransportMixin:
         *auto*: started by an Auto-GO, not by the operator. Then the GO
         pointer only moves forward: if the operator already set it past this
         cue (e.g. to the cue after a released Loop Scena), it stays there.
+        A GO by hand is recorded for Undo GO, and so is an Auto-GO handed
+        over by a cue that GO started.
         """
         if not (0 <= start_idx < len(self._cues)):
             return
+        if not auto:
+            self._undo_go_begin(self._cues[start_idx])
+        before = self._undo_go_collecting
+        self._undo_go_collecting = not auto or self._undo_go_takes_auto()
+        try:
+            self._fire_cue_chain_now(start_idx, auto)
+        finally:
+            self._undo_go_collecting = before
+
+    def _fire_cue_chain_now(self, start_idx: int, auto: bool) -> None:
         held_row = self._go_target_index() if auto else -1
 
         start_cue = self._cues[start_idx]
@@ -378,6 +391,7 @@ class _TransportMixin:
 
     @Slot()
     def _on_blackout(self) -> None:
+        self._undo_go_end()
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
         self._live_phase_tags.clear()
@@ -430,6 +444,7 @@ class _TransportMixin:
         first_stopped = self._stopped_manual_go_index()
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
+        self._undo_go_end()
         self._live_phase_tags.clear()
         ShowEngine.demote_all_live(self._cues)
         self._refresh_cue_list()
@@ -446,6 +461,7 @@ class _TransportMixin:
     def _on_panic(self) -> None:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
         first_stopped = self._stopped_manual_go_index()
+        self._undo_go_end()
         self._live_phase_tags.clear()
         ShowEngine.demote_all_live(self._cues)
         self._refresh_cue_list()

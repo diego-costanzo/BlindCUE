@@ -79,6 +79,10 @@ class _MenuMixin:
             QAction("⏸ &Pausa / riprendi tutto", self, shortcut=QKeySequence("Ctrl+P"),
                     triggered=lambda: self.pause_all_toggled.emit())
         )
+        # Undo the last GO (1.18): no key on purpose (Ctrl+Z and Backspace edit).
+        self._act_undo_go = QAction("↶ Annulla l'ultimo GO", self, triggered=self._on_undo_go)
+        self._act_undo_go.setEnabled(False)
+        show_menu.addAction(self._act_undo_go)
         self._act_end_show = QAction("Termina lo spettacolo…", self, shortcut=QKeySequence("Ctrl+Shift+F5"),
                                      triggered=self._on_end_show_requested)
         self._act_end_show.setEnabled(False)
@@ -432,6 +436,7 @@ class _MenuMixin:
         lv.level_changed.connect(lambda v: self._set_master(level=v))
         lv.mute_changed.connect(lambda m: self._set_master(muted=m))
         self._live_show_panel.go_requested.connect(self._on_go)
+        self._live_show_panel.undo_go_requested.connect(self._on_undo_go)
         self._live_show_panel.force_go_requested.connect(self._on_go_forced)
         self._live_show_panel.cue_row_clicked.connect(lambda r: self._cue_list.setCurrentRow(r))
         self._live_show_panel.cue_row_double_clicked.connect(self._on_live_row_double_clicked)

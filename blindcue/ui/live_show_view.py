@@ -795,6 +795,7 @@ class LiveShowPanel(QWidget):
     break_loop_requested = Signal()
     double_click_armed = Signal(int)
     force_row_requested = Signal(int)
+    undo_go_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -1027,7 +1028,27 @@ class LiveShowPanel(QWidget):
         self.lbl_last_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_last_banner.setTextFormat(Qt.TextFormat.PlainText)  # names are typed by people
         lb_layout.addWidget(self.lbl_last_banner, stretch=1)
-        self.last_bar_layout = lb_layout  # step 6 puts "Undo GO" at its right end
+        self.last_bar_layout = lb_layout
+        # Undo the last GO (1.18): a fixed 180 px place at the right end, empty
+        # when there is nothing to undo (not greyed out). No keyboard focus:
+        # Space must stay GO; the keyboard way is the Show menu.
+        self._undo_slot = QWidget()
+        self._undo_slot.setFixedWidth(180)
+        us_layout = QHBoxLayout(self._undo_slot)
+        us_layout.setContentsMargins(0, 0, 0, 0)
+        self.btn_undo_go = QPushButton("")
+        self.btn_undo_go.setFixedHeight(24)
+        self.btn_undo_go.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        self.btn_undo_go.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_undo_go.setStyleSheet(
+            "QPushButton { background-color: #1e293b; color: #f8fafc; border: 1px solid #94a3b8; "
+            "border-radius: 4px; font-weight: bold; font-size: 12px; padding: 0px 8px; } "
+            "QPushButton:hover { background-color: #334155; border-color: #f8fafc; }"
+        )
+        self.btn_undo_go.clicked.connect(self.undo_go_requested)
+        self.btn_undo_go.setVisible(False)
+        us_layout.addWidget(self.btn_undo_go)
+        lb_layout.addWidget(self._undo_slot)
         self.last_bar.setVisible(False)  # until the first GO
         self._last_text = ""
         self._last_note = ""
@@ -1328,6 +1349,15 @@ class LiveShowPanel(QWidget):
         self._last_by_hand = by_hand
         self.last_bar.setVisible(bool(text))
         self._refresh_last_banner()
+
+    def set_undo_go(self, label: str, tooltip: str = "", accessible: str = "") -> None:
+        """Show "↶ Undo GO #5 · 12" (empty *label*: nothing to undo, the place stays empty)."""
+        self.btn_undo_go.setVisible(bool(label))
+        if label:
+            self.btn_undo_go.setText(label)
+            self.btn_undo_go.setToolTip(tooltip)
+            self.btn_undo_go.setAccessibleName(accessible or label)
+            self.btn_undo_go.setAccessibleDescription(tooltip)
 
     def last_started_age(self) -> float:
         """Seconds since the last start shown on the "Last" line."""

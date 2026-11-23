@@ -242,6 +242,7 @@ class _CueTableMixin:
             # Where the show was left: coming back to LIVE continues from here.
             self._live_resume_id = self._cues[self._go_target_index()].cue_id
         self._live_mode = enabled
+        self._undo_go_end()  # a change of mode ends the Undo GO offer
         if hasattr(self, "_act_live_mode"):
             self._act_live_mode.blockSignals(True)
             self._act_live_mode.setChecked(enabled)

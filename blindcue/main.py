@@ -102,6 +102,7 @@ from engine.player_test import TestPlayer
 from engine.show_engine import ShowEngine
 from engine.show_scheduler import ScheduledWindow, ShowScheduler
 from engine.sleep_inhibitor import SleepInhibitor
+from engine import undo_go
 from models.cue import (
     ACTION_CHECKLIST,
     ACTION_FADE,
@@ -1008,6 +1009,8 @@ def main() -> int:
             _fire_action_cue(cue)
             return
         layer = _effective_layer(cue)
+        # Undo GO brings back a picture this cue pushes off its layer.
+        main_win.note_replaced(cue, active_live_cues.get(layer))
         scheduler.cancel_layer(layer)
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
@@ -1026,6 +1029,41 @@ def main() -> int:
             _launch_cue_now(cue, layer, cur_gen)
 
     main_win.cue_fired.connect(_on_cue_fired)
+
+    def _on_undo_go(steps: list) -> None:
+        """Undo the last GO: only what it started, on the layers where it still is."""
+        by_id = {c.cue_id: c for c in main_win._cues}
+        for step in steps:
+            cue = by_id.get(step.cue_id)
+            if cue is None or step.how in (undo_go.KEEP, undo_go.CONTAINER, undo_go.ENDED):
+                continue
+            try:
+                layer = _effective_layer(cue)
+                if step.how == undo_go.CANCEL:
+                    pre = scheduler.pending_for_layer(layer, "PRE")
+                    if pre is not None and pre.cue.cue_id == cue.cue_id:
+                        _cancel_waiting_start(layer)
+                    continue
+                on_air = active_live_cues.get(layer)
+                if on_air is None or on_air.cue_id != cue.cue_id:
+                    continue  # something else took the layer since: leave it
+                back = by_id.get(step.restore_id) if step.how == undo_go.RESTORE else None
+                if back is not None:
+                    # The picture this cue replaced dissolves back in.
+                    scheduler.cancel_layer(layer)
+                    gen = layer_fire_gen.get(layer, 0) + 1
+                    layer_fire_gen[layer] = gen
+                    if getattr(back, "crossfade", 0.0) <= 0:
+                        _out_window(layer).begin_crossfade(_local_layer(layer), step.seconds)
+                    _launch_cue_now(back, layer, gen)
+                else:
+                    main_win.mark_layer_stopped(layer)
+                    _on_layer_clear_requested(layer, fade_override=step.seconds)
+                logger.info("[UNDO-GO] L%d %s '%s'", layer, step.how, cue.name)
+            except Exception as exc:
+                logger.error("[UNDO-GO] '%s' failed: %s", cue.name, exc, exc_info=True)
+
+    main_win.undo_go_requested.connect(_on_undo_go)
 
     # ── Handle per-layer EOF & Error cleanly ──────────────────────────
     def _on_live_eof(layer: int) -> None:

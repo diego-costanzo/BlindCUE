@@ -2276,4 +2276,36 @@ T: dict[str, str] = {
         '· rusza sam za {}',
     '· parte da sola dopo {}':
         '· rusza sam po {}',
+    "↶ Annulla l'ultimo GO":
+        '↶ Cofnij ostatnie GO',
+    'sfumo {} (1 s)':
+        'wygaszę {} (1 s)',
+    'tolgo {} dallo schermo':
+        'zdejmę {} z ekranu',
+    "l'immagine {} torna":
+        'obraz {} wróci',
+    '{} non è ancora partita: la annullo':
+        '{} jeszcze nie ruszył – anuluję',
+    '{} è già finita':
+        '{} już się skończył',
+    '{} interrotta: non torna da sola':
+        '{} przerwany – sam nie wróci',
+    "l'azione {} resta":
+        'akcja {} zostaje',
+    'prossima di nuovo {}':
+        'następny znów {}',
+    'Annullo:':
+        'Cofnę:',
+    '↶ Annulla GO {} · {}':
+        '↶ Cofnij GO {} · {}',
+    'Questo GO non si annulla (azione)':
+        'Tego GO nie cofnę (akcja)',
+    'Annulla GO {} ({} s)':
+        'Cofnij GO {} ({} s)',
+    'Nessun GO da annullare':
+        'Nie ma GO do cofnięcia',
+    '↶ GO {} annullato':
+        '↶ Cofnięto GO {}',
+    'GO {} annullato · prossima: {}':
+        'Cofnięto GO {} · następny: {}',
 }

@@ -37,6 +37,7 @@ from ui.main_window._persistence import _PersistenceMixin
 from ui.main_window._waveform_worker import _WaveformWorkerMixin
 from ui.main_window._preview import _PreviewMixin
 from ui.main_window._actions import _ActionsMixin
+from ui.main_window._undo_go import _UndoGoMixin
 
 
 class MainWindow(
@@ -61,6 +62,7 @@ class MainWindow(
     _WaveformWorkerMixin,
     _PreviewMixin,
     _ActionsMixin,
+    _UndoGoMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -69,6 +71,7 @@ class MainWindow(
     cue_preview_requested = Signal(object)         # emits Cue to load in preview
     layer_clear_requested = Signal(int)            # emits layer (1, 2, or 3)
     action_cancel_requested = Signal(int)          # emits cue_id of a deleted action cue
+    undo_go_requested = Signal(object)             # list[UndoStep]: take back the last GO
     blackout_requested = Signal()                        # emits when blackout triggered
     preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start
@@ -154,6 +157,7 @@ class MainWindow(
         self._master_muted: bool = False
         # "Loop Scena" groups a release action reached: they end after this pass.
         self._released_groups: set[int] = set()
+        self._undo_go_setup()  # Undo the last GO (stage 1.18)
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True

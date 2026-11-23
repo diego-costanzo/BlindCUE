@@ -44,6 +44,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "master_volume": ("blindcue/ui/master_volume.py", None),
     "recovery_choice": ("blindcue/ui/main_window/_persistence.py", "Ripeti l'ultima"),
     "last_started": ("blindcue/ui/live_show_view.py", "def set_last_started"),
+    "undo_go": ("blindcue/engine/undo_go.py", None),
 }
 
 
