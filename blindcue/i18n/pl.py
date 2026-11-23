@@ -1966,4 +1966,6 @@ T: dict[str, str] = {
         '🔒 Sterowanie warstwami chronione — odblokuj kłódką (1,2 s)',
     '🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]':
         '🚨  PANIC  —  STOP WSZYSTKIEGO   [ ESC ×2 ]',
+    'GO ignorato: secondo GO entro {} ms':
+        'GO zignorowane: drugie GO w ciągu {} ms',
 }
