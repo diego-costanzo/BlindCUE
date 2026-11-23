@@ -1754,4 +1754,6 @@ T: dict[str, str] = {
         '🔒 Layer Controls Protected — Unlock with the Padlock (1.2s)',
     '🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]':
         '🚨  PANIC  —  TOTAL STOP   [ ESC ×2 ]',
+    'GO ignorato: secondo GO entro {} ms':
+        'GO ignored: second GO within {} ms',
 }

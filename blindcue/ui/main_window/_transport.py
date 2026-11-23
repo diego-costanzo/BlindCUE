@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import time
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -12,7 +14,39 @@ from ui.main_window._common import (  # noqa: F401
 )
 
 
+GO_GUARD_SETTINGS_KEY = "live/go_guard_ms"
+GO_GUARD_DEFAULT_MS = 400
+
+
+def read_go_guard_ms() -> int:
+    """Double-GO guard window in ms from QSettings (0 = guard off)."""
+    try:
+        value = int(QSettings("BlindCue", "BlindCue").value(GO_GUARD_SETTINGS_KEY, GO_GUARD_DEFAULT_MS))
+    except (TypeError, ValueError):
+        value = GO_GUARD_DEFAULT_MS
+    return max(0, min(value, 5000))
+
+
 class _TransportMixin:
+    def _go_guard_allows(self) -> bool:
+        """Swallow a second GO that arrives within the guard window.
+
+        A double press of Space, a bouncing remote button or a double-click
+        would otherwise fire two cues in a row. The window is measured from
+        the last GO that was accepted; ``live/go_guard_ms`` = 0 disables it.
+        """
+        guard_ms = getattr(self, "_go_guard_ms", None)
+        if guard_ms is None:
+            guard_ms = self._go_guard_ms = read_go_guard_ms()
+        now = time.monotonic()
+        last = getattr(self, "_last_go_at", None)
+        if guard_ms > 0 and last is not None and (now - last) * 1000.0 < guard_ms:
+            self._status_label.setText(f"GO ignorato: secondo GO entro {guard_ms} ms")
+            logger.info("[GO] Ignored second GO within %d ms", guard_ms)
+            return False
+        self._last_go_at = now
+        return True
+
     @Slot()
     def _on_go_shortcut(self) -> None:
         """Keyboard Space trigger: suppressed while typing in text/spin/combo inputs."""
@@ -25,6 +59,8 @@ class _TransportMixin:
         """Direct GO trigger (GO buttons, double-click, programmatic calls): always fires."""
         if not self._cues:
             self._status_label.setText("Scaletta vuota — Aggiungi prima dei file multimediali")
+            return
+        if not self._go_guard_allows():
             return
 
         if hasattr(self, "_earcon_mgr"):
