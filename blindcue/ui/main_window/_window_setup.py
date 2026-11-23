@@ -162,19 +162,40 @@ class _WindowSetupMixin:
                 QPushButton:pressed {{ background-color: #00c853; }}
             """)
 
+    def _go_label(self) -> tuple[str, bool]:
+        """What the next GO will do, in words, and whether that is not a plain start.
+
+        The state is said in text and an icon first (colour comes last and is
+        never red). Order: keyboard elsewhere > the cue cannot play > GO held
+        by an exclusive cue > the cue already plays (GO restarts it) > ready.
+        """
+        if not self._cues:
+            return "GO (Next Cue) — [ SPAZIO ]", False
+        row = self._go_target_index()
+        cue = self._cues[row]
+        target = f"{format_cue_ref(row, cue)} '{cue.name}'"
+        if getattr(self, "_focus_lost_shown", False):
+            return f"⌨ GO: {target} — clicca qui: la tastiera è altrove", True
+        if cue.status == CueStatus.OFFLINE:
+            return f"⚠ GO: {target} — file mancante", True
+        blocker = self._exclusive_blocker()
+        if blocker is not None and blocker is not cue:
+            return f"⏳ GO in attesa: '{blocker.name}' è esclusiva — Ctrl+Spazio per forzare", True
+        if cue.status == CueStatus.LIVE:
+            return f"↻ GO: {target} — è già in onda, riparte", True
+        return f"▶ GO: {target}", False
+
     def _update_go_button_text(self) -> None:
-        """The design-view GO names the cue it will fire (its target is the selection)."""
-        btn = getattr(self, "_btn_go", None)
-        if btn is None:
+        """Both GO buttons (design view and LIVE) say what the next GO will do."""
+        text, warn = self._go_label()
+        if (text, warn) == getattr(self, "_go_button_source", None):
             return
-        if self._cues:
-            row = self._go_target_index()
-            text = f"GO ▶ {format_cue_ref(row, self._cues[row])}  {self._cues[row].name}"
-        else:
-            text = "GO (Next Cue) — [ SPAZIO ]"
-        if text != getattr(self, "_go_button_source", None):
-            self._go_button_source = text
+        self._go_button_source = (text, warn)
+        btn = getattr(self, "_btn_go", None)
+        if btn is not None:
             btn.set_full_text(text)
+        if hasattr(self, "_live_show_panel"):
+            self._live_show_panel.set_go_label(text, warn)
 
     def _set_earcons_enabled(self, enabled: bool) -> None:
         """Enable or disable auditory accessibility guidance chimes and persist setting."""
@@ -271,6 +292,7 @@ class _WindowSetupMixin:
         if lost == getattr(self, "_focus_lost_shown", False):
             return
         self._focus_lost_shown = lost
+        self._update_go_button_text()
         if hasattr(self, "_live_show_panel"):
             self._live_show_panel.set_focus_warning(lost)
         if lost:

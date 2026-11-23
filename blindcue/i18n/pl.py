@@ -2166,4 +2166,14 @@ T: dict[str, str] = {
         '⚠ Naciśnij ESC jeszcze raz w ciągu 0,6 s, aby włączyć PANIC (0 ms)',
     "Aggiunta dopo '{}', alla fine della catena Simultanea / Auto-GO o del gruppo":
         'Dodano za „{}” – na końcu łańcucha Razem / Auto-GO albo grupy',
+    '▶ GO: {}':
+        '▶ GO: {}',
+    '⌨ GO: {} — clicca qui: la tastiera è altrove':
+        '⌨ GO: {} — kliknij tutaj: klawiatura jest w innym oknie',
+    '⚠ GO: {} — file mancante':
+        '⚠ GO: {} — brak pliku',
+    "⏳ GO in attesa: '{}' è esclusiva — Ctrl+Spazio per forzare":
+        '⏳ GO czeka: „{}” jest wyłączny — Ctrl+Spacja wymusza',
+    '↻ GO: {} — è già in onda, riparte':
+        '↻ GO: {} — już gra, zacznie od nowa',
 }
