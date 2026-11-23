@@ -40,6 +40,7 @@ from ui.main_window._actions import _ActionsMixin
 from ui.main_window._undo_go import _UndoGoMixin
 from ui.main_window._readiness import _ReadinessMixin
 from ui.main_window._now_playing import _NowPlayingMixin
+from ui.main_window._announce import _AnnounceMixin
 
 
 class MainWindow(
@@ -67,6 +68,7 @@ class MainWindow(
     _UndoGoMixin,
     _ReadinessMixin,
     _NowPlayingMixin,
+    _AnnounceMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -77,6 +79,7 @@ class MainWindow(
     action_cancel_requested = Signal(int)          # emits cue_id of a deleted action cue
     undo_go_requested = Signal(object)             # list[UndoStep]: take back the last GO
     release_loop_requested = Signal(int)           # runtime layer: its loop ends after this pass
+    layer_trim_requested = Signal(int, float)      # runtime layer, operator level correction 0..1
     blackout_requested = Signal()                        # emits when blackout triggered
     preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start
@@ -164,6 +167,9 @@ class MainWindow(
         self._released_groups: set[int] = set()
         self._undo_go_setup()  # Undo the last GO (stage 1.18)
         self._paused_slots: set[int] = set()  # runtime layers paused one by one (Now playing)
+        self._trims: dict[int, float] = {}    # runtime layer -> operator level correction
+        self._ramps: dict[int, tuple[str, float]] = {}  # runtime layer -> (ramp text, ends at)
+        self._held_auto_go: set[int] = set()  # cues whose Auto-GO waits for a GO instead
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True

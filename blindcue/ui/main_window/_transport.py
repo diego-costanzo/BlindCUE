@@ -117,6 +117,7 @@ class _TransportMixin:
             self._status_label.setText("Scaletta vuota — Aggiungi prima dei file multimediali")
             return
         if not self._manual_go_allowed():
+            self.announce(self._status_label.text(), assertive=True)  # a blocked GO says why (W17)
             return
 
         if hasattr(self, "_earcon_mgr"):
@@ -127,9 +128,11 @@ class _TransportMixin:
         target_idx = self._go_target_index()
         self._remember_manual_go(target_idx)
         self._fire_cue_chain(target_idx)
+        self.announce(self._status_label.text())
 
     def _set_master(self, level: float | None = None, muted: bool | None = None) -> None:
         """Master volume of the show (both copies of the control stay in step)."""
+        was_muted = self._master_muted
         if level is not None:
             self._master_level = max(0.0, min(1.0, float(level)))
         if muted is not None:
@@ -140,10 +143,13 @@ class _TransportMixin:
                 mv.set_state(self._master_level, self._master_muted)
         gain = 0.0 if self._master_muted else self._master_level
         self.master_gain_changed.emit(gain)
+        mute_changed = was_muted != self._master_muted
         if self._master_muted:
             self._status_label.setText("🔇 Tutto silenziato (volume generale) — Ctrl+M per riattivare")
         else:
             self._status_label.setText(f"Volume generale {int(round(self._master_level * 100))} %")
+        if mute_changed:
+            self.announce(self._status_label.text(), assertive=True)
 
     def _nudge_master(self, delta: float) -> None:
         self._set_master(level=self._master_level + delta)
@@ -155,6 +161,7 @@ class _TransportMixin:
         """A cue was started (GO, Auto-GO, chain, group): ✓ in the list, and in which order."""
         self._played_ids.add(cue.cue_id)
         self._undo_go_collect(cue)
+        self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again
         self._fire_seq += 1
         self._fired_at[cue.cue_id] = self._fire_seq
         if cue.parent_id in self._released_groups:

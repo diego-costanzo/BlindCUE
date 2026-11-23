@@ -285,6 +285,9 @@ class _CueTableMixin:
             ShowRuntimeGuard.on_live_mode_exit()
             QTimer.singleShot(0, self._apply_top_splitter_ratios)
             self._status_label.setText("MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate")
+        self._update_readiness_warning()
+        self._update_preview_timer()  # the output preview runs only in the show
+        self.announce(self._status_label.text(), assertive=True)  # a change of mode (W17)
         if hasattr(self, "_update_focus_warning"):
             self._update_focus_warning()
 
@@ -352,6 +355,7 @@ class _CueTableMixin:
         if allows(self._current_mode(), change):
             return True
         self._status_label.setText(BLOCKED_MESSAGES.get(change, ""))
+        self.announce(self._status_label.text(), assertive=True)
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_alert()
         return False

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from i18n import tr
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -429,6 +431,8 @@ class _RemoteMixin:
                 layer_idx=slot,
             )
         if not preserve_timing:
+            self._trims.pop(slot, None)   # a new cue plays at its own level
+            self._ramps.pop(slot, None)
             timed = cue.media_type in (MediaType.AUDIO, MediaType.VIDEO) or (
                 cue.media_type == MediaType.IMAGE and cue.hold_time > 0
             )
@@ -573,6 +577,14 @@ class _RemoteMixin:
         """
         next_idx = ShowEngine.auto_follow_target(self._cues, finished_cue, self._released_groups)
         if next_idx < 0:
+            return
+        if finished_cue.cue_id in self._held_auto_go:
+            # "Hold" on the NEXT bar: this time the next cue waits for a GO.
+            self._held_auto_go.discard(finished_cue.cue_id)
+            self._live_show_panel.set_auto_go_held(self._held_auto_go)
+            ref = format_cue_ref(next_idx, self._cues[next_idx])
+            self._status_label.setText(tr("Auto-GO fermato: {} aspetta il GO").format(ref))
+            logger.info("[AUTO-GO] held by the operator: '%s' waits for a GO", self._cues[next_idx].name)
             return
         target = self._cues[next_idx]
         source_at = self._fired_at.get(finished_cue.cue_id)

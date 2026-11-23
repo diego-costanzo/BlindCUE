@@ -53,6 +53,7 @@ from ui.cue_table import (
     ROLE_OUTPUT_TARGET,
     ROLE_PARENT_ID,
     ROLE_PHASE_TXT,
+    ROLE_PAUSED,
     ROLE_PLAYED,
     ROLE_POST_DELAY,
     ROLE_PRE_DELAY,
@@ -639,8 +640,10 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     painter.setPen(QColor("#ffffff") if is_mono else QColor("#fbbf24"))
                 else:
                     painter.setPen(QColor("#ffffff") if is_mono else QColor("#4ade80"))
-                # "-00:45∞" / "⏳-00:03" are a little wider than a length
-                painter.drawText(dur_rect.adjusted(-6, 0, 6, 0), Qt.AlignmentFlag.AlignCenter, live_txt)
+                # "-00:45∞" / "⏳-00:03" are a little wider than a length; the
+                # ends-soon warning is a sign as well as a colour (W36).
+                shown = f"⚠{live_txt}" if live_warn else live_txt
+                painter.drawText(dur_rect.adjusted(-8, 0, 8, 0), Qt.AlignmentFlag.AlignCenter, shown)
             else:
                 painter.setPen(QColor("#f4f4f5") if is_mono else QColor("#e2e8f0"))
                 painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
@@ -762,6 +765,14 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     st_border = QColor("#1e293b")
                     st_fg = QColor("#64748b")
 
+            if is_live and bool(index.data(ROLE_PAUSED)):
+                # Paused is a state of its own, in a word and a sign (W35).
+                st_label = "⏸ PAUSA"
+                if is_mono:
+                    st_bg, st_border, st_fg = QColor("#ffffff"), QColor("#ffffff"), QColor("#111111")
+                else:
+                    st_bg, st_border, st_fg = QColor("#451a03"), QColor("#f59e0b"), QColor("#fbbf24")
+
             fm_st = painter.fontMetrics()
             sw = max(72, fm_st.horizontalAdvance(st_label) + 12)
             sh = 20
@@ -798,6 +809,7 @@ class LiveShowPanel(QWidget):
     force_row_requested = Signal(int)
     undo_go_requested = Signal()
     readiness_review_requested = Signal()
+    hold_auto_go_requested = Signal(int)   # cue_id whose Auto-GO should wait for a GO
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -1077,6 +1089,7 @@ class LiveShowPanel(QWidget):
         self.last_bar.setVisible(False)  # until the first GO
         self._last_text = ""
         self._last_note = ""
+        self._paused_ids: set[int] = set()
         self._last_at = 0.0
         self._last_by_hand = False
         self._last_hot: bool | None = None
@@ -1114,6 +1127,21 @@ class LiveShowPanel(QWidget):
         self._set_standby_note("")
         sb_lines.addWidget(self.lbl_standby_note)
         sb_layout.addLayout(sb_lines, stretch=1)
+        # "Hold": the coming Auto-GO waits for a GO (an actor is late); Pause
+        # All would stop the music as well.
+        self.btn_hold_auto = QPushButton("Trattieni")
+        self.btn_hold_auto.setFixedHeight(26)
+        self.btn_hold_auto.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Space stays GO
+        self.btn_hold_auto.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_hold_auto.setToolTip("L'Auto-GO aspetta il GO: la prossima cue non parte da sola")
+        self.btn_hold_auto.setStyleSheet(
+            "QPushButton { background-color: #0c2638; color: #7dd3fc; border: 1px solid #38bdf8; "
+            "border-radius: 4px; font-weight: bold; font-size: 12px; padding: 0px 10px; }"
+        )
+        self.btn_hold_auto.clicked.connect(self._on_hold_auto_clicked)
+        self.btn_hold_auto.setVisible(False)
+        sb_layout.addWidget(self.btn_hold_auto)
+        self._held_ids: set[int] = set()
         self._standby_base = ""          # line 1 without "how it starts"
         self._standby_waits_on: tuple[int, str] | None = None  # (cue_id, "#3") of an Auto-GO
 
@@ -1448,12 +1476,27 @@ class LiveShowPanel(QWidget):
         if not self._standby_base:
             return
         how = tr("· manuale (GO)")
-        if self._standby_waits_on is not None:
-            cue_id, ref = self._standby_waits_on
+        waits = self._standby_waits_on
+        if waits is not None and waits[0] in self._held_ids:
+            how = tr("· aspetta il GO (Auto-GO fermato)")
+        elif waits is not None:
+            cue_id, ref = waits
             live = self._live_times.get(cue_id)
             left = live[0][1:] if live and live[0].startswith("-") else ""
             how = tr("· parte da sola tra {}").format(left) if left else tr("· parte da sola dopo {}").format(ref)
         self.lbl_standby_banner.setText(f"{self._standby_base}  {how}")
+        self.btn_hold_auto.setVisible(waits is not None)
+        if waits is not None:
+            self.btn_hold_auto.setText(tr("Riprendi Auto-GO") if waits[0] in self._held_ids else tr("Trattieni"))
+
+    def _on_hold_auto_clicked(self) -> None:
+        if self._standby_waits_on is not None:
+            self.hold_auto_go_requested.emit(self._standby_waits_on[0])
+
+    def set_auto_go_held(self, ids: set[int]) -> None:
+        """Cues whose Auto-GO waits for a GO this time (said on the NEXT bar)."""
+        self._held_ids = set(ids)
+        self._refresh_standby_how()
 
     def _on_table_clicked(self, row: int, col: int) -> None:
         if not self._updating_table and row >= 0:
@@ -1766,6 +1809,30 @@ class LiveShowPanel(QWidget):
         item.setData(ROLE_LIVE_TIME, text)
         item.setData(ROLE_LIVE_FRACTION, fraction)
         item.setData(ROLE_LIVE_WARN, warn)
+        # What is only painted, in words for screen readers (W21); the text
+        # changes once a second at most (mm:ss).
+        if text:
+            spoken = tr("tempo: {}").format(text)
+            if warn:
+                spoken += ", " + tr("finisce – il prossimo GO è tuo")
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, spoken)
+        else:
+            item.setData(Qt.ItemDataRole.AccessibleTextRole, None)
+
+    def set_paused_cues(self, ids: set[int]) -> None:
+        """Cues on air that a pause holds: "⏸ PAUSED" instead of "● LIVE" (W35)."""
+        ids = set(ids)
+        if ids == self._paused_ids:
+            return
+        changed = ids ^ self._paused_ids
+        self._paused_ids = ids
+        for cue_id in changed:
+            row = self._cue_id_to_row.get(cue_id)
+            item = self.live_table.item(row, 5) if row is not None else None
+            if item is not None:
+                item.setData(ROLE_PAUSED, cue_id in ids)
+                item.setData(Qt.ItemDataRole.AccessibleTextRole,
+                             tr("in pausa") if cue_id in ids else tr("in onda"))
 
     def set_live_times(self, times: dict[int, tuple[str, float, bool]]) -> None:
         """Redraw only the time cells of the cues on air (called by the 10 Hz clock).
@@ -1918,6 +1985,15 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_STATUS_TXT, status_txt)
                     it.setData(ROLE_STATUS_CLR, status_clr)
                     it.setData(ROLE_PLAYED, cue.cue_id in played_ids)
+                    if c_idx == 0:
+                        played_word = (", " + tr("✓ suonata")) if cue.cue_id in played_ids else ""
+                        it.setData(Qt.ItemDataRole.AccessibleTextRole, f"{r + 1}{played_word}")
+                    elif c_idx == 5:
+                        paused = is_live and cue.cue_id in self._paused_ids
+                        it.setData(ROLE_PAUSED, paused)
+                        word = (tr("in pausa") if paused else tr("in onda")) if is_live else (
+                            tr("prossima") if is_standby else (tr("in attesa") if is_waiting else tr("pronta")))
+                        it.setData(Qt.ItemDataRole.AccessibleTextRole, word)
                     if c_idx == 4:
                         self._apply_live_time(it, self._live_times.get(cue.cue_id))
                     if conflict_txt:
@@ -1990,6 +2066,7 @@ class LiveShowPanel(QWidget):
                 self.live_table.clearSelection()
                 self._standby_base = ""
                 self._standby_waits_on = None
+                self.btn_hold_auto.setVisible(False)
                 self.lbl_standby_banner.setText("Nessuna cue pronta in scaletta")
                 self._set_standby_note("")
                 self.btn_go.setToolTip(

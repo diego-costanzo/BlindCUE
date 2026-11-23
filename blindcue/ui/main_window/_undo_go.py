@@ -187,4 +187,5 @@ class _UndoGoMixin:
         self._status_label.setText(
             tr("GO {} annullato · prossima: {}").format(first_ref, self._undo_ref(rec.first_id))
         )
+        self.announce(self._status_label.text(), assertive=True)
 

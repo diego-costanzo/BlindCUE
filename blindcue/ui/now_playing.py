@@ -22,9 +22,12 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSlider,
     QVBoxLayout,
     QWidget,
 )
+
+from ui.hold_button import HoldProgressButton
 
 TIMED = "timed"    # audio / video / picture with a hold time: full card
 STILL = "still"    # picture, caption without an end: one line
@@ -52,6 +55,44 @@ class CardState:
     paused: bool = False
     loop: bool = False
     slot: int = 0              # runtime layer for the controls
+    trim: float = 1.0          # operator's level correction (1.0 = the cue's own level)
+    seekable: bool = False     # audio/video: -10 s / +10 s
+
+
+class _TrimSlider(QSlider):
+    """Level correction 0-100 %: the wheel works only after a click on it, Home/End
+    do nothing (never silence or full by accident, W46), Ctrl+click = the cue's level."""
+
+    reset_requested = Signal()
+
+    def __init__(self) -> None:
+        super().__init__(Qt.Orientation.Horizontal)
+        self.setRange(0, 100)
+        self.setSingleStep(1)
+        self.setPageStep(10)
+        self.setFocusPolicy(Qt.FocusPolicy.ClickFocus)
+
+    def wheelEvent(self, event) -> None:  # noqa: N802
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802
+        if event.key() in (Qt.Key.Key_Home, Qt.Key.Key_End):
+            event.accept()
+            return
+        if event.key() in (Qt.Key.Key_Up, Qt.Key.Key_Down, Qt.Key.Key_Space):
+            event.ignore()  # arrows move the next cue, Space is GO
+            return
+        super().keyPressEvent(event)
+
+    def mousePressEvent(self, event) -> None:  # noqa: N802
+        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+            self.reset_requested.emit()
+            event.accept()
+            return
+        super().mousePressEvent(event)
 
 
 class _Card(QFrame):
@@ -108,8 +149,26 @@ class _Card(QFrame):
             self.btn_release = self._button("Rilascia loop", "Il loop finisce dopo questo giro")
             self.btn_release.clicked.connect(lambda: panel.release_requested.emit(self.slot))
             line3.addWidget(self.btn_release)
-            line3.addStretch(1)
+            # Jumps are held for half a second: a stray click never moves the music.
+            self.btn_back = self._hold_button("−10 s", "Indietro di 10 s (tieni premuto)")
+            self.btn_back.hold_completed.connect(lambda: panel.seek_requested.emit(self.slot, -10.0))
+            line3.addWidget(self.btn_back)
+            self.btn_fwd = self._hold_button("+10 s", "Avanti di 10 s (tieni premuto)")
+            self.btn_fwd.hold_completed.connect(lambda: panel.seek_requested.emit(self.slot, 10.0))
+            line3.addWidget(self.btn_fwd)
+            self.slider = _TrimSlider()
+            self.slider.setToolTip("Livello di questa cue (Ctrl+clic = livello della cue)")
+            self.slider.setAccessibleName("Livello di questa cue")
+            self.slider.setMinimumWidth(56)
+            self.slider.valueChanged.connect(self._on_slider)
+            self.slider.reset_requested.connect(lambda: self.slider.setValue(100))
+            line3.addWidget(self.slider, stretch=1)
+            self.lbl_trim = QLabel("100 %")
+            self.lbl_trim.setMinimumWidth(38)
+            self.lbl_trim.setStyleSheet("QLabel { color: #cbd5e1; font-size: 11px; }")
+            line3.addWidget(self.lbl_trim)
             outer.addLayout(line3)
+            self._panel = panel
         else:
             self.setFixedHeight(34)
             outer.setContentsMargins(8, 2, 8, 2)
@@ -120,6 +179,21 @@ class _Card(QFrame):
                 self.btn_fade.clicked.connect(lambda: panel.note_dismissed.emit(self.cue_id))
             line1.addWidget(self.btn_fade)
         self._last: CardState | None = None
+        self._setting = False
+
+    def _on_slider(self, value: int) -> None:
+        self.lbl_trim.setText(f"{value} %")
+        if not self._setting:
+            self._panel.trim_requested.emit(self.slot, value / 100.0)
+
+    @staticmethod
+    def _hold_button(text: str, tip: str) -> HoldProgressButton:
+        btn = HoldProgressButton(text_idle=text, hold_ms=500, is_toggle=False, fill_color="#38bdf8")
+        btn.setToolTip(tip)
+        btn.setAccessibleName(tip)
+        btn.setFixedSize(52, 26)
+        btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        return btn
 
     @staticmethod
     def _button(text: str, tip: str) -> QPushButton:
@@ -155,6 +229,12 @@ class _Card(QFrame):
             self.bar.setValue(int(st.fraction * 1000))
         self.btn_pause.setText("▶" if st.paused else "⏸")
         self.btn_release.setVisible(st.loop)
+        self.btn_back.setVisible(st.seekable)
+        self.btn_fwd.setVisible(st.seekable)
+        if not self.slider.isSliderDown() and not self.slider.hasFocus():
+            self._setting = True
+            self.slider.setValue(round(st.trim * 100))
+            self._setting = False
         self.setAccessibleName(" ".join(x for x in (st.title, st.layer, st.state, st.remaining) if x))
 
 
@@ -165,6 +245,9 @@ class NowPlayingPanel(QFrame):
     fade_requested = Signal(int)      # runtime layer
     release_requested = Signal(int)   # runtime layer
     note_dismissed = Signal(int)      # cue_id of the note
+    seek_requested = Signal(int, float)   # runtime layer, seconds (-10 / +10)
+    trim_requested = Signal(int, float)   # runtime layer, level correction 0..1
+    preview_toggled = Signal(bool)        # the output preview opened / folded
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -176,6 +259,23 @@ class NowPlayingPanel(QFrame):
         root = QVBoxLayout(self)
         root.setContentsMargins(6, 6, 6, 6)
         root.setSpacing(4)
+        # What the audience sees, small, on top; folds to its header ("▾").
+        self.btn_preview = QPushButton("▾ ANTEPRIMA USCITA")
+        self.btn_preview.setCheckable(True)
+        self.btn_preview.setChecked(True)
+        self.btn_preview.setFixedHeight(22)
+        self.btn_preview.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.btn_preview.setStyleSheet(
+            "QPushButton { background: transparent; color: #94a3b8; border: none; font-weight: bold; "
+            "font-size: 11px; text-align: left; } QPushButton:focus { color: #ffffff; }")
+        self.btn_preview.toggled.connect(self._on_preview_toggled)
+        root.addWidget(self.btn_preview)
+        self.lbl_preview = QLabel()
+        self.lbl_preview.setFixedSize(240, 135)
+        self.lbl_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.lbl_preview.setStyleSheet("QLabel { background-color: #000000; border: 1px solid #334155; }")
+        self.lbl_preview.setAccessibleName("Anteprima dell'uscita")
+        root.addWidget(self.lbl_preview, alignment=Qt.AlignmentFlag.AlignHCenter)
         self.lbl_header = QLabel("ORA IN ONDA")
         self.lbl_header.setFixedHeight(20)
         self.lbl_header.setStyleSheet("QLabel { color: #94a3b8; font-weight: bold; font-size: 11px; }")
@@ -195,6 +295,24 @@ class NowPlayingPanel(QFrame):
         scroll.setWidget(box)
         root.addWidget(scroll, stretch=1)
         self._cards: dict[int, _Card] = {}   # cue_id -> card (fixed places)
+
+    def _on_preview_toggled(self, shown: bool) -> None:
+        self.btn_preview.setText(("▾ " if shown else "▸ ") + self._preview_title)
+        self.lbl_preview.setVisible(shown)
+        self.preview_toggled.emit(shown)
+
+    _preview_title = "ANTEPRIMA USCITA"
+
+    def set_preview_title(self, title: str) -> None:
+        """Header of the preview, e.g. with the screen it goes to."""
+        self._preview_title = title
+        self.btn_preview.setText(("▾ " if self.btn_preview.isChecked() else "▸ ") + title)
+
+    def set_preview(self, pixmap) -> None:
+        self.lbl_preview.setPixmap(pixmap)
+
+    def preview_shown(self) -> bool:
+        return self.btn_preview.isChecked()
 
     def cards(self) -> dict[int, _Card]:
         return dict(self._cards)

@@ -103,6 +103,11 @@ class LiveClocks:
         self._layers.clear()
         self._waits.clear()
 
+    def layer_position(self, layer: int) -> float | None:
+        """Last reported position (seconds in the file) of the cue on *layer*."""
+        clock = self._layers.get(layer)
+        return clock.pos if clock is not None and clock.timed else None
+
     def is_empty(self) -> bool:
         return not self._layers and not self._waits
 

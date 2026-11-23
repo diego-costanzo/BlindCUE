@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from engine.live_state import WARN_BEFORE_END_SEC
 from models.cue import Cue, MediaType
 from ui.hold_button import HoldProgressButton
 from ui.theme import CLR_LIVE, CLR_PREVIZ, get_active_theme
@@ -366,7 +367,9 @@ class _LiveLayerBar(QWidget):
             if self._is_looping_inf:
                 right_str = f"-{_fmt_mmss(remaining)} ∞" if remaining is not None else "∞ LOOP"
             elif remaining is not None:
-                right_str = f"-{_fmt_mmss(remaining)}"
+                # The same ends-soon sign as the list and the cards (W36).
+                soon = remaining <= WARN_BEFORE_END_SEC
+                right_str = f"{'⚠' if soon else ''}-{_fmt_mmss(remaining)}"
             else:
                 right_str = "--:--"
         return is_timed, progress, left_str, right_str, remaining
@@ -502,14 +505,12 @@ class _LiveLayerBar(QWidget):
 
         if right_str:
             p.setFont(mono)
+            # One threshold in the whole program, amber and a sign, never red (W36).
+            soon = remaining is not None and not self._is_looping_inf and remaining <= WARN_BEFORE_END_SEC
             if is_mono:
-                r_clr = QColor("#ffffff" if (remaining is not None and not self._is_looping_inf and remaining <= 5.0) else "#f4f4f5")
+                r_clr = QColor("#ffffff" if soon else "#f4f4f5")
             else:
-                if self._is_paused:
-                    r_clr = QColor("#fbbf24")
-                elif remaining is not None and not self._is_looping_inf and remaining <= 5.0:
-                    r_clr = QColor("#ff8080")
-                elif remaining is not None and not self._is_looping_inf and remaining <= 12.0:
+                if self._is_paused or soon:
                     r_clr = QColor("#fbbf24")
                 else:
                     r_clr = QColor("#d1fae5")

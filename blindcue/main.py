@@ -980,6 +980,7 @@ def main() -> int:
                     lp = live_players[l_idx]
                     trim = level_trim_after(spec, lp.level_trim(), active_live_cues[l_idx].volume)
                     lp.ramp_level(trim, seconds, curve)
+                    main_win.note_level_ramp(l_idx, trim, seconds, cue)  # shown on that card
             elif kind == ACTION_OPACITY:
                 for l_idx in layers:
                     _out_window(l_idx).fade_layer_master(
@@ -1073,6 +1074,14 @@ def main() -> int:
         logger.info("[LIVE] Loop released on L%d (file/section: %s, scene: %s)", layer, by_player, by_group)
 
     main_win.release_loop_requested.connect(_on_release_loop)
+
+    def _on_layer_trim(layer: int, trim: float) -> None:
+        """The level slider of a card: the operator's correction of that cue (not saved)."""
+        lp = live_players.get(layer)
+        if lp is not None and active_live_cues.get(layer) is not None:
+            lp.ramp_level(trim, 0.15)
+
+    main_win.layer_trim_requested.connect(_on_layer_trim)
 
     # ── Handle per-layer EOF & Error cleanly ──────────────────────────
     def _on_live_eof(layer: int) -> None:

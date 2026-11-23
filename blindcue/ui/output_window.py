@@ -1219,6 +1219,17 @@ class OutputWindow(QWidget):
 
     # ── Video Widget & Public API ─────────────────────────────────────
 
+    def preview_image(self, width: int, height: int) -> QImage:
+        """What the audience sees, small (the show's output preview, stage 1 C2a step 8c)."""
+        image = QImage(width, height, QImage.Format.Format_RGB32)
+        image.fill(QColor("#000000"))
+        painter = QPainter(image)
+        painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+        self._scene.render(painter, QRectF(0, 0, width, height), self._scene.sceneRect(),
+                           Qt.AspectRatioMode.KeepAspectRatio)
+        painter.end()
+        return image
+
     def get_video_widget(self, layer: int = 1) -> QGraphicsVideoItem:
         """Return the native video item for QMediaPlayer.setVideoOutput() on *layer*."""
         return self._video_items.get(layer, self._video_items[1])

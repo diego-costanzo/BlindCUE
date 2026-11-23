@@ -2220,4 +2220,54 @@ T: dict[str, str] = {
         'waits {}',
     'LOOP ∞':
         'LOOP ∞',
+    '⏸ PAUSA':
+        '⏸ PAUSED',
+    'tempo: {}':
+        'time: {}',
+    'finisce – il prossimo GO è tuo':
+        'ends soon – the next GO is yours',
+    '✓ suonata':
+        '✓ played',
+    'in pausa':
+        'paused',
+    'in onda':
+        'on air',
+    'prossima':
+        'next',
+    'in attesa':
+        'waiting',
+    'pronta':
+        'ready',
+    'Indietro di 10 s (tieni premuto)':
+        'Back 10 s (hold)',
+    'Avanti di 10 s (tieni premuto)':
+        'Forward 10 s (hold)',
+    'Livello di questa cue (Ctrl+clic = livello della cue)':
+        "Level of this cue (Ctrl+click = the cue's own level)",
+    'Livello di questa cue':
+        'Level of this cue',
+    '{} a {} % ({} s) da {}':
+        '{} to {} % ({} s) by {}',
+    'Auto-GO dopo {} di nuovo attivo':
+        'Auto-GO after {} works again',
+    'Auto-GO dopo {} fermato: la prossima aspetta il GO':
+        'Auto-GO after {} held: the next cue waits for a GO',
+    'Auto-GO fermato: {} aspetta il GO':
+        'Auto-GO held: {} waits for a GO',
+    'Trattieni':
+        'Hold',
+    'Riprendi Auto-GO':
+        'Let Auto-GO run',
+    "L'Auto-GO aspetta il GO: la prossima cue non parte da sola":
+        'The Auto-GO waits for a GO: the next cue does not start by itself',
+    '· aspetta il GO (Auto-GO fermato)':
+        '· waits for a GO (Auto-GO held)',
+    '▾ ANTEPRIMA USCITA':
+        '▾ OUTPUT PREVIEW',
+    '▸ ANTEPRIMA USCITA':
+        '▸ OUTPUT PREVIEW',
+    'ANTEPRIMA USCITA':
+        'OUTPUT PREVIEW',
+    "Anteprima dell'uscita":
+        'Output preview',
 }

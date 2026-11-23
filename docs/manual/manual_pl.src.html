@@ -380,6 +380,14 @@ stan tylko gdy jest wyjątkiem (<b>PAUZA</b>, <b>PĘTLA ∞</b>, <b>startuje za 
 tego cue: <b>⏸</b> pauza, <b>Wygaś</b>, <b>Zwolnij pętlę</b>. Obrazy i napisy zajmują jedną linię z <b>Wygaś</b>.
 Nowy cue dostaje pierwsze wolne miejsce, więc karty nie skaczą. Panel warstw i kłódka zostają
 w Przygotowaniu; <b>Pauza wszystko</b> stoi obok GO.</li><!--/IF:now_playing-->
+<!--IF:now_playing--><li>Na karcie dźwięku i wideo są też <b>−10 s</b> / <b>+10 s</b> (przytrzymaj pół sekundy,
+żeby przypadkowe kliknięcie nie przesunęło muzyki) i suwak <b>poziomu tego cue</b> – Twoja korekta tylko na teraz
+(kółko myszy działa dopiero po kliknięciu w suwak, <kbd>Ctrl</kbd>+klik wraca do poziomu z cue). Gdy cue akcji
+zmienia poziom, karta celu pokazuje to na bieżąco, np. <b>↘ do 20 % (2,0 s) przez #7</b>. Gdy następny cue ruszy
+sam (Auto-GO poprzedniego), pasek <b>▶ NASTĘPNY</b> ma przycisk <b>Wstrzymaj</b>: tym razem następny poczeka
+na Twoje GO (np. aktor się spóźnia) – <b>Pauza wszystko</b> zatrzymałaby też muzykę. Na górze kolumny jest
+<b>Podgląd wyjścia</b> – to, co widzi widownia, w małym okienku (do 5 klatek na sekundę); <b>▾</b> zwija go,
+program pamięta to na tym komputerze.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.<!--IF:now_playing--> W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <!--IFNOT:mode_tabs--><li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Powrót do przygotowania</b>: przytrzymaj zakładkę <b>○ Przygotowanie</b> przez 1,5 s albo <b>Sterowanie → Zakończ przedstawienie…</b> (<kbd>Ctrl+Shift+F5</kbd>); to, co gra, gra dalej. <kbd>F5</kbd> i <kbd>Ctrl+L</kbd> tylko wchodzą – przypadkowe naciśnięcie nie wyrzuci Cię z przedstawienia. Alt+F4 w czasie przedstawienia najpierw pyta.</li><!--/IF:mode_tabs-->

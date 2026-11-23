@@ -2442,4 +2442,54 @@ T: dict[str, str] = {
         'czeka {}',
     'LOOP ∞':
         'PĘTLA ∞',
+    '⏸ PAUSA':
+        '⏸ PAUZA',
+    'tempo: {}':
+        'czas: {}',
+    'finisce – il prossimo GO è tuo':
+        'kończy się – następne GO należy do Ciebie',
+    '✓ suonata':
+        '✓ zagrany',
+    'in pausa':
+        'pauza',
+    'in onda':
+        'gra',
+    'prossima':
+        'następny',
+    'in attesa':
+        'czeka',
+    'pronta':
+        'gotowy',
+    'Indietro di 10 s (tieni premuto)':
+        '10 s do tyłu (przytrzymaj)',
+    'Avanti di 10 s (tieni premuto)':
+        '10 s do przodu (przytrzymaj)',
+    'Livello di questa cue (Ctrl+clic = livello della cue)':
+        'Poziom tego cue (Ctrl+klik = poziom z cue)',
+    'Livello di questa cue':
+        'Poziom tego cue',
+    '{} a {} % ({} s) da {}':
+        '{} do {} % ({} s) przez {}',
+    'Auto-GO dopo {} di nuovo attivo':
+        'Auto-GO po {} znów działa',
+    'Auto-GO dopo {} fermato: la prossima aspetta il GO':
+        'Auto-GO po {} wstrzymane: następny czeka na GO',
+    'Auto-GO fermato: {} aspetta il GO':
+        'Auto-GO wstrzymane: {} czeka na GO',
+    'Trattieni':
+        'Wstrzymaj',
+    'Riprendi Auto-GO':
+        'Puść Auto-GO',
+    "L'Auto-GO aspetta il GO: la prossima cue non parte da sola":
+        'Auto-GO poczeka na GO: następny cue nie ruszy sam',
+    '· aspetta il GO (Auto-GO fermato)':
+        '· czeka na GO (Auto-GO wstrzymane)',
+    '▾ ANTEPRIMA USCITA':
+        '▾ PODGLĄD WYJŚCIA',
+    '▸ ANTEPRIMA USCITA':
+        '▸ PODGLĄD WYJŚCIA',
+    'ANTEPRIMA USCITA':
+        'PODGLĄD WYJŚCIA',
+    "Anteprima dell'uscita":
+        'Podgląd wyjścia',
 }

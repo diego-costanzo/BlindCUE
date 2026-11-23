@@ -342,6 +342,7 @@ class _WindowSetupMixin:
             self._status_label.setText(
                 "⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC"
             )
+            self.announce(self._status_label.text(), assertive=True)
             return
         # In the editor a single Esc still stops the preview.
         if hasattr(self, "_btn_test_stop"):
