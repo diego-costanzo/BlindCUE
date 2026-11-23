@@ -658,6 +658,8 @@ class CueSequenceTable(QTableWidget):
     extract_child_requested = Signal()
     open_timeline_requested = Signal()
     edit_text_requested = Signal()
+    enabled_toggle_requested = Signal()  # 2.3: cue on/off in this version of the show
+    rehearse_from_requested = Signal()   # 2.4: rehearse from the selected cue
     # Media files dropped on the list: (paths, row they were dropped on, -1 = below the last row)
     files_dropped = Signal(list, int)
 
@@ -845,6 +847,10 @@ class CueSequenceTable(QTableWidget):
 
             menu.addSeparator()
 
+        act_from = menu.addAction("⏯ Prova da qui (prepara la scena)")
+        act_from.triggered.connect(self.rehearse_from_requested)
+        act_onoff = menu.addAction("⊘ Escludi / includi in questa versione")
+        act_onoff.triggered.connect(self.enabled_toggle_requested)
         color_menu = menu.addMenu("🎨 Colore Scena / Gruppo")
         for hex_val, label in CUE_COLOR_PALETTE:
             pm = QPixmap(14, 14)

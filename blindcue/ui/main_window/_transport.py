@@ -196,7 +196,8 @@ class _TransportMixin:
         """
         if not self._live_mode or not self._cues:
             return
-        pictures = [i for i, c in enumerate(self._cues) if c.media_type == MediaType.IMAGE]
+        pictures = [i for i, c in enumerate(self._cues)
+                    if c.media_type == MediaType.IMAGE and not ShowEngine.outside_go_order(c)]
         if not pictures:
             self._status_label.setText(tr("Nessuna immagine nella scaletta"))
             return
@@ -282,6 +283,10 @@ class _TransportMixin:
         if panel is None or not (0 <= idx < len(self._cues)):
             return
         cue = self._cues[idx]
+        try:
+            self._run_note(idx, by_hand)  # 2.5: the run log
+        except Exception as exc:  # noqa: BLE001 - a log must never block a GO
+            logger.warning("[RUN LOG] %s", exc)
         text = f"{format_cue_ref(idx, cue)} '{cue.name}'"
         if together > 0:
             text += " " + tr("+ {} insieme").format(together)
@@ -318,8 +323,16 @@ class _TransportMixin:
         """
         if not (0 <= start_idx < len(self._cues)):
             return
+        if not getattr(self._cues[start_idx], "enabled", True):
+            # 2.3: off in this version - GO plays the next cue that is on.
+            nxt = next((i for i in range(start_idx + 1, len(self._cues))
+                        if not ShowEngine.outside_go_order(self._cues[i])), -1)
+            if nxt < 0 or keep_pointer:
+                self._status_label.setText(tr("Cue esclusa in questa versione: non parte"))
+                return
+            start_idx = nxt
         start = self._cues[start_idx]
-        if (getattr(start, "confirm_start", False) and not getattr(start, "adlib", False)
+        if (getattr(start, "confirm_start", False) and not getattr(start, "adlib", False) and not keep_pointer
                 and getattr(self, "_gate_passing", -1) != start.cue_id):
             self._arm_gate(start_idx)  # 1.9: it starts on the director's OK, not now
             return
@@ -330,10 +343,13 @@ class _TransportMixin:
         self._undo_go_collecting = not keep_pointer and (not auto or self._undo_go_takes_auto())
         pointer = self._go_target_index() if keep_pointer else -1
         current = self._current_index
+        aside = getattr(self, "_firing_aside", False)
+        self._firing_aside = keep_pointer or aside
         try:
             self._fire_cue_chain_now(start_idx, auto)
         finally:
             self._undo_go_collecting = before
+            self._firing_aside = aside
         if keep_pointer and 0 <= pointer < len(self._cues):
             # An effect on demand never moves the GO pointer.
             self._current_index = current
@@ -370,7 +386,8 @@ class _TransportMixin:
                 logger.info("[GO] Fired chained group #%d: %s", cue.cue_id, cue)
                 continue
             # An action cue takes no layer: it must not demote what plays there.
-            if cue.pre_delay <= 0.02 and cue.media_type != MediaType.ACTION:
+            waits = cue.pre_delay + self._rel_extra.get(cue.cue_id, 0.0)  # 2.1: a relative start may wait
+            if waits <= 0.02 and cue.media_type != MediaType.ACTION:
                 if getattr(cue, "adlib", False) and cue.media_type == MediaType.AUDIO:
                     # A sound effect: main.py picks its player first, then
                     # places its card (and promotes it when no spare is used).
@@ -388,8 +405,8 @@ class _TransportMixin:
         first_cue = self._cues[start_idx]
         ref = format_cue_ref(start_idx, first_cue)
         next_idx = last_fired_idx + 1
-        while next_idx < len(self._cues) and getattr(self._cues[next_idx], "adlib", False):
-            next_idx += 1  # effects on demand are not in the GO order
+        while next_idx < len(self._cues) and ShowEngine.outside_go_order(self._cues[next_idx]):
+            next_idx += 1  # effects and relative starts are not in the GO order
         fired_cue = self._cues[last_fired_idx]
         if (ShowEngine.group_mode_of(self._cues, fired_cue) == GroupMode.LOOP.value
                 and fired_cue.parent_id not in self._released_groups):
@@ -587,6 +604,7 @@ class _TransportMixin:
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
         self._undo_go_end()
+        self._rel_reset()  # 2.1: nothing waits for a cue that fades out
         self._live_phase_tags.clear()
         ShowEngine.demote_all_live(self._cues)
         self._refresh_cue_list()
@@ -604,6 +622,7 @@ class _TransportMixin:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
         first_stopped = self._stopped_manual_go_index()
         self._undo_go_end()
+        self._rel_reset()  # 2.1: PANIC also cancels the relative starts
         self._clear_gate()
         self._held_auto_go.clear()
         self._live_show_panel.set_auto_go_held(self._held_auto_go)

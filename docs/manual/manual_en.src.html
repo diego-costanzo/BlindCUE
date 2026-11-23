@@ -157,6 +157,9 @@ cue it is fired with GO; it can have a Pre-Delay and Auto-GO and belong to a gro
 <tr><td><b>🌓 Layer opacity</b></td><td>dims the whole layer (pictures and videos), e.g. the background to 30 % during a scene. The next cue on that layer starts at full opacity.</td></tr>
 <tr><td><b>📝 Note for the operator</b></td><td>text in a coloured strip at the top of the program window, never on the projector. It does not block GO; it goes away at the next GO or with ✕.</td></tr>
 <tr><td><b>☑ Checklist</b></td><td>a note with boxes to tick (e.g. “microphones on”). It appears on GO and also every time you enter LIVE mode until everything is ticked. Ticks are not saved: every show is checked from scratch.</td></tr>
+<!--IF:jump_actions--><tr><td><b>↪ Jump to a cue</b></td><td>starts the chosen cue (GO then goes on from it) or – <b>Only as the next GO</b> – just makes it the next one. <b>At most N×</b> limits the repeats: e.g. a scene played twice, then GO goes on. The count starts again when the show runs from the top.</td></tr>
+<tr><td><b>📞 Call a cue</b></td><td>starts the chosen cue without moving GO (like an effect). A cue with <b>📞 Call only</b> ticked (3 · Timing card) is outside the GO order; the Inspector shows where it is called from.</td></tr>
+<tr><td><b>⏩ Move the playback</b></td><td>moves a playing sound or film: <b>to a position</b> in the file, <b>by N s</b> forward or back, or <b>to N s before the end</b> (e.g. skipping a verse in a rehearsal).</td></tr><!--/IF:jump_actions-->
 </table>
 <p><b>What it acts on</b> (<b>Acts on</b> field): <b>Everything playing</b>, <b>One layer</b> (L1–L3)
 or <b>Chosen cues</b> (tick them in the list; a group = all its cues). When none of the targets
@@ -194,6 +197,19 @@ It is visible in LIVE mode.</li>
 </ul>
 The same three modes are under the cue list (<b>Hold / Auto-GO / Simult.</b>).</li>
 <!--IF:exclusive--><li><b>⛔ Exclusive</b> – while this cue plays, a manual GO is refused (also from the remote), so a GO given by mistake cannot cover it; <kbd>Ctrl+Space</kbd> still forces the GO. Careful with images without a duration – they stay until you stop them.</li><!--/IF:exclusive-->
+<!--IF:relative_start--><li><b>Start</b> (<b>3 · Timing</b> card, outside the basic view) – <b>with GO</b>
+(as always) or by itself, relative to another cue: <b>after the start</b> (e.g. a caption 2 s after the music
+begins), <b>after the end</b> (applause 0.5 s after the song ends) or <b>before the end</b> (a bell 1 s before
+the music ends). Such a cue is outside the order: GO skips it and it does not move the pointer; the show list
+marks it <b>⏱ #3+2s</b>. <b>Pause All</b> holds the countdown, PANIC and Fade All cancel it. "After the end"
+counts when the cue ends by itself – one stopped by hand starts nothing. Undo GO does not take back cues that
+started later by themselves.</li><!--/IF:relative_start-->
+<!--IF:versions--><li><b>Versions of the show</b> – right-click a cue → <b>⊘ Switch off / on in this version</b>.
+A cue that is off never plays: GO, chains, Auto-GO, groups, relative starts and jumps pass it by; the list marks
+it <b>⊘</b>. When something points at it (the Auto-GO before it, a jump, an action, a relative start), the status
+line warns you. <b>Show → 🎭 Versions of the show</b>: <b>Save as a new version…</b> (e.g. "short", "second
+cast") and switching between versions; <b>Full show</b> has every cue on. The versions are saved with the show,
+and the current one is on the status bar ("Version: short · 12 cues off").</li><!--/IF:versions-->
 </ul>
 
 <!-- ================================================================== -->
@@ -363,6 +379,11 @@ the end to rehearse it) and <b>Save level</b> (when the card's slider is not at 
 cue's own and it sounds the same); <b>−10 s / +10 s</b> act at once, in the show after a 1.5 s hold. Adding, deleting
 and moving cues happens in Preparation only. Rehearsal → Preparation is one click; → Show is <kbd>F5</kbd> or the tab
 (through the "Before the show" page); Show → Rehearsal is a 1.5 s hold on the <b>◐ Rehearsal</b> tab.</p><!--/IF:rehearsal-->
+<!--IF:rehearse_from--><p><b>⏯ Rehearse from here</b> (right-click a cue – in Preparation and in the Rehearsal):
+the program shows what should stay on stage before that cue (a picture without a hold time, music that loops,
+with the level and opacity set on the way); after you confirm, it stops what plays, brings that scene back and
+puts GO on the chosen cue. Music that simply plays to its end does not come back – its moment depends on the
+operator. Not in the Show.</p><!--/IF:rehearse_from-->
 <!--IF:exit_pin--><p><b>Exit PIN</b> (optional, <b>Show → Exit PIN of the show…</b>, in Preparation only):
 4 digits kept on this computer, never in the show file. With a PIN, every way out of the show (holding a tab,
 <b>End the show…</b>) first asks for it in a field under the top bar – not in a window; the field goes away by itself
@@ -426,6 +447,13 @@ folds it, and this computer remembers that.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Notes and checklists of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.<!--IF:now_playing--> During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <!--IF:effects--><li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b> or <b>Plays while the key is held</b>. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li><!--/IF:effects-->
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
+<!--IF:countdown--><li><b>Countdown</b> (e.g. the interval): <b>Show → ⏳ Countdown (interval)…</b> or the
+<b>⏳ Countdown</b> action cue (title and minutes; 0 minutes stops it). It shows on the status bar, and
+<b>🖥 Big countdown (backstage)</b> opens a big window you can move to a second screen. The last minute is amber
+and blinks.</li>
+<li><b>Run log</b>: the time of every GO since the first GO is saved when you leave the show, in
+<i>Documents\BlindCue\przebiegi\&lt;show name&gt;</i> (a CSV file for a spreadsheet). In the next show the
+<b>NEXT</b> bar says when that cue came last time ("last time at 12:34").</li><!--/IF:countdown-->
 <!--IFNOT:mode_tabs--><li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Back to preparation</b>: hold the <b>○ Preparation</b> tab for 1.5 s or use <b>Show → End the show…</b> (<kbd>Ctrl+Shift+F5</kbd>); whatever plays keeps playing. <kbd>F5</kbd> and <kbd>Ctrl+L</kbd> only enter – a stray key press never takes you out of the show. Alt+F4 during a show asks first.</li><!--/IF:mode_tabs-->
 </ol>
 <p class="tip">💡 During the show keep the program window active (click it) so that

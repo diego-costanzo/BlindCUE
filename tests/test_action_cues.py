@@ -88,7 +88,9 @@ def test_sanitize_fills_every_key_with_safe_defaults():
     assert spec["kind"] == ACTION_NOTE  # a damaged cue must never become "fade out everything"
     assert spec["target"] == "all"
     assert set(spec) == {"kind", "target", "layer", "output", "cue_ids", "duration", "mode",
-                         "level", "db", "curve", "text", "note_color", "items"}
+                         "level", "db", "curve", "text", "note_color", "items",
+                         "goto_play", "goto_max", "seek_mode", "seek_sec",  # jump / seek (stage 2, 2.2)
+                         "countdown_sec"}  # countdown (stage 2, 2.5)
 
 
 def test_sanitize_clamps_damaged_values():

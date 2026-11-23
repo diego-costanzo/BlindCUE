@@ -2622,4 +2622,182 @@ T: dict[str, str] = {
         'Made {} and opened it: confirm the installation in Claude Desktop and choose the folders.',
     'Impostazioni copiate (cartella: {}). Incollale nella configurazione del client MCP.':
         "Settings copied (folder: {}). Paste them into the MCP client's configuration.",
+    'Partenza:':
+        'Start:',
+    'con il GO':
+        'with GO',
+    "dopo l'avvio di":
+        'after the start of',
+    'dopo la fine di':
+        'after the end of',
+    'prima della fine di':
+        'before the end of',
+    'Partenza della cue':
+        'Start of the cue',
+    "Con il GO: come sempre. Le altre scelte fanno partire questa cue da sola rispetto a un'altra (il GO la salta): N s dopo il suo avvio, N s dopo la sua fine, o N s prima della sua fine.":
+        'With GO: as always. The other choices start this cue by itself relative to another one (GO skips it): N s after its start, N s after its end, or N s before its end.',
+    'Cue di riferimento':
+        'Reference cue',
+    'Secondi rispetto alla cue di riferimento':
+        'Seconds relative to the reference cue',
+    "Non possibile: quella cue parte già da questa (si avvierebbero a vicenda all'infinito).":
+        'Not possible: that cue already starts from this one (they would start each other forever).',
+    "parte da sola rispetto a un'altra cue":
+        'starts by itself relative to another cue',
+    'Partenze relative fermate: le cue si avviano a vicenda in un ciclo':
+        'Relative starts stopped: the cues start each other in a loop',
+    '↪ Salta a una cue':
+        '↪ Jump to a cue',
+    '📞 Chiama una cue':
+        '📞 Call a cue',
+    '⏩ Sposta la riproduzione':
+        '⏩ Move the playback',
+    'Salto: avvia la cue scelta (il GO prosegue da lì) oppure la mette soltanto come prossimo GO. «Al massimo» limita le ripetizioni (per esempio una scena ripetuta due volte).':
+        "Jump: starts the chosen cue (GO goes on from there) or only makes it the next GO. 'At most' limits the repeats (e.g. a scene played twice).",
+    "Avvia la cue scelta senza spostare il GO, come un effetto. Le cue «solo su chiamata» sono fuori dall'ordine del GO.":
+        "Starts the chosen cue without moving GO, like an effect. 'Call only' cues are outside the GO order.",
+    'Sposta la riproduzione delle cue scelte che stanno suonando: a una posizione del file, avanti o indietro di N secondi, oppure a N secondi dalla fine.':
+        'Moves the playback of the chosen cues that are playing: to a position in the file, N seconds forward or back, or to N seconds before the end.',
+    'Cue del salto o della chiamata':
+        'Cue of the jump or call',
+    'Come:':
+        'How:',
+    'Avviala subito':
+        'Start it now',
+    'Solo come prossimo GO':
+        'Only as the next GO',
+    'sempre':
+        'always',
+    '0 = salta sempre; N = al massimo N volte, poi il GO prosegue':
+        '0 = always jump; N = at most N times, then GO goes on',
+    'Al massimo:':
+        'At most:',
+    'Dove:':
+        'Where:',
+    'Alla posizione':
+        'To the position',
+    'Avanti o indietro di':
+        'Forward or back by',
+    'A N secondi dalla fine':
+        'To N seconds before the end',
+    'Secondi:':
+        'Seconds:',
+    'Chiama: {}':
+        'Call: {}',
+    'Salta e avvia{}: {}':
+        'Jump and start{}: {}',
+    'Prossimo GO{}: {}':
+        'Next GO{}: {}',
+    ' (al massimo {}×)':
+        ' (at most {}×)',
+    'Vai a {} s: {}':
+        'Go to {} s: {}',
+    'Vai a {} s dalla fine: {}':
+        'Go to {} s before the end: {}',
+    'Sposta di {} s: {}':
+        'Move by {} s: {}',
+    'Salta a una cue':
+        'Jump to a cue',
+    'Chiama una cue':
+        'Call a cue',
+    'Sposta la riproduzione':
+        'Move the playback',
+    "Salto o chiamata senza una cue valida: '{}'":
+        "Jump or call without a valid cue: '{}'",
+    "Salto '{}' già fatto {} volte: il GO prosegue":
+        "Jump '{}' done {} times already: GO goes on",
+    'Chiamata: {}':
+        'Called: {}',
+    'Salto: {}':
+        'Jump: {}',
+    'Prossimo GO: {}':
+        'Next GO: {}',
+    "📞 Solo su chiamata (fuori dall'ordine del GO)":
+        '📞 Call only (outside the GO order)',
+    "La avvia soltanto un'azione «Chiama una cue» (o un salto); il GO la salta.":
+        "Only a 'Call a cue' action (or a jump) starts it; GO skips it.",
+    'Chiamata o salto da: {}':
+        'Called or jumped to from: {}',
+    'solo su chiamata':
+        'call only',
+    '⊘ ESCLUSA':
+        '⊘ OFF',
+    'Cue esclusa in questa versione: non parte':
+        'Cue off in this version: it does not start',
+    '⊘ Escludi / includi in questa versione':
+        '⊘ Switch off / on in this version',
+    '🎭 Versioni dello spettacolo':
+        '🎭 Versions of the show',
+    'Spettacolo completo':
+        'Full show',
+    'Salva come nuova versione…':
+        'Save as a new version…',
+    'Elimina la versione «{}»':
+        "Delete the version '{}'",
+    'Versione: {}':
+        'Version: {}',
+    'Nuova versione dello spettacolo':
+        'New version of the show',
+    'Nome della versione (per esempio «ridotta», «secondo cast»):':
+        "Name of the version (e.g. 'short', 'second cast'):",
+    '{} è usata da: {}':
+        '{} is used by: {}',
+    'Incluse {} cue':
+        '{} cues on',
+    'Escluse {} cue':
+        '{} cues off',
+    'Attenzione: ':
+        'Careful: ',
+    'Versione: {} · {} cue escluse':
+        'Version: {} · {} cues off',
+    'insieme':
+        'together',
+    'Nello spettacolo non si salta: usa la prova':
+        'No jumping in the show: use the rehearsal',
+    'opacità {}%':
+        'opacity {}%',
+    'Prova da {}.':
+        'Rehearsal from {}.',
+    'Prima di questa cue restano in onda:':
+        'Before this cue these stay on:',
+    'Prima di questa cue non resta niente in onda.':
+        'Nothing stays on before this cue.',
+    'Ora suona qualcosa: verrà fermato.':
+        'Something plays now: it will be stopped.',
+    'Prova da qui':
+        'Rehearse from here',
+    '▶ Prepara la scena':
+        '▶ Set the scene',
+    'Scena pronta: il prossimo GO è {}':
+        'Scene ready: the next GO is {}',
+    '⏯ Prova da qui (prepara la scena)':
+        '⏯ Rehearse from here (set the scene)',
+    'Conto alla rovescia':
+        'Countdown',
+    '⏳ Conto alla rovescia':
+        '⏳ Countdown',
+    '⏳ Conto alla rovescia…':
+        '⏳ Countdown (interval)…',
+    '🖥 Conto alla rovescia grande (quinte)':
+        '🖥 Big countdown (backstage)',
+    '⏹ Ferma il conto alla rovescia':
+        '⏹ Stop the countdown',
+    'Ferma il conto alla rovescia':
+        'Stop the countdown',
+    'Conto alla rovescia {}: {}':
+        'Countdown {}: {}',
+    'Intervallo':
+        'Interval',
+    "Minuti (per esempio l'intervallo):":
+        'Minutes (e.g. the interval):',
+    'Fine del conto alla rovescia: {}':
+        'Countdown over: {}',
+    'la volta scorsa a {}':
+        'last time at {}',
+    "Avvia un conto alla rovescia (per esempio l'intervallo) sulla barra di stato e nella finestra grande per le quinte (menu Show). Il testo è il titolo; 0 minuti lo ferma.":
+        'Starts a countdown (e.g. the interval) on the status bar and in the big backstage window (Show menu). The text is the title; 0 minutes stops it.',
+    'ferma':
+        'stop',
+    'Tempo rimanente':
+        'Time left',
 }

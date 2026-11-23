@@ -123,6 +123,8 @@ class _CueTableMixin:
             status_txt, colour = "STANDBY", CLR_PREVIZ
         elif cue.status == CueStatus.PREVIZ:
             status_txt, colour = "PRE-VIZ", CLR_PREVIZ
+        if not getattr(cue, "enabled", True):
+            status_txt, colour = tr("⊘ ESCLUSA"), CLR_TEXT_MUTED  # 2.3: off in this version
 
         tooltip = self._cue_tooltip(row, cue)
 
@@ -255,6 +257,12 @@ class _CueTableMixin:
             self._readiness_timer.stop()
         if enabled and self._go_target_index() == 0 and not self._show_running():
             self._played_ids.clear()  # a run from the top: nothing played yet
+            self._goto_counts.clear()  # 2.2: jumps count again
+            self._run_reset()  # 2.5: a new run of the show
+        if not enabled:
+            saved = self._run_save()  # 2.5: the run log of the show that just ended
+            if saved is not None:
+                logger.info("[RUN LOG] %s", saved)
         if not enabled and self._cues:
             # Where the show was left: coming back to LIVE continues from here.
             self._live_resume_id = self._cues[self._go_target_index()].cue_id

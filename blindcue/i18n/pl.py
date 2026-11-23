@@ -2844,4 +2844,182 @@ T: dict[str, str] = {
         'Utworzono {} i otwarto: potwierdź instalację w Claude Desktop i wybierz foldery.',
     'Impostazioni copiate (cartella: {}). Incollale nella configurazione del client MCP.':
         'Skopiowano ustawienia (folder: {}). Wklej je do konfiguracji klienta MCP.',
+    'Partenza:':
+        'Start:',
+    'con il GO':
+        'z GO',
+    "dopo l'avvio di":
+        'po starcie',
+    'dopo la fine di':
+        'po końcu',
+    'prima della fine di':
+        'przed końcem',
+    'Partenza della cue':
+        'Start pozycji',
+    "Con il GO: come sempre. Le altre scelte fanno partire questa cue da sola rispetto a un'altra (il GO la salta): N s dopo il suo avvio, N s dopo la sua fine, o N s prima della sua fine.":
+        'Z GO: jak zawsze. Pozostałe opcje uruchamiają tę pozycję samą, względem innej (GO ją pomija): N s po jej starcie, N s po jej końcu albo N s przed jej końcem.',
+    'Cue di riferimento':
+        'Pozycja odniesienia',
+    'Secondi rispetto alla cue di riferimento':
+        'Sekundy względem pozycji odniesienia',
+    "Non possibile: quella cue parte già da questa (si avvierebbero a vicenda all'infinito).":
+        'Nie można: tamta pozycja już startuje od tej (uruchamiałyby się nawzajem bez końca).',
+    "parte da sola rispetto a un'altra cue":
+        'startuje sama względem innej pozycji',
+    'Partenze relative fermate: le cue si avviano a vicenda in un ciclo':
+        'Zatrzymano starty względne: pozycje uruchamiają się nawzajem w kółko',
+    '↪ Salta a una cue':
+        '↪ Skok do pozycji',
+    '📞 Chiama una cue':
+        '📞 Wywołaj pozycję',
+    '⏩ Sposta la riproduzione':
+        '⏩ Przewiń odtwarzanie',
+    'Salto: avvia la cue scelta (il GO prosegue da lì) oppure la mette soltanto come prossimo GO. «Al massimo» limita le ripetizioni (per esempio una scena ripetuta due volte).':
+        'Skok: uruchamia wybraną pozycję (GO idzie dalej od niej) albo tylko ustawia ją jako następne GO. „Najwyżej” ogranicza powtórzenia (np. scena powtórzona dwa razy).',
+    "Avvia la cue scelta senza spostare il GO, come un effetto. Le cue «solo su chiamata» sono fuori dall'ordine del GO.":
+        'Uruchamia wybraną pozycję bez przesuwania GO, jak efekt. Pozycje „tylko na wywołanie” są poza kolejnością GO.',
+    'Sposta la riproduzione delle cue scelte che stanno suonando: a una posizione del file, avanti o indietro di N secondi, oppure a N secondi dalla fine.':
+        'Przesuwa odtwarzanie wybranych, grających pozycji: do miejsca w pliku, o N sekund do przodu lub do tyłu albo na N sekund przed końcem.',
+    'Cue del salto o della chiamata':
+        'Pozycja skoku lub wywołania',
+    'Come:':
+        'Jak:',
+    'Avviala subito':
+        'Uruchom od razu',
+    'Solo come prossimo GO':
+        'Tylko jako następne GO',
+    'sempre':
+        'zawsze',
+    '0 = salta sempre; N = al massimo N volte, poi il GO prosegue':
+        '0 = skacz zawsze; N = najwyżej N razy, potem GO idzie dalej',
+    'Al massimo:':
+        'Najwyżej:',
+    'Dove:':
+        'Dokąd:',
+    'Alla posizione':
+        'Do miejsca',
+    'Avanti o indietro di':
+        'Do przodu lub do tyłu o',
+    'A N secondi dalla fine':
+        'Na N sekund przed końcem',
+    'Secondi:':
+        'Sekundy:',
+    'Chiama: {}':
+        'Wywołaj: {}',
+    'Salta e avvia{}: {}':
+        'Skok i start{}: {}',
+    'Prossimo GO{}: {}':
+        'Następne GO{}: {}',
+    ' (al massimo {}×)':
+        ' (najwyżej {}×)',
+    'Vai a {} s: {}':
+        'Przewiń do {} s: {}',
+    'Vai a {} s dalla fine: {}':
+        'Przewiń na {} s przed końcem: {}',
+    'Sposta di {} s: {}':
+        'Przesuń o {} s: {}',
+    'Salta a una cue':
+        'Skok do pozycji',
+    'Chiama una cue':
+        'Wywołaj pozycję',
+    'Sposta la riproduzione':
+        'Przewiń odtwarzanie',
+    "Salto o chiamata senza una cue valida: '{}'":
+        'Skok lub wywołanie bez poprawnej pozycji: „{}”',
+    "Salto '{}' già fatto {} volte: il GO prosegue":
+        'Skok „{}” wykonany już {} razy: GO idzie dalej',
+    'Chiamata: {}':
+        'Wywołano: {}',
+    'Salto: {}':
+        'Skok: {}',
+    'Prossimo GO: {}':
+        'Następne GO: {}',
+    "📞 Solo su chiamata (fuori dall'ordine del GO)":
+        '📞 Tylko na wywołanie (poza kolejnością GO)',
+    "La avvia soltanto un'azione «Chiama una cue» (o un salto); il GO la salta.":
+        'Uruchamia ją tylko akcja „Wywołaj pozycję” (albo skok); GO ją pomija.',
+    'Chiamata o salto da: {}':
+        'Wywoływana lub skok z: {}',
+    'solo su chiamata':
+        'tylko na wywołanie',
+    '⊘ ESCLUSA':
+        '⊘ WYŁĄCZONA',
+    'Cue esclusa in questa versione: non parte':
+        'Pozycja wyłączona w tej wersji: nie startuje',
+    '⊘ Escludi / includi in questa versione':
+        '⊘ Wyłącz / włącz w tej wersji',
+    '🎭 Versioni dello spettacolo':
+        '🎭 Wersje przedstawienia',
+    'Spettacolo completo':
+        'Pełne przedstawienie',
+    'Salva come nuova versione…':
+        'Zapisz jako nową wersję…',
+    'Elimina la versione «{}»':
+        'Usuń wersję „{}”',
+    'Versione: {}':
+        'Wersja: {}',
+    'Nuova versione dello spettacolo':
+        'Nowa wersja przedstawienia',
+    'Nome della versione (per esempio «ridotta», «secondo cast»):':
+        'Nazwa wersji (np. „skrócona”, „druga obsada”):',
+    '{} è usata da: {}':
+        'na „{}” wskazuje: {}',
+    'Incluse {} cue':
+        'Włączono {} poz.',
+    'Escluse {} cue':
+        'Wyłączono {} poz.',
+    'Attenzione: ':
+        'Uwaga: ',
+    'Versione: {} · {} cue escluse':
+        'Wersja: {} · wyłączonych: {}',
+    'insieme':
+        'razem',
+    'Nello spettacolo non si salta: usa la prova':
+        'W przedstawieniu nie przeskakujemy: użyj Próby',
+    'opacità {}%':
+        'krycie {}%',
+    'Prova da {}.':
+        'Próba od {}.',
+    'Prima di questa cue restano in onda:':
+        'Przed tą pozycją zostają na scenie:',
+    'Prima di questa cue non resta niente in onda.':
+        'Przed tą pozycją nic nie zostaje na scenie.',
+    'Ora suona qualcosa: verrà fermato.':
+        'Teraz coś gra: zostanie zatrzymane.',
+    'Prova da qui':
+        'Próba od tego miejsca',
+    '▶ Prepara la scena':
+        '▶ Przygotuj scenę',
+    'Scena pronta: il prossimo GO è {}':
+        'Scena gotowa: następne GO to {}',
+    '⏯ Prova da qui (prepara la scena)':
+        '⏯ Próba od tego miejsca (przygotuj scenę)',
+    'Conto alla rovescia':
+        'Odliczanie',
+    '⏳ Conto alla rovescia':
+        '⏳ Odliczanie',
+    '⏳ Conto alla rovescia…':
+        '⏳ Odliczanie (przerwa)…',
+    '🖥 Conto alla rovescia grande (quinte)':
+        '🖥 Duże odliczanie (kulisy)',
+    '⏹ Ferma il conto alla rovescia':
+        '⏹ Zatrzymaj odliczanie',
+    'Ferma il conto alla rovescia':
+        'Zatrzymaj odliczanie',
+    'Conto alla rovescia {}: {}':
+        'Odliczanie {}: {}',
+    'Intervallo':
+        'Przerwa',
+    "Minuti (per esempio l'intervallo):":
+        'Minuty (np. przerwa):',
+    'Fine del conto alla rovescia: {}':
+        'Koniec odliczania: {}',
+    'la volta scorsa a {}':
+        'poprzednio o {}',
+    "Avvia un conto alla rovescia (per esempio l'intervallo) sulla barra di stato e nella finestra grande per le quinte (menu Show). Il testo è il titolo; 0 minuti lo ferma.":
+        'Uruchamia odliczanie (np. przerwy) na pasku stanu i w dużym oknie dla kulis (menu Przedstawienie). Tekst to tytuł; 0 minut zatrzymuje odliczanie.',
+    'ferma':
+        'stop',
+    'Tempo rimanente':
+        'Pozostały czas',
 }

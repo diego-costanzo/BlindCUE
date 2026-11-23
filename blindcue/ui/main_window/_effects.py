@@ -96,7 +96,7 @@ class _EffectsMixin:
         """Keys and tiles from the cues now (also after a fix in the rehearsal)."""
         effects = []
         for row, cue in enumerate(self._cues):
-            if getattr(cue, "adlib", False):
+            if getattr(cue, "adlib", False) and getattr(cue, "enabled", True):
                 key = (getattr(cue, "hotkey", "") or "").upper()
                 effects.append((cue.cue_id, key, f"{key + ' · ' if key else ''}{format_cue_ref(row, cue)} {cue.name}"))
         sig = (self._effects_on, tuple(effects))

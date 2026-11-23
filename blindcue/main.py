@@ -105,12 +105,16 @@ from engine.sleep_inhibitor import SleepInhibitor
 from engine import undo_go
 from i18n import tr as main_win_tr
 from models.cue import (
+    ACTION_CALL,
     ACTION_CHECKLIST,
+    ACTION_COUNTDOWN,
     ACTION_FADE,
+    ACTION_GOTO,
     ACTION_LEVEL,
     ACTION_NOTE,
     ACTION_OPACITY,
     ACTION_RELEASE,
+    ACTION_SEEK,
     ACTION_STOP,
     ACTION_TARGET_ALL,
     Cue,
@@ -718,6 +722,7 @@ def main() -> int:
         main_win._reset_live_label(layer)
         main_win.finish_live_cue_status(cue)
         main_win.set_live_section_index(cue.cue_id, -1)
+        main_win.cue_ended(cue)  # 2.1: cues that start after its end
 
         sel = main_win._selected_cue()
         if (
@@ -743,8 +748,8 @@ def main() -> int:
         children on their own: the operator picked the mode, so the single
         child does not need to be marked AUTO-GO as well.
         """
-        if getattr(cue, "adlib", False):
-            return False  # an effect on demand never starts the next cue
+        if ShowEngine.outside_go_order(cue):
+            return False  # an effect or a relative start never starts the next cue
         return cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(
             main_win._cues, cue
         ) in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value)
@@ -802,7 +807,22 @@ def main() -> int:
                 _on_layer_clear_requested(slot, fade_override=fade_secs)
             logger.info("[FADE-OTHERS] '%s' fades '%s' (slot %d) over %.2fs", cue.name, other.name, slot, fade_secs)
 
-    def _launch_cue_now(cue: Cue, layer: int, expected_gen: int, start_at: float | None = None) -> None:
+    def _remaining_from(cue: Cue, dur_sec: float, pos_sec: float) -> float | None:
+        """Seconds *cue* still plays from *pos_sec* (None: unknown, looping forever, or sections)."""
+        if getattr(cue, "sections", None):
+            return None  # repeated / skipped sections: "before the end" waits for the end itself
+        if cue.media_type == MediaType.IMAGE:
+            return float(cue.hold_time) if cue.hold_time > 0 else None
+        if dur_sec <= 0:
+            return None
+        start, end, infinite = _live_effective_bounds(cue, dur_sec)
+        if infinite:
+            return None
+        passes = max(1, int(cue.loop_count)) if cue.loop else 1
+        return max(0.0, (end - max(start, pos_sec)) + (passes - 1) * (end - start))
+
+    def _launch_cue_now(cue: Cue, layer: int, expected_gen: int, start_at: float | None = None,
+                        restoring: bool = False) -> None:
         """Start actual Audio/Video/Image playback/display for *cue* on *layer*.
 
         *start_at*: resume from this point of the file (Undo GO), fading in over 1 s.
@@ -837,6 +857,10 @@ def main() -> int:
             live_durations[layer] = known_dur
             live_positions[layer] = max(0.0, cue.in_point if start_at is None else start_at)
             live_image_envelopes.pop(layer, None)
+            if start_at is None and not restoring:  # Undo GO bringing it back starts nothing relative to it
+                # After this launch has finished: what starts relative to it never disturbs it.
+                rest = _remaining_from(cue, known_dur, live_positions[layer])
+                QTimer.singleShot(0, lambda c=cue, r=rest: main_win.cue_launched(c, r))
 
             if known_dur > 0 and cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
                 s_sec, e_sec, inf_flag = _live_effective_bounds(cue, known_dur)
@@ -1038,19 +1062,46 @@ def main() -> int:
 
     main_win.action_cancel_requested.connect(_cancel_action_wait)
 
-    def _fire_action_cue(cue: Cue) -> None:
+    def _fire_action_cue(cue: Cue, rel_extra: float = 0.0) -> None:
         """GO on an action cue: never touches a layer's own timing or generation."""
         slot = _action_slot(cue)
         scheduler.cancel_layer(slot)
         gen = layer_fire_gen.get(slot, 0) + 1
         layer_fire_gen[slot] = gen
-        pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0)))
+        pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0))) + rel_extra
         if pre_d > 0.02:
             main_win.set_cue_phase_badge(cue.cue_id, f"PRE -{pre_d:.1f}s")
             scheduler.schedule("PRE", cue, slot, pre_d, generation=gen)
             logger.info("[ACTION] '%s' scheduled with Pre-Delay %.2fs", cue.name, pre_d)
         else:
             _run_action_now(cue, gen)
+
+    def _seek_layer(l_idx: int, spec: dict) -> bool:
+        """2.2: move what plays on *l_idx* (sound or video); False when nothing could move."""
+        on_air = active_live_cues.get(l_idx)
+        lp = live_players.get(l_idx)
+        if on_air is None or lp is None or on_air.media_type not in (MediaType.AUDIO, MediaType.VIDEO):
+            return False
+        dur = live_durations.get(l_idx, 0.0)
+        start = max(0.0, on_air.in_point)
+        end = _live_effective_bounds(on_air, dur)[1] if dur > 0 else None
+        sec = float(spec.get("seek_sec", 0.0))
+        mode = spec.get("seek_mode", "relative")
+        if mode == "absolute":
+            pos = sec
+        elif mode == "before_end":
+            if end is None:
+                logger.info("[ACTION] seek before the end of '%s': its length is not known yet", on_air.name)
+                return False
+            pos = end - abs(sec)
+        else:
+            pos = live_positions.get(l_idx, start) + sec
+        pos = max(start, pos if end is None else min(pos, end - 0.05))
+        lp.seek(pos)
+        live_positions[l_idx] = pos
+        main_win.cue_retimed(on_air, _remaining_from(on_air, dur, pos))  # its "before the end" cues
+        logger.info("[ACTION] seek '%s' (L%d) to %.2fs", on_air.name, l_idx, pos)
+        return True
 
     def _run_action_now(cue: Cue, gen: int) -> None:
         """Carry out *cue*'s action on whatever its targets are playing right now."""
@@ -1113,6 +1164,14 @@ def main() -> int:
                     )
             elif kind in (ACTION_NOTE, ACTION_CHECKLIST):
                 main_win.show_operator_note(cue)
+            elif kind in (ACTION_GOTO, ACTION_CALL):
+                layers = []
+                main_win.action_jump(cue)  # 2.2: the window moves GO or starts the cue
+            elif kind == ACTION_SEEK:
+                layers = [l_idx for l_idx in layers if _seek_layer(l_idx, spec)]
+            elif kind == ACTION_COUNTDOWN:
+                layers = []
+                main_win.start_countdown(float(spec.get("countdown_sec", 0.0)), str(spec.get("text", "")).strip())
             logger.info("[ACTION] '%s' (%s) on layers %s", cue.name, kind, layers)
         except Exception as exc:
             logger.error("[ACTION] '%s' failed: %s", cue.name, exc, exc_info=True)
@@ -1129,16 +1188,20 @@ def main() -> int:
         A GO during Pause All starts this cue only: what the pause holds stays
         paused until the operator resumes it (it used to resume everything).
         """
+        rel_extra = main_win.take_rel_extra(cue.cue_id)  # 2.1: N s after/before another cue
+        if not getattr(cue, "enabled", True):
+            logger.info("[MAIN] '%s' is off in this version of the show: not started", cue.name)
+            return
         if cue.media_type == MediaType.ACTION:
             # Branch before the layer logic: an action must not cancel the
             # schedule or bump the generation of the layer it acts on.
-            _fire_action_cue(cue)
+            _fire_action_cue(cue, rel_extra)
             return
         running = _spare_running(cue)
         _set_override(cue, None)
         layer = _base_layer(cue)
         adlib_sound = getattr(cue, "adlib", False) and cue.media_type == MediaType.AUDIO
-        immediate = float(getattr(cue, "pre_delay", 0.0)) <= 0.02
+        immediate = float(getattr(cue, "pre_delay", 0.0)) + rel_extra <= 0.02
         if running is not None:
             # Started again while it plays (or waits) on a spare player: from
             # the top on that same player, never a second copy.
@@ -1195,7 +1258,7 @@ def main() -> int:
         # out there must not start its Auto-GO, and a cue held by the pause
         # stays held (it resumes with the others if the pause ends first).
 
-        pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0)))
+        pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0))) + rel_extra
         if pre_d > 0.02:
             main_win.set_cue_phase_badge(cue.cue_id, f"PRE -{pre_d:.1f}s")
             main_win.update_live_layer_phase(layer, cue, "PRE", 0.0, pre_d)
@@ -1205,10 +1268,14 @@ def main() -> int:
             _launch_cue_now(cue, layer, cur_gen)
 
     main_win.cue_fired.connect(_on_cue_fired)
+    # 2.4: rehearse from here brings back the layer opacity set on the way.
+    main_win.layer_opacity_requested.connect(
+        lambda slot, level: _out_window(slot).fade_layer_master(_local_layer(slot), float(level), 0.05, "linear"))
 
     def _on_undo_go(steps: list) -> None:
         """Undo the last GO: only what it started, on the layers where it still is."""
         by_id = {c.cue_id: c for c in main_win._cues}
+        main_win.rel_cancel_dependents([step.cue_id for step in steps])  # 2.1: nothing follows them
         for step in steps:
             cue = by_id.get(step.cue_id)
             if cue is not None and cue.media_type == MediaType.ACTION:
@@ -1235,7 +1302,7 @@ def main() -> int:
                     layer_fire_gen[layer] = gen
                     if getattr(back, "crossfade", 0.0) <= 0:
                         _out_window(layer).begin_crossfade(_local_layer(layer), step.seconds)
-                    _launch_cue_now(back, layer, gen)
+                    _launch_cue_now(back, layer, gen, restoring=True)
                 elif step.cut_id is not None and step.resume_at is not None and by_id.get(step.cut_id):
                     # The sound/video this GO cut off comes back from where it was (1 s fade in).
                     cut = by_id[step.cut_id]
@@ -1374,6 +1441,7 @@ def main() -> int:
             if live_cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
                 start_sec, eff_end, is_inf = _live_effective_bounds(live_cue, live_durations[layer])
                 cur_pos = max(start_sec, live_positions.get(layer, start_sec))
+                main_win.cue_duration_known(live_cue, _remaining_from(live_cue, live_durations[layer], cur_pos))
                 main_win.update_live_layer_progress(
                     layer,
                     cur_pos,

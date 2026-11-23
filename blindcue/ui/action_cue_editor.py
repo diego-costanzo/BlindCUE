@@ -12,18 +12,23 @@ from collections.abc import Callable
 from engine.action_cues import describe_action
 from engine.envelope import FADE_CURVE_LABELS
 from models.cue import (
+    ACTION_CALL,
     ACTION_CHECKLIST,
+    ACTION_COUNTDOWN,
     ACTION_FADE,
+    ACTION_GOTO,
     ACTION_LEVEL,
     ACTION_NOTE,
     ACTION_OPACITY,
     ACTION_RELEASE,
+    ACTION_SEEK,
     ACTION_STOP,
     ACTION_TARGET_ALL,
     ACTION_TARGET_CUES,
     ACTION_TARGET_LAYER,
     Cue,
     MediaType,
+    action_names_one_cue,
     action_needs_target,
     sanitize_action_spec,
 )
@@ -38,6 +43,7 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QSizePolicy,
+    QSpinBox,
     QVBoxLayout,
     QWidget,
 )
@@ -53,6 +59,10 @@ _KIND_LABELS = (
     (ACTION_OPACITY, "🌓 Opacità layer"),
     (ACTION_NOTE, "📝 Nota per la regia"),
     (ACTION_CHECKLIST, "☑ Checklist prima dello spettacolo"),
+    (ACTION_GOTO, "↪ Salta a una cue"),
+    (ACTION_CALL, "📞 Chiama una cue"),
+    (ACTION_SEEK, "⏩ Sposta la riproduzione"),
+    (ACTION_COUNTDOWN, "⏳ Conto alla rovescia"),
 )
 _KIND_HELP = {
     ACTION_FADE: "Abbassa audio e immagine delle cue scelte nel tempo indicato, poi le ferma. "
@@ -68,6 +78,14 @@ _KIND_HELP = {
                  "Non blocca il GO; sparisce al GO successivo o con ✕.",
     ACTION_CHECKLIST: "Lista da spuntare prima dello spettacolo: compare con il GO e anche "
                       "entrando in LIVE finché non è tutta spuntata. Le spunte non vengono salvate.",
+    ACTION_GOTO: "Salto: avvia la cue scelta (il GO prosegue da lì) oppure la mette soltanto come "
+                 "prossimo GO. «Al massimo» limita le ripetizioni (per esempio una scena ripetuta due volte).",
+    ACTION_CALL: "Avvia la cue scelta senza spostare il GO, come un effetto. Le cue «solo su chiamata» "
+                 "sono fuori dall'ordine del GO.",
+    ACTION_COUNTDOWN: "Avvia un conto alla rovescia (per esempio l'intervallo) sulla barra di stato e nella "
+                      "finestra grande per le quinte (menu Show). Il testo è il titolo; 0 minuti lo ferma.",
+    ACTION_SEEK: "Sposta la riproduzione delle cue scelte che stanno suonando: a una posizione del file, "
+                 "avanti o indietro di N secondi, oppure a N secondi dalla fine.",
 }
 _TARGET_LABELS = (
     (ACTION_TARGET_ALL, "Tutto ciò che è in onda"),
@@ -160,6 +178,49 @@ class ActionCueEditor(QWidget):
         self.lbl_cues = _label("Cue:")
         form.addRow(self.lbl_cues, self.list_cues)
 
+        self.combo_goal = QComboBox()
+        self.combo_goal.setAccessibleName("Cue del salto o della chiamata")
+        self.lbl_goal = _label("Cue:")
+        form.addRow(self.lbl_goal, self.combo_goal)
+
+        self.combo_goto_play = QComboBox()
+        self.combo_goto_play.addItem("Avviala subito", True)
+        self.combo_goto_play.addItem("Solo come prossimo GO", False)
+        self.lbl_goto_play = _label("Come:")
+        form.addRow(self.lbl_goto_play, self.combo_goto_play)
+
+        self.spin_goto_max = QSpinBox()
+        self.spin_goto_max.setRange(0, 999)
+        self.spin_goto_max.setSpecialValueText("sempre")
+        self.spin_goto_max.setSuffix(" ×")
+        self.spin_goto_max.setToolTip("0 = salta sempre; N = al massimo N volte, poi il GO prosegue")
+        self.lbl_goto_max = _label("Al massimo:")
+        form.addRow(self.lbl_goto_max, self.spin_goto_max)
+
+        self.combo_seek_mode = QComboBox()
+        self.combo_seek_mode.addItem("Alla posizione", "absolute")
+        self.combo_seek_mode.addItem("Avanti o indietro di", "relative")
+        self.combo_seek_mode.addItem("A N secondi dalla fine", "before_end")
+        self.lbl_seek_mode = _label("Dove:")
+        form.addRow(self.lbl_seek_mode, self.combo_seek_mode)
+
+        self.spin_seek = SmartDoubleSpinBox()
+        self.spin_seek.setRange(-86400.0, 86400.0)
+        self.spin_seek.setDecimals(1)
+        self.spin_seek.setSingleStep(5.0)
+        self.spin_seek.setSuffix(" s")
+        self.lbl_seek = _label("Secondi:")
+        form.addRow(self.lbl_seek, self.spin_seek)
+
+        self.spin_countdown = SmartDoubleSpinBox()
+        self.spin_countdown.setRange(0.0, 240.0)
+        self.spin_countdown.setDecimals(1)
+        self.spin_countdown.setSingleStep(1.0)
+        self.spin_countdown.setSuffix(" min")
+        self.spin_countdown.setSpecialValueText("ferma")
+        self.lbl_countdown = _label("Durata:")
+        form.addRow(self.lbl_countdown, self.spin_countdown)
+
         self.combo_mode = QComboBox()
         self.combo_mode.addItem("Assoluto (%)", "absolute")
         self.combo_mode.addItem("Relativo (dB)", "relative")
@@ -246,9 +307,11 @@ class ActionCueEditor(QWidget):
         lay.addStretch()
 
         for combo in (self.combo_kind, self.combo_target, self.combo_layer, self.combo_output,
-                      self.combo_mode, self.combo_curve):
+                      self.combo_mode, self.combo_curve, self.combo_goal, self.combo_goto_play,
+                      self.combo_seek_mode):
             combo.currentIndexChanged.connect(self._on_edit)
-        for spin in (self.spin_level, self.spin_db, self.spin_duration):
+        for spin in (self.spin_level, self.spin_db, self.spin_duration, self.spin_goto_max, self.spin_seek,
+                     self.spin_countdown):
             spin.valueChanged.connect(self._on_edit)
         self.edit_text.textChanged.connect(self._on_edit)
         self.edit_items.textChanged.connect(self._on_edit)
@@ -285,6 +348,12 @@ class ActionCueEditor(QWidget):
                 self.edit_items.setPlainText(items_txt)
             self._note_colour = spec["note_color"]
             self._fill_cue_list(set(spec["cue_ids"]))
+            self._fill_goal(spec["cue_ids"][0] if spec["cue_ids"] else None)
+            self._select(self.combo_goto_play, bool(spec["goto_play"]))
+            self.spin_goto_max.setValue(int(spec["goto_max"]))
+            self._select(self.combo_seek_mode, spec["seek_mode"])
+            self.spin_seek.setValue(float(spec["seek_sec"]))
+            self.spin_countdown.setValue(float(spec["countdown_sec"]) / 60.0)
             self._refresh_visibility()
         finally:
             self._loading = False
@@ -296,6 +365,9 @@ class ActionCueEditor(QWidget):
             for i in range(self.list_cues.count())
             if self.list_cues.item(i).checkState() == Qt.CheckState.Checked
         ]
+        if action_names_one_cue(self.combo_kind.currentData()):
+            goal = self.combo_goal.currentData()
+            cue_ids = [int(goal)] if goal is not None else []
         return sanitize_action_spec({
             "kind": self.combo_kind.currentData(),
             "target": self.combo_target.currentData(),
@@ -310,6 +382,11 @@ class ActionCueEditor(QWidget):
             "text": self.edit_text.toPlainText(),
             "note_color": self._note_colour,
             "items": self.edit_items.toPlainText().splitlines(),
+            "goto_play": bool(self.combo_goto_play.currentData()),
+            "goto_max": self.spin_goto_max.value(),
+            "seek_mode": self.combo_seek_mode.currentData(),
+            "seek_sec": self.spin_seek.value(),
+            "countdown_sec": round(self.spin_countdown.value() * 60.0, 1),
         })
 
     # ── Internals ─────────────────────────────────────────────────────
@@ -356,6 +433,18 @@ class ActionCueEditor(QWidget):
             item.setCheckState(Qt.CheckState.Checked)
             self.list_cues.addItem(item)
 
+    def _fill_goal(self, chosen: int | None) -> None:
+        """The one cue a jump or a call goes to (any cue but this action)."""
+        self.combo_goal.clear()
+        cues = list(self._catalog() or [])
+        for row, cue in enumerate(cues):
+            if cue.cue_id == self._cue_id:
+                continue
+            self.combo_goal.addItem(f"{format_cue_ref(row, cue)}  {cue.name}  [{cue.media_type.value}]", cue.cue_id)
+        if chosen is not None and self.combo_goal.findData(chosen) < 0:
+            self.combo_goal.addItem("? cue eliminata dalla scaletta", chosen)
+        self._select(self.combo_goal, chosen)
+
     def _refresh_visibility(self) -> None:
         kind = self.combo_kind.currentData()
         target = self.combo_target.currentData()
@@ -372,9 +461,16 @@ class ActionCueEditor(QWidget):
             (self.lbl_db, self.spin_db, kind == ACTION_LEVEL and mode == "relative"),
             (self.lbl_duration, self.spin_duration, timed),
             (self.lbl_curve, self.combo_curve, kind in (ACTION_LEVEL, ACTION_OPACITY)),
-            (self.lbl_text, self.edit_text, not has_target),
+            (self.lbl_text, self.edit_text, not has_target and not action_names_one_cue(kind)),
             (self.lbl_items, self.edit_items, kind == ACTION_CHECKLIST),
-            (self.lbl_colour, self.row_colour, not has_target),
+            (self.lbl_colour, self.row_colour,
+             not has_target and not action_names_one_cue(kind) and kind != ACTION_COUNTDOWN),
+            (self.lbl_goal, self.combo_goal, action_names_one_cue(kind)),
+            (self.lbl_goto_play, self.combo_goto_play, kind == ACTION_GOTO),
+            (self.lbl_goto_max, self.spin_goto_max, kind == ACTION_GOTO),
+            (self.lbl_seek_mode, self.combo_seek_mode, kind == ACTION_SEEK),
+            (self.lbl_seek, self.spin_seek, kind == ACTION_SEEK),
+            (self.lbl_countdown, self.spin_countdown, kind == ACTION_COUNTDOWN),
         )
         for label, widget, visible in rows:
             label.setVisible(visible)

@@ -54,6 +54,11 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "fade_others": ("blindcue/models/cue.py", "fade_others: float"),
     "effects": ("blindcue/ui/main_window/_effects.py", None),
     "assistant": ("blindcue/mcp_server/server.py", None),
+    "relative_start": ("blindcue/ui/main_window/_relative.py", None),
+    "jump_actions": ("blindcue/models/cue.py", "ACTION_GOTO ="),
+    "versions": ("blindcue/ui/main_window/_versions.py", None),
+    "rehearse_from": ("blindcue/engine/rehearse_from.py", None),
+    "countdown": ("blindcue/ui/main_window/_countdown.py", None),
 }
 
 

@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any
 
 from engine.action_cues import default_action_name, default_action_spec, describe_action
-from engine.show_engine import block_end, insert_position
+from engine.show_engine import block_end, insert_position, relative_cycle
 from models.cue import (
     ACTION_KINDS,
     Cue,
@@ -41,6 +41,7 @@ from models.cue import (
     FollowMode,
     GroupMode,
     MediaType,
+    action_names_one_cue,
     action_needs_target,
     detect_layer_conflicts,
     sanitize_action_spec,
@@ -56,7 +57,8 @@ MAX_SCAN_DEPTH = 4
 DURATION_BUDGET_SEC = 20.0
 RECENT_AUTOSAVE_SEC = 15 * 60
 _ACTION_KEYS = {"target", "layer", "output", "cue_ids", "duration", "mode", "level", "db", "curve",
-                "text", "note_color", "items"}
+                "text", "note_color", "items", "goto_play", "goto_max", "seek_mode", "seek_sec",
+                "countdown_sec"}
 
 
 class ToolError(Exception):
@@ -254,6 +256,8 @@ EDITABLE: dict[str, tuple[str, Any]] = {
     "fade_others": ("On start, other sounds and videos fade out over these seconds (change of music in one "
                     "cue; 0 = no).", lambda v: _float(v, "fade_others")),
     "exclusive": ("While it plays, a GO by hand is refused (a key scene).", _bool),
+    "call_only": ("Started only by a 'call' action (or a jump); GO skips it.", _bool),
+    "enabled": ("false = off in this version of the show: the cue never plays.", _bool),
     "confirm_start": ("Starts only after the director's OK (Enter or the OK button).", _bool),
     "adlib": ("Effect on demand: outside the GO order, started by its key or tile.", _bool),
     "hotkey": ("Effect key: one letter or digit.", lambda v: _hotkey(v)),
@@ -262,6 +266,12 @@ EDITABLE: dict[str, tuple[str, Any]] = {
     "color": ("Colour mark in the list, '#RRGGBB' or ''.", lambda v: _color(v)),
     "output_target": ("Projector output A or B (B only with two outputs).",
                       lambda v: _choice(v, "output_target", ("A", "B"))),
+    "start_rel_cue": ("Start by itself relative to this cue_id (null = with GO). Such a cue is outside the "
+                      "GO order.", lambda v: None if v in (None, "", 0) else int(_float(v, "start_rel_cue", 1, 10**9))),
+    "start_rel_when": ("With start_rel_cue: start (N s after it starts), end (N s after it ends) or "
+                       "before_end (N s before it ends).",
+                       lambda v: _choice(v, "start_rel_when", ("start", "end", "before_end"))),
+    "start_rel_offset": ("Seconds for start_rel_when.", lambda v: _float(v, "start_rel_offset")),
     "group_mode": ("Groups: STEP (one GO per item), SEQUENCE (one GO plays all in a row), SIMULTANEOUS "
                    "(all together), RANDOM, LOOP.", lambda v: _choice(v, "group_mode", _GROUP_MODES)),
 }
@@ -329,6 +339,20 @@ def _strict_action(kind: str, raw: Any, base: dict[str, Any], new: bool) -> dict
         spec["text"] = _text(raw["text"], "text", 2000)
     if "note_color" in raw:
         spec["note_color"] = _color(raw["note_color"]) or base.get("note_color", "")
+    if action_names_one_cue(kind):
+        ids = spec.get("cue_ids") or []
+        if not isinstance(ids, list) or len(ids) != 1:
+            raise ToolError(f"A {kind} names exactly one cue: cue_ids [cue_id].")
+    if "goto_play" in raw:
+        spec["goto_play"] = _bool(raw["goto_play"])
+    if "goto_max" in raw:
+        spec["goto_max"] = int(_float(raw["goto_max"], "goto_max", 0, 999))
+    if "seek_mode" in raw:
+        spec["seek_mode"] = _choice(raw["seek_mode"], "seek_mode", ("absolute", "relative", "before_end"))
+    if "seek_sec" in raw:
+        _float(raw["seek_sec"], "seek_sec", -86400.0, 86400.0)
+    if "countdown_sec" in raw:
+        _float(raw["countdown_sec"], "countdown_sec", 0.0, 14400.0)
     if "items" in raw:
         items = raw["items"]
         if not isinstance(items, list) or len(items) > 30 or \
@@ -582,6 +606,12 @@ class ShowSession:
             raise ToolError("out_point must be after in_point.")
         if cue.media_type in (MediaType.GROUP, MediaType.ACTION) and cue.adlib:
             raise ToolError("Only media cues can be effects on demand.")
+        ref = cue.start_rel_cue
+        if ref is not None:
+            if ref == cue.cue_id or not any(c.cue_id == ref and c.media_type.has_file for c in self.cues):
+                raise ToolError(f"start_rel_cue {ref} is not another video, sound or picture cue of this show.")
+            if relative_cycle(self.cues, cue.cue_id, ref):
+                raise ToolError("That cue already starts from this one: they would start each other forever.")
 
     def add_media_cue(self, path: str, after_cue_id: int | None = None,
                       fields: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -781,6 +811,8 @@ class ShowSession:
                 warnings.append(f"{ref}: an effect on demand ignores {cue.follow_mode}.")
             if cue.adlib and not cue.hotkey:
                 warnings.append(f"{ref}: effect on demand without a key (only its tile starts it).")
+            if cue.start_rel_cue is not None and cue.start_rel_cue not in ids:
+                problems.append(f"{ref}: starts relative to a cue that is no longer in the show.")
         names = {c.cue_id: c.name for c in self.cues}
         for cid, conflict in detect_layer_conflicts(self.cues, dual_active=False).items():
             if self._cue(cid).media_type == MediaType.GROUP:
@@ -825,6 +857,10 @@ def cue_schema() -> dict[str, Any]:
             "cue_ids": "[cue_id, ...] (target cues)", "duration": "seconds (fade/level/opacity)",
             "mode": "absolute | relative (level)", "level": "0.0-1.0 (level absolute, opacity)",
             "db": "-60..+20 (level relative)", "text": "note text", "items": "checklist lines",
+            "goto (jump)": "cue_ids [one cue]; goto_play true = start it, false = only make it the next GO; "
+                           "goto_max N = at most N times per run (0 = always)",
+            "call": "cue_ids [one cue]: starts it without moving GO (mark that cue call_only)",
+            "seek": "target + seek_mode absolute | relative | before_end, seek_sec seconds",
         },
         "media_extensions": sorted(VIDEO_EXT | AUDIO_EXT | IMAGE_EXT),
     }

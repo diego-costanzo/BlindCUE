@@ -147,6 +147,7 @@ class LiveCueTable(QTableWidget):
     panic_requested = Signal()
     standby_selected = Signal(int)
     fire_row_requested = Signal(int)
+    rehearse_from_requested = Signal(int)  # 2.4: rehearse from this cue
     group_collapse_toggled = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -197,11 +198,31 @@ class LiveCueTable(QTableWidget):
             act_toggle = menu.addAction("▼ Espandi Gruppo" if is_col else "▶ Collassa Gruppo")
             act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(row))
 
+        act_from = menu.addAction("⏯ Prova da qui (prepara la scena)")
+        act_from.triggered.connect(lambda: self.rehearse_from_requested.emit(row))
+
         menu.addSeparator()
         act_go = menu.addAction("▶ Fai partire subito questa Cue (GO Forzato)")
         act_go.triggered.connect(lambda: self.fire_row_requested.emit(row))
 
         menu.exec(event.globalPos())
+
+
+def relative_mark(cue: Cue, rows_by_id: dict[int, int]) -> str:
+    """2.1: "⏱ #3+2s" (after the start), "⏱ #3 ▸+2s" (after the end), "⏱ #3 −2s" (before the end)."""
+    ref = getattr(cue, "start_rel_cue", None)
+    if ref is None:
+        return ""
+    row = rows_by_id.get(ref)
+    if row is None:
+        return "⏱ ?"
+    offset = f"{cue.start_rel_offset:g}s"
+    when = getattr(cue, "start_rel_when", "start")
+    if when == "end":
+        return f"⏱ #{row + 1} ▸+{offset}"
+    if when == "before_end":
+        return f"⏱ #{row + 1} −{offset}"
+    return f"⏱ #{row + 1}+{offset}"
 
 
 class LiveCueRowDelegate(QStyledItemDelegate):
@@ -604,7 +625,12 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
             right_x = rect.right()
             effect_key = str(index.data(ROLE_EFFECT_KEY) or "")
-            if effect_key:
+            if effect_key.startswith("⏱"):
+                # 2.1: starts by itself relative to another cue: which one and when.
+                fm_txt, fm_bg, fm_border, fm_fg = effect_key, QColor("#042f2e"), QColor("#14b8a6"), QColor("#99f6e4")
+                fm_w = max(40, painter.fontMetrics().horizontalAdvance(effect_key) + 14)
+                follow_mode = "EFFECT"
+            elif effect_key:
                 # An effect on demand is outside the GO order: its key instead of a sequence pill.
                 fm_txt, fm_bg, fm_border, fm_fg = effect_key, QColor("#2e1065"), QColor("#7c3aed"), QColor("#e9d5ff")
                 fm_w = max(40, painter.fontMetrics().horizontalAdvance(effect_key) + 14)
@@ -815,6 +841,7 @@ class LiveShowPanel(QWidget):
     break_loop_requested = Signal()
     double_click_armed = Signal(int)
     force_row_requested = Signal(int)
+    rehearse_from_requested = Signal(int)
     undo_go_requested = Signal()
     readiness_review_requested = Signal()
     hold_auto_go_requested = Signal(int)   # cue_id whose Auto-GO should wait for a GO
@@ -1052,6 +1079,7 @@ class LiveShowPanel(QWidget):
         self.live_table.panic_requested.connect(self.panic_requested)
         self.live_table.standby_selected.connect(self.cue_row_clicked)
         self.live_table.fire_row_requested.connect(self.force_row_requested)
+        self.live_table.rehearse_from_requested.connect(self.rehearse_from_requested)
         self.live_table.group_collapse_toggled.connect(self.group_collapse_toggled)
         # The list and, on its right, what is on air now (stage 1 C2a step 8).
         middle = QHBoxLayout()
@@ -1149,6 +1177,11 @@ class LiveShowPanel(QWidget):
         self._set_standby_note("")
         sb_lines.addWidget(self.lbl_standby_note)
         sb_layout.addLayout(sb_lines, stretch=1)
+        # 2.5: when the NEXT cue came last time (from the run log)
+        self.lbl_standby_prev = QLabel("")
+        self.lbl_standby_prev.setStyleSheet("color: #94a3b8; font-size: 11px; background: transparent;")
+        self.lbl_standby_prev.setVisible(False)
+        sb_layout.addWidget(self.lbl_standby_prev)
         self.btn_gate_ok = QPushButton("✋ OK")
         self.btn_gate_ok.setFixedHeight(28)
         self.btn_gate_ok.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Space stays GO
@@ -1873,6 +1906,11 @@ class LiveShowPanel(QWidget):
         if hasattr(self, "live_status") and hasattr(self.live_status, "refresh_theme_styles"):
             self.live_status.refresh_theme_styles()
 
+    def set_previous_run_hint(self, text: str) -> None:
+        """2.5: "last time at 12:34" next to the NEXT cue (empty: hidden)."""
+        self.lbl_standby_prev.setText(text)
+        self.lbl_standby_prev.setVisible(bool(text))
+
     def set_global_paused(self, paused: bool) -> None:
         """Show the global pause/panic banner over the live view."""
         self._is_paused_all = paused
@@ -1989,6 +2027,7 @@ class LiveShowPanel(QWidget):
                     self._chain_head[idx] = head
                     helpers_of[head] = helpers_of.get(head, 0) + 1
 
+            rows_by_id = {c.cue_id: i for i, c in enumerate(cues)}
             for r, cue in enumerate(cues):
                 is_live = (cue.status == CueStatus.LIVE)
                 is_standby = (r == standby_row and not is_live)
@@ -2044,13 +2083,16 @@ class LiveShowPanel(QWidget):
                 prev_color = (getattr(cues[r - 1], "color", "") or "") if r > 0 else ""
                 incoming_link = cues[r - 1].follow_mode if r > 0 else ""
                 status_txt = "LIVE" if is_live else ("STANDBY" if is_standby else ("ATTESA" if is_waiting else "PRONTO"))
+                if not getattr(cue, "enabled", True):
+                    status_txt = "⊘ ESCLUSA"  # 2.3: off in this version of the show
                 status_clr = "#4ade80" if is_live else ("#fcd34d" if is_standby else ("#7dd3fc" if is_waiting else "#94a3b8"))
 
                 folded = helpers_of.get(r, 0) if cue.cue_id not in self._open_chains else 0
                 col_texts = (
                     f"{r + 1}",
                     (cue.q_label or "").strip() or "—",
-                    f"{cue.name}   ⤵+{folded}" if folded else cue.name,
+                    ("⊘ " if not getattr(cue, "enabled", True) else "")  # 2.3: off in this version
+                    + (f"{cue.name}   ⤵+{folded}" if folded else cue.name),
                     cue.notes or "",
                     dur_str,
                     status_txt,
@@ -2068,7 +2110,8 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_PREV_COLOR, prev_color)
                     it.setData(ROLE_FOLLOW_MODE, cue.follow_mode)
                     it.setData(ROLE_EFFECT_KEY, (
-                        f"⌨ {cue.hotkey}" if cue.hotkey else "⌨") if getattr(cue, "adlib", False) else "")
+                        f"⌨ {cue.hotkey}" if cue.hotkey else "⌨") if getattr(cue, "adlib", False)
+                        else relative_mark(cue, rows_by_id))
                     it.setData(ROLE_INCOMING_LINK, incoming_link)
                     it.setData(ROLE_IS_GROUP, is_group)
                     it.setData(ROLE_PARENT_ID, cue.parent_id)

@@ -56,6 +56,31 @@ def demote_live_on_layer(
             other.status = CueStatus.LOADED
 
 
+def outside_go_order(cue: Cue) -> bool:
+    """Effects on demand, relative starts, call-only and disabled cues: GO skips them."""
+    return (bool(getattr(cue, "adlib", False)) or getattr(cue, "start_rel_cue", None) is not None
+            or bool(getattr(cue, "call_only", False)) or not getattr(cue, "enabled", True))
+
+
+def is_enabled(cue: Cue) -> bool:
+    """2.3: False for a cue switched off in this version of the show (it never plays)."""
+    return bool(getattr(cue, "enabled", True))
+
+
+def relative_cycle(cues: list[Cue], cue_id: int, ref_id: int | None) -> bool:
+    """True when *cue_id* starting relative to *ref_id* would start itself again (a loop)."""
+    by_id = {c.cue_id: c for c in cues}
+    seen: set[int] = set()
+    current = ref_id
+    while current is not None and current not in seen:
+        if current == cue_id:
+            return True
+        seen.add(current)
+        ref = by_id.get(current)
+        current = getattr(ref, "start_rel_cue", None) if ref is not None else None
+    return False
+
+
 def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
     """Return the contiguous run of cue indices fired by a single GO.
 
@@ -64,8 +89,8 @@ def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
     """
     if not (0 <= start_idx < len(cues)):
         return []
-    if getattr(cues[start_idx], "adlib", False):
-        return [start_idx]  # an effect on demand never pulls show cues with it
+    if outside_go_order(cues[start_idx]):
+        return [start_idx]  # an effect or a relative start never pulls show cues with it
     indices: list[int] = []
     visited: set[int] = set()
     idx = start_idx
@@ -75,8 +100,8 @@ def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
         if cues[idx].follow_mode != FollowMode.SIMULTANEOUS.value:
             break
         idx += 1
-        while idx < len(cues) and getattr(cues[idx], "adlib", False):
-            idx += 1  # effects on demand are not in the order
+        while idx < len(cues) and outside_go_order(cues[idx]):
+            idx += 1  # effects and relative starts are not in the order
     return indices
 
 
@@ -173,8 +198,12 @@ class ShowEngine:
 
     @staticmethod
     def children_of(cues: list[Cue], group_cue_id: int) -> list[Cue]:
-        """Return the children of a GROUP container, in list order."""
-        return [c for c in cues if c.parent_id == group_cue_id]
+        """Return the children a GROUP plays itself, in list order.
+
+        Not those outside the GO order (switched off, effects, relative starts,
+        call only): they start in their own way or never.
+        """
+        return [c for c in cues if c.parent_id == group_cue_id and not outside_go_order(c)]
 
     @staticmethod
     def next_standby_index(cues: list[Cue], last_fired_idx: int) -> int:
@@ -185,6 +214,10 @@ class ShowEngine:
         """
         nxt = last_fired_idx + 1
         return nxt if nxt < len(cues) else last_fired_idx
+
+    outside_go_order = staticmethod(outside_go_order)
+    is_enabled = staticmethod(is_enabled)
+    relative_cycle = staticmethod(relative_cycle)
 
     @staticmethod
     def promote_to_live(cues: list[Cue], cue: Cue, dual_active: bool = True,
@@ -262,8 +295,8 @@ class ShowEngine:
         *released_groups* (a "release loop" action reached it) plays the rest
         of its pass and then ends: no wrap, and no start of the next scene.
         """
-        if getattr(finished_cue, "adlib", False):
-            return -1  # an effect on demand never starts the next cue
+        if outside_go_order(finished_cue):
+            return -1  # an effect or a relative start never starts the next cue
         parent = ShowEngine.group_parent(cues, finished_cue)
         if parent is not None:
             kids = ShowEngine.children_of(cues, parent.cue_id)
@@ -292,6 +325,6 @@ class ShowEngine:
             if idx < 0:
                 return -1
         nxt = idx + 1
-        while nxt < len(cues) and getattr(cues[nxt], "adlib", False):
-            nxt += 1  # effects on demand are not in the order
+        while nxt < len(cues) and outside_go_order(cues[nxt]):
+            nxt += 1  # effects and relative starts are not in the order
         return nxt if 0 <= nxt < len(cues) else -1

@@ -169,6 +169,9 @@ Come ogni cue parte con il GO; può avere Pre-Delay, Auto-GO e stare in un grupp
 <tr><td><b>🌓 Opacità layer</b></td><td>scurisce tutto il layer (immagini e video), es. lo sfondo al 30 % durante una scena. La cue successiva sullo stesso layer riparte piena.</td></tr>
 <tr><td><b>📝 Nota per la regia</b></td><td>testo in una fascia colorata in cima alla finestra del programma, mai sul proiettore. Non blocca il GO; sparisce al GO successivo o con ✕.</td></tr>
 <tr><td><b>☑ Checklist</b></td><td>nota con caselle da spuntare (es. «microfoni accesi»). Compare con il GO e anche a ogni ingresso in modalità LIVE finché non è tutta spuntata. Le spunte non vengono salvate: ogni spettacolo si controlla da capo.</td></tr>
+<tr><td><b>↪ Salta a una cue</b></td><td>avvia la cue scelta (il GO prosegue da lì) oppure – <b>Solo come prossimo GO</b> – la mette soltanto come prossima. <b>Al massimo N×</b> limita le ripetizioni: per esempio una scena ripetuta due volte, poi il GO prosegue. Il conteggio riparte quando lo spettacolo ricomincia dall'inizio.</td></tr>
+<tr><td><b>📞 Chiama una cue</b></td><td>avvia la cue scelta senza spostare il GO (come un effetto). Una cue con <b>📞 Solo su chiamata</b> (scheda 3 · Tempi) è fuori dall'ordine del GO; l'Inspector mostra da dove viene chiamata.</td></tr>
+<tr><td><b>⏩ Sposta la riproduzione</b></td><td>sposta un suono o un video in onda: <b>a una posizione</b> del file, <b>di N s</b> avanti o indietro, oppure <b>a N s dalla fine</b> (per esempio per saltare una strofa in prova).</td></tr>
 </table>
 <p><b>Su cosa agisce</b> (campo <b>Su cosa</b>): <b>Tutto ciò che è in onda</b>, <b>Un layer</b> (L1–L3)
 oppure <b>Cue scelte</b> (spuntale nell'elenco; un gruppo = tutte le sue cue). Se nessun bersaglio
@@ -206,6 +209,20 @@ Si vede in modalità LIVE.</li>
 </ul>
 Le stesse tre modalità sono sotto la scaletta (<b>Blocco / Auto-GO / Simult.</b>).</li>
 <li><b>⛔ Esclusiva</b> – finché questa cue è in onda il GO manuale viene rifiutato (anche da remoto), così un GO dato per errore non la copre; <kbd>Ctrl+Spazio</kbd> forza comunque il GO. Attenzione alle immagini senza durata – restano finché non le fermi.</li>
+<li><b>Partenza</b> (scheda <b>3 · Tempi di incastro</b>, fuori dalla vista base) –
+<b>con il GO</b> (come sempre) oppure da sola, rispetto a un'altra cue: <b>dopo l'avvio</b> (per esempio una
+didascalia 2 s dopo l'inizio della musica), <b>dopo la fine</b> (applausi 0,5 s dopo la fine della canzone) o
+<b>prima della fine</b> (un campanello 1 s prima della fine della musica). Questa cue è fuori dall'ordine: il GO
+la salta e non sposta il cursore; nella scaletta dello spettacolo ha il segno <b>⏱ #3+2s</b>. <b>Pausa tutto</b>
+ferma il conto alla rovescia, PANIC e Dissolvi tutto lo annullano. «Dopo la fine» conta quando la cue finisce da
+sola: una fermata a mano non avvia niente. Annulla GO non annulla le cue partite dopo da sole.</li>
+<li><b>Versioni dello spettacolo</b> – tasto destro su una cue → <b>⊘ Escludi / includi in questa
+versione</b>. Una cue esclusa non suona mai: il GO, le catene, l'Auto-GO, i gruppi, le partenze relative e i salti
+la saltano; nella scaletta ha il segno <b>⊘</b>. Se qualcosa la usa (l'Auto-GO della precedente, un salto,
+un'azione, una partenza relativa) la barra di stato avvisa. <b>Show → 🎭 Versioni dello spettacolo</b>: <b>Salva come
+nuova versione…</b> (per esempio «ridotta», «secondo cast») e il passaggio da una versione all'altra; <b>Spettacolo
+completo</b> ha tutte le cue incluse. Le versioni si salvano con lo spettacolo e quella attuale è sulla barra di
+stato («Versione: ridotta · 12 cue escluse»).</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -375,6 +392,11 @@ cursore della scheda non è a 100 %: il livello corretto diventa quello della cu
 agiscono subito, nello spettacolo dopo 1,5 s di pressione. Aggiungere, togliere e spostare cue si fa solo in
 Preparazione. Prova → Preparazione: un clic; → Spettacolo: <kbd>F5</kbd> o la scheda (passando per "Prima dello
 spettacolo"); Spettacolo → Prova: tieni premuta la scheda <b>◐ Prova</b> 1,5 s.</p>
+<p><b>⏯ Prova da qui</b> (tasto destro su una cue – nella preparazione e nella prova):
+il programma mostra cosa dovrebbe restare in scena prima di quella cue (un'immagine senza durata, una musica in
+loop, con il livello e l'opacità impostati lungo il percorso); dopo la conferma ferma ciò che suona, ricrea la
+scena e mette il GO sulla cue scelta. Una musica che suona fino alla fine non ritorna: il suo momento dipende
+dall'operatore. Non nello spettacolo.</p>
 <p><b>PIN di uscita</b> (facoltativo, <b>Show → PIN di uscita dallo spettacolo…</b>, solo in
 Preparazione): 4 cifre memorizzate su questo computer, mai nel file dello spettacolo. Con un PIN ogni uscita dallo
 spettacolo (tenere premuta una scheda, <b>Termina lo spettacolo…</b>) lo chiede prima in un campo sotto la barra in
@@ -440,6 +462,14 @@ ricorda.</li>
 <li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu. Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.</li>
 <li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b> oppure <b>Suona finché tieni premuto</b>. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li>
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
+<li><b>Conto alla rovescia</b> (per esempio l'intervallo): <b>Show → ⏳ Conto alla rovescia…</b>
+oppure la cue azione <b>⏳ Conto alla rovescia</b> (titolo e minuti; 0 minuti lo ferma). Compare sulla barra di
+stato e <b>🖥 Conto alla rovescia grande (quinte)</b> apre una finestra grande da spostare su un secondo schermo.
+L'ultimo minuto è ambra e lampeggia.</li>
+<li><b>Registro della replica</b>: il momento di ogni GO dal primo GO viene salvato quando esci dallo spettacolo,
+in <i>Documenti\BlindCue\przebiegi\&lt;nome dello spettacolo&gt;</i> (file CSV per un foglio di calcolo). Allo
+spettacolo successivo la barra <b>PROSSIMA</b> dice quando quella cue è arrivata la volta scorsa («la volta
+scorsa a 12:34»).</li>
 <li><b>Ritorno alla preparazione</b>: tieni premuta la scheda <b>○ Preparazione</b> per 1,5 s oppure <b>Show → Termina lo spettacolo…</b> (<kbd>Ctrl+Maiusc+F5</kbd>); quello che sta andando continua. <kbd>F5</kbd> e <kbd>Ctrl+L</kbd> servono solo a entrare – un tasto premuto per sbaglio non ti fa uscire dallo spettacolo. Alt+F4 durante lo spettacolo chiede prima.</li>
 </ol>
 <p class="tip">💡 Durante lo spettacolo tieni attiva la finestra del programma (facci clic) perché

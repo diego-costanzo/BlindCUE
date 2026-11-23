@@ -46,6 +46,10 @@ from ui.main_window._pin import _PinMixin
 from ui.main_window._variants import _VariantsMixin
 from ui.main_window._effects import _EffectsMixin
 from ui.main_window._assistant import _AssistantMixin
+from ui.main_window._relative import _RelativeMixin
+from ui.main_window._versions import _VersionsMixin
+from ui.main_window._rehearse_from import _RehearseFromMixin
+from ui.main_window._countdown import _CountdownMixin
 
 
 class MainWindow(
@@ -79,6 +83,10 @@ class MainWindow(
     _VariantsMixin,
     _EffectsMixin,
     _AssistantMixin,
+    _RelativeMixin,
+    _VersionsMixin,
+    _RehearseFromMixin,
+    _CountdownMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -90,6 +98,7 @@ class MainWindow(
     undo_go_requested = Signal(object)             # list[UndoStep]: take back the last GO
     release_loop_requested = Signal(int)           # runtime layer: its loop ends after this pass
     layer_trim_requested = Signal(int, float)      # runtime layer, operator level correction 0..1
+    layer_opacity_requested = Signal(int, float)   # 2.4: runtime layer, opacity 0..1 (rehearse from here)
     layer_stop_requested = Signal(int)             # runtime layer: stop at once (rehearsal card)
     card_fade_requested = Signal(int)              # runtime layer: fade the card's cue only
     layer_cancel_start_requested = Signal(int)     # runtime layer: the waiting start never happens
@@ -209,6 +218,9 @@ class MainWindow(
         self._now_playing_setup()  # right column of the show (stage 1 C2a step 8)
         self._rehearsal_setup()  # rehearsal drawer and tools (stage 1 C2a step 9)
         self._pin_setup()  # exit PIN of the show (stage 1 C2a step 10)
+        self._relative_setup()  # cues starting relative to another cue (stage 2, 2.1)
+        self._versions_setup()  # cues on/off and versions of the show (stage 2, 2.3)
+        self._countdown_setup()  # countdown and run log (stage 2, 2.5)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()

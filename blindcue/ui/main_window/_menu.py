@@ -111,6 +111,14 @@ class _MenuMixin:
             QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
         )
         show_menu.addSeparator()
+        # 2.3: versions of the show (named sets of cues that are off).
+        self._versions_menu = show_menu.addMenu("🎭 Versioni dello spettacolo")
+        # 2.5: countdown (e.g. the interval)
+        show_menu.addAction(QAction("⏳ Conto alla rovescia…", self, triggered=lambda: self._ask_countdown()))
+        show_menu.addAction(QAction("🖥 Conto alla rovescia grande (quinte)", self,
+                                    triggered=lambda: self._show_countdown_window()))
+        show_menu.addAction(QAction("⏹ Ferma il conto alla rovescia", self, triggered=lambda: self.stop_countdown()))
+        show_menu.addSeparator()
         # Stage 1M, M2: an AI assistant (MCP) may change the open show - off by default.
         self._act_assistant = QAction("🤖 L'assistente AI può modificare lo spettacolo", self, checkable=True)
         self._act_assistant.setToolTip(

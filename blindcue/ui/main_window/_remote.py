@@ -402,6 +402,13 @@ class _RemoteMixin:
         if hasattr(self, "_live_show_panel"):
             self._live_show_panel.set_global_paused(paused)
 
+    def _sync_previous_run_hint(self) -> None:
+        """2.5: the NEXT bar says when the next cue came in the last run."""
+        idx = self._go_target_index()
+        cue = self._cues[idx] if 0 <= idx < len(self._cues) else None
+        if hasattr(self, "previous_run_hint"):
+            self._live_show_panel.set_previous_run_hint(self.previous_run_hint(cue))
+
     def _sync_live_view(self) -> None:
         self._update_go_button_text()
         self._refresh_now_playing()
@@ -423,6 +430,7 @@ class _RemoteMixin:
             layer_conflicts=self._layer_conflicts,
             played=self._played_ids,
         )
+        self._sync_previous_run_hint()  # 2.5
 
     def _update_live_layer_label(self, cue: Cue, preserve_timing: bool = False) -> None:
         dur = 0.0
@@ -778,6 +786,10 @@ class _RemoteMixin:
         """Rebuild the 3-column table from the cue list with progressive row numbers."""
         if getattr(self, "_effects_on", False):
             self._effects_sync()  # an effect edited in the rehearsal: its key and tile now
+        if hasattr(self, "_rel_extra"):
+            self._rel_refresh_choices()  # 2.1: the inspector's list of cues to start after
+        if hasattr(self, "_lbl_version"):
+            self._version_status()  # 2.3: also after Undo
         self._layer_conflicts = detect_layer_conflicts(
             self._cues, dual_active=self._dual_output_active
         )

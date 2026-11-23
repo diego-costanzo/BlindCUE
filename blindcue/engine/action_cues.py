@@ -15,12 +15,16 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 
 from models.cue import (
+    ACTION_CALL,
     ACTION_CHECKLIST,
+    ACTION_COUNTDOWN,
     ACTION_FADE,
+    ACTION_GOTO,
     ACTION_LEVEL,
     ACTION_NOTE,
     ACTION_OPACITY,
     ACTION_RELEASE,
+    ACTION_SEEK,
     ACTION_STOP,
     ACTION_TARGET_ALL,
     ACTION_TARGET_CUES,
@@ -42,6 +46,7 @@ _KIND_MEDIA: dict[str, tuple[MediaType, ...]] = {
     ACTION_RELEASE: (MediaType.VIDEO, MediaType.AUDIO),
     ACTION_LEVEL: (MediaType.VIDEO, MediaType.AUDIO),
     ACTION_OPACITY: (MediaType.VIDEO, MediaType.IMAGE),
+    ACTION_SEEK: (MediaType.VIDEO, MediaType.AUDIO),  # 2.2: what plays can be moved
 }
 
 
@@ -222,6 +227,25 @@ def describe_action(spec: Mapping[str, object], cues: Iterable[Cue] = ()) -> str
         return f"Livello {round(float(spec['level']) * 100)}% in {secs} s: {target}"
     if kind == ACTION_OPACITY:
         return f"Opacità {round(float(spec['level']) * 100)}% in {secs} s: {target}"
+    if kind in (ACTION_GOTO, ACTION_CALL):
+        one = describe_target({**spec, "target": ACTION_TARGET_CUES, "cue_ids": spec["cue_ids"][:1]}, cues)
+        if kind == ACTION_CALL:
+            return f"Chiama: {one}"
+        limit = f" (al massimo {spec['goto_max']}×)" if spec["goto_max"] else ""
+        return (f"Salta e avvia{limit}: {one}" if spec["goto_play"] else f"Prossimo GO{limit}: {one}")
+    if kind == ACTION_COUNTDOWN:
+        total = int(float(spec["countdown_sec"]))
+        if total <= 0:
+            return "Ferma il conto alla rovescia"
+        title = str(spec["text"]).strip() or "Intervallo"
+        return f"Conto alla rovescia {total // 60:02d}:{total % 60:02d}: {title}"
+    if kind == ACTION_SEEK:
+        sec = float(spec["seek_sec"])
+        if spec["seek_mode"] == "absolute":
+            return f"Vai a {_format_seconds(sec)} s: {target}"
+        if spec["seek_mode"] == "before_end":
+            return f"Vai a {_format_seconds(abs(sec))} s dalla fine: {target}"
+        return f"Sposta di {sec:+.1f} s: {target}"
     return kind
 
 
@@ -235,6 +259,10 @@ def default_action_name(kind: str) -> str:
         ACTION_OPACITY: "Opacità layer",
         ACTION_NOTE: "Nota per la regia",
         ACTION_CHECKLIST: "Checklist prima dello spettacolo",
+        ACTION_GOTO: "Salta a una cue",
+        ACTION_CALL: "Chiama una cue",
+        ACTION_SEEK: "Sposta la riproduzione",
+        ACTION_COUNTDOWN: "Conto alla rovescia",
     }.get(kind, "Azione")
 
 

@@ -699,6 +699,52 @@ class CueInspectorPanel(QGroupBox):
         self.combo_hotkey_mode.currentIndexChanged.connect(lambda _i: self._emit_change("hotkey_mode"))
         key_row.addWidget(self.combo_hotkey_mode, stretch=1)
         l3.addLayout(key_row)
+        # 2.2: started only by a "call" action, never by GO.
+        self.chk_call_only = QCheckBox("📞 Solo su chiamata (fuori dall'ordine del GO)")
+        self.chk_call_only.setToolTip("La avvia soltanto un'azione «Chiama una cue» (o un salto); il GO la salta.")
+        self.chk_call_only.toggled.connect(lambda _c: self._emit_change("call_only"))
+        l3.addWidget(self.chk_call_only)
+        self.lbl_callers = QLabel("")
+        self.lbl_callers.setWordWrap(True)
+        self.lbl_callers.setStyleSheet("color: #94a3b8; font-size: 11px;")
+        self.lbl_callers.setVisible(False)
+        l3.addWidget(self.lbl_callers)
+        # 2.1: the cue starts by itself, relative to another cue (outside the GO order).
+        rel_row = QHBoxLayout()
+        self.lbl_rel = self._make_field_label("Partenza:")
+        rel_row.addWidget(self.lbl_rel)
+        self.combo_rel_when = QComboBox()
+        for value, label in (("", "con il GO"), ("start", "dopo l'avvio di"), ("end", "dopo la fine di"),
+                             ("before_end", "prima della fine di")):
+            self.combo_rel_when.addItem(label, value)
+        self.combo_rel_when.setAccessibleName("Partenza della cue")
+        self.combo_rel_when.setToolTip(
+            "Con il GO: come sempre. Le altre scelte fanno partire questa cue da sola rispetto a un'altra "
+            "(il GO la salta): N s dopo il suo avvio, N s dopo la sua fine, o N s prima della sua fine.")
+        self.combo_rel_when.currentIndexChanged.connect(lambda _i: self._on_rel_changed())
+        rel_row.addWidget(self.combo_rel_when)
+        self.combo_rel_cue = QComboBox()
+        self.combo_rel_cue.setMinimumWidth(120)
+        self.combo_rel_cue.setAccessibleName("Cue di riferimento")
+        self.combo_rel_cue.currentIndexChanged.connect(lambda _i: self._on_rel_changed())
+        rel_row.addWidget(self.combo_rel_cue, stretch=1)
+        self.spin_rel_offset = SmartDoubleSpinBox()
+        self.spin_rel_offset.setRange(0.0, 600.0)
+        self.spin_rel_offset.setDecimals(1)
+        self.spin_rel_offset.setSingleStep(0.5)
+        self.spin_rel_offset.setSuffix(" s")
+        self.spin_rel_offset.setAccessibleName("Secondi rispetto alla cue di riferimento")
+        self.spin_rel_offset.valueChanged.connect(lambda _v: self._on_rel_changed())
+        rel_row.addWidget(self.spin_rel_offset)
+        l3.addLayout(rel_row)
+        self.lbl_rel_hint = QLabel("")
+        self.lbl_rel_hint.setWordWrap(True)
+        self.lbl_rel_hint.setStyleSheet("color: #fbbf24;")
+        self.lbl_rel_hint.setVisible(False)
+        l3.addWidget(self.lbl_rel_hint)
+        self._rel_choices: list[tuple[int, str]] = []
+        self.relative_cycle_check = None  # set by the window: (cue_id, ref_id) -> True for a loop
+        self._sync_rel_enabled()
         lay.addWidget(c3)
         lay.addStretch()
 
@@ -1714,6 +1760,73 @@ class CueInspectorPanel(QGroupBox):
         self.set_layer_checked(layer)
         self.layer_selected.emit(layer)
 
+    def _sync_rel_enabled(self) -> None:
+        on = bool(self.combo_rel_when.currentData())
+        self.combo_rel_cue.setEnabled(on)
+        self.spin_rel_offset.setEnabled(on)
+
+    def _on_rel_changed(self) -> None:
+        self._sync_rel_enabled()
+        self._emit_change("start_rel")
+
+    def set_cue_choices(self, items: list[tuple[int, str]]) -> None:
+        """The cues a relative start can follow ("#3 Music"), kept up to date by the window."""
+        if items == self._rel_choices:
+            return
+        self._rel_choices = list(items)
+        current = self.combo_rel_cue.currentData()
+        self.combo_rel_cue.blockSignals(True)
+        self.combo_rel_cue.clear()
+        for cue_id, label in items:
+            self.combo_rel_cue.addItem(label, cue_id)
+        self.combo_rel_cue.setCurrentIndex(max(0, self.combo_rel_cue.findData(current)))
+        self.combo_rel_cue.blockSignals(False)
+
+    def _load_call_only(self, cue) -> None:
+        from i18n import tr
+
+        self.chk_call_only.blockSignals(True)
+        self.chk_call_only.setChecked(bool(getattr(cue, "call_only", False)))
+        self.chk_call_only.blockSignals(False)
+        cues = list(self.action_editor._catalog() or [])
+        callers = [f"#{row + 1}" for row, c in enumerate(cues)
+                   if c.media_type == MediaType.ACTION and c.action_spec.get("kind") in ("call", "goto")
+                   and c.action_spec.get("cue_ids", [])[:1] == [cue.cue_id]]
+        self.lbl_callers.setText(tr("Chiamata o salto da: {}").format(", ".join(callers)) if callers else "")
+        self.lbl_callers.setVisible(bool(callers) and self.chk_call_only.isVisible())
+
+    def _load_start_rel(self, cue) -> None:
+        ref = getattr(cue, "start_rel_cue", None)
+        for w in (self.combo_rel_when, self.combo_rel_cue, self.spin_rel_offset):
+            w.blockSignals(True)
+        self.combo_rel_when.setCurrentIndex(
+            max(0, self.combo_rel_when.findData(getattr(cue, "start_rel_when", "start") if ref else "")))
+        self.combo_rel_cue.setCurrentIndex(max(0, self.combo_rel_cue.findData(ref)) if ref else 0)
+        self.spin_rel_offset.setValue(float(getattr(cue, "start_rel_offset", 0.0)))
+        for w in (self.combo_rel_when, self.combo_rel_cue, self.spin_rel_offset):
+            w.blockSignals(False)
+        self.lbl_rel_hint.setVisible(False)
+        self._sync_rel_enabled()
+
+    def _apply_start_rel(self, cue) -> None:
+        from i18n import tr
+
+        when = self.combo_rel_when.currentData() or ""
+        ref = self.combo_rel_cue.currentData()
+        self.lbl_rel_hint.setVisible(False)
+        if not when or ref is None:
+            cue.start_rel_cue = None
+        elif int(ref) == cue.cue_id or (self.relative_cycle_check is not None
+                                        and self.relative_cycle_check(cue.cue_id, int(ref))):
+            self.lbl_rel_hint.setText(tr("Non possibile: quella cue parte già da questa (si avvierebbero "
+                                         "a vicenda all'infinito)."))
+            self.lbl_rel_hint.setVisible(True)
+            return
+        else:
+            cue.start_rel_cue = int(ref)
+            cue.start_rel_when = when
+        cue.start_rel_offset = round(self.spin_rel_offset.value(), 2)
+
     def _emit_change(self, field_key: str) -> None:
         if field_key in ("crop_l", "crop_r", "crop_t", "crop_b"):
             self._refresh_cached_norm_from_spins()
@@ -2291,6 +2404,9 @@ class CueInspectorPanel(QGroupBox):
             w.setVisible(not basic and not is_image)
         for w in (self.chk_adlib, self.lbl_hotkey, self.edit_hotkey, self.combo_hotkey_mode):
             w.setVisible(not basic and not is_image)
+        for w in (self.lbl_rel, self.combo_rel_when, self.combo_rel_cue, self.spin_rel_offset, self.chk_call_only):
+            w.setVisible(not basic and media_type != MediaType.GROUP)
+        self.lbl_callers.setVisible(bool(self.lbl_callers.text()) and not basic)
         if self.tab_widget.currentIndex() >= 0 and not self.tab_widget.isTabVisible(self.tab_widget.currentIndex()):
             self.tab_widget.setCurrentIndex(0)
         self.btn_more.setVisible(self._lite)
@@ -2328,6 +2444,10 @@ class CueInspectorPanel(QGroupBox):
                 parts.append(tr("effetto a richiesta (tasto {})").format(cue.hotkey or "—"))
             if getattr(cue, "fade_others", 0.0) > 0:
                 parts.append(tr("all'avvio sfuma le altre in {} s").format(f"{cue.fade_others:.1f}"))
+            if getattr(cue, "start_rel_cue", None) is not None:
+                parts.append(tr("parte da sola rispetto a un'altra cue"))
+            if getattr(cue, "call_only", False):
+                parts.append(tr("solo su chiamata"))
             if cue.loop:
                 parts.append(tr("suona in loop") if cue.loop_count <= 0 else tr("si ripete {}×").format(cue.loop_count))
             if cue.sections:
@@ -2490,6 +2610,8 @@ class CueInspectorPanel(QGroupBox):
                     w.blockSignals(True)
                     setter()
                     w.blockSignals(False)
+                self._load_start_rel(cue)
+                self._load_call_only(cue)
                 self._populate_media_fields(cue)
                 self.set_also(cue)
                 if cue.media_type == MediaType.ACTION:
@@ -2612,6 +2734,8 @@ class CueInspectorPanel(QGroupBox):
         cue.adlib = self.chk_adlib.isChecked()
         cue.hotkey = self.edit_hotkey.text().strip()[:1].upper()
         cue.hotkey_mode = self.combo_hotkey_mode.currentData() or "trigger"
+        self._apply_start_rel(cue)
+        cue.call_only = self.chk_call_only.isChecked()
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -2734,6 +2858,10 @@ class CueInspectorPanel(QGroupBox):
                 cue.hotkey = self.edit_hotkey.text().strip()[:1].upper()
             elif field_key == "hotkey_mode":
                 cue.hotkey_mode = self.combo_hotkey_mode.currentData() or "trigger"
+            elif field_key == "start_rel":
+                self._apply_start_rel(cue)
+            elif field_key == "call_only":
+                cue.call_only = self.chk_call_only.isChecked()
             elif field_key == "pos_x":
                 cue.position_x = round(self.spin_pos_x.value(), 3)
             elif field_key == "pos_y":

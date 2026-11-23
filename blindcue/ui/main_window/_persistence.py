@@ -54,6 +54,7 @@ class _PersistenceMixin:
                 settings["output"] = output
             # After a crash during the show the restore question offers to go back into it.
             settings["live_mode"] = bool(self._live_mode)
+            settings.update(self._versions_settings())  # 2.3
             payload = self._project_manager.build_autosave_payload(
                 self._cues,
                 current_index=self._current_index,
@@ -148,6 +149,8 @@ class _PersistenceMixin:
             self._current_index = recovery.get("current_cue_index", -1)
             self._live_resume_id = None
             self._played_ids.clear()
+            self._rel_reset()
+            self._goto_counts.clear()  # 2.1/2.2: another show, nothing waits, jumps count again
             self._released_groups.clear()  # cue ids repeat between shows
             self._checklist_ticks = {}
             self._current_project_path = recovery.get("active_project_path")
@@ -174,6 +177,7 @@ class _PersistenceMixin:
                 self._output_b.set_surfaces(self._surfaces)
             self._inspector.set_available_surfaces(self._surfaces)
             self._apply_output_settings(rec_settings)
+            self._versions_load(rec_settings if isinstance(rec_settings, dict) else {})  # 2.3
 
             self._refresh_cue_list(keep_selection=False)
             if 0 <= start_row < len(self._cues):
@@ -230,6 +234,9 @@ class _PersistenceMixin:
         self._current_index = -1
         self._live_resume_id = None
         self._played_ids.clear()
+        self._rel_reset()
+        self._goto_counts.clear()  # 2.1/2.2: another show, nothing waits, jumps count again
+        self._versions_load({})  # 2.3: a new show has only the full version
         self._released_groups.clear()  # cue ids repeat between shows
         self._rehearsal_before.clear()
         self._rehearsal_undo.clear()
@@ -363,6 +370,8 @@ class _PersistenceMixin:
             self._live_resume_id = None
             self._readiness_full_due = True  # another show: check everything again
             self._played_ids.clear()
+            self._rel_reset()
+            self._goto_counts.clear()  # 2.1/2.2: another show, nothing waits, jumps count again
             self._released_groups.clear()  # cue ids repeat between shows
             self._rehearsal_before.clear()
             self._rehearsal_undo.clear()
@@ -388,6 +397,7 @@ class _PersistenceMixin:
                 self._output_b.set_surfaces(self._surfaces)
             self._inspector.set_available_surfaces(self._surfaces)
             self._apply_output_settings(settings)
+            self._versions_load(settings)  # 2.3
 
             self._refresh_cue_list(keep_selection=False)
             if 0 <= self._current_index < len(self._cues):
@@ -464,6 +474,7 @@ class _PersistenceMixin:
         output = self._output_settings()
         if output:
             settings["output"] = output
+        settings.update(self._versions_settings())  # 2.3
         problems: list[str] = []
         copied = 0
         if getattr(self, "_project_bundled", False):

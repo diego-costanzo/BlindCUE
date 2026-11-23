@@ -170,10 +170,13 @@ ACTION_LEVEL = "level"        # change the audio level of the targets
 ACTION_OPACITY = "opacity"    # change the opacity of the targets' layers
 ACTION_NOTE = "note"          # show a note to the operator (never on the output)
 ACTION_CHECKLIST = "checklist"  # a note with tick boxes (pre-show checklist)
+ACTION_GOTO = "goto"          # 2.2: jump - start the chosen cue, or only make it the next GO
+ACTION_CALL = "call"          # 2.2: start the chosen cue without moving the GO pointer
+ACTION_SEEK = "seek"          # 2.2: move a playing cue to a position / by N s / N s before its end
+ACTION_COUNTDOWN = "countdown"  # 2.5: start a countdown (e.g. the interval); 0 s stops it
 ACTION_KINDS = (
     ACTION_STOP, ACTION_FADE, ACTION_RELEASE, ACTION_LEVEL, ACTION_OPACITY,
-    ACTION_NOTE, ACTION_CHECKLIST,
-)
+    ACTION_NOTE, ACTION_CHECKLIST, ACTION_GOTO, ACTION_CALL, ACTION_SEEK, ACTION_COUNTDOWN)
 ACTION_TARGET_ALL = "all"      # everything that is playing (or waiting in Pre-Delay)
 ACTION_TARGET_LAYER = "layer"  # whatever plays on one layer of one output
 ACTION_TARGET_CUES = "cues"    # chosen cues (a group means all its children)
@@ -183,9 +186,17 @@ ACTION_MAX_CHECKLIST_ITEMS = 30
 _DEFAULT_NOTE_COLOR = "#f59e0b"
 
 
+RELATIVE_WHEN = ("start", "end", "before_end")
+
+
 def action_needs_target(kind: str) -> bool:
-    """Notes and checklists act on nobody; every other action has targets."""
-    return kind not in (ACTION_NOTE, ACTION_CHECKLIST)
+    """Notes and checklists act on nobody; a jump or a call names one cue (cue_ids[0])."""
+    return kind not in (ACTION_NOTE, ACTION_CHECKLIST, ACTION_GOTO, ACTION_CALL, ACTION_COUNTDOWN)
+
+
+def action_names_one_cue(kind: str) -> bool:
+    """Jump and call act on exactly one chosen cue (the first of cue_ids)."""
+    return kind in (ACTION_GOTO, ACTION_CALL)
 
 
 def sanitize_action_spec(value: object) -> dict[str, Any]:
@@ -234,6 +245,7 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
                 items.append(line)
     mode = str(raw.get("mode", "absolute") or "absolute")
     curve = str(raw.get("curve", "linear") or "linear")
+    seek_mode = str(raw.get("seek_mode", "relative") or "relative")
     return {
         "kind": kind,
         "target": target,
@@ -250,6 +262,11 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
         "note_color": _sanitize_hex_color(raw.get("note_color", _DEFAULT_NOTE_COLOR))
         or _DEFAULT_NOTE_COLOR,
         "items": items,
+        "goto_play": bool(raw.get("goto_play", True)),
+        "goto_max": _safe_int(raw.get("goto_max", 0), 0, min_val=0, max_val=999),
+        "seek_mode": seek_mode if seek_mode in ("absolute", "relative", "before_end") else "relative",
+        "seek_sec": round(_safe_float(raw.get("seek_sec", 10.0), 10.0, min_val=-86400.0, max_val=86400.0), 3),
+        "countdown_sec": round(_safe_float(raw.get("countdown_sec", 900.0), 900.0, min_val=0.0, max_val=14400.0), 1),
     }
 
 
@@ -476,6 +493,13 @@ class Cue:
     adlib: bool = False          # an effect on demand: outside the GO order, started by its key or tile (1.7)
     hotkey: str = ""             # one letter or digit (several cues on one key = steps)
     hotkey_mode: str = "trigger"  # trigger | toggle | note (plays while the key is held)
+    call_only: bool = False      # 2.2: started only by a "call" action, never by GO
+    enabled: bool = True         # 2.3: off in this version of the show - never plays
+    # 2.1: starts by itself relative to another cue (by cue_id): N s after its
+    # start, after its end, or N s before its end. Outside the GO order.
+    start_rel_cue: int | None = None
+    start_rel_when: str = "start"  # start | end | before_end
+    start_rel_offset: float = 0.0
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
     parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
@@ -671,6 +695,11 @@ class Cue:
             "adlib": self.adlib,
             "hotkey": self.hotkey,
             "hotkey_mode": self.hotkey_mode,
+            "call_only": self.call_only,
+            "enabled": self.enabled,
+            "start_rel_cue": self.start_rel_cue,
+            "start_rel_when": self.start_rel_when,
+            "start_rel_offset": self.start_rel_offset,
             "color": _sanitize_hex_color(self.color),
             "parent_id": self.parent_id,
             "group_mode": self.group_mode,
@@ -758,6 +787,13 @@ class Cue:
             hotkey=str(data.get("hotkey", "") or "")[:1].upper(),
             hotkey_mode=str(data.get("hotkey_mode", "trigger") or "trigger")
             if str(data.get("hotkey_mode", "trigger")) in ("trigger", "toggle", "note") else "trigger",
+            call_only=bool(data.get("call_only", False)),
+            enabled=bool(data.get("enabled", True)),
+            start_rel_cue=_safe_int(data.get("start_rel_cue"), 0, min_val=0) or None
+            if data.get("start_rel_cue") not in (None, "", 0) else None,
+            start_rel_when=str(data.get("start_rel_when", "start"))
+            if str(data.get("start_rel_when", "start")) in RELATIVE_WHEN else "start",
+            start_rel_offset=min(600.0, max(0.0, float(data.get("start_rel_offset", 0.0) or 0.0))),
             follow_mode=(
                 data.get("follow_mode", FollowMode.MANUAL.value)
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES
