@@ -30,6 +30,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "focus_warning": ("blindcue/ui/main_window/_window_setup.py", "def _update_focus_warning"),
     "live_dblclick": ("blindcue/ui/live_show_view.py", "def live_double_click_fires"),
     "exclusive": ("blindcue/models/cue.py", "exclusive: bool"),
+    "action_cues": ("blindcue/engine/action_cues.py", None),
 }
 
 

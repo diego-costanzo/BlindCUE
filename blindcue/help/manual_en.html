@@ -49,8 +49,8 @@ This manual takes you from an empty program to a finished show.</p>
 <ul>
 <li><b>Cue list (left column)</b> – the running order of the show. Each row is one
 <i>cue</i>: a video <code>VID</code>, sound <code>AUD</code>, picture <code>IMG</code> or
-group <code>GRP</code>; captions have a 📝 icon. Under the list are the buttons
-<b>+ Video / + Audio / + Photo / + Text / + Group</b>,
+group <code>GRP</code>, action <code>ACT</code>; captions have a 📝 icon. Under the list are the buttons
+<b>+ Video / + Audio / + Photo / + Text / + Group / + Action</b>,
 <b>Up / Down</b> to move and <b>Delete</b>.</li>
 <li><b>Pre-Viz preview (middle)</b> – a private preview just for you. The audience never sees it.
 <b>Play / Pause / Stop</b> check the selected cue.</li>
@@ -140,6 +140,26 @@ fades out by itself. Or leave 0 and fade it out with <b>Fade Out</b> next to lay
 on the video cue. You can also select both cues and group them (<kbd>Ctrl+G</kbd>) in
 <b>Simultaneous</b> mode.</p>
 <p><img src="img/en/15_list_with_caption.png" width="760" height="404"></p>
+
+<h3><a name="actions"></a>Action cues – stop, fade, level, opacity, note</h3>
+<p>An action cue has no file: it acts on <b>other</b> cues or shows a note for you.
+Add one with the <b>+ Action</b> button (pick the kind from its menu). In the list it has the
+<code>ACT</code> badge, and its settings are in the Inspector, <b>⚡ Action</b> tab. Like any
+cue it is fired with GO; it can have a Pre-Delay and Auto-GO and belong to a group.</p>
+<table class="k">
+<tr><td><b>🔉 Fade out and stop</b></td><td>brings sound and picture down over the given time, then stops. The stopped cues do not start their Post-Delay or Auto-GO. E.g. the end of the background music as an ordinary line of the list.</td></tr>
+<tr><td><b>⏹ Stop at once</b></td><td>cuts at once, also cues still waiting for their Pre-Delay.</td></tr>
+<tr><td><b>🔁 Release loop</b></td><td>the looping cue (loop, or a section repeated forever) finishes its current pass and goes on: to the next section or to the end, with Post-Delay and Auto-GO.</td></tr>
+<tr><td><b>🎚 Level change</b></td><td>changes the volume of what is playing without stopping it: <b>absolute</b> (as if the cue Volume were the given value) or <b>relative</b> (e.g. −10 dB), over the given time with the chosen curve. Music under a dialogue: one action −10 dB, later another +10 dB.</td></tr>
+<tr><td><b>🌓 Layer opacity</b></td><td>dims the whole layer (pictures and videos), e.g. the background to 30 % during a scene. The next cue on that layer starts at full opacity.</td></tr>
+<tr><td><b>📝 Note for the operator</b></td><td>text in a coloured strip at the top of the program window, never on the projector. It does not block GO; it goes away at the next GO or with ✕.</td></tr>
+<tr><td><b>☑ Checklist</b></td><td>a note with boxes to tick (e.g. “microphones on”). It appears on GO and also every time you enter LIVE mode until everything is ticked. Ticks are not saved: every show is checked from scratch.</td></tr>
+</table>
+<p><b>What it acts on</b> (<b>Acts on</b> field): <b>Everything playing</b>, <b>One layer</b> (L1–L3)
+or <b>Chosen cues</b> (tick them in the list; a group = all its cues). When none of the targets
+is playing, the action does nothing and says so in the status bar.</p>
+<p class="tip">💡 “Everything playing” really means everything. If the same GO starts new music
+(<b>Simult.</b>), put the action <b>before</b> it in the list or pick the exact cues as targets.</p>
 
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Setting up a cue (Inspector)</h2>
@@ -324,6 +344,7 @@ At the bottom you see <b>NEXT IN STANDBY</b> with its name and notes.</li>
 Double-clicking a row only makes it the next cue (start it with <kbd>Space</kbd>); to start it at once, right-click → <b>Start this Cue now</b>.</li>
 <li>The <b>Live Layer Output Monitor</b> panel shows what plays on L1–L3; <b>Fade Out</b>
 softly ends that layer (hold it for a moment – protection against accidental clicks).</li>
+<li>Notes and checklists of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.</li>
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
 <li><b>Back to Project</b> (<kbd>F5</kbd>) – back to editing; whatever plays keeps playing.</li>
 </ol>
@@ -401,6 +422,7 @@ the last cue.</li>
 on the projector and plays smoothly.</li>
 <li>Save the show <b>with the files copied</b> and keep a copy on a USB stick.</li>
 <li>Write in <b>Director's Notes</b> after which line each cue goes.</li>
+<li>Put a <b>☑ Checklist</b> cue at the top of the list with what has to be checked: it appears by itself when you enter LIVE mode.</li>
 <li>Turn off <b>MIRROR LIVE</b>, close other programs, turn off notifications and screen
 sleep in the system.</li>
 <li>Set a cover (poster or black) so the audience never sees the desktop before the start.</li>

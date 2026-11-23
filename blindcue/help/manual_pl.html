@@ -49,8 +49,8 @@ Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
 <ul>
 <li><b>Lista cue (lewa kolumna)</b> – kolejność przedstawienia. Każdy wiersz to jeden
 <i>cue</i> (punkt): film <code>VID</code>, dźwięk <code>AUD</code>, obraz <code>IMG</code> albo
-grupa <code>GRP</code>; napisy mają ikonę 📝. Pod listą są przyciski
-<b>+ Wideo / + Audio / + Zdjęcie / + Tekst / + Grupa</b>,
+grupa <code>GRP</code>, akcja <code>ACT</code>; napisy mają ikonę 📝. Pod listą są przyciski
+<b>+ Wideo / + Audio / + Zdjęcie / + Tekst / + Grupa / + Akcja</b>,
 przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>.</li>
 <li><b>Podgląd Pre-Viz (środek)</b> – prywatny podgląd tylko dla Ciebie. Widownia go nie widzi.
 Przyciski <b>Odtwórz / Pauza / Stop</b> sprawdzają zaznaczony cue.</li>
@@ -140,6 +140,26 @@ Jedno <kbd>Spacja</kbd> uruchomi muzykę i od razu pokaże napis.</li>
 na cue z filmem. Możesz też zaznaczyć oba cue i zgrupować je (<kbd>Ctrl+G</kbd>) w trybie
 <b>Wszystko naraz</b>.</p>
 <p><img src="img/pl/15_list_with_caption.png" width="760" height="404"></p>
+
+<h3><a name="akcje"></a>Cue akcji – zatrzymaj, wycisz, poziom, krycie, notatka</h3>
+<p>Cue akcji nie ma pliku: działa na <b>inne</b> cue albo pokazuje notatkę dla Ciebie.
+Dodasz go przyciskiem <b>+ Akcja</b> (rodzaj wybierasz z menu). Na liście ma znaczek
+<code>ACT</code>, a jego ustawienia są w Inspektorze w karcie <b>⚡ Akcja</b>. Jak każdy cue
+odpalasz go GO; może mieć Pre-Delay, Auto-GO i należeć do grupy.</p>
+<table class="k">
+<tr><td><b>🔉 Wycisz i zatrzymaj</b></td><td>ścisza dźwięk i wygasza obraz w podanym czasie, potem zatrzymuje. Zatrzymane cue nie uruchamiają swojego Post-Delay ani Auto-GO. Np. koniec muzyki tła jako zwykły punkt listy.</td></tr>
+<tr><td><b>⏹ Zatrzymaj od razu</b></td><td>ucina od razu, także cue, które czekają na koniec Pre-Delay.</td></tr>
+<tr><td><b>🔁 Zwolnij pętlę</b></td><td>zapętlony cue (pętla albo sekcja „w kółko”) kończy bieżące okrążenie i idzie dalej: do następnej sekcji albo do końca, z Post-Delay i Auto-GO.</td></tr>
+<tr><td><b>🎚 Zmiana poziomu</b></td><td>zmienia głośność tego, co gra, bez zatrzymywania: <b>bezwzględnie</b> (tak, jakby Głośność cue miała podaną wartość) albo <b>względnie</b> (np. −10 dB), w podanym czasie i z wybraną krzywą. Muzyka pod dialog: jedna akcja −10 dB, później druga +10 dB.</td></tr>
+<tr><td><b>🌓 Krycie warstwy</b></td><td>przyciemnia całą warstwę (obrazy i wideo), np. tło do 30 % na czas sceny. Następny cue na tej warstwie zaczyna z pełnym kryciem.</td></tr>
+<tr><td><b>📝 Notatka dla operatora</b></td><td>tekst w kolorowym pasku u góry okna programu – nigdy na projektorze. Nie blokuje GO; znika przy następnym GO albo po kliknięciu ✕.</td></tr>
+<tr><td><b>☑ Lista kontrolna</b></td><td>notatka z polami do odhaczenia (np. „mikrofony włączone”). Pokazuje się po GO, a także przy każdym wejściu w tryb LIVE, dopóki wszystko nie jest odhaczone. Odhaczenia nie są zapisywane – każde przedstawienie sprawdzasz od nowa.</td></tr>
+</table>
+<p><b>Na co działa</b> (pole <b>Na co</b>): <b>Wszystko, co gra</b>, <b>Jedna warstwa</b> (L1–L3)
+albo <b>Wybrane cue</b> (zaznacz je na liście; grupa = wszystkie jej cue). Gdy żaden z celów
+nie gra, akcja nic nie robi i pisze o tym na pasku stanu.</p>
+<p class="tip">💡 „Wszystko, co gra” znaczy naprawdę wszystko. Jeśli tym samym GO startuje nowa
+muzyka (tryb <b>Razem</b>), ustaw akcję na liście <b>przed</b> nią albo wskaż jako cel konkretne cue.</p>
 
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Ustawianie cue (Inspektor)</h2>
@@ -325,6 +345,7 @@ Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.</li>
 Dwuklik na wierszu tylko ustawia go jako następny (odpalisz go <kbd>Spacją</kbd>); żeby odpalić od razu, kliknij prawym przyciskiem → <b>Uruchom ten cue teraz</b>.</li>
 <li>Panel <b>Podgląd warstw Live</b> pokazuje, co gra na L1–L3; <b>Wygaś</b> łagodnie
 kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym kliknięciem).</li>
+<li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.</li>
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li>
 </ol>
@@ -402,6 +423,7 @@ ostatniego cue.</li>
 na projektorze, a działa płynnie.</li>
 <li>Zapisz przedstawienie z <b>kopiowaniem plików</b> i miej kopię na pendrivie.</li>
 <li>Wpisz w <b>Uwagi</b>, po jakiej kwestii odpalić dany cue.</li>
+<li>Na początku listy dodaj cue <b>☑ Lista kontrolna</b> z tym, co trzeba sprawdzić – pokaże się sama przy wejściu w tryb LIVE.</li>
 <li>Wyłącz <b>MIRROR LIVE</b>, zamknij inne programy, wyłącz powiadomienia i usypianie
 ekranu w systemie.</li>
 <li>Ustaw zaślepkę (plakat lub czerń), żeby przed startem widownia nie widziała pulpitu.</li>

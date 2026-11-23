@@ -37,8 +37,8 @@ Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
 <ul>
 <li><b>Scaletta cue (colonna sinistra)</b> – l'ordine dello spettacolo. Ogni riga è una
 <i>cue</i>: video <code>VID</code>, audio <code>AUD</code>, immagine <code>IMG</code> oppure
-gruppo <code>GRP</code><!--IF:text_cues-->; le didascalie hanno l'icona 📝<!--/IF:text_cues-->. Sotto la scaletta ci sono i pulsanti
-<b>+ Video / + Audio / + Foto / <!--IF:text_cues-->+ Testo / <!--/IF:text_cues-->+ Gruppo</b>,
+gruppo <code>GRP</code><!--IF:action_cues-->, azione <code>ACT</code><!--/IF:action_cues--><!--IF:text_cues-->; le didascalie hanno l'icona 📝<!--/IF:text_cues-->. Sotto la scaletta ci sono i pulsanti
+<b>+ Video / + Audio / + Foto / <!--IF:text_cues-->+ Testo / <!--/IF:text_cues-->+ Gruppo<!--IF:action_cues--> / + Azione<!--/IF:action_cues--></b>,
 <b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
 <li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
 <b>Play / Pausa / Stop</b> provano la cue selezionata.</li>
@@ -130,6 +130,28 @@ sulla cue del video. Puoi anche selezionare le due cue e raggrupparle (<kbd>Ctrl
 modalità <b>Simultaneo</b>.</p>
 <p><img src="img/it/15_list_with_caption.png" width="760"></p>
 <!--/IF:text_cues-->
+<!--IF:action_cues-->
+<h3><a name="azioni"></a>Cue azione – ferma, dissolvi, livello, opacità, nota</h3>
+<p>Una cue azione non ha file: agisce su <b>altre</b> cue oppure mostra una nota per te.
+Si aggiunge con il pulsante <b>+ Azione</b> (il tipo si sceglie dal menu). In scaletta ha il
+badge <code>ACT</code> e le sue impostazioni sono nell'Ispettore, scheda <b>⚡ Azione</b>.
+Come ogni cue parte con il GO; può avere Pre-Delay, Auto-GO e stare in un gruppo.</p>
+<table class="k">
+<tr><td><b>🔉 Dissolvi e ferma</b></td><td>abbassa audio e immagine nel tempo indicato, poi ferma. Le cue fermate non avviano il loro Post-Delay né l'Auto-GO. Es. la fine della musica di sottofondo come normale riga della scaletta.</td></tr>
+<tr><td><b>⏹ Ferma subito</b></td><td>taglia subito, anche le cue in attesa della fine del Pre-Delay.</td></tr>
+<tr><td><b>🔁 Rilascia loop</b></td><td>la cue in loop (loop o sezione ripetuta all'infinito) finisce il giro in corso e prosegue: alla sezione successiva o fino alla fine, con Post-Delay e Auto-GO.</td></tr>
+<tr><td><b>🎚 Cambio livello</b></td><td>cambia il volume di ciò che suona senza fermarlo: <b>assoluto</b> (come se il Volume della cue fosse il valore indicato) oppure <b>relativo</b> (es. −10 dB), nel tempo e con la curva scelti. Musica sotto il dialogo: un'azione −10 dB, più tardi un'altra +10 dB.</td></tr>
+<tr><td><b>🌓 Opacità layer</b></td><td>scurisce tutto il layer (immagini e video), es. lo sfondo al 30 % durante una scena. La cue successiva sullo stesso layer riparte piena.</td></tr>
+<tr><td><b>📝 Nota per la regia</b></td><td>testo in una fascia colorata in cima alla finestra del programma, mai sul proiettore. Non blocca il GO; sparisce al GO successivo o con ✕.</td></tr>
+<tr><td><b>☑ Checklist</b></td><td>nota con caselle da spuntare (es. «microfoni accesi»). Compare con il GO e anche a ogni ingresso in modalità LIVE finché non è tutta spuntata. Le spunte non vengono salvate: ogni spettacolo si controlla da capo.</td></tr>
+</table>
+<p><b>Su cosa agisce</b> (campo <b>Su cosa</b>): <b>Tutto ciò che è in onda</b>, <b>Un layer</b> (L1–L3)
+oppure <b>Cue scelte</b> (spuntale nell'elenco; un gruppo = tutte le sue cue). Se nessun bersaglio
+è in onda, l'azione non fa nulla e lo scrive nella barra di stato.</p>
+<p class="tip">💡 «Tutto ciò che è in onda» vuol dire proprio tutto. Se con lo stesso GO parte una
+nuova musica (<b>Simult.</b>), metti l'azione <b>prima</b> di lei in scaletta oppure
+scegli come bersaglio le cue precise.</p>
+<!--/IF:action_cues-->
 
 <!-- ================================================================== -->
 <h2><a name="cue"></a>4. Impostare una cue (Ispettore)</h2>
@@ -315,6 +337,7 @@ In basso vedi <b>PROSSIMA IN STANDBY</b> con il nome e le note.</li>
 <!--IFNOT:live_dblclick-->Un doppio clic su una riga la lancia subito.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Un doppio clic su una riga la rende solo la prossima cue (la lanci con <kbd>Spazio</kbd>); per lanciarla subito, clic destro → <b>Fai partire subito questa Cue</b>.<!--/IF:live_dblclick--></li>
 <li>Il pannello <b>Monitor Uscita Layer Live</b> mostra cosa va su L1–L3; <b>Fade Out</b>
 chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic accidentali).</li>
+<!--IF:action_cues--><li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu.</li><!--/IF:action_cues-->
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
 <li><b>Torna a Progetto</b> (<kbd>F5</kbd>) – torni alla modifica; quello che sta andando continua.</li>
 </ol>
@@ -392,6 +415,7 @@ fotocamera o dal telefono (bitrate molto alto) può scattare. Una versione Full 
 8–10 Mb/s sul proiettore è identica e scorre fluida.</li>
 <li>Salva lo spettacolo <b>copiando i file</b> e tienine una copia su una chiavetta USB.</li>
 <li>Scrivi nelle <b>Note Regia</b> dopo quale battuta parte ogni cue.</li>
+<!--IF:action_cues--><li>All'inizio della scaletta aggiungi una cue <b>☑ Checklist</b> con quello che va controllato: comparirà da sola entrando in modalità LIVE.</li><!--/IF:action_cues-->
 <li>Spegni <b>MIRROR LIVE</b>, chiudi gli altri programmi, disattiva le notifiche e la
 sospensione dello schermo nel sistema.</li>
 <li>Imposta un tappo (locandina o nero) così il pubblico non vede mai il desktop prima dell'inizio.</li>
