@@ -40,6 +40,7 @@ from engine.audio_analyzer import (
     WaveformAnalyzer,
 )
 from engine.earcon import EarconManager
+from engine.live_state import LiveClocks, ends_soon, short_time_text
 from engine.envelope import (
     evaluate_cue_level,
     merge_section_at,
@@ -85,6 +86,8 @@ from ui.cue_table import (
     ROLE_IS_LAST_CHILD,
     ROLE_LAYER,
     ROLE_LAYER_CONFLICT,
+    ROLE_LIVE_FRACTION,
+    ROLE_LIVE_WARN,
     ROLE_MEDIA_TYPE,
     ROLE_OUTPUT_TARGET,
     ROLE_PARENT_ID,

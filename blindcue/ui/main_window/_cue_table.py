@@ -163,6 +163,9 @@ class _CueTableMixin:
         item_name.setData(ROLE_CHILD_COUNT, child_count)
         item_name.setData(ROLE_IS_LAST_CHILD, is_last_child)
         item_name.setData(ROLE_TIMELINE_COMPOSED, bool(getattr(cue, "timeline_composed", False)))
+        live_frac, live_warn = self._live_fractions.get(cue.cue_id, (-1.0, False))
+        item_name.setData(ROLE_LIVE_FRACTION, live_frac)
+        item_name.setData(ROLE_LIVE_WARN, live_warn)
         item_name.setToolTip(tooltip)
 
         for cell in (item_num, item_q, item_name):
@@ -207,6 +210,8 @@ class _CueTableMixin:
                 self._act_live_mode.setChecked(False)
                 self._act_live_mode.blockSignals(False)
             return
+        if enabled and self._go_target_index() == 0 and not self._show_running():
+            self._played_ids.clear()  # a run from the top: nothing played yet
         if not enabled and self._cues:
             # Where the show was left: coming back to LIVE continues from here.
             self._live_resume_id = self._cues[self._go_target_index()].cue_id

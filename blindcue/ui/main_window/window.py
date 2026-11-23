@@ -135,6 +135,16 @@ class MainWindow(
         self._live_mode: bool = False
         # GO target when LIVE was last left (cue_id); None for a freshly loaded show.
         self._live_resume_id: int | None = None
+        # Times of the cues on air: fed by the layer reports, drawn at 10 Hz
+        # into the time cells only (see _on_live_clock_tick).
+        self._live_clocks = LiveClocks()
+        self._live_fractions: dict[int, tuple[float, bool]] = {}
+        self._live_clock_timer = QTimer(self)
+        self._live_clock_timer.setInterval(100)
+        self._live_clock_timer.timeout.connect(self._on_live_clock_tick)
+        # Cues started in this run of the show (✓ in the LIVE list); emptied
+        # by "from the top" and when another show is loaded.
+        self._played_ids: set[int] = set()
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True

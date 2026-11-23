@@ -397,6 +397,7 @@ class _RemoteMixin:
             self._live_phase_tags,
             show_break_loop=has_live_inf_sec,
             layer_conflicts=self._layer_conflicts,
+            played=self._played_ids,
         )
 
     def _update_live_layer_label(self, cue: Cue, preserve_timing: bool = False) -> None:
@@ -407,13 +408,20 @@ class _RemoteMixin:
             dur = self._active_test_duration
         elif cue.file_path in self._known_file_durations:
             dur = self._known_file_durations[cue.file_path]
+        slot = self._runtime_slot(cue)
         for sp in self._for_each_status_panel():
             sp.set_layer_live(
                 cue,
                 duration_sec=dur,
                 preserve_timing=preserve_timing,
-                layer_idx=self._runtime_slot(cue),
+                layer_idx=slot,
             )
+        if not preserve_timing:
+            timed = cue.media_type in (MediaType.AUDIO, MediaType.VIDEO) or (
+                cue.media_type == MediaType.IMAGE and cue.hold_time > 0
+            )
+            self._live_clocks.start(slot, cue.cue_id, timed, dur)
+            self._run_live_clock()
 
     def update_live_layer_phase(self, layer: int, cue: Cue, phase: str, elapsed: float, total: float) -> None:
         """Forward the current automation phase of *layer* to every layer panel.
@@ -424,6 +432,52 @@ class _RemoteMixin:
         """
         for sp in self._for_each_status_panel():
             sp.set_layer_phase_progress(layer, cue, phase, elapsed, total)
+        self._live_clocks.phase(layer, cue.cue_id, phase, elapsed, total)
+        self._run_live_clock()
+
+    def _run_live_clock(self) -> None:
+        if not self._live_clock_timer.isActive():
+            self._live_clock_timer.start()
+
+    def _on_live_clock_tick(self) -> None:
+        """10 Hz: redraw the time cells of the cues on air, nothing else.
+
+        The lists are not rebuilt (that sets dozens of roles per cell); only
+        the remaining time, the played bar and the ends-soon warning change.
+        The warning shows only when the next GO is the operator's (the cue
+        does not hand over to the next one by Auto-GO).
+        """
+        on_air = {c.cue_id for c in self._cues if c.status == CueStatus.LIVE}
+        on_air |= set(self._live_phase_tags)
+        self._live_clocks.forget_cues(on_air)
+        times: dict[int, tuple[str, float, bool]] = {}
+        for cue in self._cues:
+            if cue.cue_id not in on_air:
+                continue
+            t = self._live_clocks.cue_time(cue.cue_id)
+            if t is None:
+                continue
+            warn = ends_soon(t) and cue.follow_mode != FollowMode.AUTO_FOLLOW.value
+            times[cue.cue_id] = (short_time_text(t), t.fraction, warn)
+        if hasattr(self, "_live_show_panel"):
+            self._live_show_panel.set_live_times(times)
+        self._set_live_fractions({cid: (v[1], v[2]) for cid, v in times.items()})
+        if self._live_clocks.is_empty():
+            self._live_clock_timer.stop()
+
+    def _set_live_fractions(self, fractions: dict[int, tuple[float, bool]]) -> None:
+        """Played bar in the name cell of the design list (see _populate_cue_row)."""
+        changed = set(self._live_fractions) | set(fractions)
+        self._live_fractions = fractions
+        if not changed:
+            return
+        for row, cue in enumerate(self._cues):
+            if cue.cue_id in changed:
+                item = self._cue_list.item(row, 2)
+                if item is not None:
+                    frac, warn = fractions.get(cue.cue_id, (-1.0, False))
+                    item.setData(ROLE_LIVE_FRACTION, frac)
+                    item.setData(ROLE_LIVE_WARN, warn)
 
     def update_live_layer_progress(
         self,
@@ -447,6 +501,7 @@ class _RemoteMixin:
                 end_sec=end_sec,
                 is_looping_inf=is_looping_inf,
             )
+        self._live_clocks.progress(layer, pos_sec, start_sec, end_sec, is_looping_inf)
 
     def set_live_layer_paused(self, layer: int, paused: bool) -> None:
         """Toggle the paused indicator on the panel of *layer*."""
@@ -456,6 +511,7 @@ class _RemoteMixin:
     def _reset_live_label(self, layer: int) -> None:
         for sp in self._for_each_status_panel():
             sp.reset_layer(layer)
+        self._live_clocks.clear(layer)
 
     def promote_cue_to_live(self, cue: Cue) -> None:
         """Promote a cue to LIVE status once its Pre-Delay completes."""

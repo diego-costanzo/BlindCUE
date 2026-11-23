@@ -43,12 +43,16 @@ from ui.cue_table import (
     ROLE_IS_STANDBY,
     ROLE_LAYER,
     ROLE_LAYER_CONFLICT,
+    ROLE_LIVE_FRACTION,
+    ROLE_LIVE_TIME,
+    ROLE_LIVE_WARN,
     ROLE_LOOP,
     ROLE_MEDIA_TYPE,
     ROLE_NOTES_TXT,
     ROLE_OUTPUT_TARGET,
     ROLE_PARENT_ID,
     ROLE_PHASE_TXT,
+    ROLE_PLAYED,
     ROLE_POST_DELAY,
     ROLE_PRE_DELAY,
     ROLE_PREV_COLOR,
@@ -60,6 +64,7 @@ from ui.cue_table import (
     get_group_mode_pill,
     get_media_badge,
     paint_cue_row_decorations,
+    paint_live_progress,
 )
 from ui.hold_button import HoldProgressButton
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
@@ -222,10 +227,14 @@ class LiveCueRowDelegate(QStyledItemDelegate):
         phase_txt = str(index.data(ROLE_PHASE_TXT) or "")
         is_waiting = bool(phase_txt)
         is_mono = get_active_theme().is_monochrome
+        # Started earlier in this run of the show: ✓ and a dimmer name (still readable).
+        is_played = bool(index.data(ROLE_PLAYED)) and not (is_live or is_standby or is_waiting)
 
         # ── Col 0: # & Group Chevron & Link Rail ──────────────────────────────
         if col == 0:
             raw_num = str(index.data(Qt.ItemDataRole.DisplayRole) or "")
+            if is_played:
+                raw_num = f"✓{raw_num}"
             opt.text = ""
             style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
             paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
@@ -444,14 +453,14 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     name_clr = QColor("#d4d4d8")
                 elif is_group:
                     disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
-                    name_clr = QColor("#f4f4f5")
+                    name_clr = QColor("#a1a1aa" if is_played else "#f4f4f5")
                 else:
                     disp_name = name_text
-                    name_clr = QColor("#a1a1aa")
+                    name_clr = QColor("#8e8e96" if is_played else "#a1a1aa")
             else:
                 if is_group:
                     disp_name = name_text[2:].strip() if name_text.startswith("📁") else name_text
-                    name_clr = QColor("#c084fc")
+                    name_clr = QColor("#a78bca" if is_played else "#c084fc")
                 elif is_live:
                     disp_name = name_text
                     name_clr = QColor("#4ade80")
@@ -463,7 +472,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     name_clr = QColor("#7dd3fc")
                 else:
                     disp_name = name_text
-                    name_clr = QColor("#f8fafc")
+                    name_clr = QColor("#94a3b8" if is_played else "#f8fafc")
 
             elided_name = painter.fontMetrics().elidedText(disp_name, Qt.TextElideMode.ElideRight, avail_w)
             painter.setPen(name_clr)
@@ -599,8 +608,18 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             dur_rect = QRect(dur_x, rect.top(), dur_w, rect.height())
             dur_font = QFont("monospace", 10, QFont.Weight.Bold)
             painter.setFont(dur_font)
-            painter.setPen(QColor("#f4f4f5") if is_mono else QColor("#e2e8f0"))
-            painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
+            # On air the slot shows what is left (redrawn by the 10 Hz clock).
+            live_txt = str(index.data(ROLE_LIVE_TIME) or "")
+            live_warn = bool(index.data(ROLE_LIVE_WARN))
+            if live_txt:
+                if live_warn:
+                    painter.setPen(QColor("#ffffff") if is_mono else QColor("#fbbf24"))
+                else:
+                    painter.setPen(QColor("#ffffff") if is_mono else QColor("#4ade80"))
+                painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, live_txt)
+            else:
+                painter.setPen(QColor("#f4f4f5") if is_mono else QColor("#e2e8f0"))
+                painter.drawText(dur_rect, Qt.AlignmentFlag.AlignCenter, dur_str)
 
             # Middle-right slot: Post-Delay pill (if configured)
             if post_delay > 0:
@@ -619,6 +638,9 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                 painter.drawText(post_rect, Qt.AlignmentFlag.AlignCenter, post_txt)
 
             painter.restore()
+            if live_txt:
+                frac = index.data(ROLE_LIVE_FRACTION)
+                paint_live_progress(painter, opt.rect, -1.0 if frac is None else float(frac), live_warn)
             return
 
         # ── Col 5: Layer · Stato LIVE ─────────────────────────────────────────
@@ -756,6 +778,8 @@ class LiveShowPanel(QWidget):
         self._is_paused_all: bool = False
         self._updating_table: bool = False
         self._cue_id_to_row: dict[int, int] = {}
+        # cue_id -> (short time text, played fraction, ends-soon warning); see set_live_times
+        self._live_times: dict[int, tuple[str, float, bool]] = {}
 
         # Show duration stopwatch (monotonic drift-free tracking for shows & rehearsals)
         self._sw_armed: bool = True
@@ -1491,6 +1515,27 @@ class LiveShowPanel(QWidget):
                 it.setText(status_txt)
         return True
 
+    @staticmethod
+    def _apply_live_time(item: QTableWidgetItem, value: tuple[str, float, bool] | None) -> None:
+        text, fraction, warn = value if value is not None else ("", -1.0, False)
+        item.setData(ROLE_LIVE_TIME, text)
+        item.setData(ROLE_LIVE_FRACTION, fraction)
+        item.setData(ROLE_LIVE_WARN, warn)
+
+    def set_live_times(self, times: dict[int, tuple[str, float, bool]]) -> None:
+        """Redraw only the time cells of the cues on air (called by the 10 Hz clock).
+
+        *times* maps cue_id to (short text, played fraction, ends-soon warning);
+        rows missing from it go back to showing their length.
+        """
+        changed = set(self._live_times) | set(times)
+        self._live_times = dict(times)
+        for cue_id in changed:
+            row = self._cue_id_to_row.get(cue_id)
+            item = self.live_table.item(row, 4) if row is not None else None
+            if item is not None:
+                self._apply_live_time(item, times.get(cue_id))
+
     def sync_cues(
         self,
         cues: list[Cue],
@@ -1499,8 +1544,11 @@ class LiveShowPanel(QWidget):
         phase_tags: dict[int, str] | None = None,
         show_break_loop: bool = False,
         layer_conflicts: dict[int, Any] | None = None,
+        played: set[int] | None = None,
     ) -> None:
         """Refresh the extended Live Scaletta table, standby banner, and GO target label.
+
+        *played* holds the cue_ids started in this run of the show (✓, dimmed).
 
         Reuses existing QTableWidgetItem cells in place to avoid churning 6*N Qt heap
         objects on every GO or phase update.
@@ -1510,6 +1558,7 @@ class LiveShowPanel(QWidget):
             self.live_table.setRowCount(len(cues))
             phases = phase_tags or {}
             conflicts = layer_conflicts or {}
+            played_ids = played or set()
 
             # Pre-index hierarchy once in O(N) instead of O(N^2) scans per row
             cue_by_id: dict[int, Cue] = {c.cue_id: c for c in cues}
@@ -1621,6 +1670,9 @@ class LiveShowPanel(QWidget):
                     it.setData(ROLE_LAYER_CONFLICT, conflict_txt)
                     it.setData(ROLE_STATUS_TXT, status_txt)
                     it.setData(ROLE_STATUS_CLR, status_clr)
+                    it.setData(ROLE_PLAYED, cue.cue_id in played_ids)
+                    if c_idx == 4:
+                        self._apply_live_time(it, self._live_times.get(cue.cue_id))
                     if conflict_txt:
                         it.setToolTip(f"⚠ {conflict_txt}")
                     elif it.toolTip():
