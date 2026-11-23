@@ -71,6 +71,46 @@ def chain_indices(cues: list[Cue], start_idx: int) -> list[int]:
     return indices
 
 
+# Where the show can continue from when the operator enters LIVE.
+START_FROM_TOP = "top"
+START_RESUME = "resume"
+START_SELECTED = "selected"
+
+
+def live_start_choices(
+    n_cues: int,
+    selected_row: int,
+    resume_row: int | None,
+    show_running: bool = False,
+) -> list[tuple[str, int]]:
+    """Rows the GO could start from when LIVE is entered, preferred first.
+
+    GO fires the selected row, so a cue just fixed in the editor would open
+    the show. *resume_row* is the GO target LIVE was left at (``None`` the
+    first time); while something plays, the current target counts as that
+    position. An empty list means there is nothing to ask: the target is the
+    top of the list or the place the show was left at.
+    """
+    if n_cues <= 0:
+        return []
+    sel = selected_row if 0 <= selected_row < n_cues else 0
+    resume = resume_row if resume_row is not None and 0 <= resume_row < n_cues else None
+    if resume is None and show_running:
+        resume = sel
+    if resume is None:
+        order = [(START_FROM_TOP, 0), (START_SELECTED, sel)]
+    elif sel == resume:
+        return []
+    else:
+        order = [(START_RESUME, resume), (START_SELECTED, sel), (START_FROM_TOP, 0)]
+    choices: list[tuple[str, int]] = []
+    for kind, row in order:
+        if any(row == seen for _, seen in choices):
+            continue
+        choices.append((START_FROM_TOP if row == 0 else kind, row))
+    return choices if len(choices) > 1 else []
+
+
 class ShowEngine:
     """Pure show-state transitions.
 

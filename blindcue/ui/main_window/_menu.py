@@ -266,7 +266,9 @@ class _MenuMixin:
         self._preview_monitor.video_frame_changed.connect(self._on_preview_video_frame_for_mirror)
         center_layout.addWidget(self._preview_panel, stretch=1)
 
-        self._btn_go = QPushButton("GO (Next Cue) — [ SPAZIO ]")
+        # The text names the cue the GO fires (see _update_go_button_text).
+        self._btn_go = ElidedButton("GO (Next Cue) — [ SPAZIO ]")
+        self._btn_go.setToolTip("GO: avvia la cue indicata sul pulsante [SPAZIO]")
         self._btn_go.setMinimumHeight(48)
         self._btn_go.setMaximumHeight(54)
         self._btn_go.setFont(QFont("sans-serif", 18, QFont.Weight.Bold))

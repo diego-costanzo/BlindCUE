@@ -133,6 +133,8 @@ class MainWindow(
         self._known_file_durations: dict[str, float] = {}
         self._live_phase_tags: dict[int, str] = {}
         self._live_mode: bool = False
+        # GO target when LIVE was last left (cue_id); None for a freshly loaded show.
+        self._live_resume_id: int | None = None
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True

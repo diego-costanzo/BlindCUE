@@ -2150,4 +2150,16 @@ T: dict[str, str] = {
         'Wycisz i zatrzymaj',
     '? cue eliminata dalla scaletta':
         '? cue usunięty z listy',
+    'GO: avvia la cue indicata sul pulsante [SPAZIO]':
+        'GO: uruchamia cue wskazany na przycisku [SPACJA]',
+    'Da dove parte lo spettacolo?':
+        'Od którego miejsca zacząć?',
+    "Il GO non partirebbe dall'inizio né dal punto in cui avevi lasciato LIVE.\nDa quale cue deve partire?":
+        'GO nie ruszyłby od początku ani od miejsca, w którym przerwano LIVE.\nOd którego cue ma ruszyć?',
+    "Dall'inizio: {}":
+        'Od początku: {}',
+    'Riprendi da: {}':
+        'Wznów od: {}',
+    'Dalla cue selezionata: {}':
+        'Od zaznaczonego: {}',
 }
