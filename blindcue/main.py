@@ -427,6 +427,9 @@ def main() -> int:
     live_img_timer.setInterval(33)
     scheduler = ShowScheduler(main_win)
     paused_layers_by_global: set[int] = set()
+    # Layers fading out after a stop (cut / Fade All): their EOF must not start
+    # a Post-Delay or an auto-follow – the operator asked them to stop.
+    fading_layers: set[int] = set()
 
     # ── Live video-load guard ─────────────────────────────────────────
     # Measured on this hardware class: one 1080p video per output holds
@@ -812,6 +815,7 @@ def main() -> int:
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
         paused_layers_by_global.discard(layer)
+        fading_layers.discard(layer)
 
         pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0)))
         if pre_d > 0.02:
@@ -827,6 +831,9 @@ def main() -> int:
     # ── Handle per-layer EOF & Error cleanly ──────────────────────────
     def _on_live_eof(layer: int) -> None:
         """When media on *layer* reaches EOF, enter Post-Delay or clean up immediately."""
+        if layer in fading_layers:
+            logger.info("[MAIN] EOF on Layer %d while it fades out after a stop: no follow-up", layer)
+            return
         try:
             c = active_live_cues.get(layer)
             gen = layer_fire_gen.get(layer, 0)
@@ -1021,8 +1028,12 @@ def main() -> int:
     main_win.live_volume_changed.connect(_on_live_volume_changed)
 
     # ── Connect Layer Clear and Blackout signals (with Micro-Fade) ─────
-    def _on_layer_clear_requested(layer: int) -> None:
-        """Clear media ONLY on *layer* with smooth fade without interrupting other layers."""
+    def _on_layer_clear_requested(layer: int, fade_override: float | None = None) -> None:
+        """Clear media ONLY on *layer* with smooth fade without interrupting other layers.
+
+        *fade_override* (seconds) replaces the cue's own fade-out time; Fade All
+        uses it to bring every layer down together.
+        """
         try:
             for ph in ("PRE", "POST"):
                 pw = scheduler.pending_for_layer(layer, ph)
@@ -1033,12 +1044,17 @@ def main() -> int:
             layer_fire_gen[layer] = layer_fire_gen.get(layer, 0) + 1
             clear_gen = layer_fire_gen[layer]
             paused_layers_by_global.discard(layer)
-            fade_time = max(0.2, cue.fade_out) if cue and cue.fade_out > 0 else 0.2
+            fading_layers.add(layer)
+            if fade_override is not None:
+                fade_time = max(0.05, fade_override)
+            else:
+                fade_time = max(0.2, cue.fade_out) if cue and cue.fade_out > 0 else 0.2
             lp = live_players.get(layer)
 
             def _clear_active_if_same(l_idx=layer, expected_gen=clear_gen) -> None:
                 if layer_fire_gen.get(l_idx) == expected_gen:
                     active_live_cues.pop(l_idx, None)
+                    fading_layers.discard(l_idx)
                     live_durations[l_idx] = 0.0
                     live_positions[l_idx] = 0.0
 
@@ -1058,6 +1074,7 @@ def main() -> int:
                 live_image_envelopes.pop(layer, None)
                 _clear_layer(layer)
                 active_live_cues.pop(layer, None)
+                fading_layers.discard(layer)
             logger.info("[MAIN] Layer %d cleared (fade %.2fs)", layer, fade_time)
         except Exception as exc:
             logger.error("[MAIN] Error clearing layer %d: %s", layer, exc)
@@ -1078,6 +1095,7 @@ def main() -> int:
             for lp in live_players.values():
                 lp.fade_out(0.2, stop_after=True)
             active_live_cues.clear()
+            fading_layers.clear()
             logger.info("[MAIN] Master Blackout executed across all layers (0.2s micro-fade)")
         except Exception as exc:
             logger.error("[MAIN] Error executing blackout: %s", exc)
@@ -1098,11 +1116,26 @@ def main() -> int:
             for lp in live_players.values():
                 lp.stop()
             active_live_cues.clear()
+            fading_layers.clear()
             logger.warning("[MAIN] 0ms PANIC STOP ALL completed")
         except Exception as exc:
             logger.error("[MAIN] Error executing PANIC: %s", exc)
 
+    def _on_fade_all_requested(seconds: float) -> None:
+        """Fade All: every live layer fades out together over *seconds*, then stops."""
+        try:
+            scheduler.cancel_all()
+            scheduler.set_paused(False)
+            paused_layers_by_global.clear()
+            main_win.set_global_paused(False, silent=True)
+            for layer in list(active_live_cues):
+                _on_layer_clear_requested(layer, fade_override=seconds)
+            logger.info("[MAIN] Fade All over %.2fs", seconds)
+        except Exception as exc:
+            logger.error("[MAIN] Error executing Fade All: %s", exc)
+
     main_win.layer_clear_requested.connect(_on_layer_clear_requested)
+    main_win.fade_all_requested.connect(_on_fade_all_requested)
     main_win.blackout_requested.connect(_on_blackout_requested)
     main_win.panic_requested.connect(_on_panic_requested)
     main_win.pause_all_toggled.connect(lambda: _set_global_paused(not scheduler.is_paused()))

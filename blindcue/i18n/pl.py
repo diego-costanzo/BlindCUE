@@ -1968,4 +1968,12 @@ T: dict[str, str] = {
         '🚨  PANIC  —  STOP WSZYSTKIEGO   [ ESC ×2 ]',
     'GO ignorato: secondo GO entro {} ms':
         'GO zignorowane: drugie GO w ciągu {} ms',
+    '&Dissolvenza totale (Fade All)':
+        '&Wycisz wszystko (Fade All)',
+    'Dissolvenza totale in {} s':
+        'Wyciszanie wszystkiego w {} s',
+    'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme (1 s), poi si fermano. Il prossimo GO riparte dalla prima cue fermata.':
+        'Wycisz wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem (1 s), potem się zatrzymują. Następne GO rusza od pierwszego zatrzymanego cue.',
+    '🔉 DISSOLVI [⇧ESC]':
+        '🔉 WYCISZ [⇧ESC]',
 }

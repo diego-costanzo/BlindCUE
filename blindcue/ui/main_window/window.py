@@ -77,6 +77,7 @@ class MainWindow(
     layer_play_pause_requested = Signal(int)             # emits live layer (1..3) pause/resume toggle
     layer_seek_requested = Signal(int, float)            # emits live layer (1..3) and target position in seconds
     panic_requested = Signal()                           # emits instant 0ms Panic stop all
+    fade_all_requested = Signal(float)                   # emits Fade All duration in seconds
     pause_all_toggled = Signal()                         # emits global Show Pause/Resume toggle
     pause_all_set = Signal(bool)                         # emits idempotent global pause/resume state
 
