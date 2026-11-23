@@ -349,6 +349,44 @@ def test_scheduler_global_pause_freezes_timer(qt_app):
     assert finished == ["PRE"], "alla ripresa deve ripartire dal tempo residuo"
 
 
+def test_scheduler_window_started_during_pause_runs(qt_app):
+    """A GO during Pause All counts down; what the pause holds stays held."""
+    sched = ShowScheduler()
+    held = Cue.from_dict(
+        {"cue_id": 1, "name": "held", "media_type": MediaType.AUDIO.value, "file_path": "/x"}
+    )
+    new = Cue.from_dict(
+        {"cue_id": 2, "name": "new", "media_type": MediaType.AUDIO.value, "file_path": "/y"}
+    )
+    finished: list[str] = []
+    sched.window_finished.connect(lambda w: finished.append(w.cue.name))
+
+    sched.schedule("POST", held, 1, 1.0)
+    sched.set_paused(True)
+    sched.schedule("PRE", new, 2, 0.5)
+    sched.step_for_test(0.6)
+    assert finished == ["new"]
+    assert sched.is_paused() and sched.pending_for_layer(1, "POST").elapsed_sec < 0.01
+
+    sched.set_paused(False)
+    sched.step_for_test(1.0)
+    assert finished == ["new", "held"]
+
+
+def test_scheduler_replacing_a_held_window_runs(qt_app):
+    sched = ShowScheduler()
+    cue = Cue.from_dict(
+        {"cue_id": 1, "name": "X", "media_type": MediaType.AUDIO.value, "file_path": "/x"}
+    )
+    finished: list[int] = []
+    sched.window_finished.connect(lambda w: finished.append(w.layer))
+    sched.schedule("PRE", cue, 1, 1.0)
+    sched.set_paused(True)
+    sched.schedule("PRE", cue, 1, 0.2)   # a new GO on the same layer
+    sched.step_for_test(0.3)
+    assert finished == [1]
+
+
 def test_scheduler_cancel_all_on_panic_drops_every_window(qt_app):
     sched = ShowScheduler()
     cue = Cue.from_dict(

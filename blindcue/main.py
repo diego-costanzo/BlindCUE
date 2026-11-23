@@ -535,6 +535,8 @@ def main() -> int:
         now = time.monotonic()
         done_layers: list[int] = []
         for l_idx, entry in list(live_image_envelopes.items()):
+            if "paused_at" in entry:
+                continue  # held by Pause All; a picture started by GO during the pause runs
             try:
                 cue_item: Cue = _resolve_current_cue(entry["cue"])
                 active_on_layer = active_live_cues.get(l_idx)
@@ -975,9 +977,11 @@ def main() -> int:
             scheduler.schedule("POST", cue, _action_slot(cue), wait, generation=gen)
 
     def _on_cue_fired(cue: Cue) -> None:
-        """Handle GO: schedule Pre-Delay if set or immediately start cue on its target layer."""
-        if scheduler.is_paused():
-            _set_global_paused(False)
+        """Handle GO: schedule Pre-Delay if set or immediately start cue on its target layer.
+
+        A GO during Pause All starts this cue only: what the pause holds stays
+        paused until the operator resumes it (it used to resume everything).
+        """
         if cue.media_type == MediaType.ACTION:
             # Branch before the layer logic: an action must not cancel the
             # schedule or bump the generation of the layer it acts on.
@@ -988,6 +992,10 @@ def main() -> int:
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
         paused_layers_by_global.discard(layer)
+        if "paused_at" in live_image_envelopes.get(layer, {}):
+            live_image_envelopes.pop(layer, None)  # the held picture is being replaced
+        if scheduler.is_paused():
+            main_win.set_live_layer_paused(layer, False)
         # fading_layers is cleared when this cue really starts (_launch_cue_now):
         # until then the cue fading out there must not start its Auto-GO.
 

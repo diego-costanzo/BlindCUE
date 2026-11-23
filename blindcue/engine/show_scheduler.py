@@ -5,6 +5,8 @@ Designed for theatrical predictability:
   without allocating per-cue threads or leaking timers across restarts/Panics.
 - Supports instantaneous Global Pause All (freezing every Pre/Post countdown with exact
   monotonic delta preservation) and 0ms Panic cancellation.
+- Pause All freezes the windows that exist when it starts. A cue started by GO
+  during the pause counts down normally; resuming unfreezes the others.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ class ScheduledWindow:
     total_sec: float
     elapsed_sec: float = 0.0
     generation: int = 0
+    frozen: bool = False  # held by Pause All (scheduled before the pause began)
 
 
 class ShowScheduler(QObject):
@@ -47,8 +50,11 @@ class ShowScheduler(QObject):
         self._timer.timeout.connect(self._on_tick)
 
     def is_paused(self) -> bool:
-        """True while Global Pause is freezing every countdown."""
+        """True while Global Pause holds the countdowns that existed when it started."""
         return self._paused
+
+    def _has_running(self) -> bool:
+        return any(not w.frozen for w in self._windows.values())
 
     def has_pending(self) -> bool:
         """True when at least one Pre/Post wait window is counting down."""
@@ -75,7 +81,7 @@ class ShowScheduler(QObject):
             generation=generation,
         )
         self._windows[(phase, layer)] = win
-        if not self._timer.isActive() and not self._paused:
+        if not self._timer.isActive():
             self._last_tick = time.monotonic()
             self._timer.start()
         self.tick_updated.emit(win)
@@ -88,7 +94,7 @@ class ShowScheduler(QObject):
         else:
             self._windows.pop(("PRE", layer), None)
             self._windows.pop(("POST", layer), None)
-        if not self._windows:
+        if not self._has_running():
             self._timer.stop()
 
     def cancel_all(self) -> None:
@@ -97,21 +103,22 @@ class ShowScheduler(QObject):
         self._timer.stop()
 
     def set_paused(self, paused: bool) -> None:
-        """Freeze or resume all active delay timers cleanly without drift."""
+        """Freeze (or resume) the delay timers running now, cleanly without drift."""
         if self._paused == paused:
             return
+        self._advance_by_delta()
         self._paused = paused
-        if paused:
-            self._advance_by_delta()
-            self._timer.stop()
-        else:
-            self._last_tick = time.monotonic()
-            if self._windows and not self._timer.isActive():
+        for win in self._windows.values():
+            win.frozen = paused
+        if self._has_running():
+            if not self._timer.isActive():
                 self._timer.start()
+        else:
+            self._timer.stop()
 
     def step_for_test(self, dt_sec: float) -> None:
         """Deterministic helper for unit tests to advance timers without real wall sleeps."""
-        if self._paused or dt_sec <= 0:
+        if dt_sec <= 0:
             return
         self._advance_windows(dt_sec)
 
@@ -123,7 +130,7 @@ class ShowScheduler(QObject):
             self._advance_windows(dt)
 
     def _on_tick(self) -> None:
-        if self._paused or not self._windows:
+        if not self._has_running():
             self._timer.stop()
             return
         self._advance_by_delta()
@@ -131,6 +138,8 @@ class ShowScheduler(QObject):
     def _advance_windows(self, dt: float) -> None:
         completed: list[tuple[tuple[str, int], ScheduledWindow]] = []
         for key, win in list(self._windows.items()):
+            if win.frozen:
+                continue
             win.elapsed_sec = min(win.total_sec, win.elapsed_sec + dt)
             if win.elapsed_sec >= win.total_sec - 1e-4:
                 completed.append((key, win))
@@ -143,6 +152,6 @@ class ShowScheduler(QObject):
                 self._windows.pop(key, None)
                 self.window_finished.emit(win)
 
-        if not self._windows:
+        if not self._has_running():
             self._timer.stop()
 
