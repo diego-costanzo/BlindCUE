@@ -172,3 +172,5 @@ class _WaveformMixin:
             )
         elif cue.media_type == MediaType.AUDIO:
             self.show_preview_audio()
+        elif cue.media_type == MediaType.ACTION:
+            self.clear_preview()  # nothing to show: not the previous cue's picture

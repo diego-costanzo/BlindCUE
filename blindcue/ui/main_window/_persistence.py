@@ -101,7 +101,7 @@ class _PersistenceMixin:
             for item in recovery.get("cues", []):
                 try:
                     cue = Cue.from_dict(item)
-                    if cue.media_type == MediaType.GROUP:
+                    if not cue.media_type.has_file:
                         cue.status = CueStatus.LOADED
                     else:
                         cue.status = CueStatus.LOADED if os.path.isfile(cue.file_path) else CueStatus.OFFLINE

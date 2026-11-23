@@ -46,6 +46,17 @@ def apply_fade_curve(progress: float, curve: str = "log", *, fade_out: bool = Fa
     return u ** 2.2
 
 
+def ramp_value(start: float, end: float, progress: float, curve: str = "linear") -> float:
+    """Value between *start* and *end* at *progress* (0..1) along a fade curve.
+
+    Rising ramps use the fade-in shape and falling ramps the fade-out shape,
+    so a level change sounds like the cue's own fades with the same curve.
+    """
+    if end >= start:
+        return start + (end - start) * apply_fade_curve(progress, curve, fade_out=False)
+    return end + (start - end) * apply_fade_curve(progress, curve, fade_out=True)
+
+
 def normalize_points(points: Sequence[Sequence[float]]) -> list[list[float]]:
     """Return sorted, clamped [[t_sec, level], ...] envelope keyframes."""
     cleaned: list[list[float]] = []
@@ -307,6 +318,9 @@ class SectionSequencer:
         self.eff_end: float = 0.0
         self.current_index: int = 0
         self.iteration: int = 0
+        # Index of a looping section released by an action cue: it plays to its
+        # end once more and then moves on instead of repeating.
+        self.released_index: int | None = None
 
     def configure(
         self,
@@ -320,6 +334,7 @@ class SectionSequencer:
         self.sections = normalize_sections(sections, self.cue_in, self.eff_end)
         self.current_index = 0
         self.iteration = 0
+        self.released_index = None
         first = self._next_playable_index(0)
         if first is not None:
             self.current_index = first
@@ -378,6 +393,7 @@ class SectionSequencer:
     def restart(self) -> None:
         """Rewind the sequencer to the first playable section (EOF / replay)."""
         self.iteration = 0
+        self.released_index = None
         first = self._next_playable_index(0)
         self.current_index = first if first is not None else 0
 
@@ -426,8 +442,10 @@ class SectionSequencer:
             return ("EOF", None, None, 0)
 
         next_iter = self.iteration + 1
-        # Stay in current section if infinite (loops == 0) or iterations remain (loops >= 2)
-        if sec.loops == 0 or next_iter < sec.loops:
+        # Stay in current section if infinite (loops == 0) or iterations remain
+        # (loops >= 2), unless an action cue released this loop.
+        repeats = sec.loops == 0 or next_iter < sec.loops
+        if repeats and self.released_index != self.current_index:
             return ("JUMP", self.current_index, sec.start, next_iter)
 
         # Otherwise advance to next non-skipped section
@@ -458,9 +476,22 @@ class SectionSequencer:
             return ("EOF", None, None)
         if target_idx is None:
             raise RuntimeError("Section transition produced no target index")
+        if target_idx != self.current_index:
+            self.released_index = None
         self.current_index = target_idx
         self.iteration = next_iter
         return (action, target_idx, target_sec)
+
+    def release_current_loop(self) -> bool:
+        """Let the current section finish its pass and then move on.
+
+        Returns False when the section does not repeat (nothing to release).
+        """
+        sec = self.current_section()
+        if sec is None or not (sec.loops == 0 or self.iteration + 1 < sec.loops):
+            return False
+        self.released_index = self.current_index
+        return True
 
     def jump_to(self, target_idx: int) -> float | None:
         """Jump directly to section *target_idx*.
@@ -480,6 +511,7 @@ class SectionSequencer:
             playable = nxt
         self.current_index = playable
         self.iteration = 0
+        self.released_index = None
         return self.sections[playable].start
 
     def break_loop_to_next(self) -> tuple[str, int | None, float | None]:
@@ -491,5 +523,6 @@ class SectionSequencer:
             return ("EOF", None, None)
         self.current_index = nxt
         self.iteration = 0
+        self.released_index = None
         return ("JUMP", nxt, self.sections[nxt].start)
 

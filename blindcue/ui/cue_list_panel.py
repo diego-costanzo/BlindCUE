@@ -10,13 +10,24 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QHBoxLayout,
     QLabel,
+    QMenu,
     QPushButton,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
-from models.cue import FollowMode, MediaType
+from models.cue import (
+    ACTION_CHECKLIST,
+    ACTION_FADE,
+    ACTION_LEVEL,
+    ACTION_NOTE,
+    ACTION_OPACITY,
+    ACTION_RELEASE,
+    ACTION_STOP,
+    FollowMode,
+    MediaType,
+)
 from ui.cue_table import CueSequenceTable
 from ui.theme import get_active_theme
 
@@ -51,6 +62,7 @@ class CueListPanel(QGroupBox):
     add_media_requested = Signal(object)  # MediaType
     add_group_requested = Signal()
     add_text_requested = Signal()
+    add_action_requested = Signal(str)  # action kind (models.cue.ACTION_*)
     edit_text_requested = Signal()
     ungroup_requested = Signal()
     extract_child_requested = Signal()
@@ -148,6 +160,27 @@ class CueListPanel(QGroupBox):
         self.btn_add_group.setAccessibleDescription("Crea un nuovo contenitore di gruppo o scena sincronizzata.")
         self.btn_add_group.setFixedHeight(26)
 
+        self.btn_add_action = QPushButton("+ Azione")
+        self.btn_add_action.setToolTip(
+            "Aggiungi una cue senza file: ferma, dissolve, cambia livello o opacità di altre cue, "
+            "oppure mostra una nota per la regia"
+        )
+        self.btn_add_action.setAccessibleName("Aggiungi Azione")
+        self.btn_add_action.setFixedHeight(26)
+        action_menu = QMenu(self.btn_add_action)
+        for kind, label in (
+            (ACTION_FADE, "🔉 Dissolvi e ferma"),
+            (ACTION_STOP, "⏹ Ferma subito"),
+            (ACTION_RELEASE, "🔁 Rilascia loop"),
+            (ACTION_LEVEL, "🎚 Cambio livello"),
+            (ACTION_OPACITY, "🌓 Opacità layer"),
+            (ACTION_NOTE, "📝 Nota per la regia"),
+            (ACTION_CHECKLIST, "☑ Checklist prima dello spettacolo"),
+        ):
+            act = action_menu.addAction(label)
+            act.triggered.connect(lambda _=False, k=kind: self.add_action_requested.emit(k))
+        self.btn_add_action.setMenu(action_menu)
+
         self.btn_move_up = QPushButton("▲ Su")
         self.btn_move_up.setToolTip("Sposta la cue in alto (Alt+↑)")
         self.btn_move_up.setFixedHeight(26)
@@ -174,19 +207,20 @@ class CueListPanel(QGroupBox):
         self.btn_move_down.clicked.connect(self.move_down_requested)
         self.btn_delete.clicked.connect(self.delete_requested)
 
-        # Two rows of four. In one long row, longer (translated) labels were
+        # Three rows of three. In one long row, longer (translated) labels were
         # cut to 3-4 letters at 125 % Windows scaling with the theme's 12 px
         # side padding, which the compact padding below also trims.
         btn_grid = QGridLayout()
         btn_grid.setHorizontalSpacing(4)
         btn_grid.setVerticalSpacing(4)
         for idx, btn in enumerate((
-            self.btn_add_video, self.btn_add_audio, self.btn_add_image, self.btn_add_text,
-            self.btn_add_group, self.btn_move_up, self.btn_move_down, self.btn_delete,
+            self.btn_add_video, self.btn_add_audio, self.btn_add_image,
+            self.btn_add_text, self.btn_add_group, self.btn_add_action,
+            self.btn_move_up, self.btn_move_down, self.btn_delete,
         )):
             btn.setStyleSheet(btn.styleSheet() + " QPushButton { padding: 2px 3px; }")
-            btn_grid.addWidget(btn, idx // 4, idx % 4)
-        for col in range(4):
+            btn_grid.addWidget(btn, idx // 3, idx % 3)
+        for col in range(3):
             btn_grid.setColumnStretch(col, 1)
         layout.addLayout(btn_grid)
 

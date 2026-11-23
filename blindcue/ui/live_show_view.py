@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from engine.action_cues import action_duration
 from models.cue import Cue, CueStatus, FollowMode, MediaType, normalize_output_target
 from ui.cue_table import (
     ROLE_CHILD_COUNT,
@@ -94,6 +95,9 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
         else:
             dur_str = _fmt_mmss(cue.hold_time)
         parts.append(dur_str)
+    elif cue.media_type == MediaType.ACTION:
+        act_d = action_duration(cue.action_spec)
+        parts.append(f"⚡ {act_d:.1f}s" if act_d > 0 else "⚡")
     else:
         raw_dur = 0.0
         if cue.out_point is not None and cue.out_point > cue.in_point:
@@ -632,7 +636,13 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
             rect = opt.rect.adjusted(6, 3, -6, -3)
 
-            layer_txt = "GRP" if is_group else f"{layer_prefix}L{layer}"
+            is_action = str(index.data(ROLE_MEDIA_TYPE) or "") == "ACTION"
+            if is_group:
+                layer_txt = "GRP"
+            elif is_action:
+                layer_txt = "ACT"  # an action cue has no layer of its own
+            else:
+                layer_txt = f"{layer_prefix}L{layer}"
             layer_font = QFont(opt.font)
             layer_font.setPointSize(8)
             layer_font.setBold(True)
@@ -1542,6 +1552,10 @@ class LiveShowPanel(QWidget):
                         dur_str = f"{cue.hold_time:.1f}s"
                     else:
                         dur_str = _fmt_mmss(cue.hold_time)
+                elif cue.media_type == MediaType.ACTION:
+                    child_count = 0
+                    act_d = action_duration(cue.action_spec)
+                    dur_str = f"⚡ {act_d:.1f}s" if act_d > 0 else "⚡"
                 else:
                     child_count = 0
                     raw_dur = 0.0
@@ -1627,6 +1641,8 @@ class LiveShowPanel(QWidget):
                 q_badge = f"[{sb_cue.q_label.strip()}] " if (sb_cue.q_label and sb_cue.q_label.strip()) else ""
                 if sb_cue.media_type == MediaType.GROUP:
                     layer_badge = "[SCENA]"
+                elif sb_cue.media_type == MediaType.ACTION:
+                    layer_badge = ""  # no layer; the [ACT] type tag follows
                 else:
                     sb_prefix = "B·" if normalize_output_target(getattr(sb_cue, "output_target", "A")) == "B" else ""
                     layer_badge = f"[{sb_prefix}L{sb_cue.layer}]"
@@ -1635,6 +1651,7 @@ class LiveShowPanel(QWidget):
                     MediaType.AUDIO: "AUD",
                     MediaType.IMAGE: "IMG",
                     MediaType.GROUP: "GRP",
+                    MediaType.ACTION: "ACT",
                 }
                 type_tag = type_map.get(sb_cue.media_type, sb_cue.media_type.value[:3])
 

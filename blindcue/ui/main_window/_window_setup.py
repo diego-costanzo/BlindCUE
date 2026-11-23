@@ -269,7 +269,7 @@ class _WindowSetupMixin:
 
     def _is_text_input_focused(self) -> bool:
         focus_w = QApplication.focusWidget()
-        if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
+        if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox, QPlainTextEdit)):
             return True
         return hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState
 

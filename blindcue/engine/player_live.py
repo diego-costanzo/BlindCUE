@@ -17,10 +17,14 @@ from collections.abc import Callable, Sequence
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
 from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
 
-from engine.envelope import SectionSequencer, evaluate_cue_level
+from engine.envelope import SectionSequencer, evaluate_cue_level, ramp_value
 from models.cue import CueSection
 
 logger = logging.getLogger(__name__)
+
+# A released whole-file loop ends this many ms before the file end: the 20 ms
+# position poll must see the end before Qt wraps back to the start.
+_RELEASE_MARGIN_MS = 40
 
 
 def _pause_unless_at_end(player: QMediaPlayer) -> None:
@@ -92,6 +96,10 @@ class LivePlayer(QObject):
         self._last_emitted_opacity: float | None = None
         self._sequencer = SectionSequencer()
         self._manual_fade_active: bool = False
+        # Level change from an ACTION cue: multiplies the cue's own envelope
+        # (fades, volume points) and is reset when a new cue is loaded.
+        self._level_trim: float = 1.0
+        self._level_timer: QTimer | None = None
         # Section boundary latch: after a jump/continuation we must not react to
         # the stale position report of the section we just left, otherwise the
         # sequencer advances twice and silently eats one loop or one cut.
@@ -402,7 +410,7 @@ class LivePlayer(QObject):
         has_inf_section = any(s.loops == 0 and not s.skip for s in self._sections_cfg)
         allow_fo = self._apply_fade_out_at_end and (not looping_inf) and (not has_inf_section)
         allow_fi = self._apply_fade_in and (self._current_loop_iteration == 0)
-        return evaluate_cue_level(
+        level = evaluate_cue_level(
             pos_sec,
             start_sec=self._start_ms / 1000.0 if not self._sequencer.active else self._sequencer.cue_in,
             end_sec=self._end_ms / 1000.0 if self._end_ms else None,
@@ -414,6 +422,7 @@ class LivePlayer(QObject):
             base_level=self._base_volume,
             apply_fade_out_at_end=allow_fo,
         )
+        return max(0.0, min(1.0, level * self._level_trim))
 
     def _apply_envelope_at(self, pos_sec: float) -> None:
         if self._manual_fade_active:
@@ -607,6 +616,7 @@ class LivePlayer(QObject):
             self._finished = False
             self._driver_timer.stop()
             self._stop_fade_timer()
+            self._reset_level_trim()
             if self._standby_player is not None:
                 self._standby_player.stop()
                 self._standby_target_ms = None
@@ -837,6 +847,7 @@ class LivePlayer(QObject):
             self._watchdog_trials = 0
             self._watchdog_armed = False
             self._stop_fade_timer()
+            self._reset_level_trim()
             self._player.stop()
             if self._standby_player is not None:
                 self._standby_player.stop()
@@ -883,7 +894,7 @@ class LivePlayer(QObject):
                 self._manual_fade_active = False
             _, audio = self._deck_pair()
             if not self._volume_points and not self._manual_fade_active:
-                audio.setVolume(vol_norm)
+                audio.setVolume(max(0.0, min(1.0, vol_norm * self._level_trim)))
             else:
                 player, _ = self._deck_pair()
                 self._apply_envelope_at(player.position() / 1000.0)
@@ -1007,6 +1018,100 @@ class LivePlayer(QObject):
             if callback is not None:
                 callback()
 
+    # ── Action cues: level change and loop release ────────────────────
+
+    def level_trim(self) -> float:
+        """Current level multiplier set by level-change actions (1.0 = cue's own level)."""
+        return self._level_trim
+
+    def _reset_level_trim(self) -> None:
+        old = self._level_timer
+        self._level_timer = None
+        if old is not None:
+            old.stop()
+            old.deleteLater()
+        self._level_trim = 1.0
+
+    def _apply_current_level(self) -> None:
+        """Push the envelope × trim to the active deck right now.
+
+        ``_apply_envelope_at`` does nothing while a stop fade owns the volume.
+        """
+        player, _ = self._deck_pair()
+        self._apply_envelope_at(player.position() / 1000.0)
+
+    def ramp_level(self, target_trim: float, duration_sec: float, curve: str = "linear") -> None:
+        """Move the level multiplier to *target_trim* over *duration_sec* (0 = at once).
+
+        Progress follows the clock, like ``fade_out``. A later ramp replaces a
+        running one from wherever it got to.
+        """
+        target = max(0.0, float(target_trim))
+        old = self._level_timer
+        self._level_timer = None
+        if old is not None:
+            old.stop()
+            old.deleteLater()
+        start = self._level_trim
+        if duration_sec <= 0 or abs(target - start) < 1e-4:
+            self._level_trim = target
+            self._apply_current_level()
+            return
+        started = time.monotonic()
+        timer = QTimer(self)
+        timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._level_timer = timer
+
+        def _tick() -> None:
+            if self._level_timer is not timer:
+                return
+            progress = min(1.0, (time.monotonic() - started) / duration_sec)
+            self._level_trim = ramp_value(start, target, progress, curve)
+            self._apply_current_level()
+            if progress >= 1.0:
+                self._level_timer = None
+                timer.stop()
+                timer.deleteLater()
+
+        timer.timeout.connect(_tick)
+        timer.start(15)
+
+    def release_loop(self) -> bool:
+        """Let a looping cue finish its current pass, then end (or go on) normally.
+
+        Section loops/vamps move on to the next section at the end of the pass;
+        a looping cue plays to its OUT point once more and then reports EOF,
+        so Post-Delay and Auto-GO run as after any natural end.
+        Returns False when nothing was looping.
+        """
+        if self._sequencer.active:
+            if not self._sequencer.release_current_loop():
+                return False
+            self._pre_cue_next_target()
+            return True
+        if not self._is_looping:
+            return False
+        player, _ = self._deck_pair()
+        end_ms = self._end_ms
+        if end_ms is None:
+            # A whole-file loop is run by Qt itself, and the FFmpeg backend
+            # ignores a loop count changed mid-play (measured: it kept
+            # looping). Give the boundary check an OUT point just before the
+            # file end, so this pass ends there and reports EOF.
+            dur_ms = int(self._duration_sec * 1000) or int(player.duration())
+            if dur_ms <= 0:
+                return False  # length still unknown: cannot tell where this pass ends
+            end_ms = max(self._start_ms + 1, dur_ms - _RELEASE_MARGIN_MS)
+        self._is_looping = False
+        self._player.setLoops(QMediaPlayer.Loops.Once)
+        self._end_ms = end_ms
+        # The cue's Fade Out now applies at the end of this pass: never let it
+        # start in the past (the level would jump down at once).
+        remaining = max(0.0, (end_ms - player.position()) / 1000.0)
+        self._fade_out_sec = min(self._fade_out_sec, remaining)
+        self._ensure_driver_timer()
+        return True
+
     def shutdown(self) -> None:
         """Stop every timer and release the media player (called on exit).
 
@@ -1018,6 +1123,7 @@ class LivePlayer(QObject):
             self._watchdog_armed = False
             self._driver_timer.stop()
             self._stop_fade_timer()
+            self._reset_level_trim()
             self._player.stop()
             if self._standby_player is not None:
                 self._standby_player.stop()

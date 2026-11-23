@@ -36,6 +36,7 @@ from ui.main_window._loudness import _LoudnessMixin
 from ui.main_window._persistence import _PersistenceMixin
 from ui.main_window._waveform_worker import _WaveformWorkerMixin
 from ui.main_window._preview import _PreviewMixin
+from ui.main_window._actions import _ActionsMixin
 
 
 class MainWindow(
@@ -59,6 +60,7 @@ class MainWindow(
     _PersistenceMixin,
     _WaveformWorkerMixin,
     _PreviewMixin,
+    _ActionsMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -66,6 +68,7 @@ class MainWindow(
     cue_fired = Signal(object)                     # emits Cue
     cue_preview_requested = Signal(object)         # emits Cue to load in preview
     layer_clear_requested = Signal(int)            # emits layer (1, 2, or 3)
+    action_cancel_requested = Signal(int)          # emits cue_id of a deleted action cue
     blackout_requested = Signal()                        # emits when blackout triggered
     preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start

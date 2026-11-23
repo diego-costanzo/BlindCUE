@@ -60,6 +60,10 @@ class ShowScheduler(QObject):
             return self._windows.get((phase, layer))
         return self._windows.get(("PRE", layer)) or self._windows.get(("POST", layer))
 
+    def pending_layers(self) -> set[int]:
+        """Every layer key with a wait window (action cues use keys above the layers)."""
+        return {layer for _phase, layer in self._windows}
+
     def schedule(self, phase: str, cue: Cue, layer: int, duration_sec: float, generation: int = 0) -> ScheduledWindow:
         """Start (or replace) a monotonic wait window for *(phase, layer)*."""
         win = ScheduledWindow(

@@ -427,8 +427,8 @@ class ProjectManager:
             for item in raw_cues:
                 try:
                     cue = Cue.from_dict(item, project_root=proj_dir)
-                    if cue.media_type == MediaType.GROUP:
-                        # Group containers have no media file and are always LOADED
+                    if not cue.media_type.has_file:
+                        # Groups and action cues have no media file: always LOADED
                         cue.status = CueStatus.LOADED
                         loaded_cues.append(cue)
                         continue

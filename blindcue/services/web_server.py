@@ -423,6 +423,7 @@ _HTML_PAGE = """<!DOCTYPE html>
     .cue-badge.audio { background: #133929; color: #34d399; }
     .cue-badge.image { background: #3d2f13; color: #fbbf24; }
     .cue-badge.group { background: #1e2d4d; color: #60a5fa; }
+    .cue-badge.action { background: #4c0519; color: #fda4af; }
 
     .cue-name {
       font-size: 13px;
@@ -821,13 +822,14 @@ _HTML_PAGE = """<!DOCTYPE html>
           const isOffline = (statusNorm === "offline");
           const isSb = Boolean(c.is_standby);
           const rowClass = `cue-row ${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
-          const safeType = ['video', 'audio', 'image', 'group'].includes(typeNorm) ? typeNorm : 'video';
+          const safeType = ['video', 'audio', 'image', 'group', 'action'].includes(typeNorm) ? typeNorm : 'video';
           const typeClass = `cue-badge ${safeType}`;
 
           let icon = "🎬";
           if (safeType === "audio") icon = "🎵";
           else if (safeType === "image") icon = "🖼";
           else if (safeType === "group") icon = "📁";
+          else if (safeType === "action") icon = "⚡";
 
           const outPrefix = (String(c.output_target || "A").toUpperCase() === "B") ? "B·" : "";
           const cueIdNum = Number(c.id);
@@ -1395,6 +1397,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
     .type-badge.audio { background: #133929; color: #34d399; }
     .type-badge.image { background: #3d2f13; color: #fbbf24; }
     .type-badge.group { background: #1e2d4d; color: #60a5fa; }
+    .type-badge.action { background: #4c0519; color: #fda4af; }
 
     /* Footer notice */
     footer {
@@ -1815,7 +1818,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
         cues.forEach(c => {
           const statusNorm = String(c.status || "").toLowerCase();
           const typeNorm = String(c.type || "video").toLowerCase();
-          const safeType = ['video', 'audio', 'image', 'group'].includes(typeNorm) ? typeNorm : 'video';
+          const safeType = ['video', 'audio', 'image', 'group', 'action'].includes(typeNorm) ? typeNorm : 'video';
           const isLive = (statusNorm === "live");
           const isSb = Boolean(c.is_standby);
           const rowClass = `${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
@@ -1834,6 +1837,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
           if (safeType === "audio") icon = "🎵";
           else if (safeType === "image") icon = "🖼";
           else if (safeType === "group") icon = "📁";
+          else if (safeType === "action") icon = "⚡";
 
           const outPrefix = (String(c.output_target || "A").toUpperCase() === "B") ? "B·" : "";
           const followTxt = c.follow_mode === 'AUTO_FOLLOW' ? 'Auto-follow' : (c.follow_mode === 'SIMULTANEOUS' ? 'Simultanea' : 'Manuale');
