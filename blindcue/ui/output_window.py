@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from collections import OrderedDict
 from pathlib import Path
 from collections.abc import Callable
@@ -53,6 +54,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from engine.envelope import ramp_value
 from models.surface import (
     DEFAULT_SURFACE_ID,
     MaskType,
@@ -466,6 +468,9 @@ class OutputWindow(QWidget):
         # Crossfade: frozen snapshot of a layer dissolving over new content
         self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
         self._xfade_timers: dict[int, QTimer] = {}
+        # Layer opacity set by an action cue: the containers of a layer dim
+        # whatever plays on it, on top of the cue's own opacity/fades.
+        self._master_fade_timers: dict[int, QTimer] = {}
 
         # Crossfade: frozen snapshot of a layer dissolving over new content
         self._xfade_ghosts: dict[int, QGraphicsPixmapItem] = {}
@@ -838,7 +843,19 @@ class OutputWindow(QWidget):
         if layer in self._layer_pixmaps:
             self._layer_pixmaps[layer].setPixmap(QPixmap())
         self._image_layouts.pop(layer, None)
+        self._reset_master_if_empty(layer)
         self._update_tappo_visibility()
+
+    def _reset_master_if_empty(self, layer: int) -> None:
+        """A layer left empty forgets the opacity an action cue gave it.
+
+        Otherwise whatever shows up there next without a GO (Live Mirror in
+        design mode) would appear dimmed.
+        """
+        vc = self._video_containers.get(layer)
+        ic = self._image_containers.get(layer)
+        if vc is not None and ic is not None and not vc.isVisible() and not ic.isVisible():
+            self.reset_layer_master_opacity(layer)
 
     def _apply_pixmap_to_layer(
         self,
@@ -1121,6 +1138,7 @@ class OutputWindow(QWidget):
     def clear_layer(self, layer: int) -> None:
         """Remove any visual content (image or video) from *layer*."""
         self._end_crossfade(layer)
+        self.reset_layer_master_opacity(layer)
         self.clear_pixmap_layer(layer)
         self.hide_video_widget(layer=layer)
         self._update_tappo_visibility()
@@ -1130,9 +1148,58 @@ class OutputWindow(QWidget):
         self._cancel_fallback_timer()
         for layer in (1, 2, 3):
             self._end_crossfade(layer)
+            self.reset_layer_master_opacity(layer)
             self.clear_pixmap_layer(layer)
             self.hide_video_widget(layer=layer)
         self._update_tappo_visibility()
+
+    # ── Layer opacity (action cues) ───────────────────────────────────
+
+    def layer_master_opacity(self, layer: int) -> float:
+        """Opacity an action cue gave to the whole of *layer* (1.0 = untouched)."""
+        container = self._video_containers.get(layer)
+        return container.opacity() if container is not None else 1.0
+
+    def _set_layer_master(self, layer: int, opacity: float) -> None:
+        op = max(0.0, min(1.0, float(opacity)))
+        for containers in (self._video_containers, self._image_containers):
+            item = containers.get(layer)
+            if item is not None:
+                item.setOpacity(op)
+
+    def reset_layer_master_opacity(self, layer: int) -> None:
+        """Back to full layer opacity (a new cue on the layer starts undimmed)."""
+        self._stop_timer_entry(self._master_fade_timers, layer)
+        self._set_layer_master(layer, 1.0)
+
+    def fade_layer_master(self, layer: int, target: float, duration_sec: float,
+                          curve: str = "linear") -> None:
+        """Dim or restore everything on *layer* to *target* over *duration_sec*.
+
+        Independent of the cue's own opacity and fades (it multiplies them),
+        and follows the clock like the audio fades.
+        """
+        if layer not in self._video_containers:
+            return
+        self._stop_timer_entry(self._master_fade_timers, layer)
+        start = self.layer_master_opacity(layer)
+        end = max(0.0, min(1.0, float(target)))
+        if duration_sec <= 0 or abs(end - start) < 1e-3:
+            self._set_layer_master(layer, end)
+            return
+        started = time.monotonic()
+        timer = QTimer(self)
+        timer.setTimerType(Qt.TimerType.PreciseTimer)
+        self._master_fade_timers[layer] = timer
+
+        def _step() -> None:
+            progress = min(1.0, (time.monotonic() - started) / duration_sec)
+            self._set_layer_master(layer, ramp_value(start, end, progress, curve))
+            if progress >= 1.0:
+                self._stop_timer_entry(self._master_fade_timers, layer)
+
+        timer.timeout.connect(_step)
+        timer.start(15)
 
     # ── Video Widget & Public API ─────────────────────────────────────
 
@@ -1472,6 +1539,7 @@ class OutputWindow(QWidget):
         if target_layer in self._secondary_video_items:
             self._secondary_video_items[target_layer].hide()
             self._secondary_video_items[target_layer].setOpacity(1.0)
+        self._reset_master_if_empty(target_layer)
         self._update_tappo_visibility()
 
     def fade_out_video(self, duration_sec: float = 0.2,
@@ -1828,7 +1896,8 @@ class OutputWindow(QWidget):
         """Close the output reliably during shutdown, bypassing hide logic."""
         self._force_close_allowed = True
         self._cancel_fallback_timer()
-        for timer_map in (self._video_fade_timers, self._layer_fade_timers, self._deck_swap_timers):
+        for timer_map in (self._video_fade_timers, self._layer_fade_timers, self._deck_swap_timers,
+                          self._master_fade_timers):
             for t in list(timer_map.values()):
                 if t.isActive():
                     t.stop()

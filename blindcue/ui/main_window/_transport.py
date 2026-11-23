@@ -131,10 +131,12 @@ class _TransportMixin:
         """Note the cue an operator started by hand (GO, remote, forced start).
 
         After a stop the next GO points back at it, so a GO given too early
-        can simply be repeated at the right moment.
+        can simply be repeated at the right moment. A hand-given GO also
+        moves past the operator note on screen (an Auto-GO does not).
         """
         if 0 <= idx < len(self._cues):
             self._last_manual_go_cue = self._cues[idx]
+        self._dismiss_note_on_go()
 
     def _fire_cue_chain(self, start_idx: int) -> None:
         """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution."""
@@ -164,7 +166,8 @@ class _TransportMixin:
                 self._current_index = c_idx
                 logger.info("[GO] Fired chained group #%d: %s", cue.cue_id, cue)
                 continue
-            if cue.pre_delay <= 0.02:
+            # An action cue takes no layer: it must not demote what plays there.
+            if cue.pre_delay <= 0.02 and cue.media_type != MediaType.ACTION:
                 ShowEngine.promote_to_live(self._cues, cue, dual_active=self._dual_output_active)
                 self._update_live_layer_label(cue)
             self._current_index = c_idx
@@ -186,17 +189,21 @@ class _TransportMixin:
             if kids and not inside:
                 next_idx = next(
                     (i for i, c in enumerate(self._cues) if c is kids[0]), next_idx)
+        # An action cue has already written what it did on the status line.
+        is_action = first_cue.media_type == MediaType.ACTION
         if next_idx < len(self._cues):
             self._cue_list.setCurrentRow(next_idx)
             next_ref = format_cue_ref(next_idx, self._cues[next_idx])
-            self._status_label.setText(
-                f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) | Standby: {next_ref} '{self._cues[next_idx].name}'"
-            )
+            if not is_action:
+                self._status_label.setText(
+                    f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) | Standby: {next_ref} '{self._cues[next_idx].name}'"
+                )
         else:
             self._cue_list.setCurrentRow(last_fired_idx)
-            self._status_label.setText(
-                f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) — Fine scaletta (premi GO per rilanciare)"
-            )
+            if not is_action:
+                self._status_label.setText(
+                    f"LIVE → {ref} '{first_cue.name}' (Layer {first_cue.layer}) — Fine scaletta (premi GO per rilanciare)"
+                )
 
         self._sync_live_view()
         self._auto_save()
@@ -294,7 +301,7 @@ class _TransportMixin:
                 return
             self._fire_group_cue(self._cues.index(child), child, depth + 1)
             return
-        if child.pre_delay <= 0.02:
+        if child.pre_delay <= 0.02 and child.media_type != MediaType.ACTION:
             ShowEngine.promote_to_live(self._cues, child, dual_active=self._dual_output_active)
             self._update_live_layer_label(child)
         self.cue_fired.emit(child)

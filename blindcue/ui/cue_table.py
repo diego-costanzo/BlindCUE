@@ -57,6 +57,7 @@ _MEDIA_BADGE_BROADCAST = {
     "AUDIO": ("AUD", QColor("#0d9488"), QColor("#ccfbf1"), None),
     "IMAGE": ("IMG", QColor("#d97706"), QColor("#fef3c7"), None),
     "GROUP": ("GRP", QColor("#6d28d9"), QColor("#ede9fe"), None),
+    "ACTION": ("ACT", QColor("#be123c"), QColor("#ffe4e6"), None),
 }
 
 # Stepped Carbon/Graphite Monocromo Badges (WCAG AAA · Zero Chromatic Clutter)
@@ -65,6 +66,7 @@ _MEDIA_BADGE_CARBON_MONO = {
     "AUDIO": ("AUD", QColor("#22232a"), QColor("#d4d4d8"), QColor("#3f404d")),
     "IMAGE": ("IMG", QColor("#373844"), QColor("#ffffff"), QColor("#6b6d7c")),
     "GROUP": ("GRP", QColor("#18191f"), QColor("#e4e4e7"), QColor("#484956")),
+    "ACTION": ("ACT", QColor("#26272e"), QColor("#ffffff"), QColor("#a1a1aa")),
 }
 
 # Backward compatibility alias
@@ -489,7 +491,10 @@ class CueTableDelegate(QStyledItemDelegate):
                     painter.drawText(cc_rect, Qt.AlignmentFlag.AlignCenter, cc_txt)
                     right_x -= cc_w + 4
             else:
-                if conflict_reason:
+                lh = 16
+                if media_type == "ACTION":
+                    pass  # an action cue has no layer of its own
+                elif conflict_reason:
                     layer_str = f"⚠️ {layer_prefix}L{layer}"
                     painter.setFont(tag_font)
                     lw = painter.fontMetrics().horizontalAdvance(layer_str) + 8

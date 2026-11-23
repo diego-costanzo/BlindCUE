@@ -23,6 +23,7 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QMainWindow,
     QMessageBox,
+    QPlainTextEdit,
     QPushButton,
     QSizePolicy,
     QSplitter,
@@ -132,6 +133,7 @@ _MEDIA_ICONS = {
     MediaType.VIDEO: "🎬",
     MediaType.AUDIO: "🎵",
     MediaType.IMAGE: "🖼",
+    MediaType.ACTION: "⚡",
 }
 
 _DEFAULT_TOP_RATIOS: tuple[float, float, float] = (0.25, 0.45, 0.30)

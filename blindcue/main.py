@@ -88,6 +88,14 @@ from PySide6.QtWidgets import QApplication, QMessageBox
 
 from ui.main_window import MainWindow
 from ui.output_window import OutputWindow
+from engine.action_cues import (
+    STOP_CANCEL_START,
+    STOP_SILENCE,
+    action_duration,
+    level_trim_after,
+    stop_plan,
+    target_layers,
+)
 from engine.envelope import evaluate_cue_level
 from engine.player_live import LivePlayer
 from engine.player_test import TestPlayer
@@ -95,6 +103,14 @@ from engine.show_engine import ShowEngine
 from engine.show_scheduler import ScheduledWindow, ShowScheduler
 from engine.sleep_inhibitor import SleepInhibitor
 from models.cue import (
+    ACTION_CHECKLIST,
+    ACTION_FADE,
+    ACTION_LEVEL,
+    ACTION_NOTE,
+    ACTION_OPACITY,
+    ACTION_RELEASE,
+    ACTION_STOP,
+    ACTION_TARGET_ALL,
     Cue,
     CueStatus,
     FollowMode,
@@ -648,13 +664,19 @@ def main() -> int:
                 source_tag="PRE-VIZ",
             )
 
-        if cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(
-            main_win._cues, cue
-        ) in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value):
-            # SEQUENCE ("Cascata") and LOOP ("Loop Scena") containers advance
-            # their children on their own: the operator picked the mode, so the
-            # single child does not need to be marked AUTO-GO as well.
+        if _follows_on_its_own(cue):
             main_win.trigger_auto_follow_from(cue)
+
+    def _follows_on_its_own(cue: Cue) -> bool:
+        """True when the end of *cue* starts the next one without a GO.
+
+        SEQUENCE ("Cascata") and LOOP ("Loop Scena") containers advance their
+        children on their own: the operator picked the mode, so the single
+        child does not need to be marked AUTO-GO as well.
+        """
+        return cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(
+            main_win._cues, cue
+        ) in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value)
 
     def _enter_post_delay_or_finalize(cue: Cue, layer: int, expected_gen: int) -> None:
         if layer_fire_gen.get(layer) != expected_gen:
@@ -680,6 +702,9 @@ def main() -> int:
         if layer_fire_gen.get(layer) != expected_gen:
             return
         lp = live_players.get(layer)
+        # A cue silenced on this layer while this one waited in Pre-Delay is
+        # replaced now: this cue's own end must count again.
+        fading_layers.discard(layer)
         try:
             if cue.status != CueStatus.LIVE:
                 main_win.promote_cue_to_live(cue)
@@ -701,6 +726,8 @@ def main() -> int:
             # into the new cue instead of a hard cut.
             if getattr(cue, "crossfade", 0.0) > 0:
                 _out_window(layer).begin_crossfade(_local_layer(layer), float(cue.crossfade))
+            # A layer dimmed by an action cue starts the new cue at full opacity.
+            _out_window(layer).reset_layer_master_opacity(_local_layer(layer))
 
             if cue.media_type == MediaType.VIDEO:
                 if lp is not None:
@@ -787,7 +814,8 @@ def main() -> int:
     def _on_scheduler_tick(win: ScheduledWindow) -> None:
         if layer_fire_gen.get(win.layer) != win.generation:
             return
-        main_win.update_live_layer_phase(win.layer, win.cue, win.phase, win.elapsed_sec, win.total_sec)
+        if not _is_action_slot(win.layer):
+            main_win.update_live_layer_phase(win.layer, win.cue, win.phase, win.elapsed_sec, win.total_sec)
         rem = max(0.0, win.total_sec - win.elapsed_sec)
         main_win.set_cue_phase_badge(win.cue.cue_id, f"{win.phase} -{rem:.1f}s")
 
@@ -796,7 +824,12 @@ def main() -> int:
             return
         try:
             main_win.set_cue_phase_badge(win.cue.cue_id, "")
-            if win.phase == "PRE":
+            if _is_action_slot(win.layer):
+                if win.phase == "PRE":
+                    _run_action_now(_resolve_current_cue(win.cue), win.generation)
+                elif win.phase == "POST":
+                    main_win.trigger_auto_follow_from(_resolve_current_cue(win.cue))
+            elif win.phase == "PRE":
                 _launch_cue_now(_resolve_current_cue(win.cue), win.layer, win.generation)
             elif win.phase == "POST":
                 _finalize_cue_exit(_resolve_current_cue(win.cue), win.layer, expected_gen=win.generation)
@@ -806,16 +839,157 @@ def main() -> int:
     scheduler.tick_updated.connect(_on_scheduler_tick)
     scheduler.window_finished.connect(_on_scheduler_finished)
 
+    # ── Action cues: no media, no layer of their own ─────────────────
+    # Their Pre-Delay and the wait before an Auto-GO run in the same scheduler
+    # (so Pause All and PANIC cover them) under a private key per cue.
+    _ACTION_SLOT_BASE = 1000
+
+    def _action_slot(cue: Cue) -> int:
+        return _ACTION_SLOT_BASE + int(cue.cue_id)
+
+    def _is_action_slot(layer: int) -> bool:
+        return int(layer) >= _ACTION_SLOT_BASE
+
+    def _waiting_cues() -> dict[int, Cue]:
+        """Cues counting down their Pre-Delay, by runtime layer."""
+        waiting: dict[int, Cue] = {}
+        for l_idx in _ALL_RUNTIME_LAYERS:
+            win = scheduler.pending_for_layer(l_idx, "PRE")
+            if win is not None and layer_fire_gen.get(l_idx) == win.generation:
+                waiting[l_idx] = _resolve_current_cue(win.cue)
+        return waiting
+
+    def _silence_layer(layer: int, seconds: float) -> None:
+        """Fade sound and picture of *layer* to nothing without stopping it.
+
+        The cue waiting there resets both when it starts; meanwhile the end of
+        the silenced media must not start a Post-Delay or an Auto-GO.
+        """
+        fading_layers.add(layer)
+        post = scheduler.pending_for_layer(layer, "POST")
+        if post is not None:
+            # Already in its Post-Delay: that wait would still end in an Auto-GO.
+            main_win.set_cue_phase_badge(post.cue.cue_id, "")
+            scheduler.cancel_layer(layer, "POST")
+        live_image_envelopes.pop(layer, None)  # a timed picture must not reach its end
+        lp = live_players.get(layer)
+        if lp is not None:
+            lp.fade_out(seconds, stop_after=False)
+        _out_window(layer).fade_layer_master(_local_layer(layer), 0.0, seconds)
+
+    def _cancel_waiting_start(layer: int) -> None:
+        """Cancel only the Pre-Delay start waiting on *layer*; what plays there goes on."""
+        pre = scheduler.pending_for_layer(layer, "PRE")
+        if pre is None:
+            return
+        main_win.set_cue_phase_badge(pre.cue.cue_id, "")
+        scheduler.cancel_layer(layer, "PRE")
+        playing = active_live_cues.get(layer)
+        if playing is not None:
+            main_win._update_live_layer_label(playing, preserve_timing=True)
+        else:
+            main_win._reset_live_label(layer)
+
+    def _cancel_action_wait(cue_id: int, *, except_slot: int | None = None) -> None:
+        """Forget the Pre-Delay / Auto-GO wait of an action cue (deleted or stopped)."""
+        slot = _ACTION_SLOT_BASE + int(cue_id)
+        if slot == except_slot:
+            return
+        for phase in ("PRE", "POST"):
+            win = scheduler.pending_for_layer(slot, phase)
+            if win is not None:
+                main_win.set_cue_phase_badge(win.cue.cue_id, "")
+        scheduler.cancel_layer(slot)
+        layer_fire_gen[slot] = layer_fire_gen.get(slot, 0) + 1
+
+    main_win.action_cancel_requested.connect(_cancel_action_wait)
+
+    def _fire_action_cue(cue: Cue) -> None:
+        """GO on an action cue: never touches a layer's own timing or generation."""
+        slot = _action_slot(cue)
+        scheduler.cancel_layer(slot)
+        gen = layer_fire_gen.get(slot, 0) + 1
+        layer_fire_gen[slot] = gen
+        pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0)))
+        if pre_d > 0.02:
+            main_win.set_cue_phase_badge(cue.cue_id, f"PRE -{pre_d:.1f}s")
+            scheduler.schedule("PRE", cue, slot, pre_d, generation=gen)
+            logger.info("[ACTION] '%s' scheduled with Pre-Delay %.2fs", cue.name, pre_d)
+        else:
+            _run_action_now(cue, gen)
+
+    def _run_action_now(cue: Cue, gen: int) -> None:
+        """Carry out *cue*'s action on whatever its targets are playing right now."""
+        if layer_fire_gen.get(_action_slot(cue)) != gen:
+            return
+        spec = cue.action_spec
+        kind = spec.get("kind")
+        layers: list[int] = []
+        try:
+            waiting = _waiting_cues()
+            dual = _dual_output_active()
+            layers = target_layers(spec, main_win._cues, active_live_cues, waiting, dual_active=dual)
+            seconds = float(spec.get("duration", 0.0))
+            curve = str(spec.get("curve", "linear"))
+            if kind in (ACTION_STOP, ACTION_FADE):
+                fade = 0.05 if kind == ACTION_STOP else max(0.05, seconds)
+                plan = stop_plan(spec, main_win._cues, active_live_cues, waiting, dual_active=dual)
+                for l_idx, how in plan.items():
+                    if how == STOP_SILENCE:
+                        # The layer already waits for a cue that is not a
+                        # target (it replaces the chosen one when its
+                        # Pre-Delay ends): silence the old cue, keep the start.
+                        _silence_layer(l_idx, fade)
+                    elif how == STOP_CANCEL_START:
+                        _cancel_waiting_start(l_idx)
+                    else:
+                        main_win.mark_layer_stopped(l_idx)
+                        _on_layer_clear_requested(l_idx, fade_override=fade)
+                if spec.get("target") == ACTION_TARGET_ALL:
+                    # "Everything" also covers other action cues still waiting.
+                    for key in scheduler.pending_layers():
+                        if _is_action_slot(key):
+                            _cancel_action_wait(key - _ACTION_SLOT_BASE, except_slot=_action_slot(cue))
+            elif kind == ACTION_RELEASE:
+                layers = [l_idx for l_idx in layers if live_players[l_idx].release_loop()]
+            elif kind == ACTION_LEVEL:
+                for l_idx in layers:
+                    lp = live_players[l_idx]
+                    trim = level_trim_after(spec, lp.level_trim(), active_live_cues[l_idx].volume)
+                    lp.ramp_level(trim, seconds, curve)
+            elif kind == ACTION_OPACITY:
+                for l_idx in layers:
+                    _out_window(l_idx).fade_layer_master(
+                        _local_layer(l_idx), float(spec.get("level", 1.0)), seconds, curve
+                    )
+            elif kind in (ACTION_NOTE, ACTION_CHECKLIST):
+                main_win.show_operator_note(cue)
+            logger.info("[ACTION] '%s' (%s) on layers %s", cue.name, kind, layers)
+        except Exception as exc:
+            logger.error("[ACTION] '%s' failed: %s", cue.name, exc, exc_info=True)
+        main_win.action_cue_done(cue, layers)
+        if _follows_on_its_own(cue):
+            # Wait for the action's own fade/ramp plus the Post-Delay; a short
+            # floor keeps a looping group of instant actions from spinning.
+            wait = max(0.1, action_duration(spec) + max(0.0, float(cue.post_delay)))
+            scheduler.schedule("POST", cue, _action_slot(cue), wait, generation=gen)
+
     def _on_cue_fired(cue: Cue) -> None:
         """Handle GO: schedule Pre-Delay if set or immediately start cue on its target layer."""
-        layer = _effective_layer(cue)
         if scheduler.is_paused():
             _set_global_paused(False)
+        if cue.media_type == MediaType.ACTION:
+            # Branch before the layer logic: an action must not cancel the
+            # schedule or bump the generation of the layer it acts on.
+            _fire_action_cue(cue)
+            return
+        layer = _effective_layer(cue)
         scheduler.cancel_layer(layer)
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
         paused_layers_by_global.discard(layer)
-        fading_layers.discard(layer)
+        # fading_layers is cleared when this cue really starts (_launch_cue_now):
+        # until then the cue fading out there must not start its Auto-GO.
 
         pre_d = max(0.0, float(getattr(cue, "pre_delay", 0.0)))
         if pre_d > 0.02:
@@ -1342,8 +1516,8 @@ def main() -> int:
         def _test_play_selected(mw: MainWindow, tp: TestPlayer) -> None:
             nonlocal preview_manual_position
             cue = mw._selected_cue()
-            if cue is None:
-                return
+            if cue is None or not cue.media_type.has_file:
+                return  # groups and action cues have nothing to rehearse here
             if cue.media_type == MediaType.IMAGE:
                 preview_manual_position = True
                 mw.start_image_preview_playback(cue)

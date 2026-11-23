@@ -1990,4 +1990,164 @@ T: dict[str, str] = {
         'GO &wymuszone (pomija cue wyłączny)',
     'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme, poi si fermano. Il prossimo GO riparte dalla cue avviata a mano che è stata fermata.':
         'Wycisz wszystko: audio, wideo i obrazy na wszystkich warstwach wygasają razem, potem się zatrzymują. Następne GO rusza od zatrzymanego cue, który uruchomiono ręcznie.',
+    '+ Azione':
+        '+ Akcja',
+    'Aggiungi Azione':
+        'Dodaj akcję',
+    'Aggiungi una cue senza file: ferma, dissolve, cambia livello o opacità di altre cue, oppure mostra una nota per la regia':
+        'Dodaj cue bez pliku: zatrzymuje, wycisza, zmienia poziom lub krycie innych cue albo pokazuje notatkę dla operatora',
+    '🔉 Dissolvi e ferma':
+        '🔉 Wycisz i zatrzymaj',
+    '⏹ Ferma subito':
+        '⏹ Zatrzymaj od razu',
+    '🔁 Rilascia loop':
+        '🔁 Zwolnij pętlę',
+    '🎚 Cambio livello':
+        '🎚 Zmiana poziomu',
+    '🌓 Opacità layer':
+        '🌓 Krycie warstwy',
+    '📝 Nota per la regia':
+        '📝 Notatka dla operatora',
+    '☑ Checklist prima dello spettacolo':
+        '☑ Lista kontrolna przed spektaklem',
+    'Ferma subito':
+        'Zatrzymaj od razu',
+    'Rilascia loop':
+        'Zwolnij pętlę',
+    'Cambio livello':
+        'Zmiana poziomu',
+    'Opacità layer':
+        'Krycie warstwy',
+    'Nota per la regia':
+        'Notatka dla operatora',
+    'Checklist prima dello spettacolo':
+        'Lista kontrolna przed spektaklem',
+    'Microfoni accesi':
+        'Mikrofony włączone',
+    'Proiettore acceso':
+        'Projektor włączony',
+    'Telefono in silenzioso':
+        'Telefon wyciszony',
+    '⚡ Azione':
+        '⚡ Akcja',
+    'Durata: scheda Azione':
+        'Czas: zakładka Akcja',
+    'Azione:':
+        'Akcja:',
+    'Su cosa:':
+        'Na co:',
+    'Cue:':
+        'Cue:',
+    'Modo:':
+        'Tryb:',
+    'Livello:':
+        'Poziom:',
+    'Variazione:':
+        'Zmiana:',
+    'Durata:':
+        'Czas:',
+    'Curva:':
+        'Krzywa:',
+    'Voci:':
+        'Pozycje:',
+    'Tipo di azione':
+        'Rodzaj akcji',
+    'Su cosa agisce':
+        'Na co działa',
+    "Cue su cui agisce l'azione":
+        'Cue, na które działa akcja',
+    'Testo della nota':
+        'Tekst notatki',
+    'Voci della checklist, una per riga':
+        'Pozycje listy kontrolnej, jedna w wierszu',
+    'Tutto ciò che è in onda':
+        'Wszystko, co gra',
+    'Un layer':
+        'Jedna warstwa',
+    'Cue scelte':
+        'Wybrane cue',
+    'Uscita A':
+        'Wyjście A',
+    'Uscita B':
+        'Wyjście B',
+    'Conta solo con due proiettori indipendenti':
+        'Ma znaczenie tylko przy dwóch niezależnych projektorach',
+    "Spunta le cue su cui agisce l'azione (un gruppo = tutte le sue cue)":
+        'Zaznacz cue, na które działa akcja (grupa = wszystkie jej cue)',
+    'Assoluto (%)':
+        'Bezwzględnie (%)',
+    'Relativo (dB)':
+        'Względnie (dB)',
+    '0 = subito':
+        '0 = od razu',
+    "Es. Aspetta l'ingresso di Anna, poi GO":
+        'Np. Czekaj na wejście Ani, potem GO',
+    'Una voce per riga':
+        'Jedna pozycja w wierszu',
+    'Ambra':
+        'Bursztynowy',
+    'Rosso — attenzione':
+        'Czerwony — uwaga',
+    'Verde':
+        'Zielony',
+    'Blu':
+        'Niebieski',
+    'Viola':
+        'Fioletowy',
+    'Grigio chiaro':
+        'Jasnoszary',
+    'Abbassa audio e immagine delle cue scelte nel tempo indicato, poi le ferma. Il loro Post-Delay e Auto-GO non partono.':
+        'Ścisza dźwięk i wygasza obraz wybranych cue w podanym czasie, potem je zatrzymuje. Ich Post-Delay i Auto-GO nie ruszają.',
+    'Ferma subito le cue scelte, anche quelle in attesa del Pre-Delay.':
+        'Od razu zatrzymuje wybrane cue, także te czekające na koniec Pre-Delay.',
+    'La cue in loop finisce il giro in corso e poi prosegue: passa alla sezione successiva o termina normalmente (con Post-Delay e Auto-GO).':
+        'Zapętlony cue kończy bieżące okrążenie i idzie dalej: przechodzi do następnej sekcji albo kończy się normalnie (z Post-Delay i Auto-GO).',
+    'Cambia il volume di ciò che suona, senza fermarlo. Assoluto: come se il Volume della cue fosse quello indicato. Relativo: più o meno dB rispetto ad ora.':
+        'Zmienia głośność tego, co gra, bez zatrzymywania. Bezwzględnie: tak, jakby Głośność cue miała podaną wartość. Względnie: o tyle dB głośniej lub ciszej niż teraz.',
+    'Rende più o meno trasparente tutto il layer (immagini e video). La cue successiva sullo stesso layer riparte piena.':
+        'Zmienia przezroczystość całej warstwy (obrazy i wideo). Następny cue na tej warstwie startuje z pełnym kryciem.',
+    'Mostra il testo in cima alla finestra di regia (non sul proiettore). Non blocca il GO; sparisce al GO successivo o con ✕.':
+        'Pokazuje tekst u góry okna reżysera (nie na projektorze). Nie blokuje GO; znika przy następnym GO albo po kliknięciu ✕.',
+    'Lista da spuntare prima dello spettacolo: compare con il GO e anche entrando in LIVE finché non è tutta spuntata. Le spunte non vengono salvate.':
+        'Lista do odhaczenia przed spektaklem: pojawia się po GO, a także przy wejściu w tryb LIVE, dopóki nie jest cała odhaczona. Zaznaczenia nie są zapisywane.',
+    'nessuna cue scelta':
+        'nie wybrano cue',
+    'tutto in onda':
+        'wszystko, co gra',
+    'Nota: {}':
+        'Notatka: {}',
+    'Nota (vuota)':
+        'Notatka (pusta)',
+    'Checklist: {} voci':
+        'Lista kontrolna: {} poz.',
+    'Stop: {}':
+        'Zatrzymaj: {}',
+    'Dissolvi in {} s: {}':
+        'Wycisz w {} s: {}',
+    'Rilascia loop: {}':
+        'Zwolnij pętlę: {}',
+    'Livello {} dB in {} s: {}':
+        'Poziom {} dB w {} s: {}',
+    'Livello {}% in {} s: {}':
+        'Poziom {}% w {} s: {}',
+    'Opacità {}% in {} s: {}':
+        'Krycie {}% w {} s: {}',
+    '⚡ {}':
+        '⚡ {}',
+    'Azione: {}':
+        'Akcja: {}',
+    "Azione {} '{}': nessun bersaglio in onda, niente da fare":
+        "Akcja {} '{}': żaden z jej celów nie gra, nic do zrobienia",
+    "AZIONE → {} '{}': {}":
+        "AKCJA → {} '{}': {}",
+    'Checklist: {} di {} spuntate':
+        'Lista kontrolna: odhaczono {} z {}',
+    '✕ Chiudi':
+        '✕ Zamknij',
+    'Nascondi la nota (non ferma niente)':
+        'Ukryj notatkę (niczego nie zatrzymuje)',
+    'Dissolvi e ferma':
+        'Wycisz i zatrzymaj',
+    '? cue eliminata dalla scaletta':
+        '? cue usunięty z listy',
 }

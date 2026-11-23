@@ -163,7 +163,7 @@ class _CueManipMixin:
         if self._live_mode:
             return
         focus_w = QApplication.focusWidget()
-        if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox)):
+        if isinstance(focus_w, (QLineEdit, QAbstractSpinBox, QComboBox, QPlainTextEdit)):
             return
 
         sel_rows = self._selected_rows()
@@ -180,7 +180,10 @@ class _CueManipMixin:
             had_phase = rem.cue_id in self._live_phase_tags
             if had_phase:
                 self._live_phase_tags.pop(rem.cue_id, None)
-            if rem.media_type != MediaType.GROUP and (rem.status == CueStatus.LIVE or had_phase):
+            if rem.media_type == MediaType.ACTION:
+                # No layer of its own: only its pending Pre-Delay / Auto-GO wait goes.
+                self.action_cancel_requested.emit(rem.cue_id)
+            elif rem.media_type != MediaType.GROUP and (rem.status == CueStatus.LIVE or had_phase):
                 slot = self._runtime_slot(rem)
                 if slot not in cleared_slots:
                     cleared_slots.add(slot)

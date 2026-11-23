@@ -86,6 +86,10 @@ class _InspectorMixin:
         prev_in = cue.in_point
         prev_out = cue.out_point
         self._inspector.apply_to_cue(cue)
+        if cue.media_type == MediaType.ACTION:
+            # No media: the volume slider must not reach a live player
+            # (with Live Mirror on it would re-level layer 1).
+            return
         self._sync_timeline_for_cue(cue)
         self.live_volume_changed.emit(self._inspector.slider_volume.value())
         self.live_automation_updated.emit(cue)

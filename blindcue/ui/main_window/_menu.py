@@ -193,8 +193,20 @@ class _MenuMixin:
         QMessageBox.information(self, "BlindCue", msg)
 
     def _build_ui(self) -> None:
+        from ui.operator_note import OperatorNoteBanner
+
         self._central_stack = QStackedWidget()
-        self.setCentralWidget(self._central_stack)
+        # Operator notes sit above both pages (design and LIVE), never on the output.
+        central = QWidget()
+        central_layout = QVBoxLayout(central)
+        central_layout.setContentsMargins(0, 0, 0, 0)
+        central_layout.setSpacing(0)
+        self._note_banner = OperatorNoteBanner()
+        self._note_banner.item_toggled.connect(self._on_note_item_toggled)
+        self._note_banner.dismissed.connect(self._on_note_dismissed)
+        central_layout.addWidget(self._note_banner)
+        central_layout.addWidget(self._central_stack, stretch=1)
+        self.setCentralWidget(central)
 
         self._design_page = QWidget()
         root_layout = QVBoxLayout(self._design_page)
@@ -217,6 +229,7 @@ class _MenuMixin:
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
         self._cue_list_panel.add_group_requested.connect(self._on_add_group)
         self._cue_list_panel.add_text_requested.connect(self._on_add_text_cue)
+        self._cue_list_panel.add_action_requested.connect(self._on_add_action_cue)
         self._cue_list_panel.edit_text_requested.connect(self._on_edit_text_cue)
         self._cue_list_panel.ungroup_requested.connect(self._ungroup_selected)
         self._cue_list_panel.extract_child_requested.connect(self._extract_selected_from_group)
@@ -284,6 +297,7 @@ class _MenuMixin:
         self._inspector.open_surface_mapping_requested.connect(self._open_surface_mapping_dialog)
         self._inspector.mask_edit_requested.connect(self._on_mask_edit_requested)
         self._inspector.set_available_surfaces(self._surfaces)
+        self._inspector.set_cue_catalog_provider(lambda: self._cues)
         self._bind_inspector_aliases()
         top_splitter.addWidget(self._inspector)
 

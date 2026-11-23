@@ -1778,4 +1778,162 @@ T: dict[str, str] = {
         '&Forced GO (ignores exclusive cue)',
     'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme, poi si fermano. Il prossimo GO riparte dalla cue avviata a mano che è stata fermata.':
         'Fade All: audio, video and images on every layer fade out together, then stop. The next GO starts again from the hand-started cue that was stopped.',
+    '+ Azione':
+        '+ Action',
+    'Aggiungi Azione':
+        'Add Action',
+    'Aggiungi una cue senza file: ferma, dissolve, cambia livello o opacità di altre cue, oppure mostra una nota per la regia':
+        'Add a cue without a file: it stops, fades, re-levels or dims other cues, or shows a note to the operator',
+    '🔉 Dissolvi e ferma':
+        '🔉 Fade out and stop',
+    '⏹ Ferma subito':
+        '⏹ Stop at once',
+    '🔁 Rilascia loop':
+        '🔁 Release loop',
+    '🎚 Cambio livello':
+        '🎚 Level change',
+    '🌓 Opacità layer':
+        '🌓 Layer opacity',
+    '📝 Nota per la regia':
+        '📝 Note for the operator',
+    '☑ Checklist prima dello spettacolo':
+        '☑ Pre-show checklist',
+    'Ferma subito':
+        'Stop at once',
+    'Rilascia loop':
+        'Release loop',
+    'Cambio livello':
+        'Level change',
+    'Opacità layer':
+        'Layer opacity',
+    'Nota per la regia':
+        'Note for the operator',
+    'Checklist prima dello spettacolo':
+        'Pre-show checklist',
+    'Microfoni accesi':
+        'Microphones on',
+    'Proiettore acceso':
+        'Projector on',
+    'Telefono in silenzioso':
+        'Phone on silent',
+    '⚡ Azione':
+        '⚡ Action',
+    'Durata: scheda Azione':
+        'Duration: Action tab',
+    'Azione:':
+        'Action:',
+    'Su cosa:':
+        'Acts on:',
+    'Modo:':
+        'Mode:',
+    'Livello:':
+        'Level:',
+    'Variazione:':
+        'Change:',
+    'Durata:':
+        'Duration:',
+    'Curva:':
+        'Curve:',
+    'Voci:':
+        'Items:',
+    'Tipo di azione':
+        'Action type',
+    'Su cosa agisce':
+        'What it acts on',
+    "Cue su cui agisce l'azione":
+        'Cues the action acts on',
+    'Testo della nota':
+        'Note text',
+    'Voci della checklist, una per riga':
+        'Checklist items, one per line',
+    'Tutto ciò che è in onda':
+        'Everything playing',
+    'Un layer':
+        'One layer',
+    'Cue scelte':
+        'Chosen cues',
+    'Uscita A':
+        'Output A',
+    'Uscita B':
+        'Output B',
+    'Conta solo con due proiettori indipendenti':
+        'Only matters with two independent projectors',
+    "Spunta le cue su cui agisce l'azione (un gruppo = tutte le sue cue)":
+        'Tick the cues the action acts on (a group = all its cues)',
+    'Assoluto (%)':
+        'Absolute (%)',
+    'Relativo (dB)':
+        'Relative (dB)',
+    '0 = subito':
+        '0 = at once',
+    "Es. Aspetta l'ingresso di Anna, poi GO":
+        "E.g. Wait for Anna's entrance, then GO",
+    'Una voce per riga':
+        'One item per line',
+    'Ambra':
+        'Amber',
+    'Rosso — attenzione':
+        'Red — attention',
+    'Verde':
+        'Green',
+    'Blu':
+        'Blue',
+    'Viola':
+        'Purple',
+    'Grigio chiaro':
+        'Light grey',
+    'Abbassa audio e immagine delle cue scelte nel tempo indicato, poi le ferma. Il loro Post-Delay e Auto-GO non partono.':
+        'Fades the sound and picture of the chosen cues over the given time, then stops them. Their Post-Delay and Auto-GO do not run.',
+    'Ferma subito le cue scelte, anche quelle in attesa del Pre-Delay.':
+        'Stops the chosen cues at once, also those waiting for their Pre-Delay.',
+    'La cue in loop finisce il giro in corso e poi prosegue: passa alla sezione successiva o termina normalmente (con Post-Delay e Auto-GO).':
+        'The looping cue finishes the current pass and goes on: to the next section, or it ends normally (with Post-Delay and Auto-GO).',
+    'Cambia il volume di ciò che suona, senza fermarlo. Assoluto: come se il Volume della cue fosse quello indicato. Relativo: più o meno dB rispetto ad ora.':
+        'Changes the volume of what is playing without stopping it. Absolute: as if the cue Volume were the given value. Relative: that many dB louder or quieter than now.',
+    'Rende più o meno trasparente tutto il layer (immagini e video). La cue successiva sullo stesso layer riparte piena.':
+        'Makes the whole layer (pictures and videos) more or less transparent. The next cue on that layer starts at full opacity.',
+    'Mostra il testo in cima alla finestra di regia (non sul proiettore). Non blocca il GO; sparisce al GO successivo o con ✕.':
+        'Shows the text at the top of the director window (not on the projector). It does not block GO; it goes away at the next GO or with ✕.',
+    'Lista da spuntare prima dello spettacolo: compare con il GO e anche entrando in LIVE finché non è tutta spuntata. Le spunte non vengono salvate.':
+        'A list to tick before the show: it appears on GO and also when entering LIVE until everything is ticked. Ticks are not saved.',
+    'nessuna cue scelta':
+        'no cue chosen',
+    'tutto in onda':
+        'everything playing',
+    'Nota: {}':
+        'Note: {}',
+    'Nota (vuota)':
+        'Note (empty)',
+    'Checklist: {} voci':
+        'Checklist: {} items',
+    'Dissolvi in {} s: {}':
+        'Fade out in {} s: {}',
+    'Rilascia loop: {}':
+        'Release loop: {}',
+    'Livello {} dB in {} s: {}':
+        'Level {} dB in {} s: {}',
+    'Livello {}% in {} s: {}':
+        'Level {}% in {} s: {}',
+    'Opacità {}% in {} s: {}':
+        'Opacity {}% in {} s: {}',
+    '⚡ {}':
+        '⚡ {}',
+    'Azione: {}':
+        'Action: {}',
+    "Azione {} '{}': nessun bersaglio in onda, niente da fare":
+        "Action {} '{}': none of its targets is playing, nothing to do",
+    "AZIONE → {} '{}': {}":
+        "ACTION → {} '{}': {}",
+    'Checklist: {} di {} spuntate':
+        'Checklist: {} of {} ticked',
+    '✕ Chiudi':
+        '✕ Close',
+    'Nascondi la nota (non ferma niente)':
+        'Hide the note (stops nothing)',
+    'Dissolvi e ferma':
+        'Fade out and stop',
+    '? cue eliminata dalla scaletta':
+        '? cue deleted from the list',
+    'Stop: {}':
+        'Stop: {}',
 }

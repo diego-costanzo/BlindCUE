@@ -10,6 +10,8 @@ from ui.main_window._common import (  # noqa: F401
     _demote_live_on_layer,
 )
 
+from engine.action_cues import describe_action
+
 
 class _CueTableMixin:
     @staticmethod
@@ -52,14 +54,20 @@ class _CueTableMixin:
         parts.append("Tempi: " + " | ".join(timing_bits))
         if cue.notes:
             parts.append(f"Note di Regia: {cue.notes}")
-        parts.append(f"File: {cue.file_path}")
+        if cue.media_type == MediaType.ACTION:
+            parts.append(f"Azione: {describe_action(cue.action_spec, self._cues)}")
+        else:
+            parts.append(f"File: {cue.file_path}")
         return "\n".join(parts)
 
     def _update_cue_readouts(self, row: int, cue: Cue) -> None:
         ref = format_cue_ref(row, cue)
         icon = _MEDIA_ICONS.get(cue.media_type, "🖼")
         self._lbl_preview_info.setText(f"{icon} {ref}  {cue.name}")
-        self._lbl_preview_info.setToolTip(f"File: {cue.file_path}")
+        if cue.media_type == MediaType.ACTION:
+            self._lbl_preview_info.setToolTip(f"Azione: {describe_action(cue.action_spec, self._cues)}")
+        else:
+            self._lbl_preview_info.setToolTip(f"File: {cue.file_path}")
         self._lbl_cue_standby.setText(f"Standby: {ref} [{cue.media_type.value}]")
 
     def _reset_idle_preview_ui(self) -> None:
@@ -203,6 +211,7 @@ class _CueTableMixin:
             prof = self._device_mgr.get_effective_profile() if self._device_mgr else "auto"
             ShowRuntimeGuard.on_live_mode_enter(prof)
             self._sync_live_view()
+            self._show_pending_checklist()
             self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]")
         else:
             ShowRuntimeGuard.on_live_mode_exit()

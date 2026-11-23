@@ -21,22 +21,10 @@ class _LiveLayerMixin:
 
     @Slot(int)
     def _on_clear_live_layer(self, layer: int) -> None:
-        self._reset_live_label(layer)
         runtime = int(layer)
-        if runtime > 3:
-            # Output B: runtime 4-6 maps back to the cue layer 1-3.
-            ShowEngine.clear_layer(
-                self._cues, runtime - 3, output_target="B",
-                dual_active=self._dual_output_active,
-            )
-            layer_txt = f"Layer {runtime - 3} · Uscita B"
-        else:
-            ShowEngine.clear_layer(
-                self._cues, runtime, output_target="A",
-                dual_active=self._dual_output_active,
-            )
-            layer_txt = f"Layer {runtime}"
-        self._refresh_cue_list()
+        # Output B: runtime 4-6 maps back to the cue layer 1-3.
+        layer_txt = f"Layer {runtime - 3} · Uscita B" if runtime > 3 else f"Layer {runtime}"
+        self.mark_layer_stopped(runtime)
         self.layer_clear_requested.emit(runtime)
         self._status_label.setText(f"{layer_txt} arrestato e rimosso dal Live")
         logger.info("[LIVE STATUS] Cleared runtime layer %d", runtime)

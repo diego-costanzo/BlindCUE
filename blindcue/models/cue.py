@@ -25,6 +25,14 @@ class MediaType(Enum):
     AUDIO = "AUDIO"
     IMAGE = "IMAGE"
     GROUP = "GROUP"
+    # A cue without a media file that acts on other cues (stop, fade, level,
+    # layer opacity) or shows a note to the operator. It never takes a layer.
+    ACTION = "ACTION"
+
+    @property
+    def has_file(self) -> bool:
+        """True for the types that play a media file (not groups or actions)."""
+        return self in (MediaType.VIDEO, MediaType.AUDIO, MediaType.IMAGE)
 
 
 class CueStatus(Enum):
@@ -152,6 +160,99 @@ def sanitize_mask_polygon(points: object) -> list[list[float]]:
 
 
 _VALID_FADE_CURVES = ("log", "scurve", "linear")
+
+# ── Action cues ──────────────────────────────────────────────────────────
+# What an ACTION cue does; see ``sanitize_action_spec`` for the full schema.
+ACTION_STOP = "stop"          # stop the targets at once
+ACTION_FADE = "fade"          # fade the targets out over ``duration``, then stop
+ACTION_RELEASE = "release"    # let a looping target finish its current pass
+ACTION_LEVEL = "level"        # change the audio level of the targets
+ACTION_OPACITY = "opacity"    # change the opacity of the targets' layers
+ACTION_NOTE = "note"          # show a note to the operator (never on the output)
+ACTION_CHECKLIST = "checklist"  # a note with tick boxes (pre-show checklist)
+ACTION_KINDS = (
+    ACTION_STOP, ACTION_FADE, ACTION_RELEASE, ACTION_LEVEL, ACTION_OPACITY,
+    ACTION_NOTE, ACTION_CHECKLIST,
+)
+ACTION_TARGET_ALL = "all"      # everything that is playing (or waiting in Pre-Delay)
+ACTION_TARGET_LAYER = "layer"  # whatever plays on one layer of one output
+ACTION_TARGET_CUES = "cues"    # chosen cues (a group means all its children)
+_ACTION_TARGETS = (ACTION_TARGET_ALL, ACTION_TARGET_LAYER, ACTION_TARGET_CUES)
+ACTION_MAX_SECONDS = 600.0
+ACTION_MAX_CHECKLIST_ITEMS = 30
+_DEFAULT_NOTE_COLOR = "#f59e0b"
+
+
+def action_needs_target(kind: str) -> bool:
+    """Notes and checklists act on nobody; every other action has targets."""
+    return kind not in (ACTION_NOTE, ACTION_CHECKLIST)
+
+
+def sanitize_action_spec(value: object) -> dict[str, Any]:
+    """Return a complete, valid action description; damaged input degrades safely.
+
+    Schema (every key is always present after sanitising)::
+
+        kind      stop | fade | release | level | opacity | note | checklist
+        target    all | layer | cues
+        layer     1-3 (target "layer")
+        output    "A" | "B" (target "layer")
+        cue_ids   [int, ...] (target "cues")
+        duration  seconds of the fade / level / opacity change (0 = at once)
+        mode      "absolute" | "relative" (level)
+        level     0.0-1.0: absolute volume (level) or opacity (opacity)
+        db        -60..+20: relative level change in dB
+        curve     log | scurve | linear
+        text      note text
+        note_color '#RRGGBB' background of the note
+        items     checklist lines
+
+    A missing kind, or an unknown one from a newer version, becomes a note:
+    a damaged cue then does nothing on stage (it never turns into "fade out
+    everything") instead of failing to load.
+    """
+    raw = value if isinstance(value, dict) else {}
+    kind = str(raw.get("kind", ACTION_NOTE) or ACTION_NOTE)
+    if kind not in ACTION_KINDS:
+        kind = ACTION_NOTE
+    target = str(raw.get("target", ACTION_TARGET_ALL) or ACTION_TARGET_ALL)
+    if target not in _ACTION_TARGETS:
+        target = ACTION_TARGET_ALL
+    cue_ids: list[int] = []
+    raw_ids = raw.get("cue_ids")
+    if isinstance(raw_ids, (list, tuple)):
+        for item in raw_ids:
+            cid = _safe_int(item, -1)
+            if cid > 0 and cid not in cue_ids:
+                cue_ids.append(cid)
+    items: list[str] = []
+    raw_items = raw.get("items")
+    if isinstance(raw_items, (list, tuple)):
+        for item in raw_items[:ACTION_MAX_CHECKLIST_ITEMS]:
+            line = str(item or "").strip()
+            if line:
+                items.append(line)
+    mode = str(raw.get("mode", "absolute") or "absolute")
+    curve = str(raw.get("curve", "linear") or "linear")
+    return {
+        "kind": kind,
+        "target": target,
+        "layer": _safe_int(raw.get("layer", 1), 1, min_val=1, max_val=3),
+        "output": normalize_output_target(raw.get("output", "A")),
+        "cue_ids": cue_ids,
+        "duration": round(_safe_float(raw.get("duration", 3.0), 3.0,
+                                      min_val=0.0, max_val=ACTION_MAX_SECONDS), 3),
+        "mode": mode if mode in ("absolute", "relative") else "absolute",
+        "level": round(_safe_float(raw.get("level", 0.5), 0.5, min_val=0.0, max_val=1.0), 4),
+        "db": round(_safe_float(raw.get("db", -6.0), -6.0, min_val=-60.0, max_val=20.0), 2),
+        "curve": curve if curve in _VALID_FADE_CURVES else "linear",
+        "text": str(raw.get("text", "") or ""),
+        "note_color": _sanitize_hex_color(raw.get("note_color", _DEFAULT_NOTE_COLOR))
+        or _DEFAULT_NOTE_COLOR,
+        "items": items,
+    }
+
+
 _VALID_FOLLOW_MODES = tuple(m.value for m in FollowMode)
 _VALID_GROUP_MODES = tuple(m.value for m in GroupMode)
 _VALID_OUTPUT_TARGETS = ("A", "B")
@@ -393,6 +494,9 @@ class Cue:
     # Crossfade: seconds over which the previous picture on the same layer
     # dissolves into this cue. 0 = hard cut / normal Fade In behaviour.
     crossfade: float = 0.0
+    # Action cue (media_type ACTION): what it does, see sanitize_action_spec().
+    # Empty dict = ordinary media cue.
+    action_spec: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """Normalise routing target, crop, rotation and mask once, at construction."""
@@ -403,6 +507,11 @@ class Cue:
         self.rotation = normalize_rotation(self.rotation)
         self.mask_polygon = sanitize_mask_polygon(self.mask_polygon)
         self.mask_feather = sanitize_mask_feather(self.mask_feather)
+        if self.media_type == MediaType.ACTION:
+            self.action_spec = sanitize_action_spec(self.action_spec)
+            self.file_path = ""
+        else:
+            self.action_spec = {}
 
     # ── Path Resolution & Security ────────────────────────────────────
     def resolve_media_path(self, project_root: str | Path) -> str:
@@ -449,7 +558,7 @@ class Cue:
         """
         errors: list[str] = []
 
-        if self.media_type != MediaType.GROUP and not os.path.isfile(self.file_path):
+        if self.media_type.has_file and not os.path.isfile(self.file_path):
             errors.append(f"Media file not found: {self.file_path}")
 
         if self.group_mode not in _VALID_GROUP_MODES:
@@ -571,6 +680,11 @@ class Cue:
             "output_target": self.output_target,
             "text_spec": dict(self.text_spec),
             "crossfade": round(float(self.crossfade), 3),
+            # Fresh lists: undo snapshots must not share them with the live cue.
+            "action_spec": (
+                sanitize_action_spec(self.action_spec)
+                if self.media_type == MediaType.ACTION else {}
+            ),
         }
 
     @classmethod
@@ -664,12 +778,15 @@ class Cue:
             output_target=normalize_output_target(data.get("output_target", "A")),
             text_spec=dict(data.get("text_spec") or {}),
             crossfade=max(0.0, float(data.get("crossfade", 0.0) or 0.0)),
+            action_spec=(
+                dict(data["action_spec"]) if isinstance(data.get("action_spec"), dict) else {}
+            ),
         )
         # Safely advance class ID counter O(1) without CPU-bound loops
         current_next = next(cls._id_counter)
         if isinstance(cue.cue_id, int) and cue.cue_id >= current_next:
             cls._id_counter = itertools.count(cue.cue_id + 1)
-        if project_root is not None and cue.media_type != MediaType.GROUP:
+        if project_root is not None and cue.media_type.has_file:
             cue.resolve_media_path(project_root)
         if cue.text_spec and not Path(cue.file_path).is_file():
             # Text cues are re-creatable from their settings (e.g. a show
@@ -684,9 +801,10 @@ class Cue:
     # ── Helpers ───────────────────────────────────────────────────────
     def __str__(self) -> str:
         """Compact one-line description used in logs and status messages."""
+        layer = "" if self.media_type == MediaType.ACTION else f" L{self.layer}"
         return (
             f"Cue #{self.cue_id} '{self.name}' "
-            f"[{self.media_type.value}] L{self.layer} "
+            f"[{self.media_type.value}]{layer} "
             f"({self.status.value})"
         )
 
@@ -760,7 +878,7 @@ def detect_layer_conflicts(
         if getattr(group, "group_mode", GroupMode.STEP.value) != GroupMode.SIMULTANEOUS.value:
             continue
 
-        children = [c for c in cues if c.parent_id == group.cue_id and c.media_type != MediaType.GROUP]
+        children = [c for c in cues if c.parent_id == group.cue_id and c.media_type.has_file]
         by_layer: dict[tuple[str, int], list[Cue]] = {}
         for ch in children:
             by_layer.setdefault((target_of(ch), ch.layer), []).append(ch)
@@ -814,7 +932,7 @@ def detect_layer_conflicts(
                     if cues[j].media_type == MediaType.GROUP:
                         break
 
-            playable = [c for c in chain if c.media_type != MediaType.GROUP]
+            playable = [c for c in chain if c.media_type.has_file]
             by_layer: dict[tuple[str, int], list[Cue]] = {}
             for c in playable:
                 by_layer.setdefault((target_of(c), c.layer), []).append(c)

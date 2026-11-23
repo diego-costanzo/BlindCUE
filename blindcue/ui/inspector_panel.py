@@ -41,6 +41,7 @@ from ui.spinboxes import InPointSpinBox, OutPointSpinBox, SmartDoubleSpinBox
 from ui.theme import CLR_ACCENT, CUE_COLOR_PALETTE, NUDGE_BTN_STYLE, get_active_theme
 
 # Preset index <-> repetition count mapping (0 = infinite loop)
+_ACTION_TAB = 4  # index of the "Azione" tab (after Cue·Tempi, Visual, Audio, Gruppo)
 _LOOP_PRESET_COUNTS = (0, 2, 3, 4, 5, 10)
 _COUNT_TO_PRESET_IDX = {count: idx for idx, count in enumerate(_LOOP_PRESET_COUNTS)}
 _LOOP_CUSTOM_IDX = len(_LOOP_PRESET_COUNTS)
@@ -360,7 +361,28 @@ class CueInspectorPanel(QGroupBox):
         self._build_tab_visual()
         self._build_tab_audio_and_cuts()
         self._build_tab_group()
+        self._build_tab_action()
         self.tab_widget.setTabVisible(3, False)
+        self.tab_widget.setTabVisible(_ACTION_TAB, False)
+
+    # ── Tab 5: Action cue (stop, fade, level, opacity, note) ─────────
+
+    def _build_tab_action(self) -> None:
+        from ui.action_cue_editor import ActionCueEditor
+
+        self.action_editor = ActionCueEditor()
+        self.action_editor.changed.connect(lambda: self._emit_change("action_spec"))
+        self.tab_action = self._wrap_tab_scroll(self.action_editor)
+        self.tab_widget.addTab(self.tab_action, "⚡ Azione")
+
+    def set_cue_catalog_provider(self, provider) -> None:
+        """Function returning the show's cues (targets offered by the action tab)."""
+        self.action_editor.set_catalog_provider(provider)
+
+    def show_action_tab(self) -> None:
+        """Bring the action settings to the front (new action cue)."""
+        if self.tab_widget.isTabVisible(_ACTION_TAB):
+            self.tab_widget.setCurrentIndex(_ACTION_TAB)
 
     # ── Tab 1: Cue, Colore, Layer & Tempi (Pre / Durata / Post) ──────
 
@@ -509,6 +531,7 @@ class CueInspectorPanel(QGroupBox):
         self.lbl_layer_conflict.setVisible(False)
         l2.addWidget(self.lbl_layer_conflict)
 
+        self.card_layer = c2
         lay.addWidget(c2)
 
         # Card 3: Incastro Temporale (Pre · Durata · Post) & Sequenza
@@ -548,7 +571,8 @@ class CueInspectorPanel(QGroupBox):
         self.spin_post_delay.setAccessibleDescription("Secondi di attesa dopo il termine del media.")
         timing_grid.addWidget(self.spin_post_delay, 0, 3)
 
-        timing_grid.addWidget(self._make_field_label("Durata Img:"), 1, 0)
+        self.lbl_hold_field = self._make_field_label("Durata Img:")
+        timing_grid.addWidget(self.lbl_hold_field, 1, 0)
         self.spin_hold_time = SmartDoubleSpinBox()
         self.spin_hold_time.setMinimumWidth(68)
         self.spin_hold_time.setRange(0.0, 99999.0)
@@ -1953,23 +1977,39 @@ class CueInspectorPanel(QGroupBox):
         value differs between the selected cues.
         """
         is_group = (media_type == MediaType.GROUP)
+        is_action = enabled and media_type == MediaType.ACTION
         self._current_media_type = media_type if enabled else None
 
         # Tab visibility: when GROUP, show tab 3 (Gruppo), hide tabs 0, 1, 2
         # when NOT GROUP, show tabs 0, 1, 2, hide tab 3
+        # ACTION: Cue · Tempi and Azione only (no media, no layer)
         if is_group:
             self.tab_widget.setTabVisible(0, False)
             self.tab_widget.setTabVisible(1, False)
             self.tab_widget.setTabVisible(2, False)
             self.tab_widget.setTabVisible(3, True)
+            self.tab_widget.setTabVisible(_ACTION_TAB, False)
             self.tab_widget.setCurrentIndex(3)
+        elif is_action:
+            self.tab_widget.setTabVisible(0, True)
+            self.tab_widget.setTabVisible(1, False)
+            self.tab_widget.setTabVisible(2, False)
+            self.tab_widget.setTabVisible(3, False)
+            self.tab_widget.setTabVisible(_ACTION_TAB, True)
+            if self.tab_widget.currentIndex() not in (0, _ACTION_TAB):
+                self.tab_widget.setCurrentIndex(_ACTION_TAB)
         else:
             self.tab_widget.setTabVisible(0, True)
             self.tab_widget.setTabVisible(1, True)
             self.tab_widget.setTabVisible(2, True)
             self.tab_widget.setTabVisible(3, False)
-            if self.tab_widget.currentIndex() == 3:
+            self.tab_widget.setTabVisible(_ACTION_TAB, False)
+            if self.tab_widget.currentIndex() in (3, _ACTION_TAB):
                 self.tab_widget.setCurrentIndex(0)
+        self.card_layer.setVisible(not is_action)
+        self.chk_exclusive.setVisible(not is_action)
+        self.lbl_hold_field.setVisible(not is_action)
+        self.spin_hold_time.setVisible(not is_action)
 
         for btn in self._layer_buttons.values():
             btn.setEnabled(enabled and not is_group)
@@ -2040,6 +2080,16 @@ class CueInspectorPanel(QGroupBox):
         if is_group:
             for w in all_media_controls:
                 w.setEnabled(False)
+            return
+
+        if is_action:
+            for w in all_media_controls:
+                w.setEnabled(False)
+            self.spin_pre_delay.setEnabled(True)
+            self.spin_post_delay.setEnabled(True)
+            # The action itself is edited one cue at a time.
+            self.action_editor.setEnabled(not multi_mode)
+            self.lbl_hold_hint.setText("Durata: scheda Azione")
             return
 
         self.spin_fade_in.setEnabled(True)
@@ -2259,6 +2309,8 @@ class CueInspectorPanel(QGroupBox):
                 self.set_follow_mode_silent(cue.follow_mode, enabled=True)
                 self.chk_exclusive.setChecked(bool(getattr(cue, "exclusive", False)))
                 self._populate_media_fields(cue)
+                if cue.media_type == MediaType.ACTION:
+                    self.action_editor.load(cue.action_spec, cue.cue_id)
         finally:
             self._updating = False
 
@@ -2332,6 +2384,8 @@ class CueInspectorPanel(QGroupBox):
             self.set_follow_mode_silent(common_mode, enabled=True)
             self.chk_exclusive.setChecked(all(getattr(c, "exclusive", False) for c in cues))
             self._populate_media_fields(lead)
+            if mtype == MediaType.ACTION:
+                self.action_editor.load(lead.action_spec, lead.cue_id)
         finally:
             self._updating = False
 
@@ -2345,6 +2399,22 @@ class CueInspectorPanel(QGroupBox):
             cue.notes = self.edit_group_notes.text().strip()
             cue.pre_delay = self.spin_group_pre_delay.value()
             cue.post_delay = self.spin_group_post_delay.value()
+            return
+
+        if cue.media_type == MediaType.ACTION:
+            # No media fields: the disabled media controls still hold the
+            # values of the previous cue and must not be written here.
+            cue.q_label = self.edit_cue_q.text().strip()
+            new_name = self.edit_cue_name.text().strip()
+            if new_name:
+                cue.name = new_name
+            cue.notes = self.edit_cue_notes.text().strip()
+            cue.pre_delay = self.spin_pre_delay.value()
+            cue.post_delay = self.spin_post_delay.value()
+            if self.action_editor.cue_id() == cue.cue_id:
+                new_spec = self.action_editor.spec()
+                self._rename_default_action(cue, new_spec["kind"])
+                cue.action_spec = new_spec
             return
 
         cue.q_label = self.edit_cue_q.text().strip()
@@ -2406,6 +2476,17 @@ class CueInspectorPanel(QGroupBox):
         surf_data = self.combo_surface.currentData()
         if surf_data:
             cue.surface_id = str(surf_data)
+
+    def _rename_default_action(self, cue: Cue, new_kind: str) -> None:
+        """A cue still carrying the default name of its old kind follows the new kind."""
+        from engine.action_cues import default_action_name
+        from i18n import tr
+
+        old_kind = cue.action_spec.get("kind", "")
+        if new_kind == old_kind or cue.name != tr(default_action_name(old_kind)):
+            return
+        cue.name = tr(default_action_name(new_kind))
+        self.edit_cue_name.setText(cue.name)
 
     def _apply_loop_to_cue(self, cue: Cue) -> None:
         cue.loop = self.chk_loop.isChecked()
