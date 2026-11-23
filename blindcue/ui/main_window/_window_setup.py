@@ -291,17 +291,22 @@ class _WindowSetupMixin:
     def _on_escape_pressed(self) -> None:
         if hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState:
             return
-        if self._live_mode:
-            now = time.monotonic()
-            last = getattr(self, "_last_esc_press_mono", 0.0)
-            if last > 0.0 and (now - last) <= 0.6:
-                self._last_esc_press_mono = 0.0
-                self._on_panic()
-            else:
-                self._last_esc_press_mono = now
-                self._status_label.setText(
-                    "⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC"
-                )
+        # Esc twice is PANIC in every view: the emergency key must not depend
+        # on the mode (a rehearsal run from the editor needs it too).
+        now = time.monotonic()
+        last = getattr(self, "_last_esc_press_mono", 0.0)
+        if last > 0.0 and (now - last) <= 0.6:
+            self._last_esc_press_mono = 0.0
+            self._on_panic()
             return
+        self._last_esc_press_mono = now
+        if self._live_mode:
+            self._status_label.setText(
+                "⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms) — oppure clicca il pulsante PANIC"
+            )
+            return
+        # In the editor a single Esc still stops the preview.
         if hasattr(self, "_btn_test_stop"):
             self._btn_test_stop.click()
+        if self._show_running():
+            self._status_label.setText("⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms)")
