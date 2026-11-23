@@ -398,9 +398,9 @@ T: dict[str, str] = {
     'Taglio IN:':
         'Przycięcie IN:',
     'Fade In:':
-        'Fade In:',
+        'Pojawianie:',
     'Fade Out:':
-        'Fade Out:',
+        'Wygaszanie:',
     'Volume:':
         'Głośność:',
     'Opacità:':
@@ -778,9 +778,9 @@ T: dict[str, str] = {
     "Questa cue viene proiettata dall'uscita B (secondo proiettore indipendente).":
         'Ten cue jest wyświetlany na wyjściu B (drugi, niezależny projektor).',
     'Pre-Delay:':
-        'Pre-Delay:',
+        'Opóźnienie:',
     'Post-Delay:':
-        'Post-Delay:',
+        'Czekaj po:',
     'Durata Img:':
         'Czas obrazu:',
     'Pos X:':
@@ -1915,7 +1915,7 @@ T: dict[str, str] = {
     'Colore del testo':
         'Kolor tekstu',
     '+ Testo':
-        '+ Tekst',
+        '+ Napis',
     'Aggiungi una didascalia sullo schermo (cue di testo, Layer 3)':
         'Dodaj napis na ekranie (cue tekstowe, warstwa 3)',
     'Aggiungi Testo':
@@ -2676,4 +2676,70 @@ T: dict[str, str] = {
         'Lista jest zasłonięta: wróć do listy, żeby ją zmienić',
     'Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)':
         'Przytrzymaj, żeby przeskoczyć o 10 s (na przedstawieniu 1,5 s)',
+    'IN:':
+        'Początek:',
+    'OUT:':
+        'Koniec:',
+    '▾ Più impostazioni':
+        '▾ Więcej ustawień',
+    '▴ Meno impostazioni':
+        '▴ Mniej ustawień',
+    'Mostra tutte le schede di questa cue nello stesso posto. Il layout della finestra non cambia.':
+        'Pokazuje wszystkie karty ustawień tego cue w tym samym miejscu. Układ okna się nie zmienia.',
+    '◐ Transizioni':
+        '◐ Przejścia',
+    'parte {} s dopo il GO':
+        'startuje {} s po GO',
+    'aspetta {} s dopo la fine':
+        'czeka {} s po końcu',
+    'il GO aspetta che finisca':
+        'GO czeka, aż skończy',
+    "aspetta l'OK":
+        'czeka na OK',
+    'suona in loop':
+        'gra w pętli',
+    'si ripete {}×':
+        'powtarza się {}×',
+    'sezioni: {}':
+        'sekcje: {}',
+    'il volume cambia nel tempo':
+        'głośność zmienia się w czasie',
+    'volume livellato':
+        'wyrównana głośność',
+    'immagine modificata (ritaglio, posizione o opacità)':
+        'zmieniony obraz (kadr, położenie lub krycie)',
+    'sul proiettore B':
+        'na projektorze B',
+    'Questa cue ha anche: {}':
+        'Ten cue ma też: {}',
+    '▦ Layout della finestra':
+        '▦ Układ okna',
+    '&Semplice – lista, GO e impostazioni di base':
+        '&Prosty – lista, GO i podstawowe ustawienia',
+    "&Esteso – in più la forma d'onda e tutte le schede":
+        '&Rozszerzony – do tego przebieg dźwięku i wszystkie karty',
+    '&Completo – tutto, anche i layer e il caricamento rapido':
+        'P&ełny – wszystko, także warstwy i szybkie dodawanie',
+    '↺ Ripristina layout':
+        '↺ Przywróć układ',
+    'Quanti pannelli mostra la preparazione (lo spettacolo non cambia)':
+        'Ile paneli pokazuje Przygotowanie (pokaz się nie zmienia)',
+    'Semplice':
+        'Prosty',
+    'Esteso':
+        'Rozszerzony',
+    'Completo':
+        'Pełny',
+    'Layout: {} ▾':
+        'Układ: {} ▾',
+    'Layout della finestra: {}':
+        'Układ okna: {}',
+    'Il layout {} si vede tornando in preparazione':
+        'Układ {} zobaczysz po powrocie do Przygotowania',
+    'Layout: {}':
+        'Układ: {}',
+    'Ripristinato il layout {}: larghezze dei pannelli e impostazioni della cue':
+        'Przywrócono układ {}: domyślne szerokości paneli i ustawienia cue',
+    'Standby: {} [{}]':
+        'Następny: {} [{}]',
 }

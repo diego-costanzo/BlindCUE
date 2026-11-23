@@ -31,6 +31,7 @@ from models.cue import (
     FollowMode,
     GroupMode,
     MediaType,
+    _default_crop,
     _sanitize_hex_color,
     normalize_output_target,
     normalize_rotation,
@@ -357,6 +358,23 @@ class CueInspectorPanel(QGroupBox):
         self.tab_widget.tabBar().setElideMode(Qt.TextElideMode.ElideNone)
         outer.addWidget(self.tab_widget, stretch=1)
 
+        # Basic mode (view variant Lite, C2b): what is hidden but changes the
+        # playback is said in one line; "More settings" opens the same inspector.
+        self.lbl_also = QLabel()
+        self.lbl_also.setWordWrap(True)
+        self.lbl_also.setStyleSheet("QLabel { color: #cbd5e1; font-size: 12px; padding: 2px 4px; }")
+        self.lbl_also.setVisible(False)
+        outer.addWidget(self.lbl_also)
+        self.btn_more = QPushButton("▾ Più impostazioni")
+        self.btn_more.setFixedHeight(28)
+        self.btn_more.setToolTip("Mostra tutte le schede di questa cue nello stesso posto. Il layout della finestra non cambia.")
+        self.btn_more.clicked.connect(self._on_more_clicked)
+        self.btn_more.setVisible(False)
+        outer.addWidget(self.btn_more)
+        self._lite = False          # the window's view variant is Lite
+        self._expanded = False      # "More settings" opened in Lite
+        self._last_enable_args: tuple = (False, None, False)
+
         self._build_tab_cue_and_timing()
         self._build_tab_visual()
         self._build_tab_audio_and_cuts()
@@ -547,7 +565,8 @@ class CueInspectorPanel(QGroupBox):
         timing_grid.setHorizontalSpacing(6)
         timing_grid.setVerticalSpacing(5)
 
-        timing_grid.addWidget(self._make_field_label("Pre-Delay:"), 0, 0)
+        self.lbl_pre_field = self._make_field_label("Pre-Delay:")
+        timing_grid.addWidget(self.lbl_pre_field, 0, 0)
         self.spin_pre_delay = SmartDoubleSpinBox()
         self.spin_pre_delay.setMinimumWidth(68)
         self.spin_pre_delay.setRange(0.0, 3600.0)
@@ -559,7 +578,8 @@ class CueInspectorPanel(QGroupBox):
         self.spin_pre_delay.setAccessibleDescription("Secondi di ritardo dopo il GO prima dell'avvio della cue.")
         timing_grid.addWidget(self.spin_pre_delay, 0, 1)
 
-        timing_grid.addWidget(self._make_field_label("Post-Delay:"), 0, 2)
+        self.lbl_post_field = self._make_field_label("Post-Delay:")
+        timing_grid.addWidget(self.lbl_post_field, 0, 2)
         self.spin_post_delay = SmartDoubleSpinBox()
         self.spin_post_delay.setMinimumWidth(68)
         self.spin_post_delay.setRange(0.0, 3600.0)
@@ -913,7 +933,8 @@ class CueInspectorPanel(QGroupBox):
         fade_grid.addWidget(self.spin_fade_out, 0, 3)
 
         # Crossfade: dissolve the previous picture on the same layer
-        fade_grid.addWidget(self._make_field_label("Crossfade:"), 1, 0)
+        self.lbl_crossfade = self._make_field_label("Crossfade:")
+        fade_grid.addWidget(self.lbl_crossfade, 1, 0)
         self.spin_crossfade = SmartDoubleSpinBox()
         self.spin_crossfade.setMinimumWidth(68)
         self.spin_crossfade.setRange(0.0, 10.0)
@@ -1984,9 +2005,12 @@ class CueInspectorPanel(QGroupBox):
         controls, and *multi_mode* (mixed selection) disables the fields whose
         value differs between the selected cues.
         """
+        self._last_enable_args = (enabled, media_type, multi_mode)
         is_group = (media_type == MediaType.GROUP)
         is_action = enabled and media_type == MediaType.ACTION
         self._current_media_type = media_type if enabled else None
+        self.btn_more.setVisible(False)
+        self.lbl_also.setVisible(False)
 
         # Tab visibility: when GROUP, show tab 3 (Gruppo), hide tabs 0, 1, 2
         # when NOT GROUP, show tabs 0, 1, 2, hide tab 3
@@ -2185,6 +2209,91 @@ class CueInspectorPanel(QGroupBox):
             self.lbl_audio_guide.setStyleSheet(
                 "background-color: #0c1f33; color: #7dd3fc; border: 1px solid #1e3a5f; border-radius: 5px; font-size: 11px; padding: 6px 10px;"
             )
+        self._apply_field_visibility(media_type)
+
+    # ── What shows for this type of cue (1.12) and in the basic mode (C2b) ─
+    @staticmethod
+    def _card_of(widget: QWidget) -> QWidget:
+        w = widget
+        while w is not None and w.objectName() != "inspCard":
+            w = w.parentWidget()
+        return w if w is not None else widget
+
+    def _apply_field_visibility(self, media_type: MediaType | None) -> None:
+        """A field that does nothing for this type of cue is hidden, not greyed out (1.12)."""
+        is_image = media_type == MediaType.IMAGE
+        is_audio = media_type == MediaType.AUDIO
+        is_visual = media_type in (MediaType.VIDEO, MediaType.IMAGE)
+        basic = self._lite and not self._expanded
+        self.tab_widget.setTabVisible(1, is_visual and not basic)
+        self.tab_widget.setTabText(2, "◐ Transizioni" if is_image else "🎵 Audio · Tagli")
+        self.lbl_visual_guide.setVisible(media_type == MediaType.VIDEO)
+        self.lbl_audio_guide.setVisible(not is_image and not basic)
+        for w in (self.lbl_hold_field, self.spin_hold_time, self.lbl_hold_hint):
+            w.setVisible(is_image)
+        self.lbl_crossfade.setVisible(not is_audio)
+        self.spin_crossfade.setVisible(not is_audio)
+        for card in (self._card_of(self.slider_volume), self._card_of(self.spin_in)):
+            card.setVisible(not is_image)
+        self.loop_card.setVisible(not is_image and not basic)
+        self.card_loudness.setVisible(not is_image and not basic)
+        # Basic mode: name, notes, level, fades, from/to, where, then – the rest behind "More".
+        for w in (self._pipe_lbl, self.lbl_pre_field, self.spin_pre_delay, self.lbl_post_field,
+                  self.spin_post_delay, self.chk_exclusive, self.chk_confirm):
+            w.setVisible(not basic)
+        if self.tab_widget.currentIndex() >= 0 and not self.tab_widget.isTabVisible(self.tab_widget.currentIndex()):
+            self.tab_widget.setCurrentIndex(0)
+        self.btn_more.setVisible(self._lite)
+        self.btn_more.setText("▴ Meno impostazioni" if self._expanded else "▾ Più impostazioni")
+        self.lbl_also.setVisible(basic and bool(self.lbl_also.text()))
+
+    def set_lite(self, lite: bool) -> None:
+        """The window's view variant: Lite shows the basic inspector (folded)."""
+        self._lite = bool(lite)
+        self._expanded = False
+        self.set_enabled_for_cue(*self._last_enable_args)
+
+    def set_expanded(self, expanded: bool) -> None:
+        self._expanded = bool(expanded)
+        self.set_enabled_for_cue(*self._last_enable_args)
+
+    def _on_more_clicked(self) -> None:
+        self.set_expanded(not self._expanded)
+
+    def set_also(self, cue) -> None:
+        """"This cue also has: …" – what the basic mode hides but changes the playback."""
+        from i18n import tr
+
+        parts = []
+        if cue is not None:
+            if cue.pre_delay > 0:
+                parts.append(tr("parte {} s dopo il GO").format(f"{cue.pre_delay:.1f}"))
+            if cue.post_delay > 0:
+                parts.append(tr("aspetta {} s dopo la fine").format(f"{cue.post_delay:.1f}"))
+            if getattr(cue, "exclusive", False):
+                parts.append(tr("il GO aspetta che finisca"))
+            if getattr(cue, "confirm_start", False):
+                parts.append(tr("aspetta l'OK"))
+            if cue.loop:
+                parts.append(tr("suona in loop") if cue.loop_count <= 0 else tr("si ripete {}×").format(cue.loop_count))
+            if cue.sections:
+                parts.append(tr("sezioni: {}").format(len(cue.sections)))
+            if cue.volume_points:
+                parts.append(tr("il volume cambia nel tempo"))
+            if getattr(cue, "normalize_audio", False):
+                parts.append(tr("volume livellato"))
+            changed_picture = (
+                abs(cue.position_x) > 1e-6 or abs(cue.position_y) > 1e-6 or abs(cue.scale - 1.0) > 1e-6
+                or abs(cue.rotation) > 1e-6 or cue.opacity < 0.999
+                or (cue.crop or {}) != _default_crop()
+                or bool(getattr(cue, "mask_polygon", None))
+            )
+            if cue.media_type != MediaType.AUDIO and changed_picture:
+                parts.append(tr("immagine modificata (ritaglio, posizione o opacità)"))
+            if getattr(cue, "output_target", "A") == "B":
+                parts.append(tr("sul proiettore B"))
+        self.lbl_also.setText(tr("Questa cue ha anche: {}").format(" · ".join(parts)) if parts else "")
+        self.lbl_also.setVisible(self._lite and not self._expanded and bool(parts))
 
     def _populate_media_fields(self, cue: Cue) -> None:
         surf_idx = self.combo_surface.findData(getattr(cue, "surface_id", "default") or "default")
@@ -2318,6 +2427,7 @@ class CueInspectorPanel(QGroupBox):
                 self.chk_exclusive.setChecked(bool(getattr(cue, "exclusive", False)))
                 self.chk_confirm.setChecked(bool(getattr(cue, "confirm_start", False)))
                 self._populate_media_fields(cue)
+                self.set_also(cue)
                 if cue.media_type == MediaType.ACTION:
                     self.action_editor.load(cue.action_spec, cue.cue_id)
         finally:

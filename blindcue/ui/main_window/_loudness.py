@@ -16,6 +16,8 @@ class _LoudnessMixin:
     def _set_jam_mode(self, enabled: bool) -> None:
         """Toggle global Jam / Contest EBU R128 auto-gain normalization mode."""
         enabled = bool(enabled)
+        if hasattr(self, "_update_variant_status_bar"):
+            QTimer.singleShot(0, self._update_variant_status_bar)  # shown while on, in every layout
         if self._jam_mode_active == enabled:
             return
         self._jam_mode_active = enabled

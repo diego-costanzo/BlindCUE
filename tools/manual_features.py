@@ -50,6 +50,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "rehearsal": ("blindcue/ui/rehearsal_drawer.py", None),
     "exit_pin": ("blindcue/ui/pin_bar.py", None),
     "show_list": ("blindcue/models/cue.py", "confirm_start: bool"),
+    "view_variants": ("blindcue/ui/main_window/_variants.py", None),
 }
 
 

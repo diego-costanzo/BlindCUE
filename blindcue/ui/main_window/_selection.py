@@ -201,6 +201,8 @@ class _SelectionMixin:
     @Slot(bool)
     def _on_live_mirror_toggled(self, active: bool) -> None:
         self._live_mirror_active = active
+        if hasattr(self, "_variant"):
+            self._update_variant_status_bar()
         self._preview_panel.set_live_mirror_style(active)
         if active:
             self._status_label.setText(

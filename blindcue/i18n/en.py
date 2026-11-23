@@ -2454,4 +2454,70 @@ T: dict[str, str] = {
         'The list is hidden: go back to it to change it',
     'Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)':
         'Hold to jump 10 s (1.5 s in the show)',
+    'IN:':
+        'Start:',
+    'OUT:':
+        'End:',
+    '▾ Più impostazioni':
+        '▾ More settings',
+    '▴ Meno impostazioni':
+        '▴ Fewer settings',
+    'Mostra tutte le schede di questa cue nello stesso posto. Il layout della finestra non cambia.':
+        'Shows all the settings of this cue in the same place. The window layout does not change.',
+    '◐ Transizioni':
+        '◐ Transitions',
+    'parte {} s dopo il GO':
+        'starts {} s after GO',
+    'aspetta {} s dopo la fine':
+        'waits {} s after its end',
+    'il GO aspetta che finisca':
+        'GO waits until it ends',
+    "aspetta l'OK":
+        'waits for an OK',
+    'suona in loop':
+        'plays in a loop',
+    'si ripete {}×':
+        'repeats {}×',
+    'sezioni: {}':
+        'sections: {}',
+    'il volume cambia nel tempo':
+        'the level changes over time',
+    'volume livellato':
+        'levelled loudness',
+    'immagine modificata (ritaglio, posizione o opacità)':
+        'changed picture (crop, position or opacity)',
+    'sul proiettore B':
+        'on projector B',
+    'Questa cue ha anche: {}':
+        'This cue also has: {}',
+    '▦ Layout della finestra':
+        '▦ Window layout',
+    '&Semplice – lista, GO e impostazioni di base':
+        '&Lite – list, GO and the basic settings',
+    "&Esteso – in più la forma d'onda e tutte le schede":
+        '&Medium – plus the waveform and every tab',
+    '&Completo – tutto, anche i layer e il caricamento rapido':
+        '&Full – everything, also the layers and quick add',
+    '↺ Ripristina layout':
+        '↺ Restore layout',
+    'Quanti pannelli mostra la preparazione (lo spettacolo non cambia)':
+        'How many panels the preparation shows (the show does not change)',
+    'Semplice':
+        'Lite',
+    'Esteso':
+        'Medium',
+    'Completo':
+        'Full',
+    'Layout: {} ▾':
+        'Layout: {} ▾',
+    'Layout della finestra: {}':
+        'Window layout: {}',
+    'Il layout {} si vede tornando in preparazione':
+        'The {} layout shows when you go back to preparation',
+    'Layout: {}':
+        'Layout: {}',
+    'Ripristinato il layout {}: larghezze dei pannelli e impostazioni della cue':
+        'Layout {} restored: default panel widths and cue settings',
+    'Standby: {} [{}]':
+        'Next: {} [{}]',
 }

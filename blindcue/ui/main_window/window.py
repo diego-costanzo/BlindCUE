@@ -43,6 +43,7 @@ from ui.main_window._now_playing import _NowPlayingMixin
 from ui.main_window._announce import _AnnounceMixin
 from ui.main_window._rehearsal import _RehearsalMixin
 from ui.main_window._pin import _PinMixin
+from ui.main_window._variants import _VariantsMixin
 
 
 class MainWindow(
@@ -73,6 +74,7 @@ class MainWindow(
     _AnnounceMixin,
     _RehearsalMixin,
     _PinMixin,
+    _VariantsMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -206,6 +208,7 @@ class MainWindow(
         self._update_inspector(None)
         self._build_status_bar()
         self._set_panels_locked(True, announce=False)
+        self._variants_setup()  # Lite / Medium / Full of the Preparation view (stage 1 C2b)
         self._setup_autosave()
         self._undo.set_committed_state(self._cues, self._current_index)
 

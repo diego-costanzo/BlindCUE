@@ -173,14 +173,10 @@ class _MenuMixin:
         self._act_calib_guides.toggled.connect(self._toggle_calibration_guides)
         view_menu.addAction(self._act_calib_guides)
 
-        view_menu.addSeparator()
+        # Lock and "restore" live in View → Window layout (C2b, _variants.py).
         self._act_lock_layout = QAction("🔒 &Blocca Larghezza Pannelli", self, checkable=True)
         self._act_lock_layout.setChecked(True)
         self._act_lock_layout.toggled.connect(lambda checked: self._set_panels_locked(checked))
-        view_menu.addAction(self._act_lock_layout)
-        view_menu.addAction(
-            QAction("↺ &Ripristina Larghezze Standard", self, triggered=self._reset_standard_layout)
-        )
 
         help_menu = mb.addMenu("&Help")
         from ui.help_dialog import show_help
@@ -425,7 +421,7 @@ class _MenuMixin:
         self._live_status.layer_seek_requested.connect(self.layer_seek_requested.emit)
         bottom_splitter.addWidget(self._live_status)
 
-        drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
+        drop_group = self._drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
         drop_layout = QVBoxLayout(drop_group)
         self._drop_zone = DropZone()
         self._drop_zone.file_dropped.connect(self._on_file_dropped)

@@ -43,6 +43,11 @@ class _RemoteMixin:
         self._update_remote_status_bar()
 
     def _update_remote_status_bar(self) -> None:
+        if hasattr(self, "_variant"):
+            QTimer.singleShot(0, self._update_variant_status_bar)  # shown while on, in every layout
+        self._update_remote_status_bar_now()
+
+    def _update_remote_status_bar_now(self) -> None:
         """Update discrete remote control button in status bar."""
         if hasattr(self, "_btn_remote_status") and self._remote_mgr:
             if self._remote_mgr.is_web_active():

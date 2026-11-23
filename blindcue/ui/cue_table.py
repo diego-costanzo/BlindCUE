@@ -669,6 +669,7 @@ class CueSequenceTable(QTableWidget):
         self.verticalHeader().setVisible(False)
         self.verticalHeader().setDefaultSectionSize(28)
         self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.setTabKeyNavigation(False)  # Tab goes on to the buttons and the inspector (W54)
         self.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.setEditTriggers(QAbstractItemView.EditTrigger.EditKeyPressed)
         self.setShowGrid(False)

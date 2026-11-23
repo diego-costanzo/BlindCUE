@@ -18,6 +18,14 @@ class _LayoutMixin:
         total = self._top_splitter.width()
         if total <= 0:
             return
+        sizes = self._variant_top_sizes(total) if hasattr(self, "_variant_top_sizes") else None
+        if sizes is not None:
+            self._applying_splitter_layout = True
+            try:
+                self._top_splitter.setSizes(sizes)
+            finally:
+                self._applying_splitter_layout = False
+            return
         r0, r1, r2 = self._top_ratios
         w0 = max(290, int(round(total * r0)))
         w2 = max(360, int(round(total * r2)))
