@@ -83,8 +83,11 @@ wszystkich zmian na liście i w inspektorze.</li>
 <ol>
 <li>Przyciski pod listą: <b>+ Wideo</b>, <b>+ Audio</b>, <b>+ Zdjęcie</b>.</li>
 <li>Przeciągnij pliki z menedżera plików do pola <b>Szybkie dodawanie</b> (prawy dolny róg).</li>
-<li>Nowy cue trafia na koniec listy; przesuń go przyciskami <b>W górę / W dół</b>
-(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li>
+<!--IFNOT:insert_after--><li>Nowy cue trafia na koniec listy; przesuń go przyciskami <b>W górę / W dół</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li><!--/IFNOT:insert_after--><!--IF:insert_after--><li>Nowy cue trafia zaraz za zaznaczony (bez zaznaczenia – na koniec listy). Gdy zaznaczony
+cue jest połączony z następnym (<b>Razem</b>, <b>Auto-GO</b>) albo jest grupą, nowy trafia za koniec
+tego łańcucha lub grupy – pasek stanu mówi gdzie. Przesuniesz go przyciskami <b>W górę / W dół</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li><!--/IF:insert_after-->
 </ol>
 <table class="k">
 <tr><td><b>Wideo</b></td><td>MP4, MKV, AVI, MOV, WEBM</td></tr>
@@ -138,7 +141,7 @@ odpalasz go GO; może mieć Pre-Delay, Auto-GO i należeć do grupy.</p>
 <table class="k">
 <tr><td><b>🔉 Wygaś i zatrzymaj</b></td><td>ścisza dźwięk i wygasza obraz w podanym czasie, potem zatrzymuje. Zatrzymane cue nie uruchamiają swojego Post-Delay ani Auto-GO. Np. koniec muzyki tła jako zwykły punkt listy.</td></tr>
 <tr><td><b>⏹ Zatrzymaj od razu</b></td><td>ucina od razu, także cue, które czekają na koniec Pre-Delay.</td></tr>
-<tr><td><b>🔁 Zwolnij pętlę</b></td><td>zapętlony cue (pętla albo sekcja „w kółko”) kończy bieżące okrążenie i idzie dalej: do następnej sekcji albo do końca, z Post-Delay i Auto-GO.</td></tr>
+<tr><td><b>🔁 Zwolnij pętlę</b></td><td>zapętlony cue (pętla albo sekcja „w kółko”) kończy bieżące okrążenie i idzie dalej: do następnej sekcji albo do końca, z Post-Delay i Auto-GO.<!--IF:release_scene--> Grupa <b>Zapętl scenę</b> dokończy bieżący obieg i się zatrzyma (nie zacznie od nowa i nie uruchomi następnej sceny).<!--/IF:release_scene--></td></tr>
 <tr><td><b>🎚 Zmiana poziomu</b></td><td>zmienia głośność tego, co gra, bez zatrzymywania: <b>bezwzględnie</b> (tak, jakby Głośność cue miała podaną wartość) albo <b>względnie</b> (np. −10 dB), w podanym czasie i z wybraną krzywą. Muzyka pod dialog: jedna akcja −10 dB, później druga +10 dB.</td></tr>
 <tr><td><b>🌓 Krycie warstwy</b></td><td>przyciemnia całą warstwę (obrazy i wideo), np. tło do 30 % na czas sceny. Następny cue na tej warstwie zaczyna z pełnym kryciem.</td></tr>
 <tr><td><b>📝 Notatka dla operatora</b></td><td>tekst w kolorowym pasku u góry okna programu – nigdy na projektorze. Nie blokuje GO; znika przy następnym GO albo po kliknięciu ✕.</td></tr>
@@ -328,10 +331,23 @@ siatka do ustawienia ostrości i położenia projektora.</li>
 <p><img src="img/pl/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Zaznacz pierwszy cue – dostaje znaczek <b>STANDBY</b> (gotowy do odpalenia).
-Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.</li>
+Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.<!--IF:live_start--> Jeśli przy wejściu
+w LIVE zaznaczony jest cue ze środka listy (np. właśnie poprawiany), program zapyta, skąd zacząć:
+<b>Od początku</b>, <b>Od zaznaczonego</b>, a po powrocie z projektu także <b>Wznów od</b> – miejsce,
+w którym przerwano LIVE. Gdy wracasz bez zmian, nie pyta.<!--/IF:live_start--></li>
 <li>Naciśnij <kbd>Spacja</kbd> (albo duży przycisk <b>GO</b>) – cue gra, dostaje znaczek
 <b>LIVE</b>, a STANDBY przeskakuje na następny.</li>
 <li>Kolejne <kbd>Spacja</kbd> = kolejne punkty przedstawienia.<!--IF:go_guard--> Drugie naciśnięcie w ciągu 0,4 s jest pomijane – ochrona przed podwójnym GO.<!--/IF:go_guard--></li>
+<!--IF:go_states--><li>Przycisk <b>GO</b> mówi, co zrobi: <b>▶ GO: #3 'nazwa'</b> – wszystko gotowe. Robi się
+bursztynowy (nigdy czerwony), gdy coś jest inaczej: <b>⌨</b> klawiatura jest w innym oknie (kliknij GO),
+<b>⚠</b> brak pliku, <b>⏳</b> GO czeka, bo gra cue wyłączny (<kbd>Ctrl+Spacja</kbd> wymusza),
+<b>↻</b> ten cue już gra i zacznie od nowa.</li><!--/IF:go_states-->
+<!--IF:live_times--><li>W kolumnie <b>Czasy</b> grający cue pokazuje, ile mu zostało (np. <b>-00:45</b>),
+z paskiem postępu; w czasie Pre-/Post-Delay – odliczanie z ⏳ / ⏱. Na 5 s przed końcem robi się
+bursztynowy, jeśli następne GO należy do Ciebie (cue nie ma Auto-GO). Zagrane cue mają <b>✓</b>
+i przygaszoną nazwę; znaczki znikają, gdy zaczynasz od początku.</li><!--/IF:live_times-->
+<!--IF:urgent_words--><li>Uwagi ze słowami <b>UWAGA</b>, <b>CZEKAJ</b>, <b>STOP</b>, <b>CIEMNO</b>, <b>ALARM</b>
+(także po włosku i angielsku: ATTENZIONE, WAIT, DANGER…) są na liście wyróżnione.</li><!--/IF:urgent_words-->
 <li><kbd>↑</kbd> / <kbd>↓</kbd> zmieniają, który cue jest następny (np. żeby coś pominąć).
 <!--IFNOT:live_dblclick-->Dwuklik na wierszu odpala go od razu.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Dwuklik na wierszu tylko ustawia go jako następny (odpalisz go <kbd>Spacją</kbd>); żeby odpalić od razu, kliknij prawym przyciskiem → <b>Uruchom ten cue teraz</b>.<!--/IF:live_dblclick--></li>
 <li>Panel <b>Podgląd warstw Live</b> pokazuje, co gra na L1–L3; <b>Wygaś</b> łagodnie
@@ -348,11 +364,12 @@ kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym klikn
 <h2><a name="awaryjne"></a>11. Sytuacje awaryjne</h2>
 <table class="k">
 <tr><td><b>PAUZA WSZYSTKO</b></td><td>zamraża wszystko (dźwięk, film, czasy); drugie
-kliknięcie wznawia od tego samego miejsca – np. gdy aktor czeka na brawa.</td></tr>
+kliknięcie wznawia od tego samego miejsca – np. gdy aktor czeka na brawa.<!--IF:pause_go--> GO w czasie
+pauzy uruchamia tylko nowy cue (np. komunikat); to, co wstrzymane, czeka na <b>WZNÓW WSZYSTKO</b>.<!--/IF:pause_go--></td></tr>
 <tr><td><b>Wygaś</b> (przy warstwie)</td><td>łagodnie kończy tylko jedną warstwę.</td></tr>
 <tr><td><b>Wygaszenie główne</b> <kbd>Ctrl+B</kbd></td><td>płynnie wygasza wszystko i pokazuje zaślepkę.</td></tr>
 <!--IF:fade_all--><tr><td><b>WYGAŚ</b> <kbd>Shift+Esc</kbd></td><td>dźwięk i obraz na wszystkich warstwach łagodnie wygasają razem (1 s) i się zatrzymują – spokojniejsza wersja PANIC. Po WYGAŚ i po PANIC następne GO wraca do cue, który uruchomiono ręcznie i który został zatrzymany – za wcześnie dane GO można po prostu powtórzyć (muzyka tła grająca od początku aktu nie przejmuje GO).</td></tr><!--/IF:fade_all-->
-<tr><td><b>PANIC</b> <kbd>Esc</kbd> dwa razy w ciągu 0,6 s (w trybie LIVE)</td><td>natychmiast ucina wszystko (0 ms) – ostateczność.</td></tr>
+<tr><td><b>PANIC</b> <kbd>Esc</kbd> dwa razy w ciągu 0,6 s<!--IFNOT:esc_everywhere--> (w trybie LIVE)<!--/IFNOT:esc_everywhere--><!--IF:esc_everywhere--> (w każdym widoku, także w projekcie)<!--/IF:esc_everywhere--></td><td>natychmiast ucina wszystko (0 ms) – ostateczność.</td></tr>
 <tr><td><b>Blokada warstw</b></td><td>w trybie LIVE sterowanie warstwami jest zablokowane;
 przytrzymaj kłódkę 1,2 s, żeby odblokować przewijanie/pauzę pojedynczych warstw.</td></tr>
 </table>
@@ -388,7 +405,7 @@ maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
 <tr><td><kbd>Spacja</kbd></td><td>GO – następny cue</td></tr>
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>wybór cue / zmiana następnego w LIVE</td></tr>
 <tr><td><kbd>F5</kbd></td><td>tryb LIVE / powrót do projektu</td></tr>
-<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (w trybie LIVE): dwa razy w ciągu 0,6 s</td></tr>
+<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (w trybie LIVE)<!--/IFNOT:esc_everywhere-->: dwa razy w ciągu 0,6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>wygaś wszystko (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Spacja</kbd></td><td>GO wymuszone – także gdy trwa cue wyłączny</td></tr><!--/IF:exclusive-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>wygaszenie główne (zaślepka)</td></tr>

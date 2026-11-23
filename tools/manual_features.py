@@ -31,6 +31,14 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "live_dblclick": ("blindcue/ui/live_show_view.py", "def live_double_click_fires"),
     "exclusive": ("blindcue/models/cue.py", "exclusive: bool"),
     "action_cues": ("blindcue/engine/action_cues.py", None),
+    "live_start": ("blindcue/engine/show_engine.py", "def live_start_choices"),
+    "esc_everywhere": ("blindcue/ui/main_window/_window_setup.py", "Esc twice is PANIC in every view"),
+    "live_times": ("blindcue/engine/live_state.py", None),
+    "go_states": ("blindcue/ui/main_window/_window_setup.py", "def _go_label"),
+    "insert_after": ("blindcue/engine/show_engine.py", "def insert_position"),
+    "pause_go": ("blindcue/engine/show_scheduler.py", "frozen: bool"),
+    "urgent_words": ("blindcue/ui/live_show_view.py", "_URGENT_NOTES_RE"),
+    "release_scene": ("blindcue/engine/show_engine.py", "released_groups"),
 }
 
 

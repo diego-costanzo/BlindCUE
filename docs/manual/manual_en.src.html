@@ -83,8 +83,11 @@ in the list and in the inspector.</li>
 <ol>
 <li>The buttons under the list: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Photo</b>.</li>
 <li>Drag files from your file manager onto <b>Quick Load</b> (bottom right corner).</li>
-<li>A new cue goes to the end of the list; move it with <b>Up / Down</b>
-(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li>
+<!--IFNOT:insert_after--><li>A new cue goes to the end of the list; move it with <b>Up / Down</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li><!--/IFNOT:insert_after--><!--IF:insert_after--><li>A new cue goes right after the selected one (nothing selected: to the end of the list).
+When the selected cue is tied to the next one (<b>Simultaneous</b>, <b>Auto-GO</b>) or is a group, the
+new cue goes after the end of that chain or group – the status bar says where. Move it with
+<b>Up / Down</b> (<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li><!--/IF:insert_after-->
 </ol>
 <table class="k">
 <tr><td><b>Video</b></td><td>MP4, MKV, AVI, MOV, WEBM</td></tr>
@@ -138,7 +141,7 @@ cue it is fired with GO; it can have a Pre-Delay and Auto-GO and belong to a gro
 <table class="k">
 <tr><td><b>🔉 Fade out and stop</b></td><td>brings sound and picture down over the given time, then stops. The stopped cues do not start their Post-Delay or Auto-GO. E.g. the end of the background music as an ordinary line of the list.</td></tr>
 <tr><td><b>⏹ Stop at once</b></td><td>cuts at once, also cues still waiting for their Pre-Delay.</td></tr>
-<tr><td><b>🔁 Release loop</b></td><td>the looping cue (loop, or a section repeated forever) finishes its current pass and goes on: to the next section or to the end, with Post-Delay and Auto-GO.</td></tr>
+<tr><td><b>🔁 Release loop</b></td><td>the looping cue (loop, or a section repeated forever) finishes its current pass and goes on: to the next section or to the end, with Post-Delay and Auto-GO.<!--IF:release_scene--> A <b>Loop Scene</b> group finishes its current round and stops (it does not start over and does not start the next scene).<!--/IF:release_scene--></td></tr>
 <tr><td><b>🎚 Level change</b></td><td>changes the volume of what is playing without stopping it: <b>absolute</b> (as if the cue Volume were the given value) or <b>relative</b> (e.g. −10 dB), over the given time with the chosen curve. Music under a dialogue: one action −10 dB, later another +10 dB.</td></tr>
 <tr><td><b>🌓 Layer opacity</b></td><td>dims the whole layer (pictures and videos), e.g. the background to 30 % during a scene. The next cue on that layer starts at full opacity.</td></tr>
 <tr><td><b>📝 Note for the operator</b></td><td>text in a coloured strip at the top of the program window, never on the projector. It does not block GO; it goes away at the next GO or with ✕.</td></tr>
@@ -327,10 +330,23 @@ a grid for focusing and lining up the projector.</li>
 <p><img src="img/en/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Select the first cue – it gets the <b>STANDBY</b> badge (ready to fire).
-At the bottom you see <b>NEXT IN STANDBY</b> with its name and notes.</li>
+At the bottom you see <b>NEXT IN STANDBY</b> with its name and notes.<!--IF:live_start--> If a cue
+from the middle of the list is selected when you enter LIVE (say, the one you just fixed), the program
+asks where to start: <b>From the top</b>, <b>From the selected cue</b>, and after a trip to the
+editor also <b>Resume from</b> – where LIVE was left. Coming back without changes, it does not ask.<!--/IF:live_start--></li>
 <li>Press <kbd>Space</kbd> (or the big <b>GO</b> button) – the cue plays, gets the
 <b>LIVE</b> badge, and STANDBY jumps to the next one.</li>
 <li>Each further <kbd>Space</kbd> = the next point of the show.<!--IF:go_guard--> A second press within 0.4 s is ignored – protection against a double GO.<!--/IF:go_guard--></li>
+<!--IF:go_states--><li>The <b>GO</b> button says what it will do: <b>▶ GO: #3 'name'</b> – all set. It turns
+amber (never red) when something is different: <b>⌨</b> the keyboard is in another window (click GO),
+<b>⚠</b> the file is missing, <b>⏳</b> GO waits for an exclusive cue (<kbd>Ctrl+Space</kbd> forces it),
+<b>↻</b> this cue already plays and restarts.</li><!--/IF:go_states-->
+<!--IF:live_times--><li>In the <b>Times</b> column a playing cue shows what is left (e.g. <b>-00:45</b>) with a
+progress bar; during a Pre-/Post-Delay, a ⏳ / ⏱ countdown. In the last 5 s it turns amber when the
+next GO is yours (the cue has no Auto-GO). Cues already played get a <b>✓</b> and a dimmer name;
+the ticks go when you start from the top.</li><!--/IF:live_times-->
+<!--IF:urgent_words--><li>Notes with words like <b>WARNING</b>, <b>WAIT</b>, <b>STOP</b>, <b>BLACKOUT</b>,
+<b>DANGER</b> (also in Italian and Polish: ATTENZIONE, UWAGA, CZEKAJ…) are highlighted in the list.</li><!--/IF:urgent_words-->
 <li><kbd>↑</kbd> / <kbd>↓</kbd> change which cue is next (e.g. to skip something).
 <!--IFNOT:live_dblclick-->Double-click a row to fire it right away.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Double-clicking a row only makes it the next cue (start it with <kbd>Space</kbd>); to start it at once, right-click → <b>Start this Cue now</b>.<!--/IF:live_dblclick--></li>
 <li>The <b>Live Layer Output Monitor</b> panel shows what plays on L1–L3; <b>Fade Out</b>
@@ -347,11 +363,13 @@ softly ends that layer (hold it for a moment – protection against accidental c
 <h2><a name="emergency"></a>11. Emergencies</h2>
 <table class="k">
 <tr><td><b>PAUSE ALL</b></td><td>freezes everything (sound, video, timers); a second
-click resumes from the same point – e.g. while an actor waits for applause.</td></tr>
+click resumes from the same point – e.g. while an actor waits for applause.<!--IF:pause_go--> A GO
+during the pause starts just the new cue (e.g. an announcement); what is paused waits for
+<b>RESUME ALL</b>.<!--/IF:pause_go--></td></tr>
 <tr><td><b>Fade Out</b> (next to a layer)</td><td>softly ends just that layer.</td></tr>
 <tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>fades everything out and shows the cover.</td></tr>
 <!--IF:fade_all--><tr><td><b>FADE ALL</b> <kbd>Shift+Esc</kbd></td><td>sound and picture on every layer fade out together (1 s) and stop – a calmer PANIC. After FADE ALL and after PANIC the next GO returns to the hand-started cue that was stopped – a GO given too early can simply be repeated (background music running since the start of the act does not take the GO).</td></tr><!--/IF:fade_all-->
-<tr><td><b>PANIC</b> <kbd>Esc</kbd> twice within 0.6 s (in LIVE mode)</td><td>cuts everything instantly (0 ms) – last resort.</td></tr>
+<tr><td><b>PANIC</b> <kbd>Esc</kbd> twice within 0.6 s<!--IFNOT:esc_everywhere--> (in LIVE mode)<!--/IFNOT:esc_everywhere--><!--IF:esc_everywhere--> (in every view, the editor too)<!--/IF:esc_everywhere--></td><td>cuts everything instantly (0 ms) – last resort.</td></tr>
 <tr><td><b>Layer lock</b></td><td>in LIVE mode the layer controls are locked;
 hold the padlock for 1.2 s to unlock seeking/pausing single layers.</td></tr>
 </table>
@@ -387,7 +405,7 @@ round masks and cut-outs. Assign a cue to a surface in the Inspector
 <tr><td><kbd>Space</kbd></td><td>GO – next cue</td></tr>
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>select cue / change the next cue in LIVE</td></tr>
 <tr><td><kbd>F5</kbd></td><td>LIVE mode / back to the project</td></tr>
-<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (in LIVE mode): twice within 0.6 s</td></tr>
+<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (in LIVE mode)<!--/IFNOT:esc_everywhere-->: twice within 0.6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>fade all (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Space</kbd></td><td>forced GO – also while an exclusive cue plays</td></tr><!--/IF:exclusive-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (cover)</td></tr>
