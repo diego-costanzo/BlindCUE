@@ -85,16 +85,21 @@ class _PersistenceMixin:
 
         saved_at = recovery.get("saved_at", "sconosciuto")
         cues_count = recovery.get("cues_count", len(recovery.get("cues", [])))
-        reply = QMessageBox.question(
-            self,
+        box = QMessageBox(
+            QMessageBox.Icon.Question,
             "BlindCue — Ripristino Sessione (Crash Recovery)",
             f"È stata rilevata una sessione precedente interrotta o non salvata!\n\n"
             f"• Data ultimo autosave: {saved_at}\n"
             f"• Cue recuperabili: {cues_count}\n\n"
             f"Vuoi ripristinare il progetto da dove era stato interrotto?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.Yes,
+            self,
         )
+        box.setDefaultButton(QMessageBox.StandardButton.Yes)
+        # A reflex Esc restores (nothing is lost); only "No" sets the show aside.
+        box.setEscapeButton(QMessageBox.StandardButton.Yes)
+        box.exec()
+        reply = box.standardButton(box.clickedButton())
 
         if reply == QMessageBox.StandardButton.Yes:
             self._cues.clear()
@@ -148,8 +153,10 @@ class _PersistenceMixin:
             self._status_label.setText(f"Sessione ripristinata con successo ({len(self._cues)} cue)")
             logger.info("[RECOVERY] Restored %d cues from autosave", len(self._cues))
         else:
-            self._project_manager.clear_autosave()
-            logger.info("[RECOVERY] User discarded autosave recovery")
+            kept = self._project_manager.discard_autosave()
+            if kept is not None:
+                self._status_label.setText(f"Sessione precedente messa da parte: {kept}")
+            logger.info("[RECOVERY] User discarded autosave recovery (kept as %s)", kept)
 
     def _confirm_save_if_modified(self, title: str, message: str) -> bool:
         """Prompt user to save dirty state; returns True to continue action or False to abort."""
@@ -448,7 +455,27 @@ class _PersistenceMixin:
         self.close()
 
     def closeEvent(self, event) -> None:  # noqa: N802
-        """Ask to save unsaved changes before the main window closes."""
+        """Ask to save unsaved changes before the main window closes.
+
+        During a show (LIVE, or something plays or waits) Alt+F4 or a stray
+        click on × asks first, with "stay" as the safe default.
+        """
+        if not self._force_closing and (self._live_mode or self._show_running()):
+            box = QMessageBox(
+                QMessageBox.Icon.Warning,
+                "Chiusura BlindCue",
+                "Lo spettacolo è in corso.\nChiudere il programma ferma tutto ciò che è in onda.",
+                QMessageBox.StandardButton.NoButton,
+                self,
+            )
+            stay = box.addButton("Resta nel programma", QMessageBox.ButtonRole.RejectRole)
+            box.addButton("Chiudi il programma", QMessageBox.ButtonRole.DestructiveRole)
+            box.setDefaultButton(stay)
+            box.setEscapeButton(stay)
+            box.exec()
+            if box.clickedButton() is stay:
+                event.ignore()
+                return
         if not self._force_closing and self._is_modified and self._cues:
             ret = QMessageBox.question(
                 self,

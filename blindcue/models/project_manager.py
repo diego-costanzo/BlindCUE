@@ -572,6 +572,23 @@ class ProjectManager:
             logger.warning("[PROJECT] Failed to read autosave for recovery check: %s", exc)
             return None
 
+    def discard_autosave(self) -> Path | None:
+        """Set the autosave aside instead of deleting it (the operator said "no").
+
+        A reflex answer must never destroy a show: the file becomes
+        ``autosave.discarded.json`` (replacing an older discarded one) and can
+        still be opened by hand. Returns the new path, or None.
+        """
+        target = self.autosave_file.with_name("autosave.discarded.json")
+        try:
+            if self.autosave_file.is_file():
+                self.autosave_file.replace(target)
+                logger.info("[PROJECT] Autosave set aside as %s", target)
+                return target
+        except Exception as exc:
+            logger.warning("[PROJECT] Could not set the autosave aside: %s", exc)
+        return None
+
     def clear_autosave(self) -> None:
         """Remove the autosave file."""
         try:

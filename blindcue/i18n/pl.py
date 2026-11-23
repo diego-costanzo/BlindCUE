@@ -869,8 +869,6 @@ T: dict[str, str] = {
         'NATYCHMIASTOWY STOP',
     'Scaletta Regia LIVE Show':
         'Lista cue do prowadzenia LIVE',
-    'Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc per il Panic.':
-        'Kontrastowa lista cue na żywo. Strzałki w górę i w dół = standby, Spacja = GO, Esc = Panic.',
     '▶ Fai partire subito questa Cue (GO Forzato)':
         '▶ Uruchom ten cue teraz (wymuszone GO)',
     '🎯 Imposta come Prossima Cue (Standby)':
@@ -1043,8 +1041,6 @@ T: dict[str, str] = {
         '— nie wybrano pliku —',
     'Tempi: ':
         'Czasy: ',
-    'MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC = PANIC]':
-        'TRYB LIVE AKTYWNY — uproszczony interfejs prowadzenia [ESC = PANIC]',
     'MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate':
         'TRYB PROJEKTU — edycja cue i podgląd znowu dostępne',
     'Punti envelope azzerati':
@@ -2184,4 +2180,18 @@ T: dict[str, str] = {
         '⏳ GO czeka (Ctrl+Spacja wymusza): „{}” jest wyłączny',
     '↻ Già in onda, riparte — GO: {}':
         '↻ Już gra, zacznie od nowa — GO: {}',
+    'Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc due volte per il Panic.':
+        'Kontrastowa lista cue na żywo. Strzałki w górę i w dół = następny cue, Spacja = GO, Esc dwa razy = PANIC.',
+    'MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]':
+        'TRYB LIVE AKTYWNY — uproszczony interfejs prowadzenia [ESC ×2 = PANIC]',
+    'Sessione precedente messa da parte: {}':
+        'Poprzednią sesję odłożono (nie usunięto): {}',
+    '📝 Note:':
+        '📝 Uwagi:',
+    'Lo spettacolo è in corso.\nChiudere il programma ferma tutto ciò che è in onda.':
+        'Trwa przedstawienie.\nZamknięcie programu zatrzyma wszystko, co gra.',
+    'Resta nel programma':
+        'Zostań w programie',
+    'Chiudi il programma':
+        'Zamknij program',
 }
