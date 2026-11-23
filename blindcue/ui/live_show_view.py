@@ -595,12 +595,15 @@ class LiveCueRowDelegate(QStyledItemDelegate):
                     fm_w = 70
 
             right_x = rect.right()
-            fm_rect = QRect(right_x - fm_w, rect.top() + (rect.height() - 18) // 2, fm_w, 18)
-            painter.setPen(QPen(fm_border, 1))
-            painter.setBrush(fm_bg)
-            painter.drawRoundedRect(fm_rect, 3, 3)
-            painter.setPen(fm_fg)
-            painter.drawText(fm_rect, Qt.AlignmentFlag.AlignCenter, fm_txt)
+            # Only the exceptions get a pill (AUTO-GO, Simultaneous): a manual
+            # cue is the normal case, and a pill on every row was just noise.
+            if follow_mode in ("AUTO_FOLLOW", "SIMULTANEOUS"):
+                fm_rect = QRect(right_x - fm_w, rect.top() + (rect.height() - 18) // 2, fm_w, 18)
+                painter.setPen(QPen(fm_border, 1))
+                painter.setBrush(fm_bg)
+                painter.drawRoundedRect(fm_rect, 3, 3)
+                painter.setPen(fm_fg)
+                painter.drawText(fm_rect, Qt.AlignmentFlag.AlignCenter, fm_txt)
 
             # Left slot: Pre-Delay pill (if configured)
             if pre_delay > 0:
