@@ -83,8 +83,11 @@ modifica nella scaletta e nell'ispettore.</li>
 <ol>
 <li>I pulsanti sotto la scaletta: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Foto</b>.</li>
 <li>Trascina i file dal gestore file nel riquadro <b>Caricamento Rapido</b> (in basso a destra).</li>
-<li>La nuova cue va in fondo alla scaletta; spostala con <b>Su / Giù</b>
-(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li>
+<!--IFNOT:insert_after--><li>La nuova cue va in fondo alla scaletta; spostala con <b>Su / Giù</b>
+(<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li><!--/IFNOT:insert_after--><!--IF:insert_after--><li>La nuova cue va subito dopo quella selezionata (senza selezione: in fondo alla scaletta).
+Se la cue selezionata è legata alla successiva (<b>Simultanea</b>, <b>Auto-GO</b>) o è un gruppo, la
+nuova va dopo la fine di quella catena o di quel gruppo – la barra di stato dice dove. Spostala con
+<b>Su / Giù</b> (<kbd>Alt+↑</kbd> / <kbd>Alt+↓</kbd>).</li><!--/IF:insert_after-->
 </ol>
 <table class="k">
 <tr><td><b>Video</b></td><td>MP4, MKV, AVI, MOV, WEBM</td></tr>
@@ -139,7 +142,7 @@ Come ogni cue parte con il GO; può avere Pre-Delay, Auto-GO e stare in un grupp
 <table class="k">
 <tr><td><b>🔉 Dissolvi e ferma</b></td><td>abbassa audio e immagine nel tempo indicato, poi ferma. Le cue fermate non avviano il loro Post-Delay né l'Auto-GO. Es. la fine della musica di sottofondo come normale riga della scaletta.</td></tr>
 <tr><td><b>⏹ Ferma subito</b></td><td>taglia subito, anche le cue in attesa della fine del Pre-Delay.</td></tr>
-<tr><td><b>🔁 Rilascia loop</b></td><td>la cue in loop (loop o sezione ripetuta all'infinito) finisce il giro in corso e prosegue: alla sezione successiva o fino alla fine, con Post-Delay e Auto-GO.</td></tr>
+<tr><td><b>🔁 Rilascia loop</b></td><td>la cue in loop (loop o sezione ripetuta all'infinito) finisce il giro in corso e prosegue: alla sezione successiva o fino alla fine, con Post-Delay e Auto-GO.<!--IF:release_scene--> Un gruppo <b>Loop Scena</b> completa il giro in corso e si ferma (non ricomincia e non avvia la scena successiva).<!--/IF:release_scene--></td></tr>
 <tr><td><b>🎚 Cambio livello</b></td><td>cambia il volume di ciò che suona senza fermarlo: <b>assoluto</b> (come se il Volume della cue fosse il valore indicato) oppure <b>relativo</b> (es. −10 dB), nel tempo e con la curva scelti. Musica sotto il dialogo: un'azione −10 dB, più tardi un'altra +10 dB.</td></tr>
 <tr><td><b>🌓 Opacità layer</b></td><td>scurisce tutto il layer (immagini e video), es. lo sfondo al 30 % durante una scena. La cue successiva sullo stesso layer riparte piena.</td></tr>
 <tr><td><b>📝 Nota per la regia</b></td><td>testo in una fascia colorata in cima alla finestra del programma, mai sul proiettore. Non blocca il GO; sparisce al GO successivo o con ✕.</td></tr>
@@ -329,10 +332,23 @@ una griglia per mettere a fuoco e allineare il proiettore.</li>
 <p><img src="img/it/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Seleziona la prima cue – riceve il bollino <b>STANDBY</b> (pronta a partire).
-In basso vedi <b>PROSSIMA IN STANDBY</b> con il nome e le note.</li>
+In basso vedi <b>PROSSIMA IN STANDBY</b> con il nome e le note.<!--IF:live_start--> Se entrando in
+LIVE è selezionata una cue a metà scaletta (per esempio quella appena corretta), il programma chiede
+da dove partire: <b>Dall'inizio</b>, <b>Dalla cue selezionata</b> e, tornando dal progetto, anche
+<b>Riprendi da</b> – il punto in cui avevi lasciato LIVE. Se torni senza cambiare nulla, non chiede.<!--/IF:live_start--></li>
 <li>Premi <kbd>Spazio</kbd> (o il grande pulsante <b>GO</b>) – la cue parte, riceve il bollino
 <b>LIVE</b> e lo STANDBY passa alla successiva.</li>
 <li>Ogni <kbd>Spazio</kbd> successivo = il punto successivo dello spettacolo.<!--IF:go_guard--> Una seconda pressione entro 0,4 s viene ignorata – protezione dal doppio GO.<!--/IF:go_guard--></li>
+<!--IF:go_states--><li>Il pulsante <b>GO</b> dice che cosa farà: <b>▶ GO: #3 'nome'</b> – tutto pronto. Diventa
+ambra (mai rosso) quando qualcosa è diverso: <b>⌨</b> la tastiera è in un'altra finestra (clicca GO),
+<b>⚠</b> file mancante, <b>⏳</b> il GO aspetta una cue esclusiva (<kbd>Ctrl+Spazio</kbd> forza),
+<b>↻</b> questa cue è già in onda e riparte.</li><!--/IF:go_states-->
+<!--IF:live_times--><li>Nella colonna <b>Tempi</b> la cue in onda mostra quanto manca (es. <b>-00:45</b>) con una
+barra di avanzamento; durante un Pre-/Post-Delay, il conto alla rovescia con ⏳ / ⏱. Negli ultimi 5 s
+diventa ambra se il prossimo GO tocca a te (la cue non ha Auto-GO). Le cue già eseguite hanno una
+<b>✓</b> e il nome più tenue; i segni spariscono quando riparti dall'inizio.</li><!--/IF:live_times-->
+<!--IF:urgent_words--><li>Le note con parole come <b>ATTENZIONE</b>, <b>PERICOLO</b>, <b>STOP</b>, <b>BUIO TOTALE</b>
+(anche in polacco e inglese: UWAGA, CZEKAJ, WAIT, DANGER…) sono evidenziate nella scaletta.</li><!--/IF:urgent_words-->
 <li><kbd>↑</kbd> / <kbd>↓</kbd> cambiano la cue successiva (per esempio per saltare qualcosa).
 <!--IFNOT:live_dblclick-->Un doppio clic su una riga la lancia subito.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Un doppio clic su una riga la rende solo la prossima cue (la lanci con <kbd>Spazio</kbd>); per lanciarla subito, clic destro → <b>Fai partire subito questa Cue</b>.<!--/IF:live_dblclick--></li>
 <li>Il pannello <b>Monitor Uscita Layer Live</b> mostra cosa va su L1–L3; <b>Fade Out</b>
@@ -349,11 +365,13 @@ chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic 
 <h2><a name="emergenze"></a>11. Emergenze</h2>
 <table class="k">
 <tr><td><b>PAUSA TUTTO</b></td><td>congela tutto (audio, video, tempi); un secondo
-clic riprende dallo stesso punto – per esempio mentre un attore aspetta l'applauso.</td></tr>
+clic riprende dallo stesso punto – per esempio mentre un attore aspetta l'applauso.<!--IF:pause_go--> Un GO
+durante la pausa avvia solo la nuova cue (es. un annuncio); ciò che è in pausa aspetta
+<b>RIPRENDI TUTTO</b>.<!--/IF:pause_go--></td></tr>
 <tr><td><b>Fade Out</b> (accanto a un layer)</td><td>chiude dolcemente solo quel layer.</td></tr>
 <tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>sfuma tutto e mostra il tappo.</td></tr>
 <!--IF:fade_all--><tr><td><b>DISSOLVI</b> <kbd>Shift+Esc</kbd></td><td>audio e immagine su tutti i layer sfumano insieme (1 s) e si fermano – un PANIC più calmo. Dopo DISSOLVI e dopo PANIC il prossimo GO torna alla cue avviata a mano che è stata fermata – un GO dato troppo presto si può semplicemente ripetere (la musica di sottofondo partita a inizio atto non prende il GO).</td></tr><!--/IF:fade_all-->
-<tr><td><b>PANIC</b> <kbd>Esc</kbd> due volte entro 0,6 s (in modalità LIVE)</td><td>taglia tutto all'istante (0 ms) – ultima risorsa.</td></tr>
+<tr><td><b>PANIC</b> <kbd>Esc</kbd> due volte entro 0,6 s<!--IFNOT:esc_everywhere--> (in modalità LIVE)<!--/IFNOT:esc_everywhere--><!--IF:esc_everywhere--> (in ogni vista, anche nel progetto)<!--/IF:esc_everywhere--></td><td>taglia tutto all'istante (0 ms) – ultima risorsa.</td></tr>
 <tr><td><b>Blocco layer</b></td><td>in modalità LIVE i comandi dei layer sono bloccati;
 tieni premuto il lucchetto 1,2 s per sbloccare scorrimento e pausa dei singoli layer.</td></tr>
 </table>
@@ -389,7 +407,7 @@ maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettor
 <tr><td><kbd>Spazio</kbd></td><td>GO – cue successiva</td></tr>
 <tr><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>scegli la cue / cambia la successiva in LIVE</td></tr>
 <tr><td><kbd>F5</kbd></td><td>modalità LIVE / ritorno al progetto</td></tr>
-<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC (in modalità LIVE): due volte entro 0,6 s</td></tr>
+<tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (in modalità LIVE)<!--/IFNOT:esc_everywhere-->: due volte entro 0,6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>dissolvenza totale (1 s)</td></tr><!--/IF:fade_all-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Spazio</kbd></td><td>GO forzato – anche mentre va una cue esclusiva</td></tr><!--/IF:exclusive-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (tappo)</td></tr>
