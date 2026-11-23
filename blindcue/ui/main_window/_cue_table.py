@@ -225,17 +225,32 @@ class _CueTableMixin:
         return self._live_mode
 
     @Slot(bool)
-    def set_live_mode(self, enabled: bool) -> None:
-        """Switch between design mode and LIVE Show mode."""
+    def set_live_mode(self, enabled: bool, checked: bool = False) -> None:
+        """Switch between design mode and LIVE Show mode.
+
+        Entering goes through the readiness page first when it is due (it
+        ends with the start buttons), otherwise through the start question;
+        *checked*: the operator already chose the start there (or the program
+        goes back into a show after a crash).
+        """
         enabled = bool(enabled)
         if self._live_mode == enabled:
             return
-        if enabled and not self._confirm_live_start():
+        if enabled and not checked and self._readiness_wanted():
+            if hasattr(self, "_act_live_mode"):
+                self._act_live_mode.blockSignals(True)
+                self._act_live_mode.setChecked(False)
+                self._act_live_mode.blockSignals(False)
+            self._show_readiness()
+            return
+        if enabled and not checked and not self._confirm_live_start():
             if hasattr(self, "_act_live_mode"):
                 self._act_live_mode.blockSignals(True)
                 self._act_live_mode.setChecked(False)
                 self._act_live_mode.blockSignals(False)
             return
+        if enabled:
+            self._readiness_timer.stop()
         if enabled and self._go_target_index() == 0 and not self._show_running():
             self._played_ids.clear()  # a run from the top: nothing played yet
         if not enabled and self._cues:
@@ -421,6 +436,8 @@ class _CueTableMixin:
             mgr.output_mode_changed.connect(self._on_output_mode_changed)
             mgr.screens_changed.connect(self._refresh_output_monitors)
             mgr.screens_changed.connect(self._schedule_director_check)
+            mgr.screens_changed.connect(self._readiness_devices_changed)
+            mgr.audio_devices_changed.connect(self._readiness_devices_changed)
             self._on_output_mode_changed(getattr(mgr, "_output_mode", "single"))
             self._refresh_output_monitors()
             self._update_hardware_status_bar()

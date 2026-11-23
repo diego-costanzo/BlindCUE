@@ -102,6 +102,12 @@ class _TransportMixin:
         """Keyboard Space trigger: suppressed while typing in text/spin/combo inputs."""
         if self._is_text_input_focused():
             return
+        if self._readiness_visible():
+            if not self._live_mode:
+                # Space on the "Before the show" page picks its default button, never a GO.
+                self._readiness_page.activate_default()
+                return
+            self._on_readiness_stay()  # in the show Space stays GO: back to the list first
         self._on_go()
 
     @Slot()

@@ -38,6 +38,7 @@ from ui.main_window._waveform_worker import _WaveformWorkerMixin
 from ui.main_window._preview import _PreviewMixin
 from ui.main_window._actions import _ActionsMixin
 from ui.main_window._undo_go import _UndoGoMixin
+from ui.main_window._readiness import _ReadinessMixin
 
 
 class MainWindow(
@@ -63,6 +64,7 @@ class MainWindow(
     _PreviewMixin,
     _ActionsMixin,
     _UndoGoMixin,
+    _ReadinessMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -176,6 +178,7 @@ class MainWindow(
         self._setup_window()
         self._build_menu_bar()
         self._build_ui()
+        self._readiness_setup()  # "Before the show" page (stage 1 C2a step 7)
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()

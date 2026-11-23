@@ -38,5 +38,8 @@ class _SandboxSettings(_RealQSettings):
 
 
 QtCore.QSettings = _SandboxSettings
+# Entering the show goes straight in, as before the readiness page (stage 1
+# C2a step 7); tests/test_readiness.py turns the page on for itself.
+_SandboxSettings("BlindCue", "BlindCue").setValue("live/readiness_check", False)
 # App data (text-cue cache, logs) goes to Qt's separate test locations.
 QtCore.QStandardPaths.setTestModeEnabled(True)

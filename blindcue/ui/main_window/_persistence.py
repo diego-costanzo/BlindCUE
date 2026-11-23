@@ -187,7 +187,7 @@ class _PersistenceMixin:
             if was_live and self._cues:
                 # Back into the show at the chosen cue (no second start question).
                 self._live_resume_id = self._cues[self._go_target_index()].cue_id
-                self.set_live_mode(True)
+                self.set_live_mode(True, checked=True)  # no readiness page either: back at once
         else:
             kept = self._project_manager.discard_autosave()
             if kept is not None:
@@ -221,6 +221,10 @@ class _PersistenceMixin:
             self._on_panic()
 
         self._cues.clear()
+        # A new show starts with the checklist for people (edit it freely).
+        self._cues.append(self._default_checklist_cue())
+        self._cues[0].status = CueStatus.LOADED
+        self._readiness_full_due = True
         self._current_index = -1
         self._live_resume_id = None
         self._played_ids.clear()
@@ -345,6 +349,7 @@ class _PersistenceMixin:
             self._cues = cues
             self._current_index = current_idx
             self._live_resume_id = None
+            self._readiness_full_due = True  # another show: check everything again
             self._played_ids.clear()
             self._released_groups.clear()  # cue ids repeat between shows
             self._checklist_ticks = {}

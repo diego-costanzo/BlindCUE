@@ -2086,4 +2086,116 @@ T: dict[str, str] = {
         '↶ GO {} undone',
     'GO {} annullato · prossima: {}':
         'GO {} undone · next: {}',
+    'Prima dello spettacolo':
+        'Before the show',
+    '✓ SÌ':
+        '✓ YES',
+    '✗ NO':
+        '✗ NO',
+    '– NON VERIFICATO':
+        '– NOT CHECKED',
+    '↻ Ricontrolla':
+        '↻ Check again',
+    '{} (schermo {})':
+        '{} (screen {})',
+    '(non salvato)':
+        '(not saved)',
+    'modifiche non salvate':
+        'unsaved changes',
+    'Immagine: {}':
+        'Picture: {}',
+    "L'immagine va sullo schermo del portatile: proiettore non trovato. Se gli schermi sono duplicati, premi Win+P → Estendi.":
+        'The picture goes to the laptop screen: no projector found. If the screens are duplicated, press Win+P → Extend.',
+    "L'immagine va sullo schermo del portatile, anche se c'è un altro schermo.":
+        'The picture goes to the laptop screen, although another screen is connected.',
+    'Mostra i numeri degli schermi':
+        'Show screen numbers',
+    'Scegli lo schermo…':
+        'Choose the screen…',
+    'Volume generale 100 %, senza silenziamento':
+        'Master volume 100 %, not muted',
+    'Volume generale {} % · SILENZIATO':
+        'Master volume {} % · MUTED',
+    'Riporta a 100 %':
+        'Back to 100 %',
+    '{} (scelte qui)':
+        '{} (pinned)',
+    'Audio: {} – si sente in sala':
+        'Sound: {} – heard in the hall',
+    "Le casse scelte '{}' non sono collegate: suona l'uscita predefinita di Windows.":
+        "The chosen speakers '{}' are not connected: the Windows default output plays.",
+    'Scegli le casse…':
+        'Choose the speakers…',
+    'Audio: {} – il tono non si sente in sala':
+        'Sound: {} – the tone is not heard in the hall',
+    '▶ Tono di prova':
+        '▶ Test tone',
+    'Sì, si sente':
+        'Yes, heard',
+    'Non si sente':
+        'Not heard',
+    'Audio: {} – il tono non è disponibile, qualcosa suona. Si sente in sala?':
+        'Sound: {} – no test tone, something is playing. Is it heard in the hall?',
+    'Audio: {} – si sente in sala?':
+        'Sound: {} – heard in the hall?',
+    'Audio: {} – suona il tono di prova e ascolta in sala':
+        'Sound: {} – play the test tone and listen in the hall',
+    'Tutti i file al loro posto ({})':
+        'All files in place ({})',
+    'File mancanti ({}): {}':
+        'Missing files ({}): {}',
+    'Mostra nella lista':
+        'Show in the list',
+    "Portatile collegato all'alimentatore":
+        'Laptop on mains power',
+    "Portatile a batteria ({} %): collega l'alimentatore":
+        'Laptop on battery ({} %): plug in the charger',
+    'Lo spettacolo non ha una checklist':
+        'The show has no checklist',
+    'Aggiungi la checklist predefinita':
+        'Add the default checklist',
+    'Spettacolo: {}':
+        'Show: {}',
+    '▶ Inizia: {}':
+        '▶ Start: {}',
+    'Problemi: {}. Puoi iniziare lo stesso.':
+        'Problems: {}. You can start anyway.',
+    'Tutto pronto.':
+        'All ready.',
+    'Torna allo spettacolo':
+        'Back to the show',
+    'Resta in Preparazione':
+        'Stay in Preparation',
+    'proiettore':
+        'projector',
+    'alimentatore':
+        'charger',
+    'Controllo prima dello spettacolo: problemi: {}':
+        'Check before the show: problems: {}',
+    'Checklist predefinita aggiunta in cima alla scaletta':
+        'Default checklist added at the top of the list',
+    'Alimentatore collegato al portatile':
+        'Charger plugged into the laptop',
+    'Notifiche disattivate (Windows: Non disturbare)':
+        'Notifications off (Windows: Do not disturb)',
+    'Altri programmi chiusi (Teams, browser, OneDrive)':
+        'Other programs closed (Teams, browser, OneDrive)',
+    'Schermo del portatile abbassato':
+        'Laptop screen dimmed',
+    'Amplificatore e casse accesi, manopola come alla prova':
+        'Amplifier and speakers on, knob as at the rehearsal',
+    'Copia dello spettacolo su chiavetta (File → Salva con nome, portatile)':
+        'Copy of the show on a USB stick (File → Save as, portable)',
+    'Telefono del telecomando carico, nella stessa rete':
+        'Remote-control phone charged, on the same network',
+    'file':
+        'files',
+    'audio':
+        'sound',
+    'volume':
+        'volume',
+    'checklist':
+        'checklist',
+    'Pronto. Non verificato: {}.':
+        'Ready. Not checked: {}.',
 }

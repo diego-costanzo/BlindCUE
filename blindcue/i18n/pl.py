@@ -2308,4 +2308,116 @@ T: dict[str, str] = {
         '↶ Cofnięto GO {}',
     'GO {} annullato · prossima: {}':
         'Cofnięto GO {} · następny: {}',
+    'Prima dello spettacolo':
+        'Przed przedstawieniem',
+    '✓ SÌ':
+        '✓ TAK',
+    '✗ NO':
+        '✗ NIE',
+    '– NON VERIFICATO':
+        '– NIE SPRAWDZONO',
+    '↻ Ricontrolla':
+        '↻ Sprawdź ponownie',
+    '{} (schermo {})':
+        '{} (ekran {})',
+    '(non salvato)':
+        '(niezapisany)',
+    'modifiche non salvate':
+        'niezapisane zmiany',
+    'Immagine: {}':
+        'Obraz: {}',
+    "L'immagine va sullo schermo del portatile: proiettore non trovato. Se gli schermi sono duplicati, premi Win+P → Estendi.":
+        'Obraz idzie na ekran laptopa – projektor niewykryty. Jeśli ekrany są powielone, naciśnij Win+P → Rozszerz.',
+    "L'immagine va sullo schermo del portatile, anche se c'è un altro schermo.":
+        'Obraz idzie na ekran laptopa, choć podłączony jest drugi ekran.',
+    'Mostra i numeri degli schermi':
+        'Pokaż numery ekranów',
+    'Scegli lo schermo…':
+        'Wybierz ekran…',
+    'Volume generale 100 %, senza silenziamento':
+        'Głośność główna 100 %, bez wyciszenia',
+    'Volume generale {} % · SILENZIATO':
+        'Głośność główna {} % · WYCISZONE',
+    'Riporta a 100 %':
+        'Przywróć 100 %',
+    '{} (scelte qui)':
+        '{} (przypięte)',
+    'Audio: {} – si sente in sala':
+        'Dźwięk: {} – słychać w sali',
+    "Le casse scelte '{}' non sono collegate: suona l'uscita predefinita di Windows.":
+        "Wybrany głośnik '{}' nie jest podłączony – gra domyślne wyjście Windows.",
+    'Scegli le casse…':
+        'Wybierz głośnik…',
+    'Audio: {} – il tono non si sente in sala':
+        'Dźwięk: {} – tonu nie słychać w sali',
+    '▶ Tono di prova':
+        '▶ Ton próbny',
+    'Sì, si sente':
+        'Tak, słychać',
+    'Non si sente':
+        'Nie słychać',
+    'Audio: {} – il tono non è disponibile, qualcosa suona. Si sente in sala?':
+        'Dźwięk: {} – ton niedostępny, coś gra. Słychać to w sali?',
+    'Audio: {} – si sente in sala?':
+        'Dźwięk: {} – słychać w sali?',
+    'Audio: {} – suona il tono di prova e ascolta in sala':
+        'Dźwięk: {} – zagraj ton próbny i posłuchaj w sali',
+    'Tutti i file al loro posto ({})':
+        'Wszystkie pliki na miejscu ({})',
+    'File mancanti ({}): {}':
+        'Brak plików ({}): {}',
+    'Mostra nella lista':
+        'Pokaż na liście',
+    "Portatile collegato all'alimentatore":
+        'Laptop na zasilaczu',
+    "Portatile a batteria ({} %): collega l'alimentatore":
+        'Laptop na baterii ({} %) – podłącz zasilacz',
+    'Lo spettacolo non ha una checklist':
+        'Pokaz nie ma listy kontrolnej',
+    'Aggiungi la checklist predefinita':
+        'Dodaj domyślną listę kontrolną',
+    'Spettacolo: {}':
+        'Pokaz: {}',
+    '▶ Inizia: {}':
+        '▶ Zacznij: {}',
+    'Problemi: {}. Puoi iniziare lo stesso.':
+        'Problemy: {}. Możesz zacząć mimo to.',
+    'Tutto pronto.':
+        'Wszystko gotowe.',
+    'Torna allo spettacolo':
+        'Wróć do przedstawienia',
+    'Resta in Preparazione':
+        'Zostań w Przygotowaniu',
+    'proiettore':
+        'projektor',
+    'alimentatore':
+        'zasilacz',
+    'Controllo prima dello spettacolo: problemi: {}':
+        'Kontrola przed przedstawieniem: problemy: {}',
+    'Checklist predefinita aggiunta in cima alla scaletta':
+        'Dodano domyślną listę kontrolną na początku listy',
+    'Alimentatore collegato al portatile':
+        'Zasilacz podłączony do laptopa',
+    'Notifiche disattivate (Windows: Non disturbare)':
+        'Powiadomienia wyłączone (Windows: Nie przeszkadzać)',
+    'Altri programmi chiusi (Teams, browser, OneDrive)':
+        'Inne programy zamknięte (Teams, przeglądarka, OneDrive)',
+    'Schermo del portatile abbassato':
+        'Ekran laptopa przyciemniony',
+    'Amplificatore e casse accesi, manopola come alla prova':
+        'Wzmacniacz i głośniki włączone, pokrętło jak na próbie',
+    'Copia dello spettacolo su chiavetta (File → Salva con nome, portatile)':
+        'Kopia pokazu na pendrive (Plik → Zapisz jako, przenośny)',
+    'Telefono del telecomando carico, nella stessa rete':
+        'Telefon z pilotem naładowany, w tej samej sieci',
+    'file':
+        'pliki',
+    'audio':
+        'dźwięk',
+    'volume':
+        'głośność',
+    'checklist':
+        'lista kontrolna',
+    'Pronto. Non verificato: {}.':
+        'Gotowe. Nie sprawdzono: {}.',
 }

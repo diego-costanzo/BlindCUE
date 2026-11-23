@@ -796,6 +796,7 @@ class LiveShowPanel(QWidget):
     double_click_armed = Signal(int)
     force_row_requested = Signal(int)
     undo_go_requested = Signal()
+    readiness_review_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -859,6 +860,20 @@ class LiveShowPanel(QWidget):
         self.mode_tabs.set_live(True)
         self.mode_tabs.leave_show_requested.connect(self.exit_live_mode_requested)
         left_layout.addWidget(self.mode_tabs)
+
+        # Entered the show with problems from the readiness check: "⚠ 2",
+        # a click shows the same page again.
+        self.btn_ready_warn = QPushButton("")
+        self.btn_ready_warn.setFixedHeight(30)
+        self.btn_ready_warn.setFocusPolicy(Qt.FocusPolicy.NoFocus)  # Space stays GO
+        self.btn_ready_warn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_ready_warn.setStyleSheet(
+            "QPushButton { background-color: #451a03; color: #fbbf24; border: 1px solid #d97706; "
+            "border-radius: 4px; font-weight: bold; font-size: 13px; padding: 0px 10px; }"
+        )
+        self.btn_ready_warn.clicked.connect(self.readiness_review_requested)
+        self.btn_ready_warn.setVisible(False)
+        left_layout.addWidget(self.btn_ready_warn)
 
         self.lbl_show_badge = QLabel("● MODALITÀ LIVE (SHOW MODE)")
         self.lbl_show_badge.setFixedHeight(30)
@@ -1349,6 +1364,13 @@ class LiveShowPanel(QWidget):
         self._last_by_hand = by_hand
         self.last_bar.setVisible(bool(text))
         self._refresh_last_banner()
+
+    def set_readiness_warning(self, count: int, tooltip: str = "") -> None:
+        """"⚠ N" while N problems of the readiness check are left (0 hides it)."""
+        self.btn_ready_warn.setVisible(count > 0)
+        self.btn_ready_warn.setText(f"⚠ {count}")
+        self.btn_ready_warn.setToolTip(tooltip)
+        self.btn_ready_warn.setAccessibleName(tooltip or f"⚠ {count}")
 
     def set_undo_go(self, label: str, tooltip: str = "", accessible: str = "") -> None:
         """Show "↶ Undo GO #5 · 12" (empty *label*: nothing to undo, the place stays empty)."""
