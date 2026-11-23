@@ -480,6 +480,13 @@ class _RemoteMixin:
             self._fire_cue_chain(next_idx)
 
     @Slot(int)
+    def _on_live_double_click_armed(self, row: int) -> None:
+        """Double-click in LIVE armed the cue as next instead of starting it."""
+        if 0 <= row < len(self._cues):
+            ref = format_cue_ref(row, self._cues[row])
+            self._status_label.setText(f"{ref} pronta — premi GO per avviarla (il doppio clic in LIVE non avvia)")
+
+    @Slot(int)
     def _on_live_row_double_clicked(self, row: int) -> None:
         if 0 <= row < len(self._cues):
             self._fire_cue_chain(row)

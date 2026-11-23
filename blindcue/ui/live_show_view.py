@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from PySide6.QtCore import QDateTime, QRect, Qt, QTimer, Signal
+from PySide6.QtCore import QDateTime, QRect, QSettings, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -110,6 +110,15 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
 
     link_ico = _LINK_ICONS.get(cue.follow_mode, "⏹")
     return " · ".join(parts) + f"  {link_ico}"
+
+
+DOUBLE_CLICK_FIRES_KEY = "live/double_click_fires"
+
+
+def live_double_click_fires() -> bool:
+    """True when a double-click on the live list should start the cue at once."""
+    value = QSettings("BlindCue", "BlindCue").value(DOUBLE_CLICK_FIRES_KEY, False)
+    return str(value).lower() in ("1", "true", "yes")
 
 
 class LiveCueTable(QTableWidget):
@@ -723,6 +732,7 @@ class LiveShowPanel(QWidget):
     panic_requested = Signal()
     fade_all_requested = Signal()
     break_loop_requested = Signal()
+    double_click_armed = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the live show panel with its drift-free show stopwatch."""
@@ -1153,8 +1163,18 @@ class LiveShowPanel(QWidget):
             self.cue_row_clicked.emit(row)
 
     def _on_table_double_clicked(self, row: int, _col: int) -> None:
-        if row >= 0:
+        """Double-click only arms the cue as next, unless the operator opted in.
+
+        A slip of the mouse must not start a cue during a show; GO, the
+        right-click "GO Forzato" and ``live/double_click_fires`` still can.
+        """
+        if row < 0:
+            return
+        if live_double_click_fires():
             self.cue_row_double_clicked.emit(row)
+        else:
+            self.cue_row_clicked.emit(row)
+            self.double_click_armed.emit(row)
 
     def _apply_pause_btn_style(self, *, paused: bool) -> None:
         is_mono = get_active_theme().is_monochrome
