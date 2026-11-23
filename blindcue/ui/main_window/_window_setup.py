@@ -220,6 +220,52 @@ class _WindowSetupMixin:
         QShortcut(QKeySequence("Ctrl+L"), self, self.toggle_live_mode)
         QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
+        self._install_focus_watch()
+
+    def _install_focus_watch(self) -> None:
+        """Warn in LIVE mode when the keyboard is not on the director window.
+
+        Space and Esc only reach BlindCue while this window (or one of its
+        dialogs) is active; a click on the projector output or on another
+        program silently takes them away.
+        """
+        self._focus_lost_shown = False
+        self._focus_check_timer = QTimer(self)
+        self._focus_check_timer.setSingleShot(True)
+        self._focus_check_timer.setInterval(300)
+        self._focus_check_timer.timeout.connect(self._update_focus_warning)
+        app = QApplication.instance()
+        if app is not None:
+            app.focusWindowChanged.connect(self._schedule_focus_check)
+            app.applicationStateChanged.connect(self._schedule_focus_check)
+
+    def _schedule_focus_check(self, *_args: object) -> None:
+        # Debounced: focus flips several times while dialogs open and close.
+        self._focus_check_timer.start()
+
+    def _keyboard_on_director(self) -> bool:
+        """True when the active window is this one or a dialog owned by it."""
+        widget = QApplication.activeWindow()
+        while widget is not None:
+            if widget is self:
+                return True
+            widget = widget.parentWidget()
+        return False
+
+    def _update_focus_warning(self) -> None:
+        lost = bool(getattr(self, "_live_mode", False)) and not self._keyboard_on_director()
+        if lost == getattr(self, "_focus_lost_shown", False):
+            return
+        self._focus_lost_shown = lost
+        if hasattr(self, "_live_show_panel"):
+            self._live_show_panel.set_focus_warning(lost)
+        if lost:
+            self._status_label.setText(
+                "⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue"
+            )
+            logger.warning("[FOCUS] Director window lost keyboard focus during LIVE")
+        else:
+            logger.info("[FOCUS] Keyboard back on the director window")
 
     def _is_text_input_focused(self) -> bool:
         focus_w = QApplication.focusWidget()
