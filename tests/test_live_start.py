@@ -276,8 +276,37 @@ def test_new_cue_goes_after_the_selected_one(window, tmp_path):
 
 
 def test_go_button_names_its_cue(window):
+    from models.cue import CueStatus
+
     window._cue_list.setCurrentRow(3)
-    assert window._btn_go.full_text() == "GO ▶ #4  c3"
+    for c in window._cues:      # the fixture's files do not exist: selecting marks them OFFLINE
+        c.status = CueStatus.LOADED
+    window._refresh_cue_list()
+    live_go = window._live_show_panel.btn_go
+    assert window._btn_go.full_text() == "▶ GO: #4 'c3'"
+    assert live_go.full_text() == "▶ GO: #4 'c3'" and not window._live_show_panel._go_warn
+
+    window._cues[3].status = CueStatus.OFFLINE          # the file is gone
+    window._refresh_cue_list()
+    assert window._btn_go.full_text() == "⚠ GO: #4 'c3' — file mancante"
+    assert window._live_show_panel._go_warn            # amber, never red
+
+    window._cues[3].status = CueStatus.LIVE             # GO would restart it
+    window._refresh_cue_list()
+    assert window._btn_go.full_text().startswith("↻ GO: #4 'c3'")
+
+    window._cues[3].status = CueStatus.LOADED
+    window._cues[0].exclusive = True                    # an exclusive cue holds the GO
+    window._cues[0].status = CueStatus.LIVE
+    window._refresh_cue_list()
+    assert window._btn_go.full_text().startswith("⏳ GO in attesa: 'c0'")
+
+    window._cues[0].status = CueStatus.LOADED
+    window._focus_lost_shown = True                     # keyboard in another window
+    window._update_go_button_text()
+    assert window._btn_go.full_text().startswith("⌨ GO: #4 'c3'")
+    window._focus_lost_shown = False
+
     window._cues = []
     window._refresh_cue_list(keep_selection=False)
     assert window._btn_go.full_text() == "GO (Next Cue) — [ SPAZIO ]"

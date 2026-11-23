@@ -67,7 +67,7 @@ from ui.cue_table import (
     paint_cue_row_decorations,
     paint_live_progress,
 )
-from ui.hold_button import HoldProgressButton
+from ui.hold_button import ElidedButton, HoldProgressButton
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_GO, get_active_theme
 
@@ -1076,7 +1076,8 @@ class LiveShowPanel(QWidget):
         self._apply_pause_btn_style(paused=False)
         tr_layout.addWidget(self.btn_pause_all)
 
-        self.btn_go = QPushButton("▶   GO  —  PROSSIMA CUE")
+        self.btn_go = ElidedButton("▶   GO  —  PROSSIMA CUE")
+        self._go_warn = False
         self.btn_go.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_go.setMinimumHeight(64)
         self.btn_go.setFont(QFont("sans-serif", 17, QFont.Weight.Bold))
@@ -1094,6 +1095,46 @@ class LiveShowPanel(QWidget):
         if self._sw_running:
             return self._sw_accum_sec + max(0.0, time.monotonic() - self._sw_started_mono)
         return self._sw_accum_sec
+
+    def set_go_label(self, text: str, warn: bool) -> None:
+        """GO says what it will do; anything but a plain start turns it amber (never red)."""
+        self.btn_go.set_full_text(text)
+        if warn != self._go_warn:
+            self._go_warn = warn
+            self._apply_go_style()
+
+    def _apply_go_style(self) -> None:
+        active_t = get_active_theme()
+        base = "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px;"
+        if active_t.is_monochrome:
+            border = "dashed" if self._go_warn else "solid"
+            self.btn_go.setStyleSheet(
+                f"QPushButton {{ background-color: #26272e; color: #ffffff; border: 2px {border} #ffffff; {base} }} "
+                "QPushButton:hover { background-color: #33343d; border-color: #ffffff; color: #ffffff; } "
+                "QPushButton:pressed { background-color: #18191f; }"
+            )
+        elif self._go_warn:
+            # Amber in every colour theme; the amber theme's GO is amber already,
+            # so its warning is the dark variant.
+            dark = active_t.theme_id == "warm_amber_studio"
+            bg, fg, bd = ("#3d2a06", "#fcd34d", "#f59e0b") if dark else ("#f59e0b", "#1c1203", "#fbbf24")
+            self.btn_go.setStyleSheet(
+                f"QPushButton {{ background-color: {bg}; color: {fg}; border: 2px solid {bd}; {base} }} "
+                "QPushButton:hover { border-color: #fde68a; } "
+                "QPushButton:pressed { background-color: #b45309; }"
+            )
+        elif active_t.theme_id == "warm_amber_studio":
+            self.btn_go.setStyleSheet(
+                f"QPushButton {{ background-color: #f59e0b; color: #151210; border: 1px solid #fbbf24; {base} }} "
+                "QPushButton:hover { background-color: #fbbf24; } "
+                "QPushButton:pressed { background-color: #b45309; }"
+            )
+        else:
+            self.btn_go.setStyleSheet(
+                f"QPushButton {{ background-color: {CLR_GO}; color: #04130a; border: none; {base} }} "
+                "QPushButton:hover { background-color: #69f0ae; } "
+                "QPushButton:pressed { background-color: #00c853; }"
+            )
 
     def set_focus_warning(self, visible: bool) -> None:
         """Show or hide the 'keyboard is elsewhere' banner."""
@@ -1463,37 +1504,20 @@ class LiveShowPanel(QWidget):
                 )
 
         # 6. GO and Loop Buttons
+        self._apply_go_style()
         if is_mono:
-            self.btn_go.setStyleSheet(
-                "QPushButton { background-color: #26272e; color: #ffffff; border: 2px solid #ffffff; "
-                "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; } "
-                "QPushButton:hover { background-color: #33343d; border-color: #ffffff; color: #ffffff; } "
-                "QPushButton:pressed { background-color: #18191f; }"
-            )
             self.btn_break_loop.setStyleSheet(
                 "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #525363; "
                 "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
                 "QPushButton:hover { background-color: #2d2f38; border-color: #a1a1aa; color: #ffffff; }"
             )
         elif active_t.theme_id == "warm_amber_studio":
-            self.btn_go.setStyleSheet(
-                "QPushButton { background-color: #f59e0b; color: #151210; border: 1px solid #fbbf24; "
-                "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; } "
-                "QPushButton:hover { background-color: #fbbf24; } "
-                "QPushButton:pressed { background-color: #b45309; }"
-            )
             self.btn_break_loop.setStyleSheet(
                 "QPushButton { background-color: #2b2420; color: #fef3c7; border: 1px solid #f59e0b; "
                 "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
                 "QPushButton:hover { background-color: #3d322a; }"
             )
         else:
-            self.btn_go.setStyleSheet(
-                f"QPushButton {{ background-color: {CLR_GO}; color: #04130a; border: none; "
-                f"border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px; }} "
-                f"QPushButton:hover {{ background-color: #69f0ae; }} "
-                f"QPushButton:pressed {{ background-color: #00c853; }}"
-            )
             self.btn_break_loop.setStyleSheet(
                 "QPushButton { background-color: #78350f; color: #fef3c7; border: 1px solid #f59e0b; "
                 "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 4px 8px; } "
@@ -1739,7 +1763,7 @@ class LiveShowPanel(QWidget):
                 self.lbl_standby_banner.setText(
                     f"PROSSIMA IN STANDBY:  #{standby_row + 1} {q_badge}'{sb_cue.name}'  {layer_badge} [{type_tag}]{extras_str}{notes_str}"
                 )
-                self.btn_go.setText(f"▶   GO:  {ref} '{sb_cue.name}'")
+                # The GO text (with its state) comes from the main window: set_go_label.
                 self.btn_go.setToolTip(
                     f"Esegui cue in Standby: {ref} '{sb_cue.name}'\n"
                     "Scorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]"
@@ -1747,7 +1771,6 @@ class LiveShowPanel(QWidget):
             else:
                 self.live_table.clearSelection()
                 self.lbl_standby_banner.setText("Nessuna cue pronta in scaletta")
-                self.btn_go.setText("▶   GO  —  PROSSIMA CUE")
                 self.btn_go.setToolTip(
                     "Esegui prossima cue\n"
                     "Scorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]"

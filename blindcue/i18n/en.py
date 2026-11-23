@@ -1952,4 +1952,14 @@ T: dict[str, str] = {
         '⚠ Press ESC again within 0.6 s for PANIC (0 ms)',
     "Aggiunta dopo '{}', alla fine della catena Simultanea / Auto-GO o del gruppo":
         "Added after '{}', at the end of the Simultaneous / Auto-GO chain or group",
+    '▶ GO: {}':
+        '▶ GO: {}',
+    '⌨ GO: {} — clicca qui: la tastiera è altrove':
+        '⌨ GO: {} — click here: the keyboard is in another window',
+    '⚠ GO: {} — file mancante':
+        '⚠ GO: {} — file missing',
+    "⏳ GO in attesa: '{}' è esclusiva — Ctrl+Spazio per forzare":
+        "⏳ GO waits: '{}' is exclusive — Ctrl+Space forces it",
+    '↻ GO: {} — è già in onda, riparte':
+        '↻ GO: {} — already playing, restarts',
 }
