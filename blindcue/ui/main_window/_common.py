@@ -54,6 +54,7 @@ from engine.show_engine import (
     ShowEngine,
     chain_indices,
     demote_live_on_layer as _demote_live_on_layer,
+    insert_position,
     live_start_choices,
 )
 from models.cue import (

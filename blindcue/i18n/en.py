@@ -1950,4 +1950,6 @@ T: dict[str, str] = {
         'From the selected cue: {}',
     '⚠ Premi di nuovo ESC entro 0.6s per PANIC (0ms)':
         '⚠ Press ESC again within 0.6 s for PANIC (0 ms)',
+    "Aggiunta dopo '{}', alla fine della catena Simultanea / Auto-GO o del gruppo":
+        "Added after '{}', at the end of the Simultaneous / Auto-GO chain or group",
 }

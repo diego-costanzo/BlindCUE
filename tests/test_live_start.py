@@ -63,6 +63,65 @@ def test_out_of_range_rows_are_safe():
     assert live_start_choices(5, 3, 9) == [(START_FROM_TOP, 0), (START_SELECTED, 3)]
 
 
+# ── Where a new cue goes ─────────────────────────────────────────────
+
+def _cues(*specs):
+    """specs: (cue_id, follow_mode, parent_id, is_group)."""
+    from models.cue import Cue, MediaType
+
+    out = []
+    for cid, follow, parent, group in specs:
+        c = Cue(name=f"c{cid}", media_type=MediaType.GROUP if group else MediaType.AUDIO,
+                file_path="" if group else f"/x{cid}.wav", cue_id=cid)
+        c.follow_mode = follow
+        c.parent_id = parent
+        out.append(c)
+    return out
+
+
+def test_insert_after_a_plain_cue_and_at_the_end():
+    from engine.show_engine import insert_position
+
+    cues = _cues((1, "MANUAL", None, False), (2, "MANUAL", None, False))
+    assert insert_position(cues, 0) == (1, None)
+    assert insert_position(cues, -1) == (2, None)
+
+
+def test_insert_skips_a_simultaneous_and_auto_go_chain():
+    from engine.show_engine import insert_position
+
+    cues = _cues((1, "SIMULTANEOUS", None, False), (2, "AUTO_FOLLOW", None, False),
+                 (3, "MANUAL", None, False), (4, "MANUAL", None, False))
+    assert insert_position(cues, 0) == (3, None)
+    assert insert_position(cues, 1) == (3, None)
+    assert insert_position(cues, 2) == (3, None)
+
+
+def test_insert_after_a_group_goes_after_its_children():
+    from engine.show_engine import insert_position
+
+    cues = _cues((1, "MANUAL", None, True), (2, "MANUAL", 1, False), (3, "MANUAL", 1, False),
+                 (4, "MANUAL", None, False))
+    assert insert_position(cues, 0) == (3, None)
+
+
+def test_insert_after_a_child_stays_in_its_group():
+    from engine.show_engine import insert_position
+
+    cues = _cues((1, "MANUAL", None, True), (2, "SIMULTANEOUS", 1, False), (3, "MANUAL", 1, False),
+                 (4, "MANUAL", None, False))
+    assert insert_position(cues, 2) == (3, 1)
+    assert insert_position(cues, 1) == (3, 1)     # after the chain, still inside the group
+
+
+def test_a_chain_of_groups_is_skipped_whole():
+    from engine.show_engine import insert_position
+
+    cues = _cues((1, "SIMULTANEOUS", None, True), (2, "MANUAL", 1, False),
+                 (3, "MANUAL", None, True), (4, "MANUAL", 3, False), (5, "MANUAL", None, False))
+    assert insert_position(cues, 0) == (4, None)
+
+
 # ── Director window ──────────────────────────────────────────────────
 
 @pytest.fixture(scope="module")
@@ -195,6 +254,25 @@ def test_new_show_forgets_where_live_was_left(window):
     window._is_modified = False
     window._on_new_show()
     assert window._live_resume_id is None
+
+
+def test_new_cue_goes_after_the_selected_one(window, tmp_path):
+    from models.cue import Cue, FollowMode, MediaType
+
+    new_file, late_file = tmp_path / "n.wav", tmp_path / "l.wav"
+    new_file.write_bytes(b"x")       # validate() wants the file to exist
+    late_file.write_bytes(b"x")
+    window._cue_list.setCurrentRow(1)
+    window._append_new_cue(Cue(name="new", media_type=MediaType.AUDIO, file_path=str(new_file)))
+    assert [c.name for c in window._cues][:4] == ["c0", "c1", "new", "c2"]
+    assert window._selected_cue().name == "new"
+    assert window._inspector.edit_cue_name.text() == "new"   # the inspector follows
+
+    window._cues[3].follow_mode = FollowMode.SIMULTANEOUS.value   # c2 pulls c3 into its GO
+    window._cue_list.setCurrentRow(3)
+    window._append_new_cue(Cue(name="late", media_type=MediaType.AUDIO, file_path=str(late_file)))
+    assert [c.name for c in window._cues][3:6] == ["c2", "c3", "late"]
+    assert "fine della catena" in window._status_label.text()
 
 
 def test_go_button_names_its_cue(window):
