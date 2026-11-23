@@ -369,6 +369,7 @@ class Cue:
     pre_delay: float = 0.0
     post_delay: float = 0.0
     follow_mode: str = FollowMode.MANUAL.value
+    exclusive: bool = False  # while LIVE, a manual GO is refused (Ctrl+GO forces it)
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
     parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
@@ -550,6 +551,7 @@ class Cue:
             "pre_delay": round(float(self.pre_delay), 3),
             "post_delay": round(float(self.post_delay), 3),
             "follow_mode": self.follow_mode,
+            "exclusive": self.exclusive,
             "color": _sanitize_hex_color(self.color),
             "parent_id": self.parent_id,
             "group_mode": self.group_mode,
@@ -625,6 +627,7 @@ class Cue:
             hold_time=_safe_float(data.get("hold_time", 0.0), 0.0, min_val=0.0),
             pre_delay=_safe_float(data.get("pre_delay", 0.0), 0.0, min_val=0.0),
             post_delay=_safe_float(data.get("post_delay", 0.0), 0.0, min_val=0.0),
+            exclusive=bool(data.get("exclusive", False)),
             follow_mode=(
                 data.get("follow_mode", FollowMode.MANUAL.value)
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES

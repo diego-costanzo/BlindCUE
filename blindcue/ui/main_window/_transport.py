@@ -41,6 +41,38 @@ def read_fade_all_sec() -> float:
 
 
 class _TransportMixin:
+    def _exclusive_blocker(self) -> Cue | None:
+        """The live cue marked exclusive that refuses a manual GO, if any."""
+        return next(
+            (c for c in self._cues if getattr(c, "exclusive", False) and c.status == CueStatus.LIVE),
+            None,
+        )
+
+    def _manual_go_allowed(self) -> bool:
+        """Gate shared by every manual GO: exclusive cue first, then the double-GO guard.
+
+        A forced GO (Ctrl+Space) skips the exclusive check only.
+        """
+        forced = bool(getattr(self, "_go_force_once", False))
+        self._go_force_once = False
+        if not forced:
+            blocker = self._exclusive_blocker()
+            if blocker is not None:
+                self._status_label.setText(
+                    f"GO bloccato: '{blocker.name}' è esclusiva ed è in onda — Ctrl+Spazio per forzare"
+                )
+                logger.info("[GO] Refused: exclusive cue #%d is live", blocker.cue_id)
+                return False
+        return self._go_guard_allows()
+
+    @Slot()
+    def _on_go_forced(self) -> None:
+        """Ctrl+Space: GO even while an exclusive cue is live."""
+        if self._is_text_input_focused():
+            return
+        self._go_force_once = True
+        self._on_go()
+
     def _go_guard_allows(self) -> bool:
         """Swallow a second GO that arrives within the guard window.
 
@@ -73,7 +105,7 @@ class _TransportMixin:
         if not self._cues:
             self._status_label.setText("Scaletta vuota — Aggiungi prima dei file multimediali")
             return
-        if not self._go_guard_allows():
+        if not self._manual_go_allowed():
             return
 
         if hasattr(self, "_earcon_mgr"):

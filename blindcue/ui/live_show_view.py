@@ -125,6 +125,7 @@ class LiveCueTable(QTableWidget):
     """Specialized Live Show table with direct keyboard navigation, context actions, and click signals."""
 
     go_requested = Signal()
+    force_go_requested = Signal()
     panic_requested = Signal()
     standby_selected = Signal(int)
     fire_row_requested = Signal(int)
@@ -140,7 +141,10 @@ class LiveCueTable(QTableWidget):
         """Keyboard shortcuts on the live list (GO, arrows). ESC propagates to MainWindow double-ESC guard."""
         key = event.key()
         if key == Qt.Key.Key_Space:
-            self.go_requested.emit()
+            if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                self.force_go_requested.emit()
+            else:
+                self.go_requested.emit()
             event.accept()
             return
         if key == Qt.Key.Key_Escape:
@@ -725,6 +729,7 @@ class LiveShowPanel(QWidget):
 
     exit_live_mode_requested = Signal()
     go_requested = Signal()
+    force_go_requested = Signal()
     cue_row_clicked = Signal(int)
     cue_row_double_clicked = Signal(int)
     group_collapse_toggled = Signal(int)
@@ -929,6 +934,7 @@ class LiveShowPanel(QWidget):
         self.live_table.cellClicked.connect(self._on_table_clicked)
         self.live_table.cellDoubleClicked.connect(self._on_table_double_clicked)
         self.live_table.go_requested.connect(self.go_requested)
+        self.live_table.force_go_requested.connect(self.force_go_requested)
         self.live_table.panic_requested.connect(self.panic_requested)
         self.live_table.standby_selected.connect(self.cue_row_clicked)
         self.live_table.fire_row_requested.connect(self.cue_row_double_clicked)

@@ -592,6 +592,15 @@ class CueInspectorPanel(QGroupBox):
             self._follow_buttons[mode_val] = btn
             seq_row.addWidget(btn, 1)
         l3.addLayout(seq_row)
+        self.chk_exclusive = QCheckBox("⛔ Esclusiva: blocca il GO finché è in onda")
+        self.chk_exclusive.setToolTip(
+            "Mentre questa cue è in onda il GO manuale viene rifiutato (anche da remoto), "
+            "così un GO dato per errore non la copre. Ctrl+Spazio forza comunque il GO.\n"
+            "Attenzione: un'immagine senza durata resta in onda finché non viene fermata."
+        )
+        self.chk_exclusive.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.chk_exclusive.toggled.connect(lambda _c: self._emit_change("exclusive"))
+        l3.addWidget(self.chk_exclusive)
         lay.addWidget(c3)
         lay.addStretch()
 
@@ -2248,6 +2257,7 @@ class CueInspectorPanel(QGroupBox):
                 self.set_output_target_checked(getattr(cue, "output_target", "A"))
                 self.set_color_silent(getattr(cue, "color", ""))
                 self.set_follow_mode_silent(cue.follow_mode, enabled=True)
+                self.chk_exclusive.setChecked(bool(getattr(cue, "exclusive", False)))
                 self._populate_media_fields(cue)
         finally:
             self._updating = False
@@ -2320,6 +2330,7 @@ class CueInspectorPanel(QGroupBox):
             self.set_output_target_checked(common_target)
             self.set_color_silent(common_color)
             self.set_follow_mode_silent(common_mode, enabled=True)
+            self.chk_exclusive.setChecked(all(getattr(c, "exclusive", False) for c in cues))
             self._populate_media_fields(lead)
         finally:
             self._updating = False
@@ -2341,6 +2352,7 @@ class CueInspectorPanel(QGroupBox):
         if new_name:
             cue.name = new_name
         cue.notes = self.edit_cue_notes.text().strip()
+        cue.exclusive = self.chk_exclusive.isChecked()
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -2440,7 +2452,9 @@ class CueInspectorPanel(QGroupBox):
         }
 
         for cue in cues:
-            if field_key == "pos_x":
+            if field_key == "exclusive":
+                cue.exclusive = self.chk_exclusive.isChecked()
+            elif field_key == "pos_x":
                 cue.position_x = round(self.spin_pos_x.value(), 3)
             elif field_key == "pos_y":
                 cue.position_y = round(self.spin_pos_y.value(), 3)
