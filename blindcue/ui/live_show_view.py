@@ -213,7 +213,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
     # so that "stop" does not light up "stopniowo" and "wait" not "awaiting".
     _URGENT_NOTES_RE = re.compile(
         r"\b(?:" + "|".join(re.escape(k) for k in _URGENT_NOTES_KEYWORDS)
-        + r"|UWAGA|(?:PO)?CZEKAJ\w*|STOP|CIEMNO(?:ŚĆ)?|NIEBEZPIECZ\w*|ALARM|AWARI\w*|PILN[EI]E?"
+        + r"|UWAGA|(?:PO)?CZEKAJ\w*|STOP|CIEMNO(?:Ś\w*)?|NIEBEZPIECZ\w*|ALARM|AWARI\w*|PILN[EI]E?"
         + r"|WARNING|DANGER|WAIT|BLACKOUT|EMERGENCY|ALERT|URGENT|CAUTION)\b"
     )
 

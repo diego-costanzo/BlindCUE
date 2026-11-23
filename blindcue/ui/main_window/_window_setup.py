@@ -179,7 +179,7 @@ class _WindowSetupMixin:
         if cue.status == CueStatus.OFFLINE:
             return f"⚠ GO: {target} — file mancante", True
         blocker = self._exclusive_blocker()
-        if blocker is not None and blocker is not cue:
+        if blocker is not None:  # _manual_go_allowed refuses every GO meanwhile
             return f"⏳ GO in attesa: '{blocker.name}' è esclusiva — Ctrl+Spazio per forzare", True
         if cue.status == CueStatus.LIVE:
             return f"↻ GO: {target} — è già in onda, riparte", True
@@ -313,11 +313,19 @@ class _WindowSetupMixin:
     def _on_escape_pressed(self) -> None:
         if hasattr(self, "_cue_list") and self._cue_list.state() == QAbstractItemView.State.EditingState:
             return
+        if not self._live_mode and self._is_text_input_focused():
+            # Esc in an editor field only leaves the field: it never counts
+            # towards PANIC there (people press Esc to back out of typing).
+            self._last_esc_press_mono = 0.0
+            self._cue_list.setFocus()
+            return
         # Esc twice is PANIC in every view: the emergency key must not depend
-        # on the mode (a rehearsal run from the editor needs it too).
+        # on the mode (a rehearsal run from the editor needs it too). In the
+        # editor only while something plays or waits: there is nothing to
+        # stop otherwise, and PANIC would black out the projector.
         now = time.monotonic()
         last = getattr(self, "_last_esc_press_mono", 0.0)
-        if last > 0.0 and (now - last) <= 0.6:
+        if last > 0.0 and (now - last) <= 0.6 and (self._live_mode or self._show_running()):
             self._last_esc_press_mono = 0.0
             self._on_panic()
             return

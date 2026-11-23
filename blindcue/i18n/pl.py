@@ -916,7 +916,7 @@ T: dict[str, str] = {
     'Layer / Stato':
         'Warstwa / stan',
     '🔒\nBLOCCO\nLAYER\n(Tieni 1,2s)':
-        '🔒\nBLOKADA\nWARSTW\n(1,2 s)',
+        '🔒\nBLOKADA\nWARSTW\n(przytrzymaj\n1,2 s)',
     '🔓\nLAYER\nATTIVI\n(Click = 🔒)':
         '🔓\nWARSTWY\nAKTYWNE\n(klik = 🔒)',
     '▶  RIPRENDI TUTTO  [IN PAUSA]':
@@ -1236,7 +1236,7 @@ T: dict[str, str] = {
     'Svuota elenco recenti':
         'Wyczyść listę ostatnich',
     '🎚 Jam: OFF (Tieni 5s)':
-        '🎚 Jam: WYŁ. (5 s)',
+        '🎚 Jam: WYŁ. (przytrzymaj 5 s)',
     '🎚 Jam Mode: ATTIVO':
         '🎚 Tryb jam: WŁ.',
     '{}. {}  (non trovato)':

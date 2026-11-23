@@ -106,8 +106,11 @@ def insert_position(cues: list[Cue], selected_row: int) -> tuple[int, int | None
         end = block_end(cues, i)
         nxt = end + 1
         tied = cues[i].follow_mode != FollowMode.MANUAL.value
-        if not tied or nxt >= n or cues[nxt].parent_id != parent:
+        if not tied or nxt >= n:
             return end + 1, parent
+        # Ties work by position: a last child tied to the row after its group
+        # is tied to that row, so the chain is followed out of the group.
+        parent = cues[nxt].parent_id
         i = nxt
 
 

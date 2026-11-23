@@ -545,6 +545,28 @@ def test_released_loop_scene_ends_after_its_pass(window):
     window._fire_cue_chain(0)                                           # the scene runs again
     assert 90 not in window._released_groups
 
+    # released while its last child plays: the GO goes past the scene, not back to a
+    window._fire_cue_chain(2)                                           # b fires: GO wraps to a
+    assert window._go_target_index() == 1
+    assert window.release_loop_scene_of(b) is True
+    assert window._go_target_index() == 3
+    window._fire_cue_chain(1)                                           # a by hand: loops again
+    assert 90 not in window._released_groups
+    assert window.release_loop_scene_of(a) is True
+    window._fire_cue_chain(2)                                           # last child after a release
+    assert window._go_target_index() == 3                               # no wrap to a
+
+
+def test_go_label_waits_when_the_target_is_the_exclusive_cue(window):
+    excl = _media(95)
+    excl.exclusive = True
+    window._cues = [excl]
+    window._refresh_cue_list()
+    window._cue_list.setCurrentRow(0)
+    excl.status = CueStatus.LIVE
+    window._update_go_button_text()
+    assert window._go_label()[0].startswith("⏳ GO in attesa")
+
 
 def test_group_studio_keeps_action_cues_as_actions(window):
     """The group timeline studio shows actions as ACT and writes back only their start."""

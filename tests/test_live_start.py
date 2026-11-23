@@ -114,6 +114,16 @@ def test_insert_after_a_child_stays_in_its_group():
     assert insert_position(cues, 1) == (3, 1)     # after the chain, still inside the group
 
 
+def test_a_chain_leaving_a_group_is_followed_outside():
+    from engine.show_engine import insert_position
+
+    # the last child is tied to the row after its group: inserting there would split them
+    cues = _cues((1, "MANUAL", None, True), (2, "MANUAL", 1, False), (3, "AUTO_FOLLOW", 1, False),
+                 (4, "MANUAL", None, False), (5, "MANUAL", None, False))
+    assert insert_position(cues, 2) == (4, None)
+    assert insert_position(cues, 1) == (2, 1)       # an untied child: right after it, in the group
+
+
 def test_a_chain_of_groups_is_skipped_whole():
     from engine.show_engine import insert_position
 
@@ -251,9 +261,22 @@ def test_selection_moved_in_design_offers_resume(window, answer):
 
 def test_new_show_forgets_where_live_was_left(window):
     window._live_resume_id = 7003
+    window._released_groups.add(7001)
     window._is_modified = False
     window._on_new_show()
     assert window._live_resume_id is None
+    assert window._released_groups == set()
+
+
+def test_resume_follows_the_show_while_the_editor_is_open(window, answer):
+    window._cue_list.setCurrentRow(0)
+    window.set_live_mode(True)
+    window._cue_list.setCurrentRow(1)
+    window.set_live_mode(False)                    # LIVE left at #2
+    window._fire_cue_chain(1)                      # the show goes on (e.g. an Auto-GO)
+    assert window._go_target_index() == 2
+    window.set_live_mode(True)                     # back at the show's own position: no question
+    assert answer.asked == [] and window._go_target_index() == 2
 
 
 def test_new_cue_goes_after_the_selected_one(window, tmp_path):

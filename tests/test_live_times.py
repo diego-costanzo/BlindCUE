@@ -92,6 +92,22 @@ def test_waits_show_their_countdown():
     assert short_time_text(clocks.cue_time(9)) == "⏱-00:01"
 
 
+def test_a_wait_does_not_hide_the_cue_playing_on_its_layer():
+    """B waits in Pre-Delay on the layer where A still plays: both keep a clock."""
+    clocks = LiveClocks()
+    clocks.start(2, 7, timed=True)
+    clocks.progress(2, 10.0, start=0.0, end=60.0)
+    clocks.phase(2, 8, PHASE_PRE, 1.0, 4.0)          # B waits
+    clocks.progress(2, 11.0, start=0.0, end=60.0)    # A's position goes on
+    assert clocks.cue_time(7).remaining == 49.0
+    assert clocks.cue_time(8).phase == PHASE_PRE
+    clocks.start(2, 8, timed=True)                   # B starts and replaces A
+    assert clocks.cue_time(7) is None and clocks.cue_time(8).phase == ""
+    clocks.phase(2, 9, PHASE_PRE, 0.0, 2.0)
+    clocks.forget_cues({8})                          # C's start was cancelled
+    assert clocks.cue_ids() == {8}
+
+
 def test_picture_without_hold_time_has_no_clock():
     clocks = LiveClocks()
     clocks.start(1, 4, timed=False)
@@ -194,6 +210,31 @@ def test_warning_only_when_the_next_go_is_manual(window):
     window._cues[0].follow_mode = FollowMode.AUTO_FOLLOW.value
     window._on_live_clock_tick()
     assert not window._live_show_panel.live_table.item(0, 4).data(ROLE_LIVE_WARN)
+
+
+def test_no_warning_when_a_cascade_group_goes_on_by_itself(window):
+    from models.cue import Cue, GroupMode, MediaType
+    from ui.cue_table import ROLE_LIVE_WARN
+
+    grp = Cue(name="g", media_type=MediaType.GROUP, file_path="", cue_id=8100)
+    grp.group_mode = GroupMode.SEQUENCE.value
+    window._cues[0].parent_id = 8100
+    window._cues.insert(0, grp)
+    window._refresh_cue_list(keep_selection=False)
+    _on_air(window, 1, 57.0, 60.0)                # the child ends in 3 s, the group goes on
+    window._on_live_clock_tick()
+    assert not window._live_show_panel.live_table.item(1, 4).data(ROLE_LIVE_WARN)
+
+
+def test_a_finished_group_is_not_a_running_show(window):
+    from models.cue import Cue, CueStatus, MediaType
+
+    grp = Cue(name="g", media_type=MediaType.GROUP, file_path="", cue_id=8101)
+    grp.status = CueStatus.LIVE                   # a container stays LIVE after its GO
+    window._cues.insert(0, grp)
+    assert not window._show_running()
+    window._cues[1].status = CueStatus.LIVE
+    assert window._show_running()
 
 
 def test_cue_off_air_clears_and_the_clock_stops(window):

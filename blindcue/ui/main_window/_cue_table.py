@@ -235,8 +235,14 @@ class _CueTableMixin:
             self._update_focus_warning()
 
     def _show_running(self) -> bool:
-        """Something plays or waits for its start (pre-delay, Auto-GO)."""
-        return any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags)
+        """Something plays or waits for its start (pre-delay, Auto-GO).
+
+        Group containers do not count: one stays LIVE after its GO until a
+        stop clears its layer, even when its children have all ended.
+        """
+        return any(
+            c.status == CueStatus.LIVE and c.media_type != MediaType.GROUP for c in self._cues
+        ) or bool(self._live_phase_tags)
 
     def _confirm_live_start(self) -> bool:
         """Ask where the GO starts when it would not continue where the show was.

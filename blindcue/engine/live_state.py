@@ -52,10 +52,14 @@ class LiveClocks:
 
     def __init__(self) -> None:
         self._layers: dict[int, LayerClock] = {}
+        # A cue waiting in its Pre-Delay on a layer where another cue still
+        # plays: kept apart, so the playing cue keeps its own clock.
+        self._waits: dict[int, LayerClock] = {}
 
     def start(self, layer: int, cue_id: int, timed: bool, duration: float = 0.0) -> None:
         """A cue went on air on *layer*: its clock starts at zero."""
         self._layers[layer] = LayerClock(cue_id=cue_id, timed=timed, end=max(0.0, float(duration)))
+        self._waits.pop(layer, None)
 
     def progress(
         self,
@@ -79,34 +83,43 @@ class LiveClocks:
 
     def phase(self, layer: int, cue_id: int, phase: str, elapsed: float, total: float) -> None:
         """A Pre/Post-Delay wait of *cue_id* on *layer*."""
-        clock = self._layers.get(layer)
+        store = self._layers
+        clock = store.get(layer)
+        if phase == PHASE_PRE and clock is not None and clock.cue_id != cue_id:
+            store = self._waits  # another cue still plays there
+            clock = store.get(layer)
         if clock is None or clock.cue_id != cue_id:
             clock = LayerClock(cue_id=cue_id, timed=False)
-            self._layers[layer] = clock
+            store[layer] = clock
         clock.phase = phase
         clock.wait_elapsed = max(0.0, float(elapsed))
         clock.wait_total = max(0.0, float(total))
 
     def clear(self, layer: int) -> None:
         self._layers.pop(layer, None)
+        self._waits.pop(layer, None)
 
     def clear_all(self) -> None:
         self._layers.clear()
+        self._waits.clear()
 
     def is_empty(self) -> bool:
-        return not self._layers
+        return not self._layers and not self._waits
 
     def cue_ids(self) -> set[int]:
-        return {c.cue_id for c in self._layers.values()}
+        return {c.cue_id for c in (*self._layers.values(), *self._waits.values())}
 
     def forget_cues(self, keep: set[int]) -> None:
         """Drop the clocks of cues that are no longer on air or waiting."""
-        for layer in [lyr for lyr, c in self._layers.items() if c.cue_id not in keep]:
-            del self._layers[layer]
+        for store in (self._layers, self._waits):
+            for layer in [lyr for lyr, c in store.items() if c.cue_id not in keep]:
+                del store[layer]
 
     def cue_time(self, cue_id: int) -> CueTime | None:
         """Timing of *cue_id*, or None when nothing measurable is known."""
-        clock = next((c for c in self._layers.values() if c.cue_id == cue_id), None)
+        clock = next(
+            (c for c in (*self._layers.values(), *self._waits.values()) if c.cue_id == cue_id), None
+        )
         if clock is None:
             return None
         if clock.phase in (PHASE_PRE, PHASE_POST):
