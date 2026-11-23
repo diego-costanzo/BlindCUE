@@ -18,6 +18,7 @@ import selectors
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from pathlib import Path
 
@@ -178,12 +179,27 @@ class WaveformAnalyzer(QRunnable):
                 timed_out = False
 
                 sel: selectors.BaseSelector | None = None
+                watchdog: threading.Timer | None = None
+                expired: list[bool] = []
                 try:
-                    if hasattr(stdout, "fileno"):
+                    # On Windows select() works on sockets only: a pipe fails
+                    # with WinError 10038 and no waveform was ever drawn.
+                    if os.name != "nt" and hasattr(stdout, "fileno"):
                         sel = selectors.DefaultSelector()
                         sel.register(stdout, selectors.EVENT_READ)
                 except Exception:
                     sel = None
+                if sel is None:
+                    # Blocking reads: the deadline kills ffmpeg, which ends the read.
+                    def _expire(p=proc) -> None:
+                        expired.append(True)
+                        try:
+                            p.kill()
+                        except Exception:
+                            pass
+                    watchdog = threading.Timer(_DECODE_TIMEOUT_SEC, _expire)
+                    watchdog.daemon = True
+                    watchdog.start()
 
                 try:
                     while True:
@@ -240,7 +256,11 @@ class WaveformAnalyzer(QRunnable):
                             sel.close()
                         except Exception:
                             pass
+                    if watchdog is not None:
+                        watchdog.cancel()
 
+                if expired:
+                    timed_out = True
                 if timed_out:
                     proc.kill()
                     try:
