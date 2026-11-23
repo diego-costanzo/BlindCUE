@@ -1940,8 +1940,6 @@ T: dict[str, str] = {
         'GO: starts the cue named on the button [SPACE]',
     'Da dove parte lo spettacolo?':
         'Where does the show start?',
-    "Il GO non partirebbe dall'inizio né dal punto in cui avevi lasciato LIVE.\nDa quale cue deve partire?":
-        'GO would start neither from the top nor where you left LIVE.\nWhich cue should it start from?',
     "Dall'inizio: {}":
         'From the top: {}',
     'Riprendi da: {}':
@@ -1954,12 +1952,18 @@ T: dict[str, str] = {
         "Added after '{}', at the end of the Simultaneous / Auto-GO chain or group",
     '▶ GO: {}':
         '▶ GO: {}',
-    '⌨ GO: {} — clicca qui: la tastiera è altrove':
-        '⌨ GO: {} — click here: the keyboard is in another window',
-    '⚠ GO: {} — file mancante':
-        '⚠ GO: {} — file missing',
-    "⏳ GO in attesa: '{}' è esclusiva — Ctrl+Spazio per forzare":
-        "⏳ GO waits: '{}' is exclusive — Ctrl+Space forces it",
-    '↻ GO: {} — è già in onda, riparte':
-        '↻ GO: {} — already playing, restarts',
+    "La cue selezionata non è l'inizio della scaletta.\nDa quale cue deve partire il GO?":
+        'The selected cue is not the top of the list.\nWhich cue should GO start from?',
+    'La selezione è cambiata da quando hai lasciato LIVE.\nDa quale cue deve partire il GO?':
+        'The selection changed since you left LIVE.\nWhich cue should GO start from?',
+    'File non supportati, ignorati: {}':
+        'Unsupported files skipped: {}',
+    '⌨ Clicca qui: la tastiera è altrove — GO: {}':
+        '⌨ Click here: the keyboard is in another window — GO: {}',
+    '⚠ File mancante — GO: {}':
+        '⚠ File missing — GO: {}',
+    "⏳ GO in attesa (Ctrl+Spazio per forzare): '{}' è esclusiva":
+        "⏳ GO waits (Ctrl+Space forces it): '{}' is exclusive",
+    '↻ Già in onda, riparte — GO: {}':
+        '↻ Already playing, restarts — GO: {}',
 }

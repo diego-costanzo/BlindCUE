@@ -342,7 +342,7 @@ class CueListPanel(QGroupBox):
             self.lbl_follow_hint.setStyleSheet("color: #94a3b8; font-size: 11px; border: none; background: transparent;")
         else:
             self.lbl_follow_hint.setText("Selezione multipla mista — clicca una modalità per applicarla a tutte")
-            self.lbl_follow_hint.setStyleSheet("color: #f59e0b; font-size: 9px; border: none; background: transparent;")
+            self.lbl_follow_hint.setStyleSheet("color: #f59e0b; font-size: 11px; border: none; background: transparent;")
 
     def set_follow_mode_checked(self, mode: str | None, *, enabled: bool = True) -> None:
         """Highlight the follow-mode button matching *mode*, without emitting.
@@ -358,7 +358,7 @@ class CueListPanel(QGroupBox):
             btn.blockSignals(False)
         if not enabled:
             self.lbl_follow_hint.setText("Seleziona una o più cue per scegliere Blocco / Auto-GO / Simultanea")
-            self.lbl_follow_hint.setStyleSheet("color: #475569; font-size: 9px; border: none; background: transparent;")
+            self.lbl_follow_hint.setStyleSheet("color: #94a3b8; font-size: 11px; border: none; background: transparent;")
         else:
             self._refresh_follow_caption()
 

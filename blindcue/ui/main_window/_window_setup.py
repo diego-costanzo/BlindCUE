@@ -166,8 +166,9 @@ class _WindowSetupMixin:
         """What the next GO will do, in words, and whether that is not a plain start.
 
         The state is said in text and an icon first (colour comes last and is
-        never red). Order: keyboard elsewhere > the cue cannot play > GO held
-        by an exclusive cue > the cue already plays (GO restarts it) > ready.
+        never red), before the cue name: a long name is cut, the state never.
+        Order: keyboard elsewhere > the cue cannot play > GO held by an
+        exclusive cue > the cue already plays (GO restarts it) > ready.
         """
         if not self._cues:
             return "GO (Next Cue) — [ SPAZIO ]", False
@@ -175,14 +176,17 @@ class _WindowSetupMixin:
         cue = self._cues[row]
         target = f"{format_cue_ref(row, cue)} '{cue.name}'"
         if getattr(self, "_focus_lost_shown", False):
-            return f"⌨ GO: {target} — clicca qui: la tastiera è altrove", True
-        if cue.status == CueStatus.OFFLINE:
-            return f"⚠ GO: {target} — file mancante", True
+            return f"⌨ Clicca qui: la tastiera è altrove — GO: {target}", True
+        # The file itself, not the status: a failed GO leaves the cue LOADED.
+        if cue.status == CueStatus.OFFLINE or (
+            cue.media_type.has_file and not os.path.isfile(cue.file_path or "")
+        ):
+            return f"⚠ File mancante — GO: {target}", True
         blocker = self._exclusive_blocker()
         if blocker is not None:  # _manual_go_allowed refuses every GO meanwhile
-            return f"⏳ GO in attesa: '{blocker.name}' è esclusiva — Ctrl+Spazio per forzare", True
+            return f"⏳ GO in attesa (Ctrl+Spazio per forzare): '{blocker.name}' è esclusiva", True
         if cue.status == CueStatus.LIVE:
-            return f"↻ GO: {target} — è già in onda, riparte", True
+            return f"↻ Già in onda, riparte — GO: {target}", True
         return f"▶ GO: {target}", False
 
     def _update_go_button_text(self) -> None:

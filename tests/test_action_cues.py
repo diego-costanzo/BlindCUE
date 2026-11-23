@@ -557,8 +557,27 @@ def test_released_loop_scene_ends_after_its_pass(window):
     assert window._go_target_index() == 3                               # no wrap to a
 
 
-def test_go_label_waits_when_the_target_is_the_exclusive_cue(window):
+def test_auto_go_never_pulls_the_go_pointer_back(window):
+    """After the operator moved past a released Loop Scena, its last child's
+    Auto-GO must not send the GO back to the action that released it."""
+    grp = Cue(name="g", media_type=MediaType.GROUP, file_path="", cue_id=96)
+    grp.group_mode = GroupMode.LOOP.value
+    a, b = _media(97), _media(98)
+    a.parent_id = b.parent_id = 96
+    rel = _action(99, kind=ACTION_RELEASE)
+    after = _media(100)
+    window._cues = [grp, a, b, rel, after]
+    window._refresh_cue_list()
+    window._released_groups.add(96)
+    window._cue_list.setCurrentRow(4)          # the operator's GO is on "after"
+    window.trigger_auto_follow_from(a)          # a ends: b starts by itself
+    assert window._go_target_index() == 4
+
+
+def test_go_label_waits_when_the_target_is_the_exclusive_cue(window, tmp_path):
     excl = _media(95)
+    excl.file_path = str(tmp_path / "x.wav")
+    Path(excl.file_path).write_bytes(b"x")   # the label checks the file first
     excl.exclusive = True
     window._cues = [excl]
     window._refresh_cue_list()

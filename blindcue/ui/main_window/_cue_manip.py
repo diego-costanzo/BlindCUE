@@ -58,7 +58,8 @@ class _CueManipMixin:
         self._cues.insert(pos, cue)
         self._refresh_cue_list()
         self._cue_list.setCurrentRow(pos)
-        self._commit_undo_point()
+        if not getattr(self, "_undo_batch", False):
+            self._commit_undo_point()
         self._mark_modified(True)
         if 0 <= sel_row and pos != sel_row + 1:
             self._status_label.setText(
@@ -137,13 +138,24 @@ class _CueManipMixin:
         """
         if self._live_mode:
             return
+        media = [p for p in paths if self._detect_media_type(p) is not None]
+        skipped = [os.path.basename(p) for p in paths if p not in media]
         if 0 <= row < len(self._cues):
             self._cue_list.setCurrentRow(row)
         else:
             self._cue_list.clearSelection()
             self._cue_list.setCurrentCell(-1, -1)
-        for path in paths:
-            self._add_cue_from_file(path)
+        # One drop = one undo step, however many files it brings.
+        self._undo_batch = True
+        try:
+            for path in media:
+                self._add_cue_from_file(path)
+        finally:
+            self._undo_batch = False
+        if media:
+            self._commit_undo_point()
+        if skipped:
+            self._status_label.setText(f"File non supportati, ignorati: {', '.join(skipped)}")
 
     def _move_selected_cue(self, delta: int) -> None:
         sel_rows = self._selected_rows()

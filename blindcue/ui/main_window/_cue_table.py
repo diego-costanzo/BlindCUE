@@ -267,15 +267,16 @@ class _CueTableMixin:
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Icon.Question)
         box.setWindowTitle("Da dove parte lo spettacolo?")
-        box.setText(
-            "Il GO non partirebbe dall'inizio né dal punto in cui avevi lasciato LIVE.\n"
-            "Da quale cue deve partire?"
-        )
+        if resume_row is None:
+            box.setText("La cue selezionata non è l'inizio della scaletta.\nDa quale cue deve partire il GO?")
+        else:
+            box.setText("La selezione è cambiata da quando hai lasciato LIVE.\nDa quale cue deve partire il GO?")
         rows: dict[object, int] = {}
         for kind, row in choices:
             cue = self._cues[row]
+            name = cue.name if len(cue.name) <= 60 else cue.name[:59] + "…"
             btn = box.addButton(
-                labels[kind].format(f"{format_cue_ref(row, cue)} '{cue.name}'"),
+                labels[kind].format(f"{format_cue_ref(row, cue)} '{name}'"),
                 QMessageBox.ButtonRole.AcceptRole,
             )
             btn.setMinimumHeight(36)

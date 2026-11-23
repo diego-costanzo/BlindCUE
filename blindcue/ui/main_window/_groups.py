@@ -51,8 +51,14 @@ class _GroupsMixin:
             self._cues = new_cues
             target_row = insert_pos
         else:
-            curr = self._cue_list.currentRow()
-            target_row = curr + 1 if 0 <= curr < len(self._cues) else len(self._cues)
+            # An empty scene goes to the top level, after the scene (or the
+            # Simultanea/Auto-GO chain) the selection is in: never between a
+            # group header and its children.
+            top = self._anchor_row_and_cue()[0] if sel_rows else -1
+            while 0 <= top < len(self._cues) and self._cues[top].parent_id is not None:
+                parent_id = self._cues[top].parent_id
+                top = next((i for i, c in enumerate(self._cues) if c.cue_id == parent_id), -1)
+            target_row, _ = insert_position(self._cues, top)
             self._cues.insert(target_row, group_cue)
 
         self._refresh_cue_list(keep_selection=False)

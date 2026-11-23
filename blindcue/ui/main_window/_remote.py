@@ -561,7 +561,7 @@ class _RemoteMixin:
         if source_at is not None and target_at is not None and target_at > source_at:
             logger.info("[AUTO-GO] '%s' already started by hand: no second start", target.name)
             return
-        self._fire_cue_chain(next_idx)
+        self._fire_cue_chain(next_idx, auto=True)
 
     def release_loop_scene_of(self, cue: Cue | None) -> bool:
         """A release-loop action reached *cue*: its "Loop Scena" group ends after this pass.
@@ -661,6 +661,7 @@ class _RemoteMixin:
         self._updating_cue_list = False
 
         self._sync_inspector_header_and_text(row, cue)
+        self._update_go_button_text()  # the GO buttons name the cue
         if cue.status == CueStatus.LIVE:
             self._update_live_layer_label(cue, preserve_timing=True)
         self._commit_undo_point()

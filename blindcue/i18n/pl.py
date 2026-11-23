@@ -916,7 +916,7 @@ T: dict[str, str] = {
     'Layer / Stato':
         'Warstwa / stan',
     '🔒\nBLOCCO\nLAYER\n(Tieni 1,2s)':
-        '🔒\nBLOKADA\nWARSTW\n(przytrzymaj\n1,2 s)',
+        '🔒\nBLOKADA\nWARSTW\n(trzymaj\n1,2 s)',
     '🔓\nLAYER\nATTIVI\n(Click = 🔒)':
         '🔓\nWARSTWY\nAKTYWNE\n(klik = 🔒)',
     '▶  RIPRENDI TUTTO  [IN PAUSA]':
@@ -1236,7 +1236,7 @@ T: dict[str, str] = {
     'Svuota elenco recenti':
         'Wyczyść listę ostatnich',
     '🎚 Jam: OFF (Tieni 5s)':
-        '🎚 Jam: WYŁ. (przytrzymaj 5 s)',
+        '🎚 Jam: WYŁ. (trzymaj 5 s)',
     '🎚 Jam Mode: ATTIVO':
         '🎚 Tryb jam: WŁ.',
     '{}. {}  (non trovato)':
@@ -2154,8 +2154,6 @@ T: dict[str, str] = {
         'GO: uruchamia cue wskazany na przycisku [SPACJA]',
     'Da dove parte lo spettacolo?':
         'Od którego miejsca zacząć?',
-    "Il GO non partirebbe dall'inizio né dal punto in cui avevi lasciato LIVE.\nDa quale cue deve partire?":
-        'GO nie ruszyłby od początku ani od miejsca, w którym przerwano LIVE.\nOd którego cue ma ruszyć?',
     "Dall'inizio: {}":
         'Od początku: {}',
     'Riprendi da: {}':
@@ -2168,12 +2166,22 @@ T: dict[str, str] = {
         'Dodano za „{}” – na końcu łańcucha Razem / Auto-GO albo grupy',
     '▶ GO: {}':
         '▶ GO: {}',
-    '⌨ GO: {} — clicca qui: la tastiera è altrove':
-        '⌨ GO: {} — kliknij tutaj: klawiatura jest w innym oknie',
-    '⚠ GO: {} — file mancante':
-        '⚠ GO: {} — brak pliku',
-    "⏳ GO in attesa: '{}' è esclusiva — Ctrl+Spazio per forzare":
-        '⏳ GO czeka: „{}” jest wyłączny — Ctrl+Spacja wymusza',
-    '↻ GO: {} — è già in onda, riparte':
-        '↻ GO: {} — już gra, zacznie od nowa',
+    "La cue selezionata non è l'inizio della scaletta.\nDa quale cue deve partire il GO?":
+        'Zaznaczony cue nie jest początkiem listy.\nOd którego cue ma ruszyć GO?',
+    'La selezione è cambiata da quando hai lasciato LIVE.\nDa quale cue deve partire il GO?':
+        'Zaznaczenie zmieniło się od wyjścia z LIVE.\nOd którego cue ma ruszyć GO?',
+    'File non supportati, ignorati: {}':
+        'Pominięto nieobsługiwane pliki: {}',
+    'Unsupported File':
+        'Nieobsługiwany plik',
+    'Cannot determine media type for:':
+        'Nie można rozpoznać rodzaju pliku:',
+    '⌨ Clicca qui: la tastiera è altrove — GO: {}':
+        '⌨ Kliknij tutaj: klawiatura jest w innym oknie — GO: {}',
+    '⚠ File mancante — GO: {}':
+        '⚠ Brak pliku — GO: {}',
+    "⏳ GO in attesa (Ctrl+Spazio per forzare): '{}' è esclusiva":
+        '⏳ GO czeka (Ctrl+Spacja wymusza): „{}” jest wyłączny',
+    '↻ Già in onda, riparte — GO: {}':
+        '↻ Już gra, zacznie od nowa — GO: {}',
 }

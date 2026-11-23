@@ -152,10 +152,16 @@ class _TransportMixin:
             self._last_manual_go_cue = self._cues[idx]
         self._dismiss_note_on_go()
 
-    def _fire_cue_chain(self, start_idx: int) -> None:
-        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution."""
+    def _fire_cue_chain(self, start_idx: int, auto: bool = False) -> None:
+        """Fire cue at *start_idx*, advancing immediately across any SIMULTANEOUS chain or Group execution.
+
+        *auto*: started by an Auto-GO, not by the operator. Then the GO
+        pointer only moves forward: if the operator already set it past this
+        cue (e.g. to the cue after a released Loop Scena), it stays there.
+        """
         if not (0 <= start_idx < len(self._cues)):
             return
+        held_row = self._go_target_index() if auto else -1
 
         start_cue = self._cues[start_idx]
 
@@ -206,6 +212,8 @@ class _TransportMixin:
             if kids and not inside:
                 next_idx = next(
                     (i for i, c in enumerate(self._cues) if c is kids[0]), next_idx)
+        if held_row > last_fired_idx and held_row < len(self._cues):
+            next_idx = held_row  # an Auto-GO never pulls the GO pointer back
         # An action cue has already written what it did on the status line.
         is_action = first_cue.media_type == MediaType.ACTION
         if next_idx < len(self._cues):
