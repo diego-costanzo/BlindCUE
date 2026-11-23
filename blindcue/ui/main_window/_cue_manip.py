@@ -129,6 +129,22 @@ class _CueManipMixin:
     def _on_file_dropped(self, file_path: str) -> None:
         self._add_cue_from_file(file_path)
 
+    def _on_files_dropped_on_list(self, paths: list[str], row: int) -> None:
+        """Files dropped on the cue list go after the row they were dropped on.
+
+        Below the last row they go to the end. Each new cue becomes the
+        selected one, so several files keep the order they were dropped in.
+        """
+        if self._live_mode:
+            return
+        if 0 <= row < len(self._cues):
+            self._cue_list.setCurrentRow(row)
+        else:
+            self._cue_list.clearSelection()
+            self._cue_list.setCurrentCell(-1, -1)
+        for path in paths:
+            self._add_cue_from_file(path)
+
     def _move_selected_cue(self, delta: int) -> None:
         sel_rows = self._selected_rows()
         if len(sel_rows) != 1:
