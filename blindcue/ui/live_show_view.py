@@ -1010,6 +1010,7 @@ class LiveShowPanel(QWidget):
         self.live_table.verticalHeader().setDefaultSectionSize(38)
         self.live_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.live_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.live_table.setTabKeyNavigation(False)  # Tab leaves the list (no hidden cell cursor)
         self.live_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.live_table.setShowGrid(False)
         self.live_table.setWordWrap(False)
@@ -1237,7 +1238,7 @@ class LiveShowPanel(QWidget):
         self.btn_pause_all = QPushButton("⏸  PAUSA TUTTO")
         self.btn_pause_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pause_all.setFixedHeight(64)
-        self.btn_pause_all.setFixedWidth(220)
+        self.btn_pause_all.setFixedWidth(260)
         self.btn_pause_all.setToolTip(
             "Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) "
             "per ripartire poi dallo stesso istante"
@@ -1609,7 +1610,9 @@ class LiveShowPanel(QWidget):
 
     def _apply_pause_btn_style(self, *, paused: bool) -> None:
         is_mono = get_active_theme().is_monochrome
-        self.lbl_show_badge.setVisible(paused)  # the mode is on the tabs; the badge says "paused"
+        # The pause is said by the Pause button, the list and the cards; a badge
+        # in the top bar pushed the tabs over each other at 1280 px (QA C2a).
+        self.lbl_show_badge.setVisible(False)
         if paused:
             self.btn_pause_all.setText("▶  RIPRENDI TUTTO  [IN PAUSA]")
             if is_mono:

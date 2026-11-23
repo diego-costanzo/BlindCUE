@@ -14,6 +14,7 @@ class PinBar(QFrame):
 
     pin_entered = Signal(str)
     cancelled = Signal()
+    go_requested = Signal()   # Space while typing the PIN is still GO
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -31,6 +32,7 @@ class PinBar(QFrame):
         self.edit.setFixedWidth(90)
         self.edit.setValidator(QRegularExpressionValidator(QRegularExpression(r"\d{0,4}"), self.edit))
         self.edit.setAccessibleName("PIN")
+        self.edit.installEventFilter(self)
         self.edit.returnPressed.connect(lambda: self.pin_entered.emit(self.edit.text()))
         self.edit.textEdited.connect(lambda _t: self._idle.start())
         lay.addWidget(self.edit)
@@ -46,6 +48,17 @@ class PinBar(QFrame):
         self._idle.setInterval(PIN_IDLE_MS)
         self._idle.timeout.connect(self._cancel)
         self.hide()
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        from PySide6.QtCore import QEvent
+
+        if obj is self.edit and event.type() in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress) \
+                and event.key() == Qt.Key.Key_Space:
+            if event.type() == QEvent.Type.KeyPress and not event.isAutoRepeat():
+                self.go_requested.emit()
+            event.accept()
+            return True
+        return super().eventFilter(obj, event)
 
     def ask(self, prompt: str, hint: str) -> None:
         self.lbl_prompt.setText(prompt)

@@ -211,6 +211,8 @@ class _PersistenceMixin:
 
     @Slot()
     def _on_new_show(self) -> None:
+        if not self._change_allowed(EDIT_LIST):  # Ctrl+N next to Ctrl+M must not end a show
+            return
         if not self._confirm_save_if_modified(
             "Nuovo Show",
             "Ci sono modifiche non salvate nel progetto corrente.\nVuoi salvarle prima di creare un nuovo show?",
@@ -229,6 +231,9 @@ class _PersistenceMixin:
         self._live_resume_id = None
         self._played_ids.clear()
         self._released_groups.clear()  # cue ids repeat between shows
+        self._rehearsal_before.clear()
+        self._rehearsal_undo.clear()
+        self._held_auto_go.clear()
         self._checklist_ticks = {}
         self._current_project_path = None
         self._project_bundled = False
@@ -248,6 +253,8 @@ class _PersistenceMixin:
 
     @Slot()
     def _on_open_show(self) -> None:
+        if not self._change_allowed(EDIT_LIST):  # Ctrl+O must not replace a running show
+            return
         if not self._confirm_save_if_modified(
             "Apri Show",
             "Ci sono modifiche non salvate.\nVuoi salvare prima di aprire un altro show?",
@@ -324,6 +331,11 @@ class _PersistenceMixin:
             logger.warning("[PROJECT] Cannot clear recent projects: %s", exc)
 
     def _open_recent_project(self, file_path: str) -> None:
+        if not self._change_allowed(EDIT_LIST):
+            return
+        self._open_recent_project_now(file_path)
+
+    def _open_recent_project_now(self, file_path: str) -> None:
         """Open a project chosen from the recent list, guarding a missing file."""
         if not os.path.isfile(file_path):
             self._forget_recent_project(file_path)
@@ -352,6 +364,9 @@ class _PersistenceMixin:
             self._readiness_full_due = True  # another show: check everything again
             self._played_ids.clear()
             self._released_groups.clear()  # cue ids repeat between shows
+            self._rehearsal_before.clear()
+            self._rehearsal_undo.clear()
+            self._held_auto_go.clear()
             self._checklist_ticks = {}
             self._current_project_path = file_path
             # A show saved as a portable bundle must stay one on the next Ctrl+S.

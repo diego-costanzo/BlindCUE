@@ -711,6 +711,14 @@ def main() -> int:
         if layer_fire_gen.get(layer) != expected_gen:
             return
         lp = live_players.get(layer)
+        # Undo GO brings back a picture this cue pushes off its layer, and a
+        # sound or video from where it was cut off - taken now, when the cue
+        # really starts (after its Pre-Delay), and never for a cue the
+        # operator was already fading out.
+        before = active_live_cues.get(layer)
+        if before is not None and layer not in fading_layers and before.cue_id != cue.cue_id:
+            cut_pos = live_positions.get(layer) if before.media_type in (MediaType.AUDIO, MediaType.VIDEO) else None
+            main_win.note_replaced(cue, before, cut_pos)
         # A cue silenced on this layer while this one waited in Pre-Delay is
         # replaced now: this cue's own end must count again.
         fading_layers.discard(layer)
@@ -760,8 +768,9 @@ def main() -> int:
                     )
                     lp.load(
                         cue.file_path,
-                        start=cue.in_point if start_at is None else start_at,
+                        start=cue.in_point,
                         end=cue.out_point,
+                        resume_at=start_at,
                     )
                     lp.set_aspect_ratio(cue.aspect_ratio)
                     lp.set_scale(cue.scale)
@@ -772,7 +781,6 @@ def main() -> int:
                     if start_at is not None:
                         lp.ramp_level(0.0, 0.0)
                         lp.ramp_level(1.0, 1.0)
-                        _out_window(layer).set_layer_opacity(_local_layer(layer), 1.0)
                     logger.info("[MAIN] Video cue fired to live L%d: %s", layer, cue)
 
             elif cue.media_type == MediaType.AUDIO:
@@ -781,8 +789,9 @@ def main() -> int:
                     _clear_layer(layer)
                     lp.load(
                         cue.file_path,
-                        start=cue.in_point if start_at is None else start_at,
+                        start=cue.in_point,
                         end=cue.out_point,
+                        resume_at=start_at,
                     )
                     _apply_cue_automation(lp, cue, hot=False)
                     lp.set_loop(cue.loop, cue.loop_count)
@@ -1021,12 +1030,6 @@ def main() -> int:
             _fire_action_cue(cue)
             return
         layer = _effective_layer(cue)
-        # Undo GO brings back a picture this cue pushes off its layer, and a
-        # sound or video from where it was cut off.
-        before = active_live_cues.get(layer)
-        cut_pos = live_positions.get(layer) if before is not None and before.media_type in (
-            MediaType.AUDIO, MediaType.VIDEO) else None
-        main_win.note_replaced(cue, before, cut_pos)
         scheduler.cancel_layer(layer)
         cur_gen = layer_fire_gen.get(layer, 0) + 1
         layer_fire_gen[layer] = cur_gen
@@ -1051,6 +1054,10 @@ def main() -> int:
         by_id = {c.cue_id: c for c in main_win._cues}
         for step in steps:
             cue = by_id.get(step.cue_id)
+            if cue is not None and cue.media_type == MediaType.ACTION:
+                # What it did stays; a Pre-Delay or an Auto-GO wait still running does not.
+                _cancel_action_wait(cue.cue_id)
+                continue
             if cue is None or step.how in (undo_go.KEEP, undo_go.CONTAINER, undo_go.ENDED):
                 continue
             try:
@@ -1079,6 +1086,11 @@ def main() -> int:
                     gen = layer_fire_gen.get(layer, 0) + 1
                     layer_fire_gen[layer] = gen
                     _launch_cue_now(cut, layer, gen, start_at=step.resume_at)
+                    if scheduler.is_paused():
+                        # Undo during Pause All: it comes back paused, like everything else.
+                        live_players[layer].pause()
+                        paused_layers_by_global.add(layer)
+                        main_win.set_live_layer_paused(layer, True)
                 else:
                     main_win.mark_layer_stopped(layer)
                     _on_layer_clear_requested(layer, fade_override=step.seconds)
@@ -1104,6 +1116,22 @@ def main() -> int:
             lp.ramp_level(trim, 0.15)
 
     main_win.layer_trim_requested.connect(_on_layer_trim)
+
+    def _on_card_fade(layer: int) -> None:
+        """Fade on a card: only that cue; another cue waiting there still starts."""
+        playing = active_live_cues.get(layer)
+        pre = scheduler.pending_for_layer(layer, "PRE")
+        if playing is not None and pre is not None and pre.cue.cue_id != playing.cue_id:
+            fade = max(0.2, playing.fade_out) if playing.fade_out > 0 else 0.2
+            _silence_layer(layer, fade)
+            main_win.mark_layer_stopped(layer)
+            main_win.update_live_layer_phase(layer, pre.cue, "PRE", pre.elapsed_sec, pre.total_sec)
+        else:
+            main_win.mark_layer_stopped(layer)
+            _on_layer_clear_requested(layer)
+
+    main_win.card_fade_requested.connect(_on_card_fade)
+    main_win.layer_cancel_start_requested.connect(_cancel_waiting_start)
 
     # VU meter next to the master volume (1.14): peaks of every live player, 10 Hz.
     if QSettings("BlindCue", "BlindCue").value("live/vu_meter", True, type=bool):

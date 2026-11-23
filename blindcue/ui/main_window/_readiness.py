@@ -79,7 +79,9 @@ class _ReadinessMixin:
         self._readiness_page.checklist_toggled.connect(self._on_readiness_tick)
         self._readiness_timer = QTimer(self)
         self._readiness_timer.setInterval(2000)  # the power row changes by itself
-        self._readiness_timer.timeout.connect(lambda: self._readiness_refresh(rebuild=False))
+        self._readiness_timer.timeout.connect(
+            lambda: self._readiness_refresh(rebuild=False) if self._readiness_visible()
+            else self._readiness_timer.stop())
         self._tone_player = None
         self._tone_output = None
 
@@ -238,10 +240,15 @@ class _ReadinessMixin:
 
     def _readiness_starts(self) -> list[tuple[str, int]]:
         """The start question of C1 as buttons; one start when there is nothing to ask."""
+        target = self._go_target_index()
+        if self._live_mode:
+            # From the rehearsal: the show goes on where the GO points now.
+            cue = self._cues[target] if 0 <= target < len(self._cues) else None
+            return [(tr("▶ Inizia: {}").format(f"{format_cue_ref(target, cue)} '{cue.name}'"), target)] \
+                if cue is not None else []
         resume_id = getattr(self, "_live_resume_id", None)
         resume_row = next((i for i, c in enumerate(self._cues) if c.cue_id == resume_id), None) \
             if resume_id is not None else None
-        target = self._go_target_index()
         choices = live_start_choices(len(self._cues), target, resume_row, self._show_running())
         labels = {START_FROM_TOP: "Dall'inizio: {}", START_RESUME: "Riprendi da: {}",
                   START_SELECTED: "Dalla cue selezionata: {}"}
@@ -251,10 +258,19 @@ class _ReadinessMixin:
             name = cue.name if len(cue.name) <= 40 else cue.name[:39] + "…"
             return f"{format_cue_ref(row, cue)} '{name}'"
 
+        def first_cue(row: int) -> int:
+            # A checklist on top is for the people before the show: GO starts with the first cue after it.
+            while row < len(self._cues) - 1 and self._cues[row].media_type == MediaType.ACTION \
+                    and self._cues[row].action_spec.get("kind") == "checklist":
+                row += 1
+            return row
+
         if choices:
-            return [("▶ " + tr(labels[kind]).format(ref(row)), row) for kind, row in choices]
+            return [("▶ " + tr(labels[kind]).format(ref(first_cue(row) if kind == START_FROM_TOP else row)),
+                     first_cue(row) if kind == START_FROM_TOP else row) for kind, row in choices]
         if not self._cues:
             return []
+        target = first_cue(target) if target == 0 else target
         return [(tr("▶ Inizia: {}").format(ref(target)), target)]
 
     def _show_readiness(self, review: bool = False) -> None:
@@ -283,6 +299,7 @@ class _ReadinessMixin:
         self._readiness_signature = signature
         focused = self._readiness_page.focusWidget()
         focus_action = next((a for a, b in self._readiness_page.row_buttons.items() if b is focused), None)
+        focus_box = next((k for k, b in self._readiness_page.checkboxes.items() if b is focused), None)
         bad = problems(rows)
         if bad:
             names = ", ".join(self._readiness_short(c.key) for c in bad)
@@ -298,6 +315,8 @@ class _ReadinessMixin:
                                        all_ok=not bad)
         if focus_action in self._readiness_page.row_buttons:
             self._readiness_page.row_buttons[focus_action].setFocus()
+        elif focus_box in self._readiness_page.checkboxes:
+            self._readiness_page.checkboxes[focus_box].setFocus()
         self._update_readiness_warning(len(bad))
 
     def _readiness_short(self, key: str) -> str:
@@ -359,6 +378,10 @@ class _ReadinessMixin:
     @Slot(int, int, bool)
     def _on_readiness_tick(self, cue_id: int, index: int, ticked: bool) -> None:
         self._on_note_item_toggled(cue_id, index, ticked)  # same ticks as the note zone
+        cue = next((c for c in self._cues if c.cue_id == cue_id), None)
+        total = len(cue.action_spec.get("items", [])) if cue is not None else 0
+        done = len(self._checklist_ticks.get(cue_id, set()))
+        self._status_label.setText(tr("Checklist: {} di {} spuntate").format(done, total))
         self._readiness_refresh(rebuild=False)
 
     @Slot(str)

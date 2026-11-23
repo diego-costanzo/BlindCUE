@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from i18n import tr
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -361,8 +363,14 @@ class _CueTableMixin:
         Blocked changes say why on the status line (with the alert earcon)
         instead of being ignored in silence.
         """
-        from engine.show_mode import allows, blocked_message
+        from engine.show_mode import EDIT_CUE, EDIT_LIST, allows, blocked_message
 
+        if change in (EDIT_LIST, EDIT_CUE) and getattr(self, "_readiness_page", None) is not None \
+                and self._readiness_visible():
+            # The list is hidden behind "Before the show": Delete there removed cue #1 (QA C2a).
+            self._status_label.setText(tr("La scaletta è nascosta: torna alla lista per modificarla"))
+            self.announce(self._status_label.text(), assertive=True)
+            return False
         if allows(self._current_mode(), change):
             return True
         self._status_label.setText(blocked_message(self._current_mode(), change))

@@ -96,7 +96,8 @@ def undo_plan(cues: list[Cue], record: UndoRecord, waiting: set[int]) -> list[Un
         if cue is None:
             continue  # deleted meanwhile
         if cue.media_type == MediaType.ACTION:
-            steps.append(UndoStep(cue_id, KEEP))
+            # Not done yet (still in its Pre-Delay): it will not happen.
+            steps.append(UndoStep(cue_id, CANCEL if cue_id in waiting else KEEP))
             continue
         if cue.media_type == MediaType.GROUP:
             steps.append(UndoStep(cue_id, CONTAINER))

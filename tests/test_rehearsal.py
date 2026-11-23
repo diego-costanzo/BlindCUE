@@ -96,7 +96,7 @@ def test_drawer_fixes_one_cue_and_lists_the_change(window):
     assert cue.volume == 0.65 and cue.notes == "CZEKAJ" and window._is_modified
     changes = window._rehearsal_changes()
     assert [(c.cue_id, f, b) for c, f, b, _ in changes] == [(9301, "volume", 0.8), (9301, "notes", "")]
-    window._undo_rehearsal_change(cue, "volume", 0.8)        # "Undo" in the review list
+    window._undo_rehearsal_change(cue.cue_id, "volume", 0.8)  # "Undo" in the review list
     assert cue.volume == 0.8 and len(window._rehearsal_changes()) == 1
     drawer.btn_close.click()
     assert not drawer.isVisibleTo(window._live_show_panel)
@@ -165,3 +165,27 @@ def test_pin_never_blocks_go_or_panic(window):
         assert window.is_live_mode()
     finally:
         QSettings("BlindCue", "BlindCue").remove("live/exit_pin")
+
+
+def test_review_fixes_new_open_and_shift_f5_never_leave_the_show(window):
+    window.set_live_mode(True)                                # the show
+    n = len(window._cues)
+    window._on_new_show()                                     # Ctrl+N
+    window._on_open_show()                                    # Ctrl+O
+    assert len(window._cues) == n and window._current_mode() == SHOW
+    window._enter_rehearsal_from_key()                        # Shift+F5 next to F5
+    assert window._current_mode() == SHOW
+
+
+def test_ctrl_z_in_the_rehearsal_undoes_only_its_last_fix(window):
+    window._enter_rehearsal()
+    cue = window._cues[0]
+    window._set_cue_field(cue, "volume", 0.5)
+    window._set_cue_field(cue, "volume", 0.3)
+    window._cue_list.setCurrentRow(2)
+    target = window._go_target_index()
+    window._on_undo()                                         # Ctrl+Z
+    assert cue.volume == 0.5 and window._go_target_index() == target
+    assert [(f, b) for _c, f, b, _n in window._rehearsal_changes()] == [("volume", 0.8)]
+    window._on_undo()
+    assert cue.volume == 0.8 and window._rehearsal_changes() == []

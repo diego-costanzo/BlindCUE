@@ -27,6 +27,7 @@ class _PinMixin:
         bar = self._live_show_panel.pin_bar
         bar.pin_entered.connect(self._on_pin_entered)
         bar.cancelled.connect(self._on_pin_cancelled)
+        bar.go_requested.connect(self._on_go)
 
     def _exit_pin(self) -> str:
         return str(QSettings("BlindCue", "BlindCue").value(PIN_SETTINGS_KEY, "") or "")

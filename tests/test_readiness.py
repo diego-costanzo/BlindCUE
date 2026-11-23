@@ -189,3 +189,32 @@ def test_turned_off_goes_straight_in(window):
     QSettings("BlindCue", "BlindCue").setValue("live/readiness_check", False)
     window._enter_show_from_key()
     assert window.is_live_mode()
+
+
+def test_delete_on_the_readiness_page_never_touches_the_hidden_list(window):
+    window._enter_show_from_key()
+    n = len(window._cues)
+    window._on_delete_cue()
+    assert len(window._cues) == n and window._readiness_visible()
+
+
+def test_start_from_the_top_skips_a_checklist_on_top(window):
+    window._add_default_checklist()                     # the checklist becomes #1
+    window._cue_list.setCurrentRow(0)
+    window._enter_show_from_key()
+    starts = window._readiness_page.start_buttons
+    assert "#2" in starts[0].text()
+    starts[0].click()
+    assert window._go_target_index() == 1
+
+
+def test_ticking_keeps_the_keyboard_on_the_checklist(window):
+    window._add_default_checklist()
+    window._enter_show_from_key()
+    page = window._readiness_page
+    box = next(iter(page.checkboxes.values()))
+    box.setFocus()
+    box.toggle()
+    key = next(iter(page.checkboxes))
+    assert page.checkboxes[key].hasFocus() or not page.isVisible()
+    assert "1 di 7" in window._status_label.text()

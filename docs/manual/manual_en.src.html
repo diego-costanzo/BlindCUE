@@ -369,13 +369,13 @@ wait lapses when another cue starts. Under the master volume slider a thin bar s
 (amber just before clipping).</p><!--/IF:show_list-->
 <p><img src="img/en/08_live_after_go.png" width="760"></p>
 <ol>
-<li>Select the first cue – it gets the <b>STANDBY</b> badge (ready to fire).
+<li>Select the first cue – it gets the <b>▶ NEXT</b> badge (ready to fire).
 <!--IFNOT:last_started-->At the bottom you see <b>NEXT IN STANDBY</b> with its name and notes.<!--/IFNOT:last_started--><!--IF:last_started-->At the bottom there are two strips. <b>✓ LAST</b> – what the last GO started (with “+ 2 together” when several started at once), how long ago, and its note; for 15 s after a GO the strip is lit green. <b>▶ NEXT</b> – what the next GO will do and how it starts: <b>by hand (GO)</b> or <b>starts by itself in 0:03</b> (Auto-GO of the cue before), and on a second line its note – in red when it holds words like WARNING, WAIT, STOP.<!--/IF:last_started--><!--IF:live_start--> If a cue
 from the middle of the list is selected when you enter LIVE (say, the one you just fixed), the program
 asks where to start: <b>From the top</b>, <b>From the selected cue</b>, and after a trip to the
 editor also <b>Resume from</b> – where LIVE was left. Coming back without changes, it does not ask.<!--/IF:live_start--></li>
 <li>Press <kbd>Space</kbd> (or the big <b>GO</b> button) – the cue plays, gets the
-<b>LIVE</b> badge, and STANDBY jumps to the next one.</li>
+<b>● ON AIR</b> badge, and NEXT jumps to the next one.</li>
 <li>Each further <kbd>Space</kbd> = the next point of the show.<!--IF:go_guard--> A second press within 0.4 s is ignored – protection against a double GO.<!--/IF:go_guard--></li>
 <!--IF:undo_go--><li><b>GO too early or on the wrong cue?</b> For 15 s after a GO the right end of the
 <b>✓ LAST</b> strip holds <b>↶ Undo GO #5 · 12</b> (the number = seconds left; <b>Pause All</b> stops the count).
@@ -405,7 +405,7 @@ a state only when it is an exception (<b>PAUSED</b>, <b>LOOP ∞</b>, <b>starts 
 <b>⏸</b> pause, <b>Fade out</b>, <b>Release loop</b>. Pictures and captions take one line with <b>Fade out</b>.
 A new cue takes the first free place, so the cards never jump. The layer panel and its padlock stay in
 Preparation; <b>Pause All</b> sits next to GO.</li><!--/IF:now_playing-->
-<!--IF:now_playing--><li>A sound or video card also has <b>−10 s</b> / <b>+10 s</b> (hold for half a second, so a
+<!--IF:now_playing--><li>A sound or video card also has <b>−10 s</b> / <b>+10 s</b> (in the show hold for 1.5 s, in the rehearsal a moment is enough, so a
 stray click never moves the music) and a <b>level of this cue</b> slider – your correction for now only (the mouse
 wheel works only after a click on the slider, <kbd>Ctrl</kbd>+click goes back to the cue's level). When an action
 cue changes a level, the target's card shows it as it happens, e.g. <b>↘ to 20 % (2.0 s) by #7</b>. When the next

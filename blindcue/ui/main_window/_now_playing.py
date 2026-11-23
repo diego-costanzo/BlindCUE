@@ -23,10 +23,13 @@ class _NowPlayingMixin:
         """Wire the cards (called once the show page exists)."""
         panel = self._live_show_panel.now_playing
         panel.pause_requested.connect(self.layer_play_pause_requested.emit)
-        panel.fade_requested.connect(self._on_clear_live_layer)
+        panel.fade_requested.connect(self._on_card_fade)
+        panel.cancel_start_requested.connect(self._on_card_cancel_start)
         panel.release_requested.connect(self.release_loop_requested.emit)
         panel.note_dismissed.connect(lambda _cid: self._note_banner.dismiss())
         panel.seek_requested.connect(self._on_card_seek)
+        panel.hold_longer.connect(lambda: self._status_label.setText(
+            tr("Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)")))
         panel.trim_requested.connect(self._on_card_trim)
         self._live_show_panel.hold_auto_go_requested.connect(self._on_hold_auto_go)
         # Output preview: up to 5 frames a second, only while the show page is up.
@@ -67,6 +70,14 @@ class _NowPlayingMixin:
             self._preview_cost_logged = True
             logger.info("[PREVIEW] output preview: %.1f ms a frame (avg of 50, 5 fps)",
                         1000 * sum(self._preview_cost) / 50)
+
+    def _on_card_fade(self, slot: int) -> None:
+        self._status_label.setText(tr("Sfuma: solo la cue di questa scheda"))
+        self.card_fade_requested.emit(slot)
+
+    def _on_card_cancel_start(self, slot: int) -> None:
+        self._status_label.setText(tr("Partenza annullata: la cue non parte"))
+        self.layer_cancel_start_requested.emit(slot)
 
     def _on_card_seek(self, slot: int, delta: float) -> None:
         pos = self._live_clocks.layer_position(slot)
@@ -138,7 +149,7 @@ class _NowPlayingMixin:
             elif t is not None and t.looping_inf:
                 state = tr("LOOP ∞")
             if not timed:
-                cards.append(CardState(cue.cue_id, STILL, title, layer, state, slot=slot))
+                cards.append(CardState(cue.cue_id, STILL, title, layer, state, slot=slot, waiting=waiting))
                 continue
             elapsed = remaining = ""
             fraction, warn = -1.0, False
@@ -152,7 +163,8 @@ class _NowPlayingMixin:
                 warn = ends_soon(t) and not self._hands_over_by_itself(cue)
             cards.append(CardState(cue.cue_id, TIMED, title, layer, state, elapsed, remaining, fraction,
                                    warn, paused, loop, slot, self._trims.get(slot, 1.0),
-                                   cue.media_type in (MediaType.AUDIO, MediaType.VIDEO)))
+                                   cue.media_type in (MediaType.AUDIO, MediaType.VIDEO) and not waiting,
+                                   waiting=waiting))
         banner = getattr(self, "_note_banner", None)
         if self._live_mode and banner is not None and banner.is_shown() and not banner.is_checklist():
             cue_id = banner.cue_id()

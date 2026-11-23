@@ -84,6 +84,7 @@ class ReadinessPage(QWidget):
         root.addLayout(self._buttons)
 
         self.rows: list[RowView] = []
+        self.checkboxes: dict[tuple[int, int], QCheckBox] = {}
         self.start_buttons: list[QPushButton] = []
         self.btn_recheck: QPushButton | None = None
         self.btn_stay: QPushButton | None = None
@@ -102,6 +103,7 @@ class ReadinessPage(QWidget):
         """Rebuild the page: *rows*, the *summary* line and the start buttons."""
         self.rows = rows
         self.row_buttons = {}
+        self.checkboxes = {}
         while self._rows_layout.count():
             item = self._rows_layout.takeAt(0)
             if item.widget() is not None:
@@ -187,6 +189,7 @@ class ReadinessPage(QWidget):
             box.setChecked(i in row.ticked)
             box.setStyleSheet("QCheckBox { color: #e2e8f0; font-size: 14px; padding-left: 160px; }")
             box.toggled.connect(lambda on, c=row.cue_id, k=i: self.checklist_toggled.emit(c, k, on))
+            self.checkboxes[(row.cue_id, i)] = box
             outer.addWidget(box)
         return frame
 

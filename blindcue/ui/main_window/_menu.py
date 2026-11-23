@@ -84,7 +84,7 @@ class _MenuMixin:
         self._act_undo_go.setEnabled(False)
         show_menu.addAction(self._act_undo_go)
         show_menu.addAction(QAction("◐ Prova", self, shortcut=QKeySequence("Shift+F5"),
-                                    triggered=self._enter_rehearsal))
+                                    triggered=self._enter_rehearsal_from_key))
         show_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
         show_menu.addAction(QAction("Aggiungi la checklist predefinita", self,
                                     triggered=self._add_default_checklist))
@@ -227,6 +227,7 @@ class _MenuMixin:
         lay.setSpacing(8)
         self._mode_tabs = ModeTabs()
         self._mode_tabs.enter_show_requested.connect(self._enter_show_from_key)
+        self._mode_tabs.leave_show_requested.connect(lambda: self._leave_show_to("preparation"))
         lay.addWidget(self._mode_tabs)
         lay.addStretch(1)
         from ui.master_volume import MasterVolume

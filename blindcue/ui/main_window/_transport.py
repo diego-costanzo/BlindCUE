@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 
 from i18n import tr
+from PySide6.QtWidgets import QAbstractButton
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
@@ -107,11 +108,16 @@ class _TransportMixin:
         if self._is_text_input_focused():
             return
         if self._readiness_visible():
-            if not self._live_mode:
-                # Space on the "Before the show" page picks its default button, never a GO.
-                self._readiness_page.activate_default()
+            if not self._readiness_review:
+                # Space on the "Before the show" page (from Preparation or the
+                # rehearsal) presses a focused button, else the page's default; never a GO.
+                focused = QApplication.focusWidget()
+                if isinstance(focused, QAbstractButton) and not self._readiness_page.isAncestorOf(focused):
+                    focused.click()
+                else:
+                    self._readiness_page.activate_default()
                 return
-            self._on_readiness_stay()  # in the show Space stays GO: back to the list first
+            self._on_readiness_stay()  # the review from the show: Space stays GO, back to the list first
         self._on_go()
 
     @Slot()
@@ -258,7 +264,9 @@ class _TransportMixin:
         if self._gate_waiting() >= 0 and self._gate_waiting() != cue.cue_id:
             self._clear_gate()  # another cue started: the waiting OK lapses (1.9)
         self._undo_go_collect(cue)
-        self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again
+        if cue.cue_id in self._held_auto_go:
+            self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again
+            self._live_show_panel.set_auto_go_held(self._held_auto_go)
         self._fire_seq += 1
         self._fired_at[cue.cue_id] = self._fire_seq
         if cue.parent_id in self._released_groups:
@@ -555,6 +563,8 @@ class _TransportMixin:
     def _on_fade_all(self) -> None:
         """Fade All: every layer fades out together (Shift+Esc), a softer PANIC."""
         seconds = read_fade_all_sec()
+        self._held_auto_go.clear()
+        self._live_show_panel.set_auto_go_held(self._held_auto_go)
         first_stopped = self._stopped_manual_go_index()
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
@@ -577,6 +587,8 @@ class _TransportMixin:
         first_stopped = self._stopped_manual_go_index()
         self._undo_go_end()
         self._clear_gate()
+        self._held_auto_go.clear()
+        self._live_show_panel.set_auto_go_held(self._held_auto_go)
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
         self._live_phase_tags.clear()

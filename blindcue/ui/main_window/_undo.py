@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from i18n import tr
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -121,6 +123,9 @@ class _UndoRedoMixin:
     def _on_undo(self) -> None:
         if not self._change_allowed(UNDO):
             return
+        if self._current_mode() == "rehearsal":
+            self._undo_last_rehearsal_change()  # never a whole snapshot in the rehearsal (M6)
+            return
         if self._undo.is_debounce_active():
             self._commit_undo_point()
         prev = self._undo.pop_undo(self._cues, self._current_row_or_index())
@@ -135,6 +140,9 @@ class _UndoRedoMixin:
     @Slot()
     def _on_redo(self) -> None:
         if not self._change_allowed(UNDO):
+            return
+        if self._current_mode() == "rehearsal":
+            self._status_label.setText(tr("Nella prova Ctrl+Z annulla l'ultima correzione; ripeti in preparazione"))
             return
         nxt = self._undo.pop_redo(self._cues, self._current_row_or_index())
         if nxt is None:

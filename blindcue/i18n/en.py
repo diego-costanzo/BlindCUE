@@ -2430,4 +2430,28 @@ T: dict[str, str] = {
         '· ✋ waits for the OK',
     'Livello di uscita':
         'Output level',
+    'Le modifiche della prova si rivedono nella prova o in preparazione':
+        'Rehearsal changes are reviewed in the rehearsal or in preparation',
+    'Annullato: {} {} {} → {}':
+        'Undone: {} {} {} → {}',
+    'Nessuna correzione della prova da annullare':
+        'No rehearsal fix to undo',
+    "Nella prova Ctrl+Z annulla l'ultima correzione; ripeti in preparazione":
+        'In the rehearsal Ctrl+Z undoes the last fix; redo in preparation',
+    'Sfuma: solo la cue di questa scheda':
+        'Fade out: only the cue of this card',
+    'Partenza annullata: la cue non parte':
+        'Start cancelled: the cue will not start',
+    'Annulla partenza':
+        'Cancel start',
+    'La cue non partirà':
+        'The cue will not start',
+    '○ Preparazione (1,5 s)':
+        '○ Preparation (1.5 s)',
+    '◐ Prova (1,5 s)':
+        '◐ Rehearsal (1.5 s)',
+    'La scaletta è nascosta: torna alla lista per modificarla':
+        'The list is hidden: go back to it to change it',
+    'Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)':
+        'Hold to jump 10 s (1.5 s in the show)',
 }

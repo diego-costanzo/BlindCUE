@@ -584,6 +584,16 @@ class LivePlayer(QObject):
         player, _ = self._deck_pair(deck_idx)
         if player.playbackState() == QMediaPlayer.PlaybackState.StoppedState:
             return
+        resume = getattr(self, "_resume_ms", None)
+        if resume is not None:
+            # Undo GO resumes a cut sound: hold on to the point until playback
+            # really got there (a backend may report from 0 first, or reload).
+            if pos_ms >= resume + 250:
+                self._resume_ms = None  # playing on past it: done
+            elif pos_ms < resume - 300 and self._resume_tries < 3:
+                self._resume_tries += 1
+                player.setPosition(resume)
+                return
         if pos_ms != self._play_started_pos_ms:
             self._media_progressed = True
         pos_sec = pos_ms / 1000.0
@@ -627,10 +637,11 @@ class LivePlayer(QObject):
         if status == QMediaPlayer.MediaStatus.BufferedMedia:
             self._media_progressed = True
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
+            resume = getattr(self, "_resume_ms", None)
             target = (
                 int(round(self._sequencer.active_start_sec() * 1000))
                 if self._sequencer.active
-                else self._start_ms
+                else (resume if resume is not None else self._start_ms)
             )
             if target > 0:
                 player.setPosition(target)
@@ -671,8 +682,12 @@ class LivePlayer(QObject):
             old.deleteLater()
 
     def load(self, file_path: str, start: float = 0.0,
-             end: float | None = None) -> None:
-        """Load a media file cleanly on Deck 0, resetting any standby/fade state."""
+             end: float | None = None, resume_at: float | None = None) -> None:
+        """Load a media file cleanly on Deck 0, resetting any standby/fade state.
+
+        *resume_at*: begin there instead of at *start* (Undo GO resuming a cut
+        sound); *start* stays the cue's IN point for loops and the envelope.
+        """
         try:
             self._manual_fade_active = False
             self._boundary_armed = True
@@ -700,6 +715,8 @@ class LivePlayer(QObject):
 
             self._file_path = file_path
             self._start_ms = max(0, int(start * 1000))
+            self._resume_ms = max(0, int(resume_at * 1000)) if resume_at is not None else None
+            self._resume_tries = 0
             self._end_ms = int(end * 1000) if (end is not None and end > 0) else None
             self._duration_sec = 0.0
             self._current_loop_iteration = 0
@@ -735,7 +752,7 @@ class LivePlayer(QObject):
                     self.signals.duration_changed.emit(self._duration_sec)
             # Re-seat the playhead explicitly: when the url is unchanged the
             # backend keeps the previous position and would resume mid-file.
-            self._player.setPosition(self._start_ms)
+            self._player.setPosition(self._resume_ms if self._resume_ms is not None else self._start_ms)
 
             self._load_watchdog.stop()
             self._watchdog_trials = 0
@@ -842,7 +859,7 @@ class LivePlayer(QObject):
             target = (
                 int(round(self._sequencer.active_start_sec() * 1000))
                 if self._sequencer.active
-                else max(self._start_ms, player.position())
+                else max(getattr(self, "_resume_ms", None) or self._start_ms, player.position())
             )
             self._media_progressed = False
             self._play_started_pos_ms = target

@@ -43,7 +43,7 @@ def _hold_tab(text: str, tip: str, name: str) -> HoldProgressButton:
         fill_color="#38bdf8",
     )
     btn.setFixedHeight(34)
-    btn.setMinimumWidth(190)
+    btn.setMinimumWidth(120)  # "hold 1.5 s" is in the tooltip and said when let go early
     btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
     btn.setToolTip(tip)
     btn.setAccessibleName(name)
@@ -69,7 +69,7 @@ class ModeTabs(QWidget):
         self.tab_prep.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.tab_prep.clicked.connect(self._on_prep_clicked)
         self.tab_prep_hold = _hold_tab(
-            "○ Preparazione  (tieni 1,5 s)",
+            "○ Preparazione",
             "Tieni premuto 1,5 s per tornare alla preparazione (ciò che è in onda continua)."
             " Da tastiera: Ctrl+Maiusc+F5",
             "Torna alla preparazione: tieni premuto 1,5 secondi",
@@ -82,7 +82,7 @@ class ModeTabs(QWidget):
         self.tab_reh.setToolTip("Prova: lo spettacolo come in scena, con piccole correzioni [Maiusc+F5]")
         self.tab_reh.clicked.connect(self._on_reh_clicked)
         self.tab_reh_hold = _hold_tab(
-            "◐ Prova  (tieni 1,5 s)",
+            "◐ Prova",
             "Tieni premuto 1,5 s per passare alla prova (ciò che è in onda continua)",
             "Passa alla prova: tieni premuto 1,5 secondi",
         )

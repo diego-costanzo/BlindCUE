@@ -48,6 +48,7 @@ class RehearsalDrawer(QFrame):
 
     field_changed = Signal(str, object)   # field name, new value
     closed = Signal()
+    done_editing = Signal()               # Enter in a field: the keyboard goes back to the list
     review_requested = Signal()
     more_requested = Signal()             # "More settings → Preparation"
 
@@ -61,10 +62,8 @@ class RehearsalDrawer(QFrame):
         root = QVBoxLayout(self)
         root.setContentsMargins(8, 6, 8, 6)
         root.setSpacing(4)
-        # Never squeezed by the cards below (it keeps the height its fields
-        # need), never wider than the column.
-        self.setMinimumHeight(372)
-        self.setMaximumWidth(348)
+        # Never wider than the column (it scrolls there when the column is short).
+        self.setMaximumWidth(340)
         head = QHBoxLayout()
         self.lbl_title = QLabel()
         self.lbl_title.setTextFormat(Qt.TextFormat.PlainText)
@@ -140,8 +139,19 @@ class RehearsalDrawer(QFrame):
         self.btn_more = QPushButton("Altre impostazioni → Preparazione")
         self.btn_more.clicked.connect(self.more_requested)
         root.addWidget(self.btn_more)
+        self.setMinimumHeight(372)
+        for w in (self.ed_name, self.ed_notes, self.sp_fade_in, self.sp_fade_out, self.sp_in, self.sp_out):
+            w.installEventFilter(self)
         self._loading = False
         self.hide()
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        from PySide6.QtCore import QEvent, QTimer
+
+        if event.type() == QEvent.Type.KeyPress and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
+            # After the field takes the value: Space must be GO again, not a space in the name.
+            QTimer.singleShot(0, self.done_editing.emit)
+        return super().eventFilter(obj, event)
 
     def _emit(self, field: str, value: object) -> None:
         if not self._loading:

@@ -41,8 +41,9 @@ class MasterVolume(QWidget):
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.setRange(0, 100)
         self.slider.setValue(100)
-        self.slider.setFixedWidth(110)
-        self.slider.setFocusPolicy(Qt.FocusPolicy.TabFocus)
+        self.slider.setFixedWidth(90)
+        self.slider.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.slider.installEventFilter(self)  # the wheel only with focus (no volume jump on hover)
         self.slider.setAccessibleName("Volume generale dello spettacolo")
         self.slider.setToolTip("Volume generale di tutto ciò che suona [Ctrl+↑ / Ctrl+↓]")
         self.pct = QLabel("100 %")
@@ -63,7 +64,7 @@ class MasterVolume(QWidget):
         self.vu.setRange(0, 100)
         self.vu.setValue(0)
         self.vu.setTextVisible(False)
-        self.vu.setFixedSize(110, 5)
+        self.vu.setFixedSize(90, 5)
         self.vu.setAccessibleName("Livello di uscita")
         self.vu.setStyleSheet(
             "QProgressBar { background-color: #1e293b; border: none; border-radius: 2px; } "
@@ -76,6 +77,14 @@ class MasterVolume(QWidget):
         self._vu_hot = False
         self.slider.valueChanged.connect(self._on_slider)
         self.btn_mute.toggled.connect(self._on_mute)
+
+    def eventFilter(self, obj, event) -> bool:  # noqa: N802
+        from PySide6.QtCore import QEvent
+
+        if obj is self.slider and event.type() == QEvent.Type.Wheel and not self.slider.hasFocus():
+            event.ignore()
+            return True
+        return super().eventFilter(obj, event)
 
     def set_vu(self, level: float) -> None:
         """Peak 0..1 shown on a dB-like scale (-48 dB .. 0); amber near the top."""

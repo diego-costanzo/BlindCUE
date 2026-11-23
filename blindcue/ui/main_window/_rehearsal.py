@@ -36,16 +36,14 @@ class _RehearsalMixin:
     # ── Setup ─────────────────────────────────────────────────────────
     def _rehearsal_setup(self) -> None:
         """Wire the drawer, the "✎" buttons and the rehearsal tools of the cards."""
-        self._rehearsal = False
         self._editing_cue_id = -1
-        # (cue_id, field) -> value before the first change in this session
-        self._rehearsal_before: dict[tuple[int, str], object] = {}
         panel = self._live_show_panel
         drawer = panel.now_playing.drawer
         drawer.field_changed.connect(self._on_drawer_field)
         drawer.closed.connect(self._close_drawer)
         drawer.review_requested.connect(self._review_rehearsal_changes)
         drawer.more_requested.connect(self._drawer_more_settings)
+        drawer.done_editing.connect(lambda: self._live_show_panel.live_table.setFocus())
         panel.edit_cue_requested.connect(self._open_drawer)
         panel.now_playing.edit_requested.connect(self._open_drawer)
         panel.now_playing.stop_requested.connect(self._on_card_stop)
@@ -63,10 +61,22 @@ class _RehearsalMixin:
         self.announce(self._status_label.text(), assertive=True)
 
     # ── Modes ─────────────────────────────────────────────────────────
+    def _enter_rehearsal_from_key(self) -> None:
+        """Shift+F5: into the rehearsal from Preparation; in the show only says how to leave (M4)."""
+        if self._current_mode() == "show":
+            self._explain_how_to_leave()
+            return
+        self._enter_rehearsal()
+
     def _apply_mode_visuals(self) -> None:
         mode = self._current_mode()
         before = getattr(self, "_mode_shown", "preparation")
         self._mode_shown = mode
+        if mode != before:
+            self._undo_go_end()  # a change of mode ends the Undo GO offer (L7)
+            dlg = getattr(self, "_rehearsal_review", None)
+            if dlg is not None and mode == "show":
+                dlg.close()
         if hasattr(self, "_earcon_mgr") and mode != before:
             # Into the show three notes up, out of it three down (W41).
             if mode == "show":
@@ -159,10 +169,11 @@ class _RehearsalMixin:
         if self._undo.is_debounce_active():
             self._commit_undo_point()
         self._rehearsal_before.setdefault((cue.cue_id, field), before)
+        self._rehearsal_undo.append((cue.cue_id, field, before))
         setattr(cue, field, value)
         self._commit_undo_point()
         self._mark_modified(True)
-        if cue.status == CueStatus.LIVE and field in ("volume", "fade_in", "fade_out", "out_point"):
+        if cue.status == CueStatus.LIVE and field in ("volume", "fade_in", "fade_out"):
             self.live_automation_updated.emit(cue)  # heard at once on the cue that plays
         self._refresh_cue_list(keep_selection=True)
         self._sync_live_view()
@@ -194,13 +205,21 @@ class _RehearsalMixin:
 
     def _review_rehearsal_changes(self) -> None:
         """The list of changes of the rehearsal, each with Undo (a window that does not block)."""
+        if self._current_mode() == "show":
+            # It would take the keyboard (Space, Esc) from the show.
+            self._status_label.setText(tr("Le modifiche della prova si rivedono nella prova o in preparazione"))
+            return
         dlg = getattr(self, "_rehearsal_review", None)
         if dlg is None:
+            from ui.main_window._cue_table import _EmergencyKeysInDialog
+
             dlg = QDialog(self)
             dlg.setWindowTitle(tr("Modifiche della prova"))
             dlg.setModal(False)
             dlg.setMinimumWidth(520)
             QVBoxLayout(dlg)
+            self._rehearsal_review_keys = _EmergencyKeysInDialog(self, dlg)
+            dlg.installEventFilter(self._rehearsal_review_keys)
             self._rehearsal_review = dlg
         lay = dlg.layout()
         while lay.count():
@@ -223,17 +242,21 @@ class _RehearsalMixin:
             text.setTextFormat(Qt.TextFormat.PlainText)
             line.addWidget(text, stretch=1)
             btn = QPushButton(tr("Annulla modifica"))
-            btn.clicked.connect(lambda _=False, c=cue, f=field, b=before: self._undo_rehearsal_change(c, f, b))
+            btn.installEventFilter(self._rehearsal_review_keys)
+            btn.clicked.connect(lambda _=False, c=cue.cue_id, f=field, b=before:
+                                self._undo_rehearsal_change(c, f, b))
             line.addWidget(btn)
             lay.addLayout(line)
         close = QPushButton(tr("Chiudi"))
+        close.installEventFilter(self._rehearsal_review_keys)
         close.clicked.connect(dlg.close)
         lay.addWidget(close)
         dlg.show()
         dlg.raise_()
 
-    def _undo_rehearsal_change(self, cue: Cue, field: str, before: object) -> None:
-        if not self._change_allowed(EDIT_CUE):
+    def _undo_rehearsal_change(self, cue_id: int, field: str, before: object) -> None:
+        cue = next((c for c in self._cues if c.cue_id == cue_id), None)
+        if cue is None or not self._change_allowed(EDIT_CUE):
             return
         setattr(cue, field, before)
         self._rehearsal_before.pop((cue.cue_id, field), None)
@@ -245,7 +268,36 @@ class _RehearsalMixin:
         self._sync_live_view()
         if self._editing_cue_id >= 0:
             self._refresh_drawer()
-        self._review_rehearsal_changes()
+        dlg = getattr(self, "_rehearsal_review", None)
+        if dlg is not None and dlg.isVisible():
+            self._review_rehearsal_changes()
+
+    def _undo_last_rehearsal_change(self) -> None:
+        """Ctrl+Z in the rehearsal: only its own last fix, never a list edit or the GO pointer (M6)."""
+        while self._rehearsal_undo:
+            cue_id, field, before = self._rehearsal_undo.pop()
+            cue = next((c for c in self._cues if c.cue_id == cue_id), None)
+            if cue is None or getattr(cue, field) == before:
+                continue
+            row = next((i for i, c in enumerate(self._cues) if c is cue), -1)
+            now = getattr(cue, field)
+            if not self._change_allowed(EDIT_CUE):
+                return
+            # One step back (the change list keeps the value from before the
+            # rehearsal; an entry back at that value drops out by itself).
+            setattr(cue, field, before)
+            self._commit_undo_point()
+            self._mark_modified(True)
+            if cue.status == CueStatus.LIVE:
+                self.live_automation_updated.emit(cue)
+            self._refresh_cue_list(keep_selection=True)
+            self._sync_live_view()
+            if self._editing_cue_id >= 0:
+                self._refresh_drawer()
+            self._status_label.setText(tr("Annullato: {} {} {} → {}").format(
+                format_cue_ref(row, cue), tr(_FIELD_WORDS[field]), _shown(field, now), _shown(field, before)))
+            return
+        self._status_label.setText(tr("Nessuna correzione della prova da annullare"))
 
     # ── Card tools of the rehearsal ───────────────────────────────────
     def _on_card_stop(self, slot: int) -> None:

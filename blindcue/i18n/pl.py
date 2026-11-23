@@ -138,7 +138,7 @@ T: dict[str, str] = {
     '0 Cue':
         '0 cue',
     'Standby: Nessuna':
-        'Standby: brak',
+        'Następny: brak',
     '🎭 VAI IN LIVE':
         '🎭 PRZEJDŹ DO LIVE',
     'Apri la modalità semplificata LIVE (Show Mode) centrata su Scaletta, GO, PAUSA TUTTO e PANIC [F5 / Ctrl+L]':
@@ -1042,7 +1042,7 @@ T: dict[str, str] = {
     'Tempi: ':
         'Czasy: ',
     'MODALITÀ PROGETTO — Modifica cue e anteprima riabilitate':
-        'TRYB PROJEKTU — edycja cue i podgląd znowu dostępne',
+        'PRZYGOTOWANIE — edycja cue i podgląd znowu dostępne',
     'Punti envelope azzerati':
         'Wyzerowano punkty obwiedni',
     'Creato taglio sezione a {}s ({} sezioni)':
@@ -1294,7 +1294,7 @@ T: dict[str, str] = {
     'Scaletta vuota — Aggiungi prima dei file multimediali':
         'Pusta lista cue — najpierw dodaj pliki multimedialne',
     "LIVE → {} '{}' (Layer {}) | Standby: {} '{}'":
-        "LIVE → {} '{}' (warstwa {}) | Standby: {} '{}'",
+        "GRA → {} '{}' (warstwa {}) | Następny: {} '{}'",
     "LIVE → {} '{}' (Layer {}) — Fine scaletta (premi GO per rilanciare)":
         "LIVE → {} '{}' (warstwa {}) — koniec listy (naciśnij GO, aby zacząć od nowa)",
     '↶ Annulla (Ctrl+Z) — Stato precedente ripristinato ({} nel registro)':
@@ -1963,7 +1963,7 @@ T: dict[str, str] = {
     'GO ignorato: secondo GO entro {} ms':
         'GO zignorowane: drugie GO w ciągu {} ms',
     '&Dissolvenza totale (Fade All)':
-        '&Wygaś wszystko (Fade All)',
+        '&Wygaś wszystko',
     'Dissolvenza totale in {} s':
         'Wygaszanie wszystkiego w {} s',
     '🔉 DISSOLVI [⇧ESC]':
@@ -2181,7 +2181,7 @@ T: dict[str, str] = {
     'Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc due volte per il Panic.':
         'Kontrastowa lista cue na żywo. Strzałki w górę i w dół = następny cue, Spacja = GO, Esc dwa razy = PANIC.',
     'MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]':
-        'TRYB LIVE AKTYWNY — uproszczony interfejs prowadzenia [ESC ×2 = PANIC]',
+        'PRZEDSTAWIENIE — uproszczony ekran prowadzenia [ESC ×2 = PANIC]',
     'Sessione precedente messa da parte: {}':
         'Poprzednią sesję odłożono (nie usunięto): {}',
     'Lo spettacolo è in corso.\nChiudere il programma ferma tutto ciò che è in onda.':
@@ -2652,4 +2652,28 @@ T: dict[str, str] = {
         '· ✋ czeka na OK',
     'Livello di uscita':
         'Poziom wyjścia',
+    'Le modifiche della prova si rivedono nella prova o in preparazione':
+        'Zmiany z próby przejrzysz w Próbie albo w Przygotowaniu',
+    'Annullato: {} {} {} → {}':
+        'Cofnięto: {} {} {} → {}',
+    'Nessuna correzione della prova da annullare':
+        'Brak poprawek z próby do cofnięcia',
+    "Nella prova Ctrl+Z annulla l'ultima correzione; ripeti in preparazione":
+        'W Próbie Ctrl+Z cofa ostatnią poprawkę; ponów w Przygotowaniu',
+    'Sfuma: solo la cue di questa scheda':
+        'Wygaś: tylko cue z tej karty',
+    'Partenza annullata: la cue non parte':
+        'Start anulowany: cue nie ruszy',
+    'Annulla partenza':
+        'Anuluj start',
+    'La cue non partirà':
+        'Cue nie ruszy',
+    '○ Preparazione (1,5 s)':
+        '○ Przygotowanie (1,5 s)',
+    '◐ Prova (1,5 s)':
+        '◐ Próba (1,5 s)',
+    'La scaletta è nascosta: torna alla lista per modificarla':
+        'Lista jest zasłonięta: wróć do listy, żeby ją zmienić',
+    'Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)':
+        'Przytrzymaj, żeby przeskoczyć o 10 s (na przedstawieniu 1,5 s)',
 }

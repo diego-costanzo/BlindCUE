@@ -85,6 +85,8 @@ class MainWindow(
     release_loop_requested = Signal(int)           # runtime layer: its loop ends after this pass
     layer_trim_requested = Signal(int, float)      # runtime layer, operator level correction 0..1
     layer_stop_requested = Signal(int)             # runtime layer: stop at once (rehearsal card)
+    card_fade_requested = Signal(int)              # runtime layer: fade the card's cue only
+    layer_cancel_start_requested = Signal(int)     # runtime layer: the waiting start never happens
     blackout_requested = Signal()                        # emits when blackout triggered
     preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start
@@ -176,6 +178,8 @@ class MainWindow(
         self._ramps: dict[int, tuple[str, float]] = {}  # runtime layer -> (ramp text, ends at)
         self._held_auto_go: set[int] = set()  # cues whose Auto-GO waits for a GO instead
         self._rehearsal = False               # the show's screen in the rehearsal mode
+        self._rehearsal_before: dict = {}     # (cue_id, field) -> value before the rehearsal
+        self._rehearsal_undo: list = []       # (cue_id, field, before): Ctrl+Z in the rehearsal
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True

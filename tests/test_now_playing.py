@@ -106,14 +106,13 @@ def test_card_buttons_ask_for_their_layer(window):
     window._on_live_clock_tick()
     asked: list = []
     window.layer_play_pause_requested.connect(lambda layer: asked.append(("pause", layer)))
-    window.layer_clear_requested.connect(lambda layer: asked.append(("clear", layer)))
+    window.card_fade_requested.connect(lambda layer: asked.append(("clear", layer)))
     card = window._live_show_panel.now_playing.cards()[9101]
     card.btn_pause.click()
     window.set_live_layer_paused(1, True)
     assert window._live_show_panel.now_playing.cards()[9101].lbl_state.text() == "PAUSA"
     card.btn_fade.click()
     assert asked == [("pause", 1), ("clear", 1)]
-    assert window._cues[0].status != CueStatus.LIVE
 
 
 def test_plain_note_is_a_card_in_the_show(window):
@@ -220,3 +219,19 @@ def test_playback_error_is_said_in_the_operator_language(window):
         assert text.startswith("⚠ Nie można odtworzyć")
     finally:
         i18n.set_language("it")
+
+
+def test_waiting_card_only_cancels_its_start(window):
+    _play(window, 0, 60.0, 5.0)                               # A plays on L1
+    waiting = window._cues[1]
+    waiting.layer = 1
+    window._live_phase_tags[waiting.cue_id] = "PRE -2.0s"     # B waits on the same layer
+    window._live_clocks.phase(1, waiting.cue_id, "PRE", 1.0, 3.0)
+    window._on_live_clock_tick()
+    card = window._live_show_panel.now_playing.cards()[waiting.cue_id]
+    assert card.btn_fade.text() == "Annulla partenza"
+    assert not card.btn_pause.isVisibleTo(card) and not card.slider.isVisibleTo(card)
+    asked: list = []
+    window.layer_cancel_start_requested.connect(lambda layer: asked.append(layer))
+    card.btn_fade.click()
+    assert asked == [1]

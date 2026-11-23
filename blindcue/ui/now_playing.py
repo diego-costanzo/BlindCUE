@@ -58,6 +58,7 @@ class CardState:
     slot: int = 0              # runtime layer for the controls
     trim: float = 1.0          # operator's level correction (1.0 = the cue's own level)
     seekable: bool = False     # audio/video: -10 s / +10 s
+    waiting: bool = False      # still in its Pre-Delay: the card can only cancel the start
 
 
 class _TrimSlider(QSlider):
@@ -129,7 +130,9 @@ class _Card(QFrame):
         outer.addLayout(line1)
 
         self.btn_fade = self._button("Sfuma", "Sfuma e ferma questa cue (non sposta il GO)")
-        self.btn_fade.clicked.connect(lambda: panel.fade_requested.emit(self.slot))
+        self.btn_fade.clicked.connect(self._on_fade_clicked)
+        self._panel_ref = panel
+        self._waiting = False
         if kind == TIMED:
             self.setFixedHeight(84)
             line2 = QHBoxLayout()
@@ -158,9 +161,11 @@ class _Card(QFrame):
             # Jumps are held for half a second: a stray click never moves the music.
             self.btn_back = self._hold_button("−10 s", "Indietro di 10 s (tieni premuto)")
             self.btn_back.hold_completed.connect(lambda: panel.seek_requested.emit(self.slot, -10.0))
+            self.btn_back.released_early.connect(panel.hold_longer)
             line3.addWidget(self.btn_back)
             self.btn_fwd = self._hold_button("+10 s", "Avanti di 10 s (tieni premuto)")
             self.btn_fwd.hold_completed.connect(lambda: panel.seek_requested.emit(self.slot, 10.0))
+            self.btn_fwd.released_early.connect(panel.hold_longer)
             line3.addWidget(self.btn_fwd)
             self.slider = _TrimSlider()
             self.slider.setToolTip("Livello di questa cue (Ctrl+clic = livello della cue)")
@@ -229,6 +234,12 @@ class _Card(QFrame):
         btn.setStyleSheet(_BTN)
         return btn
 
+    def _on_fade_clicked(self) -> None:
+        if self._waiting:
+            self._panel_ref.cancel_start_requested.emit(self.slot)
+        else:
+            self._panel_ref.fade_requested.emit(self.slot)
+
     def set_rehearsal(self, on: bool) -> None:
         """Rehearsal tools on the card; jumps need a long hold only in the show."""
         self.btn_edit.setVisible(on)
@@ -249,6 +260,13 @@ class _Card(QFrame):
         self.lbl_layer.setText(st.layer)
         self.lbl_state.setText(st.state)
         self.lbl_state.setVisible(bool(st.state))
+        if self.kind != NOTE and st.waiting != self._waiting:
+            # A cue still waiting only offers to cancel its start; the other
+            # buttons would act on the cue that plays on the same layer (H3).
+            self._waiting = st.waiting
+            self.btn_fade.setText("Annulla partenza" if st.waiting else "Sfuma")
+            self.btn_fade.setToolTip("La cue non partirà" if st.waiting else
+                                     "Sfuma e ferma questa cue (non sposta il GO)")
         if self.kind != TIMED:
             self.setAccessibleName(" ".join(x for x in (st.title, st.layer, st.state) if x))
             return
@@ -261,7 +279,10 @@ class _Card(QFrame):
         if st.fraction >= 0:
             self.bar.setValue(int(st.fraction * 1000))
         self.btn_pause.setText("▶" if st.paused else "⏸")
-        self.btn_release.setVisible(st.loop)
+        self.btn_pause.setVisible(not st.waiting)
+        self.slider.setVisible(not st.waiting)
+        self.lbl_trim.setVisible(not st.waiting)
+        self.btn_release.setVisible(st.loop and not st.waiting)
         self.btn_back.setVisible(st.seekable)
         self.btn_fwd.setVisible(st.seekable)
         self.btn_to_end.setVisible(st.seekable)
@@ -287,6 +308,8 @@ class NowPlayingPanel(QFrame):
     stop_requested = Signal(int)          # runtime layer: stop at once (rehearsal)
     to_end_requested = Signal(int)        # runtime layer: jump to 5 s before the end
     save_level_requested = Signal(int)    # cue_id: the corrected level becomes the cue's
+    cancel_start_requested = Signal(int)  # runtime layer: the waiting cue never starts
+    hold_longer = Signal()                # a jump button let go too early
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -300,7 +323,15 @@ class NowPlayingPanel(QFrame):
         root.setSpacing(4)
         # The rehearsal drawer takes the place of the preview while it is open.
         self.drawer = RehearsalDrawer()
-        root.addWidget(self.drawer)
+        # It scrolls inside the column, so the cards below keep their buttons (QA C2a).
+        self._drawer_scroll = QScrollArea()
+        self._drawer_scroll.setWidgetResizable(True)
+        self._drawer_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self._drawer_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._drawer_scroll.setMaximumHeight(280)
+        self._drawer_scroll.setWidget(self.drawer)
+        self._drawer_scroll.setVisible(False)
+        root.addWidget(self._drawer_scroll)
         self._rehearsal = False
         # What the audience sees, small, on top; folds to its header ("▾").
         self.btn_preview = QPushButton("▾ ANTEPRIMA USCITA")
@@ -332,7 +363,7 @@ class NowPlayingPanel(QFrame):
         self._cards_layout.setContentsMargins(0, 0, 0, 0)
         self._cards_layout.setSpacing(4)
         self.lbl_empty = QLabel("Niente in onda.")
-        self.lbl_empty.setStyleSheet("QLabel { color: #64748b; font-size: 13px; padding: 8px; }")
+        self.lbl_empty.setStyleSheet("QLabel { color: #94a3b8; font-size: 13px; padding: 8px; }")
         self._cards_layout.addWidget(self.lbl_empty)
         self._cards_layout.addStretch(1)
         scroll.setWidget(box)
@@ -359,6 +390,7 @@ class NowPlayingPanel(QFrame):
 
     def show_drawer(self, shown: bool) -> None:
         self.drawer.setVisible(shown)
+        self._drawer_scroll.setVisible(shown)
         self.btn_preview.setVisible(not shown)
         self.lbl_preview.setVisible(not shown and self.btn_preview.isChecked())
 

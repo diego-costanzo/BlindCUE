@@ -221,3 +221,10 @@ def test_resume_is_said_in_the_preview(window):
     window._refresh_undo_go()
     tip = window._live_show_panel.btn_undo_go.toolTip()
     assert "#1 'c0' torna da 01:42" in tip
+
+
+def test_waiting_action_is_cancelled_by_undo():
+    cues = [_cue(1, MediaType.ACTION, CueStatus.LOADED)]
+    rec = UndoRecord(first_id=1, started=0.0, ids=[1])
+    assert undo_plan(cues, rec, waiting={1})[0].how == CANCEL
+    assert can_undo(undo_plan(cues, rec, waiting={1}))
