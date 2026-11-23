@@ -372,9 +372,15 @@ i przygaszoną nazwę; znaczki znikają, gdy zaczynasz od początku.</li><!--/IF
 (także po włosku i angielsku: ATTENZIONE, WAIT, DANGER…) są na liście wyróżnione.</li><!--/IF:urgent_words-->
 <li><kbd>↑</kbd> / <kbd>↓</kbd> zmieniają, który cue jest następny (np. żeby coś pominąć).
 <!--IFNOT:live_dblclick-->Dwuklik na wierszu odpala go od razu.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Dwuklik na wierszu tylko ustawia go jako następny (odpalisz go <kbd>Spacją</kbd>); żeby odpalić od razu, kliknij prawym przyciskiem → <b>Uruchom ten cue teraz</b>.<!--/IF:live_dblclick--></li>
-<li>Panel <b>Podgląd warstw Live</b> pokazuje, co gra na L1–L3; <b>Wygaś</b> łagodnie
-kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym kliknięciem).</li>
-<!--IF:action_cues--><li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.</li><!--/IF:action_cues-->
+<!--IFNOT:now_playing--><li>Panel <b>Podgląd warstw Live</b> pokazuje, co gra na L1–L3; <b>Wygaś</b> łagodnie
+kończy daną warstwę (przytrzymaj chwilę – ochrona przed przypadkowym kliknięciem).</li><!--/IFNOT:now_playing-->
+<!--IF:now_playing--><li>Po prawej kolumna <b>Teraz gra</b>: karta na każdy grający cue – nazwa, warstwa,
+stan tylko gdy jest wyjątkiem (<b>PAUZA</b>, <b>PĘTLA ∞</b>, <b>startuje za 0:03</b>), ile już grało i duże
+<b>zostało</b> (ze znakiem <b>⚠</b> na 5 s przed końcem, gdy następne GO czeka na Ciebie), oraz przyciski tylko dla
+tego cue: <b>⏸</b> pauza, <b>Wygaś</b>, <b>Zwolnij pętlę</b>. Obrazy i napisy zajmują jedną linię z <b>Wygaś</b>.
+Nowy cue dostaje pierwsze wolne miejsce, więc karty nie skaczą. Panel warstw i kłódka zostają
+w Przygotowaniu; <b>Pauza wszystko</b> stoi obok GO.</li><!--/IF:now_playing-->
+<!--IF:action_cues--><li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.<!--IF:now_playing--> W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <!--IFNOT:mode_tabs--><li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Powrót do przygotowania</b>: przytrzymaj zakładkę <b>○ Przygotowanie</b> przez 1,5 s albo <b>Sterowanie → Zakończ przedstawienie…</b> (<kbd>Ctrl+Shift+F5</kbd>); to, co gra, gra dalej. <kbd>F5</kbd> i <kbd>Ctrl+L</kbd> tylko wchodzą – przypadkowe naciśnięcie nie wyrzuci Cię z przedstawienia. Alt+F4 w czasie przedstawienia najpierw pyta.</li><!--/IF:mode_tabs-->
 </ol>
@@ -392,8 +398,8 @@ pauzy uruchamia tylko nowy cue (np. komunikat); to, co wstrzymane, czeka na <b>W
 <tr><td><b>Wygaszenie główne</b> <kbd>Ctrl+B</kbd></td><td>płynnie wygasza wszystko i pokazuje zaślepkę.</td></tr>
 <!--IF:fade_all--><tr><td><b>WYGAŚ</b> <kbd>Shift+Esc</kbd></td><td>dźwięk i obraz na wszystkich warstwach łagodnie wygasają razem (1 s) i się zatrzymują – spokojniejsza wersja PANIC. Po WYGAŚ i po PANIC następne GO wraca do cue, który uruchomiono ręcznie i który został zatrzymany – za wcześnie dane GO można po prostu powtórzyć (muzyka tła grająca od początku aktu nie przejmuje GO).</td></tr><!--/IF:fade_all-->
 <tr><td><b>PANIC</b> <kbd>Esc</kbd> dwa razy w ciągu 0,6 s<!--IFNOT:esc_everywhere--> (w trybie LIVE)<!--/IFNOT:esc_everywhere--><!--IF:esc_everywhere--> (także w projekcie, gdy coś gra; Esc w polu tekstowym tylko z niego wychodzi)<!--/IF:esc_everywhere--></td><td>natychmiast ucina wszystko (0 ms) – ostateczność.</td></tr>
-<tr><td><b>Blokada warstw</b></td><td>w trybie LIVE sterowanie warstwami jest zablokowane;
-przytrzymaj kłódkę 1,2 s, żeby odblokować przewijanie/pauzę pojedynczych warstw.</td></tr>
+<!--IFNOT:now_playing--><tr><td><b>Blokada warstw</b></td><td>w trybie LIVE sterowanie warstwami jest zablokowane;
+przytrzymaj kłódkę 1,2 s, żeby odblokować przewijanie/pauzę pojedynczych warstw.</td></tr><!--/IFNOT:now_playing-->
 </table>
 
 <!-- ================================================================== -->

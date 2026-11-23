@@ -39,6 +39,7 @@ from ui.main_window._preview import _PreviewMixin
 from ui.main_window._actions import _ActionsMixin
 from ui.main_window._undo_go import _UndoGoMixin
 from ui.main_window._readiness import _ReadinessMixin
+from ui.main_window._now_playing import _NowPlayingMixin
 
 
 class MainWindow(
@@ -65,6 +66,7 @@ class MainWindow(
     _ActionsMixin,
     _UndoGoMixin,
     _ReadinessMixin,
+    _NowPlayingMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -74,6 +76,7 @@ class MainWindow(
     layer_clear_requested = Signal(int)            # emits layer (1, 2, or 3)
     action_cancel_requested = Signal(int)          # emits cue_id of a deleted action cue
     undo_go_requested = Signal(object)             # list[UndoStep]: take back the last GO
+    release_loop_requested = Signal(int)           # runtime layer: its loop ends after this pass
     blackout_requested = Signal()                        # emits when blackout triggered
     preview_mute_toggled = Signal(bool)                  # emits is_muted (True or False)
     preview_in_out_changed = Signal(float, object, bool) # emits in_sec, out_sec, seek_to_start
@@ -160,6 +163,7 @@ class MainWindow(
         # "Loop Scena" groups a release action reached: they end after this pass.
         self._released_groups: set[int] = set()
         self._undo_go_setup()  # Undo the last GO (stage 1.18)
+        self._paused_slots: set[int] = set()  # runtime layers paused one by one (Now playing)
         self._is_global_paused: bool = False
         self._last_esc_press_mono: float = 0.0
         self._panels_locked: bool = True
@@ -179,6 +183,7 @@ class MainWindow(
         self._build_menu_bar()
         self._build_ui()
         self._readiness_setup()  # "Before the show" page (stage 1 C2a step 7)
+        self._now_playing_setup()  # right column of the show (stage 1 C2a step 8)
         self._setup_shortcuts()
         self._update_inspector(None)
         self._build_status_bar()

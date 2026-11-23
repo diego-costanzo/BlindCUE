@@ -45,6 +45,8 @@ class OperatorNoteBanner(QFrame):
         self.setAccessibleName("Nota per la regia")
         self._cue_id: int = -1
         self._is_checklist = False
+        self._active = False      # a note is up (shown here or on a card)
+        self._docked = False      # in the show a plain note lives on a card of "Now playing"
         self._boxes: list[QCheckBox] = []
 
         outer = QHBoxLayout(self)
@@ -90,8 +92,20 @@ class OperatorNoteBanner(QFrame):
 
     # ── State ─────────────────────────────────────────────────────────
     def is_shown(self) -> bool:
-        """True while a note is up (also before the window itself is shown)."""
-        return not self.isHidden()
+        """True while a note is up (also before the window itself is shown, or on a card)."""
+        return self._active
+
+    def text(self) -> str:
+        """The note's text (for its card in the show)."""
+        return self.lbl_text.text()
+
+    def set_docked(self, docked: bool) -> None:
+        """In the show a plain note goes to its card instead of this strip (C2a step 8)."""
+        self._docked = bool(docked)
+        self._apply_visibility()
+
+    def _apply_visibility(self) -> None:
+        self.setVisible(self._active and not (self._docked and not self._is_checklist))
 
     def cue_id(self) -> int:
         """Cue whose note is shown, or -1."""
@@ -149,12 +163,14 @@ class OperatorNoteBanner(QFrame):
             self._items_layout.addWidget(box)
             self._boxes.append(box)
         self._items_box.setVisible(bool(self._boxes))
-        self.show()
+        self._active = True
+        self._apply_visibility()
 
     def dismiss(self) -> None:
         """Hide the note (the operator closed it)."""
         if not self.is_shown():
             return
         cue_id = self._cue_id
+        self._active = False
         self.hide()
         self.dismissed.emit(cue_id)

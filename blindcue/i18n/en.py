@@ -2198,4 +2198,26 @@ T: dict[str, str] = {
         'checklist',
     'Pronto. Non verificato: {}.':
         'Ready. Not checked: {}.',
+    'Sfuma':
+        'Fade out',
+    'Sfuma e ferma questa cue (non sposta il GO)':
+        'Fade out and stop this cue (the GO stays where it is)',
+    'Pausa / riprendi questa cue':
+        'Pause / resume this cue',
+    'Il loop finisce dopo questo giro':
+        'The loop ends after this pass',
+    'Ora in onda':
+        'Now playing',
+    'ORA IN ONDA':
+        'NOW PLAYING',
+    'Niente in onda.':
+        'Nothing is playing.',
+    'parte tra {}':
+        'starts in {}',
+    'PAUSA':
+        'PAUSED',
+    'attesa {}':
+        'waits {}',
+    'LOOP ∞':
+        'LOOP ∞',
 }

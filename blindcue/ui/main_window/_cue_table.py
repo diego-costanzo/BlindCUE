@@ -258,6 +258,7 @@ class _CueTableMixin:
             self._live_resume_id = self._cues[self._go_target_index()].cue_id
         self._live_mode = enabled
         self._undo_go_end()  # a change of mode ends the Undo GO offer
+        self._note_banner.set_docked(enabled)  # in the show a plain note is a card of "Now playing"
         if hasattr(self, "_act_live_mode"):
             self._act_live_mode.blockSignals(True)
             self._act_live_mode.setChecked(enabled)

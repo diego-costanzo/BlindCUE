@@ -70,6 +70,7 @@ from ui.cue_table import (
 from ui.hold_button import ElidedButton, HoldProgressButton
 from ui.master_volume import MasterVolume
 from ui.mode_tabs import ModeTabs
+from ui.now_playing import NowPlayingPanel
 from ui.live_status_panel import LiveStatusPanel, _fmt_mmss
 from ui.theme import CLR_GO, get_active_theme
 
@@ -945,10 +946,11 @@ class LiveShowPanel(QWidget):
         right_layout.addWidget(self.btn_fade_all)
 
         # Far away from bottom GO trigger: Crimson PANIC Stop button
-        self.btn_panic = QPushButton("🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]")
+        # Same words and place as in the Preparation bar (it fits 1280 px too).
+        self.btn_panic = QPushButton("🚨 PANIC [ESC ×2]")
         self.btn_panic.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_panic.setFixedHeight(34)
-        self.btn_panic.setMinimumWidth(268)
+        self.btn_panic.setMinimumWidth(160)
         self.btn_panic.setToolTip(
             "EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. "
             "Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).\n"
@@ -1009,11 +1011,13 @@ class LiveShowPanel(QWidget):
         hdr.setSectionResizeMode(3, QHeaderView.ResizeMode.Interactive)
         hdr.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
         hdr.setSectionResizeMode(5, QHeaderView.ResizeMode.Fixed)
-        self.live_table.setColumnWidth(0, 60)
+        # Narrower than before: "Now playing" takes 360 px on the right and
+        # the cue name needs the room (C2a step 8; Q only when a cue has one).
+        self.live_table.setColumnWidth(0, 52)
         self.live_table.setColumnWidth(1, 76)
-        self.live_table.setColumnWidth(3, 260)
-        self.live_table.setColumnWidth(4, 280)
-        self.live_table.setColumnWidth(5, 160)
+        self.live_table.setColumnWidth(3, 200)
+        self.live_table.setColumnWidth(4, 204)
+        self.live_table.setColumnWidth(5, 136)
         self.live_table.setItemDelegate(LiveCueRowDelegate(self.live_table))
 
         self.live_table.cellClicked.connect(self._on_table_clicked)
@@ -1024,7 +1028,13 @@ class LiveShowPanel(QWidget):
         self.live_table.standby_selected.connect(self.cue_row_clicked)
         self.live_table.fire_row_requested.connect(self.force_row_requested)
         self.live_table.group_collapse_toggled.connect(self.group_collapse_toggled)
-        root.addWidget(self.live_table, stretch=1)
+        # The list and, on its right, what is on air now (stage 1 C2a step 8).
+        middle = QHBoxLayout()
+        middle.setSpacing(8)
+        middle.addWidget(self.live_table, stretch=1)
+        self.now_playing = NowPlayingPanel()
+        middle.addWidget(self.now_playing)
+        root.addLayout(middle, stretch=1)
 
         # "Last started" line above "Next": what the last GO started, and when.
         self.last_bar = QFrame()
@@ -1154,14 +1164,21 @@ class LiveShowPanel(QWidget):
         self.btn_layer_lock.toggled_state.connect(lambda active: self.live_status.set_locked(not active))
         dock.addWidget(self.btn_layer_lock, stretch=0)
 
+        # In the show the cards of "Now playing" carry the layer controls:
+        # the layer panel and its lock stay in Preparation only (C2a step 8).
+        self.live_status.setVisible(False)
+        self.btn_layer_lock.setVisible(False)
+
         self.transport_frame = QFrame()
-        tr_layout = QVBoxLayout(self.transport_frame)
-        tr_layout.setContentsMargins(10, 8, 10, 8)
+        # Pause next to GO, not above it: one row less under the list.
+        tr_layout = QHBoxLayout(self.transport_frame)
+        tr_layout.setContentsMargins(10, 6, 10, 6)
         tr_layout.setSpacing(8)
 
         self.btn_pause_all = QPushButton("⏸  PAUSA TUTTO")
         self.btn_pause_all.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.btn_pause_all.setFixedHeight(44)
+        self.btn_pause_all.setFixedHeight(64)
+        self.btn_pause_all.setFixedWidth(220)
         self.btn_pause_all.setToolTip(
             "Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) "
             "per ripartire poi dallo stesso istante"
@@ -1915,6 +1932,7 @@ class LiveShowPanel(QWidget):
                 else:
                     self.live_table.setRowHidden(r, False)
 
+            self.live_table.setColumnHidden(1, not any((c.q_label or "").strip() for c in cues))
             if 0 <= standby_row < len(cues):
                 self.live_table.selectRow(standby_row)
                 sb_cue = cues[standby_row]

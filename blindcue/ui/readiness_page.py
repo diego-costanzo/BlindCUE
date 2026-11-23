@@ -158,7 +158,8 @@ class ReadinessPage(QWidget):
         colour = _COLOURS.get(row.state, "#94a3b8")
         frame.setStyleSheet(
             f"QFrame#readinessRow {{ background-color: #0f172a; border: 1px solid #1e293b; "
-            f"border-left: 4px solid {colour}; border-radius: 6px; }}")
+            f"border-left: 4px solid {colour}; border-radius: 6px; }} "
+            "QFrame#readinessRow QLabel { background: transparent; }")
         frame.setObjectName("readinessRow")
         outer = QVBoxLayout(frame)
         outer.setContentsMargins(10, 6, 10, 6)

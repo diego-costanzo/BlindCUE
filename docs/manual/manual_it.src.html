@@ -375,9 +375,15 @@ diventa ambra se il prossimo GO tocca a te (la cue non ha Auto-GO). Le cue già 
 (anche in polacco e inglese: UWAGA, CZEKAJ, WAIT, DANGER…) sono evidenziate nella scaletta.</li><!--/IF:urgent_words-->
 <li><kbd>↑</kbd> / <kbd>↓</kbd> cambiano la cue successiva (per esempio per saltare qualcosa).
 <!--IFNOT:live_dblclick-->Un doppio clic su una riga la lancia subito.<!--/IFNOT:live_dblclick--><!--IF:live_dblclick-->Un doppio clic su una riga la rende solo la prossima cue (la lanci con <kbd>Spazio</kbd>); per lanciarla subito, clic destro → <b>Fai partire subito questa Cue</b>.<!--/IF:live_dblclick--></li>
-<li>Il pannello <b>Monitor Uscita Layer Live</b> mostra cosa va su L1–L3; <b>Fade Out</b>
-chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic accidentali).</li>
-<!--IF:action_cues--><li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu.</li><!--/IF:action_cues-->
+<!--IFNOT:now_playing--><li>Il pannello <b>Monitor Uscita Layer Live</b> mostra cosa va su L1–L3; <b>Fade Out</b>
+chiude dolcemente quel layer (tienilo premuto un attimo – protezione dai clic accidentali).</li><!--/IFNOT:now_playing-->
+<!--IF:now_playing--><li>A destra la colonna <b>Ora in onda</b>: una scheda per ogni cue in onda – nome, layer,
+lo stato solo quando è un'eccezione (<b>PAUSA</b>, <b>LOOP ∞</b>, <b>parte tra 0:03</b>), il tempo trascorso e,
+grande, il <b>tempo rimasto</b> (con <b>⚠</b> 5 s prima della fine quando il prossimo GO aspetta te), e i pulsanti
+solo per quella cue: <b>⏸</b> pausa, <b>Sfuma</b>, <b>Rilascia loop</b>. Immagini e didascalie occupano una riga con
+<b>Sfuma</b>. Una nuova cue prende il primo posto libero, così le schede non saltano. Il pannello dei layer e il
+lucchetto restano in Preparazione; <b>Pausa tutto</b> sta accanto al GO.</li><!--/IF:now_playing-->
+<!--IF:action_cues--><li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu.<!--IF:now_playing--> Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
 <!--IFNOT:mode_tabs--><li><b>Torna a Progetto</b> (<kbd>F5</kbd>) – torni alla modifica; quello che sta andando continua.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Ritorno alla preparazione</b>: tieni premuta la scheda <b>○ Preparazione</b> per 1,5 s oppure <b>Show → Termina lo spettacolo…</b> (<kbd>Ctrl+Maiusc+F5</kbd>); quello che sta andando continua. <kbd>F5</kbd> e <kbd>Ctrl+L</kbd> servono solo a entrare – un tasto premuto per sbaglio non ti fa uscire dallo spettacolo. Alt+F4 durante lo spettacolo chiede prima.</li><!--/IF:mode_tabs-->
 </ol>
@@ -396,8 +402,8 @@ durante la pausa avvia solo la nuova cue (es. un annuncio); ciò che è in pausa
 <tr><td><b>Master Blackout</b> <kbd>Ctrl+B</kbd></td><td>sfuma tutto e mostra il tappo.</td></tr>
 <!--IF:fade_all--><tr><td><b>DISSOLVI</b> <kbd>Shift+Esc</kbd></td><td>audio e immagine su tutti i layer sfumano insieme (1 s) e si fermano – un PANIC più calmo. Dopo DISSOLVI e dopo PANIC il prossimo GO torna alla cue avviata a mano che è stata fermata – un GO dato troppo presto si può semplicemente ripetere (la musica di sottofondo partita a inizio atto non prende il GO).</td></tr><!--/IF:fade_all-->
 <tr><td><b>PANIC</b> <kbd>Esc</kbd> due volte entro 0,6 s<!--IFNOT:esc_everywhere--> (in modalità LIVE)<!--/IFNOT:esc_everywhere--><!--IF:esc_everywhere--> (anche nel progetto, quando qualcosa è in onda; Esc in un campo di testo ne esce soltanto)<!--/IF:esc_everywhere--></td><td>taglia tutto all'istante (0 ms) – ultima risorsa.</td></tr>
-<tr><td><b>Blocco layer</b></td><td>in modalità LIVE i comandi dei layer sono bloccati;
-tieni premuto il lucchetto 1,2 s per sbloccare scorrimento e pausa dei singoli layer.</td></tr>
+<!--IFNOT:now_playing--><tr><td><b>Blocco layer</b></td><td>in modalità LIVE i comandi dei layer sono bloccati;
+tieni premuto il lucchetto 1,2 s per sbloccare scorrimento e pausa dei singoli layer.</td></tr><!--/IFNOT:now_playing-->
 </table>
 
 <!-- ================================================================== -->

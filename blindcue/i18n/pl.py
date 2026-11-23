@@ -2420,4 +2420,26 @@ T: dict[str, str] = {
         'lista kontrolna',
     'Pronto. Non verificato: {}.':
         'Gotowe. Nie sprawdzono: {}.',
+    'Sfuma':
+        'Wygaś',
+    'Sfuma e ferma questa cue (non sposta il GO)':
+        'Wygaś i zatrzymaj ten cue (GO zostaje, gdzie jest)',
+    'Pausa / riprendi questa cue':
+        'Pauza / wznów ten cue',
+    'Il loop finisce dopo questo giro':
+        'Pętla skończy się po tym przebiegu',
+    'Ora in onda':
+        'Teraz gra',
+    'ORA IN ONDA':
+        'TERAZ GRA',
+    'Niente in onda.':
+        'Nic nie gra.',
+    'parte tra {}':
+        'startuje za {}',
+    'PAUSA':
+        'PAUZA',
+    'attesa {}':
+        'czeka {}',
+    'LOOP ∞':
+        'PĘTLA ∞',
 }

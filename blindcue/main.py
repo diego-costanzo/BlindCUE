@@ -1065,6 +1065,15 @@ def main() -> int:
 
     main_win.undo_go_requested.connect(_on_undo_go)
 
+    def _on_release_loop(layer: int) -> None:
+        """A card of "Now playing": the loop on *layer* ends after this pass."""
+        lp = live_players.get(layer)
+        by_player = lp.release_loop() if lp is not None else False
+        by_group = main_win.release_loop_scene_of(active_live_cues.get(layer))
+        logger.info("[LIVE] Loop released on L%d (file/section: %s, scene: %s)", layer, by_player, by_group)
+
+    main_win.release_loop_requested.connect(_on_release_loop)
+
     # ── Handle per-layer EOF & Error cleanly ──────────────────────────
     def _on_live_eof(layer: int) -> None:
         """When media on *layer* reaches EOF, enter Post-Delay or clean up immediately."""

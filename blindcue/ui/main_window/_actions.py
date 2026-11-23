@@ -89,6 +89,7 @@ class _ActionsMixin:
             cue.cue_id, title, str(spec.get("text", "")), str(spec.get("note_color", "#f59e0b")),
             items=items, ticked=ticks,
         )
+        self._refresh_now_playing()  # in the show a plain note is a card
 
     @Slot(int, int, bool)
     def _on_note_item_toggled(self, cue_id: int, index: int, ticked: bool) -> None:
@@ -106,6 +107,7 @@ class _ActionsMixin:
     @Slot(int)
     def _on_note_dismissed(self, cue_id: int) -> None:
         """A note went away: bring back the checklist it covered, if any."""
+        self._refresh_now_playing()
         suspended = getattr(self, "_suspended_checklist_id", None)
         self._suspended_checklist_id = None
         if suspended is None or suspended == cue_id:

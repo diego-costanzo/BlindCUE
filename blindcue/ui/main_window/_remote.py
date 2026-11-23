@@ -392,6 +392,7 @@ class _RemoteMixin:
 
     def _sync_live_view(self) -> None:
         self._update_go_button_text()
+        self._refresh_now_playing()
         if not hasattr(self, "_live_show_panel"):
             return
         standby_row, _ = self._anchor_row_and_cue()
@@ -473,6 +474,7 @@ class _RemoteMixin:
         if hasattr(self, "_live_show_panel"):
             self._live_show_panel.set_live_times(times)
         self._set_live_fractions({cid: (v[1], v[2]) for cid, v in times.items()})
+        self._refresh_now_playing()
         if self._live_clocks.is_empty():
             self._live_clock_timer.stop()
 
@@ -532,11 +534,17 @@ class _RemoteMixin:
         """Toggle the paused indicator on the panel of *layer*."""
         for sp in self._for_each_status_panel():
             sp.set_layer_paused(layer, paused)
+        if paused:
+            self._paused_slots.add(int(layer))
+        else:
+            self._paused_slots.discard(int(layer))
+        self._refresh_now_playing()
 
     def _reset_live_label(self, layer: int) -> None:
         for sp in self._for_each_status_panel():
             sp.reset_layer(layer)
         self._live_clocks.clear(layer)
+        self._paused_slots.discard(int(layer))
 
     def promote_cue_to_live(self, cue: Cue) -> None:
         """Promote a cue to LIVE status once its Pre-Delay completes."""

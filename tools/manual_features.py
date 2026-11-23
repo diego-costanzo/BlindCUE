@@ -46,6 +46,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "last_started": ("blindcue/ui/live_show_view.py", "def set_last_started"),
     "undo_go": ("blindcue/engine/undo_go.py", None),
     "readiness": ("blindcue/engine/readiness.py", None),
+    "now_playing": ("blindcue/ui/now_playing.py", None),
 }
 
 
