@@ -721,6 +721,7 @@ class LiveShowPanel(QWidget):
     group_collapse_toggled = Signal(int)
     pause_all_toggled = Signal()
     panic_requested = Signal()
+    fade_all_requested = Signal()
     break_loop_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -825,6 +826,23 @@ class LiveShowPanel(QWidget):
         self.btn_stopwatch_reset.clicked.connect(self.reset_stopwatch)
         right_layout.addWidget(self.btn_stopwatch_reset)
         right_layout.addSpacing(8)
+
+        # Softer sibling of PANIC: every layer fades out together.
+        self.btn_fade_all = QPushButton("🔉 DISSOLVI [⇧ESC]")
+        self.btn_fade_all.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.btn_fade_all.setFixedHeight(34)
+        self.btn_fade_all.setToolTip(
+            "Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme "
+            "(1 s), poi si fermano. Il prossimo GO riparte dalla prima cue fermata."
+        )
+        self.btn_fade_all.setStyleSheet(
+            "QPushButton { background-color: #78350f; color: #ffffff; border: 2px solid #f59e0b; "
+            "border-radius: 6px; font-weight: bold; font-size: 13px; padding: 0px 8px; } "
+            "QPushButton:hover { background-color: #b45309; border-color: #fcd34d; } "
+            "QPushButton:pressed { background-color: #92400e; }"
+        )
+        self.btn_fade_all.clicked.connect(self.fade_all_requested)
+        right_layout.addWidget(self.btn_fade_all)
 
         # Far away from bottom GO trigger: Crimson PANIC Stop button
         self.btn_panic = QPushButton("🚨  PANIC  —  STOP TOTALE   [ ESC ×2 ]")

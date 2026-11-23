@@ -1756,4 +1756,12 @@ T: dict[str, str] = {
         '🚨  PANIC  —  TOTAL STOP   [ ESC ×2 ]',
     'GO ignorato: secondo GO entro {} ms':
         'GO ignored: second GO within {} ms',
+    '&Dissolvenza totale (Fade All)':
+        '&Fade All',
+    'Dissolvenza totale in {} s':
+        'Fading everything out in {} s',
+    'Dissolvenza totale: audio, video e immagini su tutti i layer sfumano insieme (1 s), poi si fermano. Il prossimo GO riparte dalla prima cue fermata.':
+        'Fade All: audio, video and images on every layer fade out together (1 s), then stop. The next GO starts again from the first stopped cue.',
+    '🔉 DISSOLVI [⇧ESC]':
+        '🔉 FADE ALL [⇧ESC]',
 }

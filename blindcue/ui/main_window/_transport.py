@@ -27,6 +27,19 @@ def read_go_guard_ms() -> int:
     return max(0, min(value, 5000))
 
 
+FADE_ALL_SETTINGS_KEY = "live/fade_all_sec"
+FADE_ALL_DEFAULT_SEC = 1.0
+
+
+def read_fade_all_sec() -> float:
+    """Fade All duration in seconds from QSettings (0.1–10 s)."""
+    try:
+        value = float(QSettings("BlindCue", "BlindCue").value(FADE_ALL_SETTINGS_KEY, FADE_ALL_DEFAULT_SEC))
+    except (TypeError, ValueError):
+        value = FADE_ALL_DEFAULT_SEC
+    return max(0.1, min(value, 10.0))
+
+
 class _TransportMixin:
     def _go_guard_allows(self) -> bool:
         """Swallow a second GO that arrives within the guard window.
@@ -259,9 +272,49 @@ class _TransportMixin:
         self._status_label.setText("BLACKOUT — Output ripristinato a Layer 0 (Tappo)")
         logger.info("[BLACKOUT] Activated")
 
+    def _first_running_index(self) -> int | None:
+        """Row of the first cue that is live or waiting in a pre/post delay."""
+        waiting = set(getattr(self, "_live_phase_tags", {}) or {})
+        for idx, cue in enumerate(self._cues):
+            if cue.media_type == MediaType.GROUP:
+                continue
+            if cue.status == CueStatus.LIVE or cue.cue_id in waiting:
+                return idx
+        return None
+
+    def _standby_on_first_stopped(self, first_stopped: int | None) -> None:
+        """After a stop, put the next GO on the first cue that was running.
+
+        A GO pressed too early can then be undone by stopping and pressing GO
+        again at the right moment.
+        """
+        if first_stopped is not None and 0 <= first_stopped < len(self._cues):
+            self._current_index = first_stopped
+            self._cue_list.setCurrentRow(first_stopped)
+
+    @Slot()
+    def _on_fade_all(self) -> None:
+        """Fade All: every layer fades out together (Shift+Esc), a softer PANIC."""
+        seconds = read_fade_all_sec()
+        first_stopped = self._first_running_index()
+        if hasattr(self, "_earcon_mgr"):
+            self._earcon_mgr.play_stop()
+        self._live_phase_tags.clear()
+        ShowEngine.demote_all_live(self._cues)
+        self._refresh_cue_list()
+        for sp in self._for_each_status_panel():
+            sp.reset_all_layers()
+        self.set_global_paused(False, silent=True)
+        self.fade_all_requested.emit(seconds)
+        self._standby_on_first_stopped(first_stopped)
+        self._sync_live_view()
+        self._status_label.setText(f"Dissolvenza totale in {seconds:.1f} s")
+        logger.info("[FADE ALL] %.2fs", seconds)
+
     @Slot()
     def _on_panic(self) -> None:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
+        first_stopped = self._first_running_index()
         self._live_phase_tags.clear()
         ShowEngine.demote_all_live(self._cues)
         self._refresh_cue_list()
@@ -272,6 +325,7 @@ class _TransportMixin:
         self._output.panic_blackout()
         if getattr(self, "_output_b", None) is not None:
             self._output_b.panic_blackout()
+        self._standby_on_first_stopped(first_stopped)
         self._sync_live_view()
         self._status_label.setText("🚨 PANIC (0ms) — STOP TOTALE ESEGUITO")
         logger.warning("[PANIC] Executed hard stop all layers")

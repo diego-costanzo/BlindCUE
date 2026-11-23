@@ -66,6 +66,10 @@ class _MenuMixin:
         show_menu.addAction(
             QAction("&Blackout", self, shortcut=QKeySequence("Ctrl+B"), triggered=self._on_blackout)
         )
+        show_menu.addAction(
+            QAction("&Dissolvenza totale (Fade All)", self, shortcut=QKeySequence("Shift+Esc"),
+                    triggered=self._on_fade_all)
+        )
         show_menu.addSeparator()
         show_menu.addAction(
             QAction("Imposta Immagine di &Tappo (Layer 0)…", self, triggered=self._on_choose_layer0)
@@ -345,6 +349,7 @@ class _MenuMixin:
         self._live_show_panel.group_collapse_toggled.connect(self._toggle_group_collapsed)
         self._live_show_panel.pause_all_toggled.connect(self.pause_all_toggled.emit)
         self._live_show_panel.panic_requested.connect(self._on_panic)
+        self._live_show_panel.fade_all_requested.connect(self._on_fade_all)
         self._live_show_panel.break_loop_requested.connect(self._on_break_section_loop)
         self._live_show_panel.live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
         self._live_show_panel.live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
