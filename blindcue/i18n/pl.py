@@ -3494,4 +3494,38 @@ T: dict[str, str] = {
         'Punkt OUT',
     'Elimina':
         'Usuń',
+    '📁 Nuovo spettacolo da una cartella…':
+        '📁 Nowe przedstawienie z folderu…',
+    '📋 Importa una scaletta (CSV)…':
+        '📋 Importuj listę pozycji (CSV)…',
+    'Nuovo spettacolo da una cartella':
+        'Nowe przedstawienie z folderu',
+    'Nella cartella non ci sono video, suoni o immagini.':
+        'W folderze nie ma filmów, dźwięków ani obrazów.',
+    '{} file in ordine di nome. Come aggiungerli?':
+        'Plików: {} (w kolejności nazw). Jak je dodać?',
+    'Una scena (un GO per elemento)':
+        'Jedna scena (GO na każdy element)',
+    "Nuovo spettacolo: {} file da '{}'":
+        "Nowe przedstawienie: plików {} z '{}'",
+    'Importa una scaletta (CSV)':
+        'Import listy pozycji (CSV)',
+    'Il file non è una scaletta: serve una prima riga con i nomi delle colonne (almeno Nome o File).':
+        'To nie jest lista pozycji: pierwszy wiersz musi zawierać nazwy kolumn (co najmniej Nazwa albo Plik).',
+    'Nessuna riga da importare':
+        'Brak wierszy do importu',
+    "Importate {} righe da '{}'":
+        "Zaimportowane wiersze: {} z '{}'",
+    'senza file (da collegare): {}':
+        'bez pliku (do dołączenia): {}',
+    'Salva prima lo spettacolo, poi fissalo':
+        'Najpierw zapisz przedstawienie, potem je przypnij',
+    "Spettacolo fissato in 'Apri recenti'":
+        'Przedstawienie przypięte w „Otwórz ostatnie”',
+    'Spettacolo non più fissato':
+        'Przedstawienie odpięte',
+    '📌 Non fissare più questo spettacolo':
+        '📌 Odepnij to przedstawienie',
+    '📌 Fissa questo spettacolo in cima':
+        '📌 Przypnij to przedstawienie na górze',
 }

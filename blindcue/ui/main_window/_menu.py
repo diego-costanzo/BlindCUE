@@ -34,6 +34,9 @@ class _MenuMixin:
             QAction("Save Show &As…", self, shortcut=QKeySequence("Ctrl+Shift+S"), triggered=self._on_save_as_show)
         )
         file_menu.addSeparator()
+        file_menu.addAction(QAction("📁 Nuovo spettacolo da una cartella…", self,
+                                    triggered=self._new_show_from_folder))  # 5.9
+        file_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
         file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
         file_menu.addAction(QAction("📥 Importa cue da un altro spettacolo…", self,
                                     triggered=self._import_from_show))  # 5.3
@@ -523,24 +526,32 @@ class _MenuMixin:
         if menu is None:
             return
         menu.clear()
-        recent = self._recent_projects()
-        if not recent:
+        pinned = self._pinned_projects()  # 5.9: always on top, never pushed out
+        recent = [p for p in self._recent_projects() if p not in pinned]
+        if not recent and not pinned:
             empty = menu.addAction("Nessun progetto recente")
             empty.setEnabled(False)
-            return
-
-        for idx, path in enumerate(recent, start=1):
+        for idx, path in enumerate(pinned + recent, start=1):
             name = Path(path).stem or Path(path).name
-            act = QAction(f"{idx}. {name}", self)
+            mark = "📌 " if path in pinned else ""
+            act = QAction(f"{idx}. {mark}{name}", self)
             act.setToolTip(path)
             # Missing files stay visible: clicking explains what happened and
             # removes the stale entry instead of failing silently.
             if not os.path.isfile(path):
-                act.setText(f"{idx}. {name}  (non trovato)")
+                act.setText(f"{idx}. {mark}{name}  (non trovato)")
             act.triggered.connect(lambda _checked=False, p=path: self._open_recent_project(p))
             menu.addAction(act)
+            if idx == len(pinned) and recent:
+                menu.addSeparator()
 
         menu.addSeparator()
+        current = getattr(self, "_current_project_path", None)
+        is_pinned = bool(current) and self._recent_key(current) in pinned
+        pin = QAction("📌 Non fissare più questo spettacolo" if is_pinned else "📌 Fissa questo spettacolo in cima",
+                      self, triggered=self._toggle_pin_current)
+        pin.setEnabled(bool(current))
+        menu.addAction(pin)
         menu.addAction(QAction("Svuota elenco recenti", self, triggered=self._clear_recent_projects))
 
     def _bind_inspector_aliases(self) -> None:

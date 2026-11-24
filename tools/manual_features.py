@@ -76,6 +76,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "identify_screens": ("blindcue/ui/identify_screens.py", None),
     "preshow": ("blindcue/engine/list_check.py", None),
     "key_map": ("blindcue/engine/key_map.py", None),
+    "quick_start": ("blindcue/engine/quick_start.py", None),
 }
 
 

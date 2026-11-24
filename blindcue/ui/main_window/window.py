@@ -59,6 +59,7 @@ from ui.main_window._search import _SearchMixin
 from ui.main_window._show_import import _ShowImportMixin
 from ui.main_window._show_info import _ShowInfoMixin
 from ui.main_window._key_map import _KeyMapMixin
+from ui.main_window._quick_start import _QuickStartMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -106,6 +107,7 @@ class MainWindow(
     _ShowImportMixin,
     _ShowInfoMixin,
     _KeyMapMixin,
+    _QuickStartMixin,
     _SlideshowMixin,
     QMainWindow,
 ):

@@ -3272,4 +3272,38 @@ T: dict[str, str] = {
         'OUT point',
     'Elimina':
         'Delete',
+    '📁 Nuovo spettacolo da una cartella…':
+        '📁 New show from a folder…',
+    '📋 Importa una scaletta (CSV)…':
+        '📋 Import a cue list (CSV)…',
+    'Nuovo spettacolo da una cartella':
+        'New show from a folder',
+    'Nella cartella non ci sono video, suoni o immagini.':
+        'The folder has no videos, sounds or pictures.',
+    '{} file in ordine di nome. Come aggiungerli?':
+        '{} files in name order. How should they be added?',
+    'Una scena (un GO per elemento)':
+        'One scene (one GO per item)',
+    "Nuovo spettacolo: {} file da '{}'":
+        "New show: {} files from '{}'",
+    'Importa una scaletta (CSV)':
+        'Import a cue list (CSV)',
+    'Il file non è una scaletta: serve una prima riga con i nomi delle colonne (almeno Nome o File).':
+        'The file is not a cue list: the first line must name the columns (at least Name or File).',
+    'Nessuna riga da importare':
+        'No rows to import',
+    "Importate {} righe da '{}'":
+        "Imported {} rows from '{}'",
+    'senza file (da collegare): {}':
+        'without a file (to attach): {}',
+    'Salva prima lo spettacolo, poi fissalo':
+        'Save the show first, then pin it',
+    "Spettacolo fissato in 'Apri recenti'":
+        "Show pinned in 'Open recent'",
+    'Spettacolo non più fissato':
+        'Show unpinned',
+    '📌 Non fissare più questo spettacolo':
+        '📌 Unpin this show',
+    '📌 Fissa questo spettacolo in cima':
+        '📌 Pin this show on top',
 }

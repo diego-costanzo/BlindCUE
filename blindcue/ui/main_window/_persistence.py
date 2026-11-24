@@ -217,14 +217,15 @@ class _PersistenceMixin:
         return ret != QMessageBox.StandardButton.Cancel
 
     @Slot()
-    def _on_new_show(self) -> None:
+    def _on_new_show(self) -> bool:
+        """A new show (the checklist on top); False when it was not made (Show mode, cancelled)."""
         if not self._change_allowed(EDIT_LIST):  # Ctrl+N next to Ctrl+M must not end a show
-            return
+            return False
         if not self._confirm_save_if_modified(
             "Nuovo Show",
             "Ci sono modifiche non salvate nel progetto corrente.\nVuoi salvarle prima di creare un nuovo show?",
         ):
-            return
+            return False
 
         if any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags):
             self._on_panic()
@@ -262,6 +263,7 @@ class _PersistenceMixin:
         self._mark_modified(False)
         self._status_label.setText("Nuovo show creato")
         self._auto_save()
+        return True
 
     @Slot()
     def _on_open_show(self) -> None:
