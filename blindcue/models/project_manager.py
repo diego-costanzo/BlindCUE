@@ -46,6 +46,12 @@ def _backups(folder: Path, stem: str) -> list[Path]:
                   if p.name.startswith(stem + " ") and p.suffix.lower() == ".blindcue")
 
 
+def backups_of(show: str | Path) -> list[Path]:
+    """5.11: the backup copies of *show*, newest first."""
+    path = Path(show)
+    return list(reversed(_backups(path.parent / f"{path.stem}{BACKUP_DIR_SUFFIX}", path.stem)))
+
+
 def keep_backup(path: Path, keep: int = KEEP_BACKUPS) -> Path | None:
     """Copy the show file about to be overwritten into its backups folder; the copy, or None.
 
@@ -400,10 +406,12 @@ class ProjectManager:
         return saved, problems, len(media_map)
 
     def load_project(
-        self, file_path: str | Path
+        self, file_path: str | Path, as_path: str | Path | None = None
     ) -> tuple[list[Cue], int, dict[str, Any]]:
         """Load show cues and project state from a .blindcue JSON file.
 
+        *as_path*: read *file_path* as if it were there (a backup copy of a
+        portable show finds its media next to the show, 5.11).
         Returns (cues, current_index, settings).
         Raises ValueError or IOError if the file is invalid.
         """
@@ -442,7 +450,8 @@ class ProjectManager:
                 raw_cues = []
 
             loaded_cues: list[Cue] = []
-            proj_dir = path.parent.resolve()
+            where = Path(as_path) if as_path is not None else path
+            proj_dir = where.parent.resolve()
 
             # Resolve optional relative asset paths inside settings safely (Layer 0 & surface masks)
             def _resolve_relative_asset(raw_path: Any) -> Any:
@@ -486,7 +495,7 @@ class ProjectManager:
                         else:
                             # A bundle saved with absolute paths: its copy sits
                             # in <name>_media/ next to the show.
-                            media_candidate = (self.media_dir_for(path) / file_p.name).resolve()
+                            media_candidate = (self.media_dir_for(where) / file_p.name).resolve()
                             if media_candidate.is_relative_to(proj_dir) and media_candidate.is_file():
                                 cue.file_path = str(media_candidate)
 

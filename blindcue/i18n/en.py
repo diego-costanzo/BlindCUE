@@ -3332,4 +3332,80 @@ T: dict[str, str] = {
         'Format not supported: {}',
     "'{}' suona ora: {}":
         "'{}' now plays: {}",
+    '🕘 Storia delle modifiche…':
+        '🕘 History of changes…',
+    '🕘 Ripristina una copia di sicurezza…':
+        '🕘 Restore a backup…',
+    'Storia delle modifiche':
+        'History of changes',
+    'Le modifiche che Ctrl+Z può annullare, la più recente in alto:':
+        'The changes Ctrl+Z can take back, the newest on top:',
+    'Nessuna modifica da annullare':
+        'No changes to undo',
+    '↶ Annulla fino a qui (compresa)':
+        '↶ Undo back to here (this one too)',
+    'Annullate {} modifiche (Ctrl+Y le ripete)':
+        '{} changes undone (Ctrl+Y redoes them)',
+    'Aggiunte {} cue ({}…)':
+        '{} cues added ({}…)',
+    'Aggiunta {}':
+        'Added {}',
+    'Eliminate {} cue ({}…)':
+        '{} cues deleted ({}…)',
+    'Eliminata {}':
+        'Deleted {}',
+    'Cue sostituite ({}…)':
+        'Cues replaced ({}…)',
+    'Ordine cambiato ({}…)':
+        'Order changed ({}…)',
+    '{}: {} campi ({})':
+        '{}: {} fields ({})',
+    '{} cue cambiate: {}':
+        '{} cues changed: {}',
+    '{} cue cambiate':
+        '{} cues changed',
+    'Nessuna differenza nella lista':
+        'No difference in the list',
+    'Ripristina una copia di sicurezza':
+        'Restore a backup',
+    'Lo spettacolo non è ancora salvato: non ha copie di sicurezza':
+        'The show is not saved yet: it has no backups',
+    'Ancora nessuna copia: il programma ne fa una a ogni salvataggio.':
+        'No copy yet: the program makes one at every save.',
+    "La scaletta com'era al salvataggio delle:":
+        'The cue list as it was when saved at:',
+    'Scaletta ripristinata dalla copia delle {} (Ctrl+Z torna indietro)':
+        'Cue list restored from the copy of {} (Ctrl+Z goes back)',
+    'layer':
+        'layer',
+    'inclusa':
+        'on',
+    'scena':
+        'scene',
+    'modo della scena':
+        'scene mode',
+    'colore':
+        'colour',
+    'dissolvenza':
+        'crossfade',
+    'tempo':
+        'tempo',
+    'pagina':
+        'page',
+    'battuta':
+        'line',
+    'tasto':
+        'key',
+    'effetto':
+        'effect',
+    'ora':
+        'time',
+    'azione':
+        'action',
+    'testo':
+        'text',
+    'marcatori':
+        'markers',
+    'uscita audio':
+        'audio output',
 }

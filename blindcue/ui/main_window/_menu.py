@@ -37,6 +37,8 @@ class _MenuMixin:
         file_menu.addAction(QAction("📁 Nuovo spettacolo da una cartella…", self,
                                     triggered=self._new_show_from_folder))  # 5.9
         file_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
+        file_menu.addAction(QAction("🕘 Ripristina una copia di sicurezza…", self,
+                                    triggered=self._restore_backup))  # 5.11
         file_menu.addAction(QAction("🔎 Cerca i file mancanti in una cartella…", self,
                                     triggered=self._find_missing_files))  # 5.10
         file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
@@ -73,6 +75,7 @@ class _MenuMixin:
         self._act_redo.setEnabled(False)
         edit_menu.addAction(self._act_undo)
         edit_menu.addAction(self._act_redo)
+        edit_menu.addAction(QAction("🕘 Storia delle modifiche…", self, triggered=self._open_history))  # 5.11
         edit_menu.addSeparator()
         edit_menu.addAction(QAction("🔢 Rinumera le Q…", self, triggered=self._renumber_q))  # 5.2
 

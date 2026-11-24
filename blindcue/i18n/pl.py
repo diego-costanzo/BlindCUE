@@ -3554,4 +3554,80 @@ T: dict[str, str] = {
         'Nieobsługiwany format: {}',
     "'{}' suona ora: {}":
         "'{}' gra teraz plik: {}",
+    '🕘 Storia delle modifiche…':
+        '🕘 Historia zmian…',
+    '🕘 Ripristina una copia di sicurezza…':
+        '🕘 Przywróć kopię zapasową…',
+    'Storia delle modifiche':
+        'Historia zmian',
+    'Le modifiche che Ctrl+Z può annullare, la più recente in alto:':
+        'Zmiany, które Ctrl+Z może cofnąć, najnowsza na górze:',
+    'Nessuna modifica da annullare':
+        'Brak zmian do cofnięcia',
+    '↶ Annulla fino a qui (compresa)':
+        '↶ Cofnij do tego miejsca (włącznie)',
+    'Annullate {} modifiche (Ctrl+Y le ripete)':
+        'Cofnięte zmiany: {} (Ctrl+Y je przywraca)',
+    'Aggiunte {} cue ({}…)':
+        'Dodane pozycje: {} ({}…)',
+    'Aggiunta {}':
+        'Dodana {}',
+    'Eliminate {} cue ({}…)':
+        'Usunięte pozycje: {} ({}…)',
+    'Eliminata {}':
+        'Usunięta {}',
+    'Cue sostituite ({}…)':
+        'Pozycje zamienione ({}…)',
+    'Ordine cambiato ({}…)':
+        'Zmieniona kolejność ({}…)',
+    '{}: {} campi ({})':
+        '{}: zmienione pola: {} ({})',
+    '{} cue cambiate: {}':
+        'Zmienione pozycje: {} – {}',
+    '{} cue cambiate':
+        'Zmienione pozycje: {}',
+    'Nessuna differenza nella lista':
+        'Bez zmian na liście',
+    'Ripristina una copia di sicurezza':
+        'Przywracanie kopii zapasowej',
+    'Lo spettacolo non è ancora salvato: non ha copie di sicurezza':
+        'Przedstawienie nie jest jeszcze zapisane: nie ma kopii zapasowych',
+    'Ancora nessuna copia: il programma ne fa una a ogni salvataggio.':
+        'Jeszcze nie ma kopii: program robi ją przy każdym zapisie.',
+    "La scaletta com'era al salvataggio delle:":
+        'Lista pozycji z zapisu z dnia i godziny:',
+    'Scaletta ripristinata dalla copia delle {} (Ctrl+Z torna indietro)':
+        'Lista przywrócona z kopii z {} (Ctrl+Z cofa)',
+    'layer':
+        'warstwa',
+    'inclusa':
+        'włączona',
+    'scena':
+        'scena',
+    'modo della scena':
+        'tryb sceny',
+    'colore':
+        'kolor',
+    'dissolvenza':
+        'przenikanie',
+    'tempo':
+        'tempo',
+    'pagina':
+        'strona',
+    'battuta':
+        'kwestia',
+    'tasto':
+        'klawisz',
+    'effetto':
+        'efekt',
+    'ora':
+        'godzina',
+    'azione':
+        'akcja',
+    'testo':
+        'tekst',
+    'marcatori':
+        'znaczniki',
+    'uscita audio':
+        'wyjście dźwięku',
 }

@@ -71,6 +71,13 @@ class UndoManager(QObject):
             out.append(copy_d)
         return out
 
+    def steps(self) -> list[tuple[dict, dict]]:
+        """5.11: (state before, state after) of every step Ctrl+Z can take back, oldest first."""
+        states = list(self._undo_stack)
+        if self._committed_state is not None:
+            states.append(self._committed_state)
+        return [(states[i], states[i + 1]) for i in range(len(states) - 1)]
+
     def update_current_index(self, row: int) -> None:
         """Track the selected row without creating a new undo step."""
         if self._committed_state is not None and not self.restoring:

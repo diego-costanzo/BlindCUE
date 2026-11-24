@@ -78,6 +78,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "key_map": ("blindcue/engine/key_map.py", None),
     "quick_start": ("blindcue/engine/quick_start.py", None),
     "relink": ("blindcue/engine/relink.py", None),
+    "history": ("blindcue/engine/undo_names.py", None),
 }
 
 

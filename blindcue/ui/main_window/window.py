@@ -61,6 +61,7 @@ from ui.main_window._show_info import _ShowInfoMixin
 from ui.main_window._key_map import _KeyMapMixin
 from ui.main_window._quick_start import _QuickStartMixin
 from ui.main_window._relink import _RelinkMixin
+from ui.main_window._history import _HistoryMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -110,6 +111,7 @@ class MainWindow(
     _KeyMapMixin,
     _QuickStartMixin,
     _RelinkMixin,
+    _HistoryMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
