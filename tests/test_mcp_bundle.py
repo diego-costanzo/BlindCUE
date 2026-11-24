@@ -60,4 +60,14 @@ def test_server_accepts_both_root_forms(monkeypatch):
     assert [Path(r).name.lower() for r in server.FILES.policy.roots] == ["a", "b", "c"] and seen["t"] == "stdio"
     server.main(["--root"])                                  # Claude Desktop with no folder chosen
     assert server.FILES.policy.everywhere
+    # The stdio transport closes stdout at the end: it is reopened (no "I/O operation on closed file").
+    import io
+    import sys
+
+    closed = io.TextIOWrapper(io.BytesIO())
+    monkeypatch.setattr(sys, "stdout", closed)
+    monkeypatch.setattr(server.mcp, "run", lambda transport: closed.close())
+    server.main([])
+    assert sys.stdout is not closed and not sys.stdout.closed
+    sys.stdout.close()
     server.SESSION = server.FILES = None

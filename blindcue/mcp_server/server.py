@@ -294,7 +294,23 @@ def main(argv: list[str] | None = None) -> None:
     global SESSION, FILES
     FILES = ShowSession(AccessPolicy(roots))
     SESSION = FILES
-    mcp.run("stdio")
+    try:
+        mcp.run("stdio")
+    finally:
+        _reopen_closed_std_streams()
+
+
+def _reopen_closed_std_streams() -> None:
+    """The stdio transport closes stdout's buffer when the client goes away; the frozen exe then printed
+    "ValueError: I/O operation on closed file" when PyInstaller flushed it at exit."""
+    for name in ("stdout", "stderr"):
+        stream = getattr(sys, name, None)
+        try:
+            closed = stream is not None and bool(stream.closed)
+        except ValueError:
+            closed = True
+        if closed:
+            setattr(sys, name, open(os.devnull, "w", encoding="utf-8"))  # noqa: SIM115 (lives until exit)
 
 
 if __name__ == "__main__":
