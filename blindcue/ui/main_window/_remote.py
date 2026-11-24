@@ -787,6 +787,8 @@ class _RemoteMixin:
     def _refresh_cue_list(self, keep_selection: bool = True,
                           select_row: int | None = None) -> None:
         """Rebuild the 3-column table from the cue list with progressive row numbers."""
+        if self._cues and getattr(self, "_start_page", None) is not None and self._start_page_visible():
+            self._hide_start_page()  # a show was opened (Ctrl+O, a recent one): the list, not the start page
         if getattr(self, "_effects_on", False):
             self._effects_sync()  # an effect edited in the rehearsal: its key and tile now
         if hasattr(self, "_rel_extra"):

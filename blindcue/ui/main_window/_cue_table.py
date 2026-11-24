@@ -373,8 +373,10 @@ class _CueTableMixin:
         """
         from engine.show_mode import EDIT_CUE, EDIT_LIST, allows, blocked_message
 
-        if change in (EDIT_LIST, EDIT_CUE) and getattr(self, "_readiness_page", None) is not None \
-                and self._readiness_visible():
+        if change in (EDIT_LIST, EDIT_CUE) and (getattr(self, "_readiness_page", None) is not None
+                                                and self._readiness_visible()
+                                                or getattr(self, "_start_page", None) is not None
+                                                and self._start_page_visible()):
             # The list is hidden behind "Before the show": Delete there removed cue #1 (QA C2a).
             self._status_label.setText(tr("La scaletta è nascosta: torna alla lista per modificarla"))
             self.announce(self._status_label.text(), assertive=True)

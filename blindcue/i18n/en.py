@@ -3672,4 +3672,42 @@ T: dict[str, str] = {
         'Act II – The castle',
     'Temporale':
         'Storm',
+    'Pagina iniziale':
+        'Start page',
+    '🏠 Pagina iniziale':
+        '🏠 Start page',
+    'Che cosa vuoi fare?':
+        'What do you want to do?',
+    '＋ Nuovo spettacolo':
+        '＋ New show',
+    '📁 Nuovo spettacolo da una cartella di file…':
+        '📁 New show from a folder of files…',
+    '🎓 Spettacolo di prova (per imparare)':
+        '🎓 Practice show (to learn)',
+    '📂 Apri uno spettacolo…':
+        '📂 Open a show…',
+    'Aperti di recente':
+        'Opened recently',
+    'Primi passi':
+        'First steps',
+    'Suono: scegli gli altoparlanti e prova se si sentono.':
+        'Sound: choose the speakers and check that you hear them.',
+    '🔊 Altoparlanti e uscite…':
+        '🔊 Speakers and outputs…',
+    'Proiettore: collegalo e controlla quale schermo è quale.':
+        'Projector: connect it and check which screen is which.',
+    '🔢 Mostra i numeri degli schermi':
+        '🔢 Show the screen numbers',
+    '🖥 Scegli il proiettore…':
+        '🖥 Choose the projector…',
+    'File: aggiungi video, suoni e immagini (o trascinali sulla lista).':
+        'Files: add videos, sounds and pictures (or drag them onto the list).',
+    'GO: entra nella Prova (Maiusc+F5) e premi la barra spaziatrice. Esc due volte = PANIC.':
+        'GO: enter the Rehearsal (Shift+F5) and press the space bar. Esc twice = PANIC.',
+    '📖 Manuale (F1)':
+        '📖 Manual (F1)',
+    "Mostra questa pagina all'avvio":
+        'Show this page at start',
+    'Vai alla scaletta →':
+        'Go to the cue list →',
 }

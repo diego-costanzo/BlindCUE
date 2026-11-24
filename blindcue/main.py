@@ -2279,6 +2279,8 @@ def main() -> int:
         main_win._check_crash_recovery()
         if show_file:
             main_win.open_show_from_outside(show_file)  # after the restore question, never inside it
+        else:
+            main_win._show_start_page_if_wanted()  # 5.16: no show yet - what to do first
 
     QTimer.singleShot(150, _startup_questions)
 

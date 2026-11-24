@@ -3894,4 +3894,42 @@ T: dict[str, str] = {
         'Akt II – Zamek',
     'Temporale':
         'Burza',
+    'Pagina iniziale':
+        'Ekran startowy',
+    '🏠 Pagina iniziale':
+        '🏠 Ekran startowy',
+    'Che cosa vuoi fare?':
+        'Co chcesz zrobić?',
+    '＋ Nuovo spettacolo':
+        '＋ Nowe przedstawienie',
+    '📁 Nuovo spettacolo da una cartella di file…':
+        '📁 Nowe przedstawienie z folderu z plikami…',
+    '🎓 Spettacolo di prova (per imparare)':
+        '🎓 Pokaz ćwiczebny (do nauki)',
+    '📂 Apri uno spettacolo…':
+        '📂 Otwórz przedstawienie…',
+    'Aperti di recente':
+        'Ostatnio otwierane',
+    'Primi passi':
+        'Pierwsze kroki',
+    'Suono: scegli gli altoparlanti e prova se si sentono.':
+        'Dźwięk: wybierz głośniki i sprawdź, czy słychać.',
+    '🔊 Altoparlanti e uscite…':
+        '🔊 Głośniki i wyjścia…',
+    'Proiettore: collegalo e controlla quale schermo è quale.':
+        'Projektor: podłącz go i sprawdź, który ekran jest który.',
+    '🔢 Mostra i numeri degli schermi':
+        '🔢 Pokaż numery ekranów',
+    '🖥 Scegli il proiettore…':
+        '🖥 Wybierz projektor…',
+    'File: aggiungi video, suoni e immagini (o trascinali sulla lista).':
+        'Pliki: dodaj filmy, dźwięki i obrazy (albo przeciągnij je na listę).',
+    'GO: entra nella Prova (Maiusc+F5) e premi la barra spaziatrice. Esc due volte = PANIC.':
+        'GO: wejdź w Próbę (Shift+F5) i naciśnij spację. Esc dwa razy = PANIC.',
+    '📖 Manuale (F1)':
+        '📖 Instrukcja (F1)',
+    "Mostra questa pagina all'avvio":
+        'Pokazuj ten ekran przy starcie',
+    'Vai alla scaletta →':
+        'Przejdź do listy →',
 }

@@ -66,6 +66,7 @@ from ui.main_window._edit_cue import _EditCueMixin
 from ui.main_window._settings_transfer import _SettingsTransferMixin
 from ui.main_window._external_tools import _ExternalToolsMixin
 from ui.main_window._practice_show import _PracticeShowMixin
+from ui.main_window._start_page import _StartPageMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -120,6 +121,7 @@ class MainWindow(
     _SettingsTransferMixin,
     _ExternalToolsMixin,
     _PracticeShowMixin,
+    _StartPageMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
@@ -270,6 +272,7 @@ class MainWindow(
         self._relink_setup()  # choose a cue's file, find missing files (stage 5, 5.10)
         self._edit_cue_setup()  # the "Edit cue" window (evaluation 2026-11-24)
         self._external_tools_setup()  # the cue's file in other programs (5.15)
+        self._start_page_setup()  # start page with the first steps (5.16)
         self._apply_layer0("black")  # the default placeholder (evaluation #9); a show sets its own
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()

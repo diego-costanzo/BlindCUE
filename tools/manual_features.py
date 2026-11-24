@@ -88,6 +88,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "file_association": ("blindcue/services/single_instance.py", "def show_file_from_args"),
     "external_tools": ("blindcue/engine/external_tools.py", None),
     "practice_show": ("blindcue/engine/practice_show.py", None),
+    "start_page": ("blindcue/ui/start_page.py", None),
 }
 
 

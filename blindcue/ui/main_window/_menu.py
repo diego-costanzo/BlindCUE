@@ -22,6 +22,7 @@ class _MenuMixin:
         file_menu.addAction(
             QAction("&Open Show…", self, shortcut=QKeySequence.StandardKey.Open, triggered=self._on_open_show)
         )
+        file_menu.addAction(QAction("🏠 Pagina iniziale", self, triggered=self._show_start_page))  # 5.16
         # Recent projects: the list is rebuilt on open so it always reflects
         # what was saved/loaded during this session and in previous ones.
         self._recent_menu = file_menu.addMenu("Apri &recenti")
