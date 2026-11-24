@@ -63,6 +63,7 @@ from ui.main_window._quick_start import _QuickStartMixin
 from ui.main_window._relink import _RelinkMixin
 from ui.main_window._history import _HistoryMixin
 from ui.main_window._edit_cue import _EditCueMixin
+from ui.main_window._settings_transfer import _SettingsTransferMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -114,6 +115,7 @@ class MainWindow(
     _RelinkMixin,
     _HistoryMixin,
     _EditCueMixin,
+    _SettingsTransferMixin,
     _SlideshowMixin,
     QMainWindow,
 ):

@@ -3574,4 +3574,46 @@ T: dict[str, str] = {
         'Crossfade: select at least one picture',
     'Dissolvenza incrociata di {} s su {} immagini':
         'Crossfade of {} s on {} pictures',
+    '💻 Impostazioni di questo computer':
+        '💻 Settings of this computer',
+    '💾 Salva in un file…':
+        '💾 Save to a file…',
+    '📂 Carica da un file…':
+        '📂 Load from a file…',
+    'Impostazioni':
+        'Settings',
+    'Salva le impostazioni di questo computer':
+        'Save the settings of this computer',
+    'Impostazioni di questo computer':
+        'Settings of this computer',
+    'Impostazioni salvate ({} valori): {}':
+        'Settings saved ({} values): {}',
+    'Le impostazioni si caricano nella preparazione, non durante lo spettacolo':
+        'Settings are loaded in Preparation, not during the show',
+    'Carica le impostazioni di un altro computer':
+        'Load the settings of another computer',
+    'Impossibile caricare il file: {}':
+        'Cannot load the file: {}',
+    'non è un file di impostazioni di BlindCue':
+        'it is not a settings file of the program',
+    'il file viene da una versione più nuova del programma':
+        'the file comes from a newer version of the program',
+    'il file non contiene impostazioni':
+        'the file holds no settings',
+    'Il file ha le stesse impostazioni di questo computer.':
+        'The file has the same settings as this computer.',
+    'Cambiare queste impostazioni di questo computer?\n\n{}\n\nAlcune valgono dopo il riavvio del programma.':
+        'Change these settings of this computer?\n\n{}\n\nSome take effect after the program restarts.',
+    'Caricate {} impostazioni: riavvia il programma perché valgano tutte':
+        '{} settings loaded: restart the program so that all of them take effect',
+    'Audio: altoparlanti e uscite':
+        'Sound: speakers and outputs',
+    'Schermi e proiettore':
+        'Screens and projector',
+    'Tasti e telecomando':
+        'Keys and remote',
+    'Aspetto, lingua, suoni per la regia':
+        'Look, language, operator sounds',
+    'Conduzione dello spettacolo':
+        'Running the show',
 }

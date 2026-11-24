@@ -3796,4 +3796,46 @@ T: dict[str, str] = {
         'Przenikanie: zaznacz co najmniej jeden obraz',
     'Dissolvenza incrociata di {} s su {} immagini':
         'Przenikanie {} s na {} obrazach',
+    '💻 Impostazioni di questo computer':
+        '💻 Ustawienia tego komputera',
+    '💾 Salva in un file…':
+        '💾 Zapisz do pliku…',
+    '📂 Carica da un file…':
+        '📂 Wczytaj z pliku…',
+    'Impostazioni':
+        'Ustawienia',
+    'Salva le impostazioni di questo computer':
+        'Zapisz ustawienia tego komputera',
+    'Impostazioni di questo computer':
+        'Ustawienia tego komputera',
+    'Impostazioni salvate ({} valori): {}':
+        'Zapisano ustawienia ({} wartości): {}',
+    'Le impostazioni si caricano nella preparazione, non durante lo spettacolo':
+        'Ustawienia wczytuje się w Przygotowaniu, nie w trakcie przedstawienia',
+    'Carica le impostazioni di un altro computer':
+        'Wczytaj ustawienia z innego komputera',
+    'Impossibile caricare il file: {}':
+        'Nie da się wczytać pliku: {}',
+    'non è un file di impostazioni di BlindCue':
+        'to nie jest plik ustawień programu',
+    'il file viene da una versione più nuova del programma':
+        'plik pochodzi z nowszej wersji programu',
+    'il file non contiene impostazioni':
+        'plik nie zawiera ustawień',
+    'Il file ha le stesse impostazioni di questo computer.':
+        'Plik ma te same ustawienia co ten komputer.',
+    'Cambiare queste impostazioni di questo computer?\n\n{}\n\nAlcune valgono dopo il riavvio del programma.':
+        'Zmienić te ustawienia tego komputera?\n\n{}\n\nCzęść zadziała po ponownym uruchomieniu programu.',
+    'Caricate {} impostazioni: riavvia il programma perché valgano tutte':
+        'Wczytano {} ustawień: uruchom program ponownie, żeby zadziałały wszystkie',
+    'Audio: altoparlanti e uscite':
+        'Dźwięk: głośniki i wyjścia',
+    'Schermi e proiettore':
+        'Ekrany i projektor',
+    'Tasti e telecomando':
+        'Klawisze i pilot',
+    'Aspetto, lingua, suoni per la regia':
+        'Wygląd, język, dźwięki operatora',
+    'Conduzione dello spettacolo':
+        'Prowadzenie przedstawienia',
 }

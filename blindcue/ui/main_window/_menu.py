@@ -53,6 +53,7 @@ class _MenuMixin:
                                       triggered=self._restore_backup))  # 5.11
         rescue_menu.addAction(QAction("🔎 Cerca i file mancanti in una cartella…", self,
                                       triggered=self._find_missing_files))  # 5.10
+        self._build_settings_transfer_menu(file_menu)  # 5.13
         file_menu.addAction(QAction("ℹ Informazioni sullo spettacolo…", self, triggered=self._open_show_info))  # 5.6
         file_menu.addSeparator()
         file_menu.addAction(
