@@ -275,10 +275,12 @@ class _PersistenceMixin:
         ):
             return
 
+        from ui import dialog_dirs
+
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Apri Show BlindCue",
-            "",
+            dialog_dirs.show_dir(),
             "BlindCue Show (*.blindcue *.json);;Tutti i file (*)",
         )
         if not file_path:
@@ -447,7 +449,12 @@ class _PersistenceMixin:
 
     @Slot()
     def _on_save_as_show(self) -> bool:
-        suggested = self._current_project_path or "my_show.blindcue"
+        from ui import dialog_dirs
+
+        # Never the program's install folder, never "my_show" (evaluation 2026-11-24).
+        from i18n import tr
+
+        suggested = self._current_project_path or dialog_dirs.new_show_path(tr("Spettacolo"))
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Salva Show Con Nome",
@@ -460,6 +467,7 @@ class _PersistenceMixin:
             file_path += ".blindcue"
         self._project_bundled = self._ask_bundle_media()
         self._current_project_path = file_path
+        dialog_dirs.remember_show_dir(file_path)
         return self._do_save(file_path)
 
     def _ask_bundle_media(self) -> bool:

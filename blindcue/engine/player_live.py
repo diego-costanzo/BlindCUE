@@ -20,6 +20,92 @@ from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
 from engine.envelope import SectionSequencer, evaluate_cue_level, ramp_value
 from models.cue import CueSection
 
+_TAILS: list[_TailFade] = []
+
+
+class _TailFade(QObject):
+    """An outgoing sound handed over by a crossfade: it keeps playing and fades to
+    silence (equal-power curve), then stops and goes away."""
+
+    def __init__(self, player: QMediaPlayer, audio: QAudioOutput, seconds: float) -> None:
+        super().__init__()
+        self._player, self._audio = player, audio
+        player.setParent(self)
+        audio.setParent(self)
+        self._start_volume = audio.volume()
+        self._seconds = max(0.05, float(seconds))
+        self._t0 = time.monotonic()
+        self._timer = QTimer(self)
+        self._timer.setInterval(30)
+        self._timer.timeout.connect(self._tick)
+        self._timer.start()
+        _TAILS.append(self)
+
+    def _tick(self) -> None:
+        import math
+
+        k = (time.monotonic() - self._t0) / self._seconds
+        if k >= 1.0 or self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+            self.stop()
+            return
+        self._audio.setVolume(self._start_volume * math.cos(k * math.pi / 2))
+
+    def finish_within(self, seconds: float) -> None:
+        """Fade All: reach silence within *seconds* (never later than planned)."""
+        left = self._seconds - (time.monotonic() - self._t0)
+        if left > seconds:
+            self._start_volume = self._audio.volume()
+            self._t0 = time.monotonic()
+            self._seconds = max(0.05, seconds)
+
+    def set_paused(self, paused: bool) -> None:
+        """Pause All holds the fading sound too; it goes on fading after the resume."""
+        try:
+            if paused and self._timer.isActive():
+                self._timer.stop()
+                self._held_at = time.monotonic()
+                self._player.pause()
+            elif not paused and not self._timer.isActive() and hasattr(self, "_held_at"):
+                self._t0 += time.monotonic() - self._held_at
+                del self._held_at
+                self._player.play()
+                self._timer.start()
+        except RuntimeError:
+            pass
+
+    def stop(self) -> None:
+        self._timer.stop()
+        try:
+            if self._player.playbackState() in (QMediaPlayer.PlaybackState.PlayingState,
+                                                QMediaPlayer.PlaybackState.PausedState):
+                self._audio.setVolume(0.0)
+                self._player.stop()
+        except RuntimeError:
+            pass
+        if self in _TAILS:
+            _TAILS.remove(self)
+        self.deleteLater()
+
+
+def stop_all_tails() -> None:
+    """PANIC / Fade All / Blackout: the sounds still fading after a crossfade stop too."""
+    for tail in list(_TAILS):
+        tail.stop()
+
+
+def fade_all_tails(seconds: float) -> None:
+    for tail in list(_TAILS):
+        tail.finish_within(seconds)
+
+
+def pause_all_tails(paused: bool) -> None:
+    for tail in list(_TAILS):
+        tail.set_paused(paused)
+
+
+def tails_count() -> int:
+    return len(_TAILS)
+
 logger = logging.getLogger(__name__)
 
 # A released whole-file loop ends this many ms before the file end: the 20 ms
@@ -220,6 +306,55 @@ class LivePlayer(QObject):
         peak = getattr(self, "_peak", 0.0)
         self._peak = 0.0
         return peak
+
+    def hand_over_tail(self, seconds: float) -> bool:
+        """Crossfade of sound (evaluation 2026-11-24): what plays now keeps playing on its own
+        and fades to silence over *seconds*; this player gets a fresh deck for the next cue.
+
+        Before, a new cue on the same layer cut the old sound at once. Only the
+        main deck is handed over (a cue playing on the loop / section deck is cut
+        as before). Returns False when nothing was handed over.
+        """
+        try:
+            if self._active_deck != 0 or seconds <= 0:
+                return False
+            player, audio = self._player, self._audio
+            if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+                return False
+            for sig in (player.positionChanged, player.durationChanged, player.mediaStatusChanged,
+                        player.errorOccurred):
+                try:
+                    sig.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+            taps = getattr(self, "_level_taps", None)
+            if taps:
+                try:
+                    taps[0].audioBufferReceived.disconnect()
+                except (RuntimeError, TypeError):
+                    pass
+            # The picture belongs to the next cue; the output dissolves its own snapshot.
+            player.setVideoOutput(None)
+            self._driver_timer.stop()
+            self._stop_fade_timer()
+            _TailFade(player, audio, seconds)
+            self._setup_player()
+            if taps:
+                from PySide6.QtMultimedia import QAudioBufferOutput
+
+                tap = QAudioBufferOutput(self)
+                self._player.setAudioBufferOutput(tap)
+                tap.audioBufferReceived.connect(self._on_level_buffer, Qt.ConnectionType.QueuedConnection)
+                taps[0] = tap
+            logger.info("[LIVE] crossfade: the outgoing sound fades over %.1fs on its own", seconds)
+            return True
+        except Exception as exc:  # noqa: BLE001 - a crossfade must never break the next cue
+            logger.error("[LIVE] hand_over_tail failed: %s", exc, exc_info=True)
+            return False
+
+    def extend_fade_in(self, seconds: float) -> None:
+        """A crossfade: the new cue rises at least over the time the old one falls."""
+        self._fade_in_sec = max(self._fade_in_sec, float(seconds))
 
     def _deck_pair(self, idx: int | None = None) -> tuple[QMediaPlayer, QAudioOutput]:
         target = self._active_deck if idx is None else idx
@@ -675,6 +810,10 @@ class LivePlayer(QObject):
         player, _ = self._deck_pair(deck_idx)
         if status == QMediaPlayer.MediaStatus.BufferedMedia:
             self._media_progressed = True
+            # A fresh deck (after a crossfade hand-over) reports "not playing" for a
+            # moment after play(): the first driver tick stopped the envelope for good
+            # and a fade-in stayed silent. Start it again once the media plays.
+            self._ensure_driver_timer()
         if status == QMediaPlayer.MediaStatus.LoadedMedia:
             resume = getattr(self, "_resume_ms", None)
             target = (

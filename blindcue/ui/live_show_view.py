@@ -148,6 +148,7 @@ class LiveCueTable(QTableWidget):
     standby_selected = Signal(int)
     fire_row_requested = Signal(int)
     rehearse_from_requested = Signal(int)  # 2.4: rehearse from this cue
+    scene_fade_requested = Signal(int)     # row of a scene: fade all it plays (evaluation 2026-11-24)
     group_collapse_toggled = Signal(int)
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -197,6 +198,8 @@ class LiveCueTable(QTableWidget):
             is_col = bool(it_num.data(ROLE_GROUP_COLLAPSED))
             act_toggle = menu.addAction("▼ Espandi Gruppo" if is_col else "▶ Collassa Gruppo")
             act_toggle.triggered.connect(lambda: self.group_collapse_toggled.emit(row))
+            act_fade = menu.addAction("⏬ Sfuma la scena")
+            act_fade.triggered.connect(lambda: self.scene_fade_requested.emit(row))
 
         act_from = menu.addAction("⏯ Prova da qui (prepara la scena)")
         act_from.triggered.connect(lambda: self.rehearse_from_requested.emit(row))
@@ -846,6 +849,7 @@ class LiveShowPanel(QWidget):
     double_click_armed = Signal(int)
     force_row_requested = Signal(int)
     rehearse_from_requested = Signal(int)
+    scene_fade_requested = Signal(int)
     undo_go_requested = Signal()
     readiness_review_requested = Signal()
     hold_auto_go_requested = Signal(int)   # cue_id whose Auto-GO should wait for a GO
@@ -1089,6 +1093,7 @@ class LiveShowPanel(QWidget):
         self.live_table.standby_selected.connect(self.cue_row_clicked)
         self.live_table.fire_row_requested.connect(self.force_row_requested)
         self.live_table.rehearse_from_requested.connect(self.rehearse_from_requested)
+        self.live_table.scene_fade_requested.connect(self.scene_fade_requested)
         self.live_table.group_collapse_toggled.connect(self.group_collapse_toggled)
         # The list and, on its right, what is on air now (stage 1 C2a step 8).
         middle = QHBoxLayout()

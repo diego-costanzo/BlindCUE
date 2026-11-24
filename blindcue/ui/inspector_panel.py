@@ -1119,8 +1119,8 @@ class CueInspectorPanel(QGroupBox):
         self.spin_crossfade.setSingleStep(0.5)
         self.spin_crossfade.setSuffix(" s")
         self.spin_crossfade.setToolTip(
-            "Crossfade: l'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue "
-            "nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0."
+            "Dissolvenza incrociata: ciò che c'è ora sul layer di questo cue (immagine o suono) sfuma "
+            "mentre questo cue entra, nel tempo indicato (0 = stacco netto)."
         )
         self.spin_crossfade.setAccessibleName("Crossfade")
         fade_grid.addWidget(self.spin_crossfade, 1, 1)
@@ -2552,8 +2552,9 @@ class CueInspectorPanel(QGroupBox):
         self.lbl_audio_guide.setVisible(not is_image and not basic)
         for w in (self.lbl_hold_field, self.spin_hold_time, self.lbl_hold_hint):
             w.setVisible(is_image)
-        self.lbl_crossfade.setVisible(not is_audio)
-        self.spin_crossfade.setVisible(not is_audio)
+        # Sound too: a new song on the layer of another one crossfades instead of cutting it.
+        self.lbl_crossfade.setVisible(True)
+        self.spin_crossfade.setVisible(True)
         for card in (self._card_of(self.slider_volume), self._card_of(self.spin_in)):
             card.setVisible(not is_image)
         self.loop_card.setVisible(not is_image and not basic)

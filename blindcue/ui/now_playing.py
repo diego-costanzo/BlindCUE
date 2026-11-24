@@ -34,6 +34,7 @@ from ui.rehearsal_drawer import RehearsalDrawer
 TIMED = "timed"    # audio / video / picture with a hold time: full card
 STILL = "still"    # picture, caption without an end: one line
 NOTE = "note"      # operator note: one line with OK
+SCENE = "scene"    # a scene with something on air: one line with "Fade the scene"
 
 _BTN = ("QPushButton { background-color: #1e293b; color: #f8fafc; border: 1px solid #475569; "
         "border-radius: 4px; font-size: 12px; font-weight: bold; padding: 0px 8px; } "
@@ -201,6 +202,11 @@ class _Card(QFrame):
         else:
             self.setFixedHeight(34)
             outer.setContentsMargins(8, 2, 8, 2)
+            if kind == SCENE:
+                self.btn_fade.setText("Sfuma la scena")
+                self.btn_fade.setToolTip("Sfuma e ferma tutto ciò che la scena suona o mostra; il GO va dopo la scena")
+                self.btn_fade.clicked.disconnect()
+                self.btn_fade.clicked.connect(lambda: panel.scene_fade_requested.emit(self.cue_id))
             if kind == NOTE:
                 self.btn_fade.setText("OK")
                 self.btn_fade.setToolTip("Nascondi la nota (non ferma niente)")
@@ -261,7 +267,7 @@ class _Card(QFrame):
         self.lbl_layer.setText(st.layer)
         self.lbl_state.setText(st.state)
         self.lbl_state.setVisible(bool(st.state))
-        if self.kind != NOTE and st.waiting != self._waiting:
+        if self.kind not in (NOTE, SCENE) and st.waiting != self._waiting:
             # A cue still waiting only offers to cancel its start; the other
             # buttons would act on the cue that plays on the same layer (H3).
             self._waiting = st.waiting
@@ -310,6 +316,7 @@ class NowPlayingPanel(QFrame):
     to_end_requested = Signal(int)        # runtime layer: jump to 5 s before the end
     save_level_requested = Signal(int)    # cue_id: the corrected level becomes the cue's
     cancel_start_requested = Signal(int)  # runtime layer: the waiting cue never starts
+    scene_fade_requested = Signal(int)    # cue_id of the scene: fade all it plays (evaluation 2026-11-24)
     effect_requested = Signal(int)        # cue_id of an effect tile
     repeat_effect_requested = Signal()    # "repeat the last effect" (1.10)
     hold_longer = Signal()                # a jump button let go too early

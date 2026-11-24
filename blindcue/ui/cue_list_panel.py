@@ -213,13 +213,23 @@ class CueListPanel(QGroupBox):
         btn_grid = QGridLayout()
         btn_grid.setHorizontalSpacing(4)
         btn_grid.setVerticalSpacing(4)
+        # One button for all media, several files at once (evaluation 2026-11-24): a teacher
+        # added a video, a sound and a picture through three dialogs, one file each.
+        self.btn_add_files = QPushButton("＋ Aggiungi file…")
+        self.btn_add_files.setToolTip("Video, suoni e immagini – anche più file insieme (o trascinali sulla lista)")
+        self.btn_add_files.setAccessibleName("Aggiungi file")
+        self.btn_add_files.setFixedHeight(28)
+        self.btn_add_files.clicked.connect(lambda: self.add_media_requested.emit(None))
+        btn_grid.addWidget(self.btn_add_files, 0, 0, 1, 3)
+        for btn in (self.btn_add_video, self.btn_add_audio, self.btn_add_image):
+            btn.setParent(self)
+            btn.setVisible(False)  # still there for the keyboard map and old shortcuts
         for idx, btn in enumerate((
-            self.btn_add_video, self.btn_add_audio, self.btn_add_image,
             self.btn_add_text, self.btn_add_group, self.btn_add_action,
             self.btn_move_up, self.btn_move_down, self.btn_delete,
         )):
             btn.setStyleSheet(btn.styleSheet() + " QPushButton { padding: 2px 3px; }")
-            btn_grid.addWidget(btn, idx // 3, idx % 3)
+            btn_grid.addWidget(btn, 1 + idx // 3, idx % 3)
         for col in range(3):
             btn_grid.setColumnStretch(col, 1)
         layout.addLayout(btn_grid)

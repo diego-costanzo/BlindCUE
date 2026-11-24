@@ -3418,4 +3418,36 @@ T: dict[str, str] = {
         'Undo the last GO',
     '❚❚ &Pausa / riprendi tutto':
         '❚❚ &Pause / resume all',
+    'Sfuma la scena':
+        'Fade the scene',
+    'Sfuma e ferma tutto ciò che la scena suona o mostra; il GO va dopo la scena':
+        'Fades and stops everything the scene plays or shows; GO moves past the scene',
+    '⏬ Sfuma la scena':
+        '⏬ Fade the scene',
+    'Tempo del pulsante Sfuma':
+        'Fade button time',
+    'Secondi di «Sfuma» su una scheda o una scena (vale il Fade Out della cue, se ne ha uno):':
+        "Seconds of “Fade” on a card or a scene (the cue's own fade-out wins when it has one):",
+    '«Sfuma» dura ora {} s':
+        '“Fade” now takes {} s',
+    '⏬ Tempo del pulsante Sfuma…':
+        '⏬ Fade button time…',
+    "Scena '{}' in dissolvenza":
+        "Scene '{}' fading out",
+    "Dissolvenza incrociata: ciò che c'è ora sul layer di questo cue (immagine o suono) sfuma mentre questo cue entra, nel tempo indicato (0 = stacco netto).":
+        "Crossfade: what is now on this cue's layer (picture or sound) fades while this cue comes in, over this time (0 = a cut).",
+    '＋ Aggiungi file…':
+        '＋ Add files…',
+    'Video, suoni e immagini – anche più file insieme (o trascinali sulla lista)':
+        'Videos, sounds and pictures – several at once too (or drag them onto the list)',
+    'Aggiungi file':
+        'Add files',
+    'Aggiungi video':
+        'Add a video',
+    'Aggiungi audio':
+        'Add a sound',
+    'Aggiungi immagine':
+        'Add a picture',
+    'Video, suoni e immagini':
+        'Videos, sounds and pictures',
 }

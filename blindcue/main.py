@@ -97,6 +97,7 @@ from engine.action_cues import (
     target_layers,
 )
 from engine.envelope import evaluate_cue_level
+from engine import player_live as _player_live
 from engine.player_live import LivePlayer
 from engine.player_test import TestPlayer
 from engine.show_engine import ShowEngine
@@ -674,6 +675,7 @@ def main() -> int:
         if paused == scheduler.is_paused() and bool(getattr(main_win, "_is_global_paused", False)) == paused:
             return
         scheduler.set_paused(paused)
+        _player_live.pause_all_tails(paused)
         for out in (output_win, output_win_b):
             out.set_master_fades_paused(paused)  # layer opacity changes from action cues
         now = time.monotonic()
@@ -903,6 +905,14 @@ def main() -> int:
                 _out_window(layer).begin_crossfade(_local_layer(layer), float(cue.crossfade))
             # A layer dimmed by an action cue starts the new cue at full opacity.
             _out_window(layer).reset_layer_master_opacity(_local_layer(layer))
+            # Crossfade of sound (evaluation 2026-11-24): the sound on this layer keeps
+            # playing and fades out over the crossfade time instead of being cut.
+            xfade = float(getattr(cue, "crossfade", 0.0) or 0.0)
+            handed = bool(
+                xfade > 0 and lp is not None and start_at is None and before is not None
+                and before.media_type in (MediaType.AUDIO, MediaType.VIDEO)
+                and cue.media_type in (MediaType.AUDIO, MediaType.VIDEO)
+                and lp.hand_over_tail(xfade))
 
             if cue.media_type == MediaType.VIDEO:
                 if lp is not None:
@@ -932,6 +942,8 @@ def main() -> int:
                     lp.set_scale(cue.scale)
                     lp.set_crop(cue.crop)
                     _apply_cue_automation(lp, cue, hot=False)
+                    if handed:
+                        lp.extend_fade_in(xfade)
                     lp.set_loop(cue.loop, cue.loop_count)
                     lp.play()
                     if start_at is not None:
@@ -952,6 +964,8 @@ def main() -> int:
                     _route_audio(cue, lp)
                     _sleep_on_launch(layer, cue, lp)
                     _apply_cue_automation(lp, cue, hot=False)
+                    if handed:
+                        lp.extend_fade_in(xfade)
                     lp.set_loop(cue.loop, cue.loop_count)
                     lp.play()
                     if start_at is not None:
@@ -1391,14 +1405,15 @@ def main() -> int:
         """Fade on a card: only that cue; another cue waiting there still starts."""
         playing = active_live_cues.get(layer)
         pre = scheduler.pending_for_layer(layer, "PRE")
+        # A gentle fade: the cue's own fade-out, else the "Fade" time (3 s) - not 0.2 s (evaluation 2026-11-24).
+        fade = main_win.button_fade_seconds(playing)
         if playing is not None and pre is not None and pre.cue.cue_id != playing.cue_id:
-            fade = max(0.2, playing.fade_out) if playing.fade_out > 0 else 0.2
             _silence_layer(layer, fade)
             main_win.mark_layer_stopped(layer)
             main_win.update_live_layer_phase(layer, pre.cue, "PRE", pre.elapsed_sec, pre.total_sec)
         else:
             main_win.mark_layer_stopped(layer)
-            _on_layer_clear_requested(layer)
+            _on_layer_clear_requested(layer, fade_override=fade if playing is not None else None)
 
     main_win.card_fade_requested.connect(_on_card_fade)
     main_win.layer_cancel_start_requested.connect(_cancel_waiting_start)
@@ -1687,6 +1702,7 @@ def main() -> int:
     def _on_blackout_requested() -> None:
         """Master Blackout: micro-fade out ALL active layers and reveal Layer 0 (Tappo)."""
         try:
+            _player_live.stop_all_tails()
             scheduler.cancel_all()
             scheduler.set_paused(False)
             for out in (output_win, output_win_b):
@@ -1713,6 +1729,7 @@ def main() -> int:
     def _on_panic_requested() -> None:
         """Immediate 0ms PANIC hard stop across every player, timer, and output layer."""
         try:
+            _player_live.stop_all_tails()
             scheduler.cancel_all()
             scheduler.set_paused(False)
             for out in (output_win, output_win_b):
@@ -1739,6 +1756,7 @@ def main() -> int:
     def _on_fade_all_requested(seconds: float) -> None:
         """Fade All: every live layer fades out together over *seconds*, then stops."""
         try:
+            _player_live.fade_all_tails(seconds)
             scheduler.cancel_all()
             scheduler.set_paused(False)
             for out in (output_win, output_win_b):

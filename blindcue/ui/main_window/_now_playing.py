@@ -13,7 +13,7 @@ from engine.live_state import PHASE_POST, PHASE_PRE, fmt_clock
 from i18n import tr
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
-from ui.now_playing import NOTE, STILL, TIMED, CardState
+from ui.now_playing import NOTE, SCENE, STILL, TIMED, CardState
 
 _ICONS = {MediaType.AUDIO: "♪", MediaType.VIDEO: "▶", MediaType.IMAGE: "▣"}
 
@@ -24,6 +24,9 @@ class _NowPlayingMixin:
         panel = self._live_show_panel.now_playing
         panel.pause_requested.connect(self.layer_play_pause_requested.emit)
         panel.fade_requested.connect(self._on_card_fade)
+        panel.scene_fade_requested.connect(self.fade_scene)
+        self._live_show_panel.scene_fade_requested.connect(
+            lambda row: 0 <= row < len(self._cues) and self.fade_scene(self._cues[row].cue_id))
         panel.cancel_start_requested.connect(self._on_card_cancel_start)
         panel.release_requested.connect(self.release_loop_requested.emit)
         panel.note_dismissed.connect(lambda _cid: self._note_banner.dismiss())
@@ -115,11 +118,80 @@ class _NowPlayingMixin:
         self._live_show_panel.set_auto_go_held(self._held_auto_go)
         self.announce(self._status_label.text(), assertive=True)
 
+    # ── Gentle fades (evaluation 2026-11-24) ──
+    def button_fade_seconds(self, cue: Cue | None) -> float:
+        """How long "Fade" on a card or a scene takes: the cue's own fade-out, else the setting (3 s)."""
+        own = float(getattr(cue, "fade_out", 0.0) or 0.0) if cue is not None else 0.0
+        if own > 0:
+            return own
+        try:
+            return max(0.2, float(QSettings("BlindCue", "BlindCue").value("live/fade_button_sec", 3.0)))
+        except (TypeError, ValueError):
+            return 3.0
+
+    def _ask_fade_button_seconds(self) -> None:
+        """Control → "Fade button time…": the time "Fade" takes for a cue without its own fade-out."""
+        from PySide6.QtWidgets import QInputDialog
+
+        now = self.button_fade_seconds(None)
+        value, ok = QInputDialog.getDouble(
+            self, tr("Tempo del pulsante Sfuma"),
+            tr("Secondi di «Sfuma» su una scheda o una scena (vale il Fade Out della cue, se ne ha uno):"),
+            now, 0.2, 30.0, 1)
+        if ok:
+            QSettings("BlindCue", "BlindCue").setValue("live/fade_button_sec", float(value))
+            self._status_label.setText(tr("«Sfuma» dura ora {} s").format(f"{value:g}"))
+
+    def _scene_rows(self, group_id: int) -> list[int]:
+        """Rows inside the scene *group_id* (nested scenes too)."""
+        ids, rows = {group_id}, []
+        for i, c in enumerate(self._cues):
+            if c.parent_id in ids:
+                rows.append(i)
+                if c.media_type == MediaType.GROUP:
+                    ids.add(c.cue_id)
+        return rows
+
+    def _scene_on_air(self, group_id: int) -> bool:
+        return any(self._cues[i].status == CueStatus.LIVE or self._cues[i].cue_id in self._live_phase_tags
+                   for i in self._scene_rows(group_id) if self._cues[i].media_type != MediaType.GROUP)
+
+    def fade_scene(self, group_id: int) -> None:
+        """"Fade the scene": everything the scene plays, shows or is about to start fades; GO goes past it."""
+        from engine.show_engine import block_end
+
+        row = next((i for i, c in enumerate(self._cues) if c.cue_id == group_id), -1)
+        if row < 0:
+            return
+        slots = []
+        for i in self._scene_rows(group_id):
+            cue = self._cues[i]
+            if cue.media_type == MediaType.GROUP:
+                continue
+            if cue.status == CueStatus.LIVE or str(self._live_phase_tags.get(cue.cue_id, "")).startswith(("PRE", "POST")):
+                slot = self._runtime_slot(cue)
+                if slot not in slots:
+                    slots.append(slot)
+        for slot in slots:
+            self.card_fade_requested.emit(slot)
+        self._released_groups.add(group_id)  # a Loop Scena does not start again
+        end = block_end(self._cues, row)
+        target = self._go_target_index()
+        if row <= target <= end and end + 1 < len(self._cues):
+            self._cue_list.setCurrentRow(end + 1)  # the next GO is the next scene, not the rest of this one
+        self._status_label.setText(tr("Scena '{}' in dissolvenza").format(self._cues[row].name))
+        logger.info("[SCENE] fade '%s' (%d layers)", self._cues[row].name, len(slots))
+        self._sync_live_view()
+
     def _now_playing_cards(self) -> list[CardState]:
         cards: list[CardState] = []
         paused_all = getattr(self, "_is_global_paused", False)
         for row, cue in enumerate(self._cues):
-            if cue.media_type in (MediaType.GROUP, MediaType.ACTION):
+            if cue.media_type == MediaType.GROUP:
+                if self._scene_on_air(cue.cue_id):
+                    cards.append(CardState(cue.cue_id, SCENE, f"🎬 {format_cue_ref(row, cue)} '{cue.name}'"))
+                continue
+            if cue.media_type == MediaType.ACTION:
                 continue
             tag = str(self._live_phase_tags.get(cue.cue_id, ""))
             waiting = tag.startswith("PRE")

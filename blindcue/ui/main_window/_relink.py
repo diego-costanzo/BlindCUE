@@ -35,7 +35,10 @@ class _RelinkMixin:
                 tr("Cue senza file: {} – clic destro → Scegli il file…").format(empty) if empty
                 else tr("Tutti i file sono al loro posto"))
             return
-        folder = QFileDialog.getExistingDirectory(self, tr("Cerca i file mancanti in una cartella"))
+        from ui import dialog_dirs
+
+        folder = QFileDialog.getExistingDirectory(self, tr("Cerca i file mancanti in una cartella"),
+                                                  dialog_dirs.media_dir())
         if not folder:
             return
         found, twice = find_in_folder({c.file_path for c in missing}, folder)
@@ -67,7 +70,10 @@ class _RelinkMixin:
         if cue is None or not cue.media_type.has_file or getattr(cue, "text_spec", None):
             self._status_label.setText(tr("Scegli una cue video, audio o immagine"))
             return
-        start = os.path.dirname(cue.file_path) if cue.file_path else ""
+        from ui import dialog_dirs
+
+        start = os.path.dirname(cue.file_path) if cue.file_path and os.path.isdir(os.path.dirname(cue.file_path)) \
+            else dialog_dirs.media_dir(cue.media_type.value)
         path, _ = QFileDialog.getOpenFileName(
             self, tr("Scegli il file per '{}'").format(cue.name), start,
             "Media (*.mp4 *.mkv *.avi *.mov *.webm *.mp3 *.wav *.flac *.ogg *.aac *.m4a "

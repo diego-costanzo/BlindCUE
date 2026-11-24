@@ -38,7 +38,7 @@ Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
 <li><b>Scaletta cue (colonna sinistra)</b> – l'ordine dello spettacolo. Ogni riga è una
 <i>cue</i>: video <code>VID</code>, audio <code>AUD</code>, immagine <code>IMG</code> oppure
 gruppo <code>GRP</code><!--IF:action_cues-->, azione <code>ACT</code><!--/IF:action_cues--><!--IF:text_cues-->; le didascalie hanno l'icona 📝<!--/IF:text_cues-->. Sotto la scaletta ci sono i pulsanti
-<b>+ Video / + Audio / + Foto / <!--IF:text_cues-->+ Testo / <!--/IF:text_cues-->+ Gruppo<!--IF:action_cues--> / + Azione<!--/IF:action_cues--></b>,
+<b>＋ Aggiungi file… / <!--IF:text_cues-->+ Testo / <!--/IF:text_cues-->+ Gruppo<!--IF:action_cues--> / + Azione<!--/IF:action_cues--></b>,
 <b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
 <li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
 <b>Play / Pausa / Stop</b> provano la cue selezionata.</li>
@@ -99,7 +99,7 @@ modifica nella scaletta e nell'ispettore.</li>
 <h2><a name="aggiungere"></a>3. Aggiungere video, audio<!--IF:text_cues-->, foto e didascalie<!--/IF:text_cues--><!--IFNOT:text_cues--> e foto<!--/IFNOT:text_cues--></h2>
 <h3>Tre modi per aggiungere un file</h3>
 <ol>
-<li>I pulsanti sotto la scaletta: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Foto</b>.</li>
+<li>Il pulsante sotto la scaletta <b>＋ Aggiungi file…</b>: video, suoni e immagini, anche più file insieme (in ordine di nome). La finestra si apre nell'ultima cartella usata; gli spettacoli si salvano all'inizio in <b>Documenti\Teatr POZA</b>.</li>
 <li>Trascina i file dal gestore file nel riquadro <b>Caricamento Rapido</b> (in basso a destra)<!--IF:drop_on_list--> o
 direttamente sulla scaletta: vanno dopo la riga su cui li lasci (sotto l'ultima riga: in fondo), nello
 stesso ordine<!--/IF:drop_on_list-->.</li>
@@ -267,8 +267,7 @@ era su quel layer si fonde nella nuova.</li>
 <p class="tip">💡 Una sequenza di foto con crossfade: più foto di seguito su L1, ognuna con
 <b>Crossfade 1–2 s</b>, <b>Durata Img</b> per esempio 5 s e <b>Dopo: Auto-GO</b> – le foto
 cambiano da sole, in modo morbido.</p>
-<p class="warn">Il crossfade riguarda l'immagine. L'audio del video precedente si interrompe
-nel momento del passaggio – se deve sfumare, dagli un <b>Fade Out</b> oppure metti la musica in una cue separata.</p>
+<p class="tip">🎵 <b>Dissolvenza del suono</b>: lo stesso campo vale per la musica. Quando un nuovo brano (o video) entra su un layer dove qualcosa suona e ha un <b>Crossfade</b> di ad es. 3 s, il brano precedente non si interrompe: sfuma in 3 s mentre il nuovo sale. <b>Pausa tutto</b>, <b>Sfuma tutto</b> e <b>PANIC</b> raggiungono anche un brano che sta ancora sfumando.</p>
 <!--/IF:crossfade-->
 <h3>Immagine (la scheda "Video · Foto")</h3>
 <ul>
@@ -485,6 +484,7 @@ ritardo) – <b>Pausa tutto</b> fermerebbe anche la musica. In cima alla colonna
 ciò che vede il pubblico, in piccolo (fino a 5 fotogrammi al secondo); <b>▾</b> la chiude e questo computer se lo
 ricorda.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu.<!--IF:now_playing--> Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.<!--/IF:now_playing--></li><!--/IF:action_cues-->
+<!--IF:gentle_fade--><li><b>Sfuma</b> su una scheda abbassa la cue dolcemente: con il suo <b>Fade Out</b>, o in 3 s se non ne ha (si cambia in <b>Show → ⏬ Tempo del pulsante Sfuma…</b>). Mentre una scena suona, sopra le sue cue c'è la scheda <b>🎬 scena</b> con <b>Sfuma la scena</b> (anche clic destro sulla scena nella lista): sfuma tutto ciò che la scena suona o mostra e il GO passa alla cue dopo la scena.</li><!--/IF:gentle_fade-->
 <!--IF:effects--><li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b> oppure <b>Suona finché tieni premuto</b>. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li><!--/IF:effects-->
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
 <!--IF:countdown--><li><b>Conto alla rovescia</b> (per esempio l'intervallo): <b>Show → ⏳ Conto alla rovescia…</b>

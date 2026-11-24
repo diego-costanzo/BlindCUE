@@ -14,17 +14,44 @@ from ui.main_window._common import (  # noqa: F401
 
 
 class _CueManipMixin:
-    def _on_add_media(self, media_type: MediaType) -> None:
-        ext_map = {
-            MediaType.VIDEO: "Video (*.mp4 *.mkv *.avi *.mov *.webm)",
-            MediaType.AUDIO: "Audio (*.mp3 *.wav *.flac *.ogg *.aac *.m4a)",
-            MediaType.IMAGE: "Image (*.png *.jpg *.jpeg *.bmp *.gif *.webp)",
-        }
+    _MEDIA_FILTERS = {
+        MediaType.VIDEO: "Video (*.mp4 *.mkv *.avi *.mov *.webm)",
+        MediaType.AUDIO: "Audio (*.mp3 *.wav *.flac *.ogg *.aac *.m4a)",
+        MediaType.IMAGE: "Image (*.png *.jpg *.jpeg *.bmp *.gif *.webp)",
+    }
+
+    def _on_add_media(self, media_type: MediaType | None) -> None:
+        """One kind of media (the menu), or None: "Add files…" - several files of any kind at once."""
+        from ui import dialog_dirs
+
+        if media_type is None:
+            self._on_add_files()
+            return
+        titles = {MediaType.VIDEO: tr("Aggiungi video"), MediaType.AUDIO: tr("Aggiungi audio"),
+                  MediaType.IMAGE: tr("Aggiungi immagine")}
         file_path, _ = QFileDialog.getOpenFileName(
-            self, f"Add {media_type.value}", "", ext_map.get(media_type, "All Files (*)")
-        )
+            self, titles.get(media_type, tr("Aggiungi file")), dialog_dirs.media_dir(media_type.value),
+            self._MEDIA_FILTERS.get(media_type, "*.*"))
         if file_path:
+            dialog_dirs.remember_media_dir(file_path)
             self._add_cue_from_file(file_path, media_type)
+
+    def _on_add_files(self) -> None:
+        """"Add files…": videos, sounds and pictures at once, in name order, after the selection -
+        with the same questions as a drop (one playlist / one scene)."""
+        from engine.quick_start import natural_key
+        from ui import dialog_dirs
+
+        if not self._change_allowed(EDIT_LIST):
+            return
+        every = " ".join(part.split("(")[1].rstrip(")") for part in self._MEDIA_FILTERS.values())
+        filters = ";;".join([f"{tr('Video, suoni e immagini')} ({every})", *self._MEDIA_FILTERS.values()])
+        files, _ = QFileDialog.getOpenFileNames(self, tr("Aggiungi file"), dialog_dirs.media_dir(), filters)
+        if not files:
+            return
+        dialog_dirs.remember_media_dir(files[0])
+        files.sort(key=lambda f: natural_key(os.path.basename(f)))
+        self._on_files_dropped_on_list(files, self._cue_list.currentRow())
 
     def _add_cue_from_file(self, file_path: str, media_type: MediaType | None = None) -> None:
         if media_type is None:
@@ -304,7 +331,10 @@ class _CueManipMixin:
         """File menu: import an .m3u / .m3u8 playlist."""
         if not self._change_allowed(EDIT_LIST):
             return
-        path, _ = QFileDialog.getOpenFileName(self, tr("Importa playlist"), "", "Playlist (*.m3u *.m3u8)")
+        from ui import dialog_dirs
+
+        path, _ = QFileDialog.getOpenFileName(self, tr("Importa playlist"), dialog_dirs.media_dir("AUDIO"),
+                                              "Playlist (*.m3u *.m3u8)")
         if not path:
             return
         self._undo_batch = True

@@ -3640,4 +3640,36 @@ T: dict[str, str] = {
         'Cofnij ostatnie GO',
     '❚❚ &Pausa / riprendi tutto':
         '❚❚ &Pauza / wznów wszystko',
+    'Sfuma la scena':
+        'Wygaś scenę',
+    'Sfuma e ferma tutto ciò che la scena suona o mostra; il GO va dopo la scena':
+        'Wygasza i zatrzymuje wszystko, co scena gra lub pokazuje; GO przechodzi za scenę',
+    '⏬ Sfuma la scena':
+        '⏬ Wygaś scenę',
+    'Tempo del pulsante Sfuma':
+        'Czas przycisku Wygaś',
+    'Secondi di «Sfuma» su una scheda o una scena (vale il Fade Out della cue, se ne ha uno):':
+        'Ile sekund trwa «Wygaś» na karcie lub scenie (liczy się wygaszanie pozycji, jeśli je ma):',
+    '«Sfuma» dura ora {} s':
+        '«Wygaś» trwa teraz {} s',
+    '⏬ Tempo del pulsante Sfuma…':
+        '⏬ Czas przycisku Wygaś…',
+    "Scena '{}' in dissolvenza":
+        "Scena '{}' wygasa",
+    "Dissolvenza incrociata: ciò che c'è ora sul layer di questo cue (immagine o suono) sfuma mentre questo cue entra, nel tempo indicato (0 = stacco netto).":
+        'Przenikanie: to, co jest teraz na warstwie tej pozycji (obraz albo dźwięk), gaśnie, gdy ta pozycja wchodzi, w podanym czasie (0 = cięcie).',
+    '＋ Aggiungi file…':
+        '＋ Dodaj pliki…',
+    'Video, suoni e immagini – anche più file insieme (o trascinali sulla lista)':
+        'Filmy, dźwięki i obrazy – także kilka naraz (albo przeciągnij je na listę)',
+    'Aggiungi file':
+        'Dodaj pliki',
+    'Aggiungi video':
+        'Dodaj film',
+    'Aggiungi audio':
+        'Dodaj dźwięk',
+    'Aggiungi immagine':
+        'Dodaj obraz',
+    'Video, suoni e immagini':
+        'Filmy, dźwięki i obrazy',
 }

@@ -38,7 +38,7 @@ This manual takes you from an empty program to a finished show.</p>
 <li><b>Cue list (left column)</b> – the running order of the show. Each row is one
 <i>cue</i>: a video <code>VID</code>, sound <code>AUD</code>, picture <code>IMG</code> or
 group <code>GRP</code><!--IF:action_cues-->, action <code>ACT</code><!--/IF:action_cues--><!--IF:text_cues-->; captions have a 📝 icon<!--/IF:text_cues-->. Under the list are the buttons
-<b>+ Video / + Audio / + Photo / <!--IF:text_cues-->+ Text / <!--/IF:text_cues-->+ Group<!--IF:action_cues--> / + Action<!--/IF:action_cues--></b>,
+<b>＋ Add files… / <!--IF:text_cues-->+ Text / <!--/IF:text_cues-->+ Group<!--IF:action_cues--> / + Action<!--/IF:action_cues--></b>,
 <b>Up / Down</b> to move and <b>Delete</b>.</li>
 <li><b>Pre-Viz preview (middle)</b> – a private preview just for you. The audience never sees it.
 <b>Play / Pause / Stop</b> check the selected cue.</li>
@@ -98,7 +98,7 @@ in the list and in the inspector.</li>
 <h2><a name="adding"></a>3. Adding video, audio<!--IF:text_cues-->, photos and captions<!--/IF:text_cues--><!--IFNOT:text_cues--> and photos<!--/IFNOT:text_cues--></h2>
 <h3>Three ways to add a file</h3>
 <ol>
-<li>The buttons under the list: <b>+ Video</b>, <b>+ Audio</b>, <b>+ Photo</b>.</li>
+<li>The button under the list <b>＋ Add files…</b>: videos, sounds and pictures, several at once too (in name order). The dialog opens in the folder used last; shows are saved in <b>Documents\Teatr POZA</b> at first.</li>
 <li>Drag files from your file manager onto <b>Quick Load</b> (bottom right corner)<!--IF:drop_on_list--> or
 straight onto the cue list: they go after the row you drop them on (below the last row: to the end),
 in the same order<!--/IF:drop_on_list-->.</li>
@@ -262,8 +262,7 @@ on that layer dissolves into the new one.</li>
 <p class="tip">💡 A slideshow with crossfades: several photos in a row on L1, each with
 <b>Crossfade 1–2 s</b>, <b>Image Time</b> e.g. 5 s and <b>After: Auto-GO</b> – the photos
 change smoothly by themselves.</p>
-<p class="warn">Crossfade is for the picture. The sound of the previous video stops at the
-moment of the change – if it should fade, give it a <b>Fade Out</b> or play the music as a separate cue.</p>
+<p class="tip">🎵 <b>Sound crossfade</b>: the same field works for music. When a new song (or video) comes onto a layer where something plays and has a <b>Crossfade</b> of e.g. 3 s, the previous song is not cut: it fades over 3 s while the new one rises. <b>Pause all</b>, <b>Fade all</b> and <b>PANIC</b> also reach a song that is still fading.</p>
 <!--/IF:crossfade-->
 <h3>Picture (the "Video · Photo" tab)</h3>
 <ul>
@@ -475,6 +474,7 @@ the next cue waits for your GO (an actor is late, say) – <b>Pause All</b> woul
 top of the column, <b>Output preview</b> shows what the audience sees, small (up to 5 frames a second); <b>▾</b>
 folds it, and this computer remembers that.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Notes and checklists of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.<!--IF:now_playing--> During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.<!--/IF:now_playing--></li><!--/IF:action_cues-->
+<!--IF:gentle_fade--><li><b>Fade</b> on a card brings the cue down gently: over its own <b>Fade out</b>, or 3 s when it has none (change it in <b>Show → ⏬ Fade button time…</b>). While a scene plays, a <b>🎬 scene</b> card above its cues has <b>Fade the scene</b> (also a right click on the scene in the list): everything the scene plays or shows fades, and GO moves to the cue after the scene.</li><!--/IF:gentle_fade-->
 <!--IF:effects--><li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b> or <b>Plays while the key is held</b>. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li><!--/IF:effects-->
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
 <!--IF:countdown--><li><b>Countdown</b> (e.g. the interval): <b>Show → ⏳ Countdown (interval)…</b> or the

@@ -24,9 +24,13 @@ class _QuickStartMixin:
 
         if not self._change_allowed(EDIT_LIST):
             return
-        folder = QFileDialog.getExistingDirectory(self, tr("Nuovo spettacolo da una cartella"))
+        from ui import dialog_dirs
+
+        folder = QFileDialog.getExistingDirectory(self, tr("Nuovo spettacolo da una cartella"),
+                                                  dialog_dirs.media_dir())
         if not folder:
             return
+        dialog_dirs.remember_media_dir(folder)
         files = media_in_folder(folder, lambda p: self._detect_media_type(p) is not None)
         if not files:
             QMessageBox.information(self, tr("Nuovo spettacolo da una cartella"),
@@ -89,7 +93,9 @@ class _QuickStartMixin:
 
         if not self._change_allowed(EDIT_LIST):
             return
-        path, _ = QFileDialog.getOpenFileName(self, tr("Importa una scaletta (CSV)"), "",
+        from ui import dialog_dirs
+
+        path, _ = QFileDialog.getOpenFileName(self, tr("Importa una scaletta (CSV)"), dialog_dirs.show_dir(),
                                               "CSV (*.csv *.txt)")
         if not path:
             return

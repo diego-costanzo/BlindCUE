@@ -50,7 +50,7 @@ Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
 <li><b>Lista cue (lewa kolumna)</b> – kolejność przedstawienia. Każdy wiersz to jeden
 <i>cue</i> (punkt): film <code>VID</code>, dźwięk <code>AUD</code>, obraz <code>IMG</code> albo
 grupa <code>GRP</code>, akcja <code>ACT</code>; napisy mają ikonę 📝. Pod listą są przyciski
-<b>+ Wideo / + Audio / + Zdjęcie / + Tekst / + Grupa / + Akcja</b>,
+<b>＋ Dodaj pliki… / + Tekst / + Grupa / + Akcja</b>,
 przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>.</li>
 <li><b>Podgląd Pre-Viz (środek)</b> – prywatny podgląd tylko dla Ciebie. Widownia go nie widzi.
 Przyciski <b>Odtwórz / Pauza / Stop</b> sprawdzają zaznaczony cue.</li>
@@ -110,7 +110,7 @@ wszystkich zmian na liście i w inspektorze.</li>
 <h2><a name="dodawanie"></a>3. Dodawanie wideo, audio, zdjęć i napisów</h2>
 <h3>Trzy sposoby dodania pliku</h3>
 <ol>
-<li>Przyciski pod listą: <b>+ Wideo</b>, <b>+ Audio</b>, <b>+ Zdjęcie</b>.</li>
+<li>Przycisk pod listą <b>＋ Dodaj pliki…</b>: filmy, dźwięki i obrazy, także kilka naraz (w kolejności nazw). Okno otwiera się w ostatnio używanym folderze; przedstawienia zapisują się domyślnie w <b>Dokumenty\Teatr POZA</b>.</li>
 <li>Przeciągnij pliki z menedżera plików do pola <b>Szybkie dodawanie</b> (prawy dolny róg) albo
 wprost na listę cue: trafią za wiersz, na który je upuścisz (pod ostatnim wierszem – na koniec), w tej
 samej kolejności.</li>
@@ -271,8 +271,7 @@ na tej warstwie, płynnie przejdzie w nowy.</li>
 <p class="tip">💡 Pokaz zdjęć z przenikaniem: kilka zdjęć po kolei na L1, każde z
 <b>Przenikanie 1–2 s</b>, <b>Czas obrazu</b> np. 5 s i <b>Potem: Auto-GO</b> – zdjęcia
 same będą się płynnie zmieniać.</p>
-<p class="warn">Przenikanie dotyczy obrazu. Dźwięk poprzedniego filmu kończy się w chwili
-przejścia – jeśli ma się wyciszać, daj mu <b>Fade Out</b> albo puść muzykę jako osobny cue.</p>
+<p class="tip">🎵 <b>Przenikanie dźwięku</b>: to samo pole działa dla muzyki. Gdy nowy utwór (albo film) wchodzi na warstwę, na której coś gra, i ma <b>Przenikanie</b> np. 3 s, poprzedni utwór nie urywa się, tylko cichnie przez 3 s, a nowy w tym czasie narasta. <b>Pauza wszystko</b>, <b>Wygaś wszystko</b> i <b>PANIC</b> obejmują też utwór, który jeszcze cichnie.</p>
 
 <h3>Obraz (karta „Wideo · zdjęcie”)</h3>
 <ul>
@@ -483,6 +482,7 @@ na Twoje GO (np. aktor się spóźnia) – <b>Pauza wszystko</b> zatrzymałaby t
 <b>Podgląd wyjścia</b> – to, co widzi widownia, w małym okienku (do 5 klatek na sekundę); <b>▾</b> zwija go,
 program pamięta to na tym komputerze.</li>
 <li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty. W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.</li>
+<li><b>Wygaś</b> na karcie ścisza pozycję łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej pozycjami jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do pozycji po scenie.</li>
 <li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w Inspektorze zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b> albo <b>Gra, dopóki trzymasz klawisz</b>. Kilka pozycji na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li>
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <li><b>Odliczanie</b> (np. przerwy): <b>Przedstawienie → ⏳ Odliczanie (przerwa)…</b> albo cue akcji

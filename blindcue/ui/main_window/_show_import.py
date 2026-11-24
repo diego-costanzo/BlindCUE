@@ -40,7 +40,9 @@ class _ShowImportMixin:
 
         if not self._change_allowed(EDIT_LIST):
             return
-        path, _ = QFileDialog.getOpenFileName(self, tr("Importa cue da un altro spettacolo"), "",
+        from ui import dialog_dirs
+
+        path, _ = QFileDialog.getOpenFileName(self, tr("Importa cue da un altro spettacolo"), dialog_dirs.show_dir(),
                                               "BlindCue (*.blindcue)")
         if not path:
             return
