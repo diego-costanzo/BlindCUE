@@ -30,6 +30,16 @@ from models.cue import (
 from ui.cue_table import CueSequenceTable
 from ui.theme import get_active_theme
 
+# "+ Action" of the add bar - and Edit → Add → "+ Action" (P2 / W73).
+ADD_ACTIONS = (
+    (ACTION_FADE, "🔉 Dissolvi e ferma"),
+    (ACTION_STOP, "⏹ Ferma subito"),
+    (ACTION_RELEASE, "🔁 Rilascia loop"),
+    (ACTION_LEVEL, "🎚 Cambio livello"),
+    (ACTION_OPACITY, "🌓 Opacità layer"),
+    (ACTION_NOTE, "📝 Nota per la regia"),
+)
+
 _FOLLOW_SPECS = (
     (
         FollowMode.MANUAL.value,
@@ -168,14 +178,7 @@ class CueListPanel(QGroupBox):
         self.btn_add_action.setAccessibleName("Aggiungi Azione")
         self.btn_add_action.setFixedHeight(26)
         action_menu = QMenu(self.btn_add_action)
-        for kind, label in (
-            (ACTION_FADE, "🔉 Dissolvi e ferma"),
-            (ACTION_STOP, "⏹ Ferma subito"),
-            (ACTION_RELEASE, "🔁 Rilascia loop"),
-            (ACTION_LEVEL, "🎚 Cambio livello"),
-            (ACTION_OPACITY, "🌓 Opacità layer"),
-            (ACTION_NOTE, "📝 Nota per la regia"),
-        ):
+        for kind, label in ADD_ACTIONS:
             act = action_menu.addAction(label)
             act.triggered.connect(lambda _=False, k=kind: self.add_action_requested.emit(k))
         self.btn_add_action.setMenu(action_menu)

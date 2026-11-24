@@ -78,7 +78,7 @@ class _RemoteMixin:
             layers_data[str(l_idx)] = {
                 "layer": l_idx,
                 "is_live": False,
-                "title": "— Inattivo / Nero —",
+                "title": tr("— Inattivo / Nero —"),  # the phone pages speak the program's language
                 "q_label": "",
                 "cue_id": -1,
                 "pos_sec": 0.0,
@@ -142,7 +142,7 @@ class _RemoteMixin:
             sb_dur = standby_cue.out_point or standby_cue.hold_time or self._known_file_durations.get(standby_cue.file_path, 0.0) or getattr(standby_cue, "target_duration", 0.0) or 0.0
 
         return {
-            "show_title": Path(self._current_project_path).stem if self._current_project_path else "Nuovo Spettacolo",
+            "show_title": Path(self._current_project_path).stem if self._current_project_path else tr("Nuovo Spettacolo"),
             "is_live_mode": self.is_live_mode(),
             "is_paused": getattr(self, "_is_global_paused", False),
             "dual_output_active": dual_active,
@@ -161,6 +161,7 @@ class _RemoteMixin:
             "active_cues": active_cues_data,
             "layers": layers_data,
             "cues": cues_data,
+            "timers": self.remote_timers(),  # 2.5: clock, countdown, stopwatch on the phone pages
         }
 
     @Slot()

@@ -148,3 +148,55 @@ def test_show_report_has_every_event_and_the_missed_cues(window):
     page = csv_file.with_suffix(".html").read_text(encoding="utf-8")
     assert "class='alarm'" in page and "#3 &#x27;c&#x27;" in page and "#1 &#x27;a&#x27;" not in page  # c never played
     assert win._read_previous_run() == {9901: 0.0}                                  # hints read only GOs
+
+
+def test_timers_for_the_phone_pages(window):
+    """2.5: the phone remote and the director monitor get the clock, the countdown, the stopwatch, the plan."""
+    win, _tmp = window
+    timers = win.get_remote_state()["timers"]
+    assert set(timers) == {"clock"} and len(timers["clock"]) == 8           # "19:54:10", nothing else yet
+    win.start_countdown(90, "Przerwa")
+    win.stopwatch("start")
+    win._cues[2].start_clock = "23:59:59"
+    timers = win.remote_timers()
+    assert timers["countdown"]["title"] == "Przerwa" and 89 <= timers["countdown"]["left"] <= 90
+    assert timers["stopwatch"]["running"] is True and timers["stopwatch"]["sec"] >= 0
+    assert timers["next_timed"]["name"] == "c" and timers["next_timed"]["at"] == "23:59:59"
+    win.stopwatch("stop")
+    win.stop_countdown()
+    timers = win.remote_timers()
+    assert "countdown" not in timers and timers["stopwatch"]["running"] is False   # the stopwatch stays shown
+
+
+def test_stopwatch_in_the_menu_and_the_big_window(window):
+    """2.11 rest: start / stop / reset from the Show menu, and the stopwatch in the backstage window."""
+    from PySide6.QtGui import QAction
+
+    win, _tmp = window
+    actions = {a.text(): a for a in win.findChildren(QAction)}
+    actions["Cronometro: avvia"].trigger()
+    assert win._sw_since is not None and win._lbl_stopwatch.isVisibleTo(win)
+    win.start_countdown(120, "Intervallo")
+    win._show_countdown_window()
+    big = win._cd_window
+    assert big.lbl_stopwatch.isVisible() and big.lbl_stopwatch.text().startswith("⏱ 00:0")
+    assert big.lbl_time.isVisible()
+    win.stop_countdown()                                                    # the stopwatch keeps the window
+    assert big.isVisible() and not big.lbl_time.isVisible() and big.lbl_stopwatch.isVisible()
+    assert big.lbl_stopwatch.font().pixelSize() == big.lbl_time.font().pixelSize()   # alone: large digits
+    actions["Cronometro: ferma"].trigger()
+    assert win._sw_since is None and big.lbl_stopwatch.text().endswith("❚❚")
+    actions["Cronometro: azzera"].trigger()
+    assert win.stopwatch_seconds() == 0.0
+    win.start_countdown(60, "Intervallo")                                   # a new countdown comes back on
+    assert big.lbl_time.isVisible() and big.lbl_title.text() == "Intervallo"
+    big.close()
+
+
+def test_big_window_without_anything_to_count(qt_app):
+    from ui.countdown_window import CountdownWindow
+
+    win = CountdownWindow()
+    win.show_idle()
+    assert win.lbl_time.text() == "--:--" and win.lbl_title.text() == "" and not win.lbl_stopwatch.isVisibleTo(win)
+    win.close()

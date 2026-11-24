@@ -196,6 +196,9 @@ _DEFAULT_NOTE_COLOR = "#f59e0b"
 
 RELATIVE_WHEN = ("start", "end", "before_end", "marker")
 MAX_MARKERS = 200
+# Effect keys (1.7): trigger = again from the top, toggle = start / stop, note = plays while the key is
+# held, once = again does nothing while it plays (a doorbell pressed twice by accident rings once).
+HOTKEY_MODES = ("trigger", "toggle", "note", "once")
 
 
 def sanitize_markers(value: object) -> list[dict]:
@@ -543,7 +546,7 @@ class Cue:
     fade_others: float = 0.0     # on start, what else plays (sound) fades out over this many s (1.16)
     adlib: bool = False          # an effect on demand: outside the GO order, started by its key or tile (1.7)
     hotkey: str = ""             # one letter or digit (several cues on one key = steps)
-    hotkey_mode: str = "trigger"  # trigger | toggle | note (plays while the key is held)
+    hotkey_mode: str = "trigger"  # see HOTKEY_MODES
     call_only: bool = False      # 2.2: started only by a "call" action, never by GO
     enabled: bool = True         # 2.3: off in this version of the show - never plays
     start_clock: str = ""        # 2.6: starts by itself at this time of day ("19:55" / "19:55:30")
@@ -863,7 +866,7 @@ class Cue:
             adlib=bool(data.get("adlib", False)),
             hotkey=str(data.get("hotkey", "") or "")[:1].upper(),
             hotkey_mode=str(data.get("hotkey_mode", "trigger") or "trigger")
-            if str(data.get("hotkey_mode", "trigger")) in ("trigger", "toggle", "note") else "trigger",
+            if str(data.get("hotkey_mode", "trigger")) in HOTKEY_MODES else "trigger",
             call_only=bool(data.get("call_only", False)),
             enabled=bool(data.get("enabled", True)),
             start_clock=_clock_text(data.get("start_clock", "")),

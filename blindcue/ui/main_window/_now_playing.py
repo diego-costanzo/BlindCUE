@@ -12,6 +12,7 @@ import time
 from engine.live_state import PHASE_POST, PHASE_PRE, fmt_clock
 from i18n import tr
 
+from ui.hold_button import hold_text
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.now_playing import NOTE, SCENE, STILL, TIMED, CardState
 
@@ -32,7 +33,7 @@ class _NowPlayingMixin:
         panel.note_dismissed.connect(lambda _cid: self._note_banner.dismiss())
         panel.seek_requested.connect(self._on_card_seek)
         panel.hold_longer.connect(lambda: self._status_label.setText(
-            tr("Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)")))
+            tr("Tieni premuto per saltare di 10 s ({} nello spettacolo)").format(hold_text())))
         panel.trim_requested.connect(self._on_card_trim)
         strip = getattr(self, "_prep_now_playing", None)
         if strip is not None:

@@ -129,6 +129,26 @@ def test_toggle_and_note_stop_their_effect(window):
     assert len(window.faded) == 3 and window._held_notes == {}
 
 
+def test_once_ignores_a_second_press_while_it_plays(window):
+    """1.7 rest: "again = nothing while it plays" - a doorbell pressed twice by accident rings once."""
+    bell = _cue(7, adlib=True, hotkey="D", hotkey_mode="once")
+    assert Cue.from_dict(bell.to_dict()).hotkey_mode == "once"
+    window._cues.append(bell)
+    window._refresh_cue_list(keep_selection=False)
+    window.set_live_mode(True)
+    window._on_hotkey_press("D")
+    window._on_hotkey_release("D")
+    assert window.fired == [9408] and window._effect_running(bell)
+    window._on_hotkey_press("D")                        # still playing (or waiting): nothing
+    window._on_hotkey_release("D")
+    window._repeat_last_effect()                        # Ctrl+R neither
+    assert window.fired == [9408] and window.faded == [] and "'c7'" in window._status_label.text()
+    bell.status = CueStatus.LOADED                       # it ended
+    window._live_phase_tags.pop(bell.cue_id, None)
+    window._on_hotkey_press("D")
+    assert window.fired == [9408, 9408]                 # rings again
+
+
 def test_repeat_the_last_effect(window):
     window._repeat_last_effect()                        # not in the show: nothing
     window.set_live_mode(True)

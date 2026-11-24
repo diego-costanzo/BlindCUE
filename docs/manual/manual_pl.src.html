@@ -39,7 +39,7 @@ Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
 <i>cue</i> (punkt): film <code>VID</code>, dźwięk <code>AUD</code>, obraz <code>IMG</code> albo
 grupa <code>GRP</code><!--IF:action_cues-->, akcja <code>ACT</code><!--/IF:action_cues--><!--IF:text_cues-->; napisy mają ikonę 📝<!--/IF:text_cues-->. Pod listą są przyciski
 <b>＋ Dodaj pliki… / <!--IF:text_cues-->+ Tekst / <!--/IF:text_cues-->+ Grupa<!--IF:action_cues--> / + Akcja<!--/IF:action_cues--></b>,
-przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>.</li>
+przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>. To samo dodawanie jest w menu <b>Edycja → ➕ Dodaj</b> (z klawiatury: Alt, strzałki).</li>
 <li><b>Podgląd – widzisz tylko Ty (środek)</b> – prywatny podgląd. Widownia go nie widzi.
 Przyciski <b>▶ Podgląd / Pauza / ⏹ Stop podglądu</b> sprawdzają zaznaczony cue (tylko w podglądzie). Gdy coś
 gra na sali, nad GO pojawia się <b>TERAZ GRA – słychać na sali</b> z kartami cue i ich przyciskiem <b>Wygaś</b>,
@@ -499,15 +499,18 @@ na Twoje GO (np. aktor się spóźnia) – <b>Pauza wszystko</b> zatrzymałaby t
 program pamięta to na tym komputerze.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Notatki z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.<!--IF:now_playing--> W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <!--IF:gentle_fade--><li><b>Wygaś</b> na karcie ścisza cue łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej cue jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do cue po scenie.</li><!--/IF:gentle_fade-->
-<!--IF:effects--><li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w ustawieniach cue zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b> albo <b>Gra, dopóki trzymasz klawisz</b>. Kilka cue na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li><!--/IF:effects-->
+<!--IF:effects--><li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w ustawieniach cue zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b>, <b>Gra, dopóki trzymasz klawisz</b> albo <b>Start (ponownie = nic, dopóki gra)</b> – dzwonek naciśnięty dwa razy przez pomyłkę zadzwoni raz. Kilka cue na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li><!--/IF:effects-->
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <!--IF:countdown--><li><b>Odliczanie</b> (np. przerwy): <b>Sterowanie → ⏳ Czas → ⏳ Odliczanie (przerwa)…</b> albo cue akcji
 <b>⏳ Odliczanie</b> (tytuł i minuty; 0 minut zatrzymuje). Licznik jest na pasku stanu, a <b>🖥 Duże odliczanie
-(kulisy)</b> otwiera duże okno – można je przesunąć na drugi ekran. Ostatnia minuta jest bursztynowa i miga.</li>
+(kulisy)</b> otwiera duże okno – można je przesunąć na drugi ekran. Ostatnia minuta jest bursztynowa i miga.
+<b>Stoper</b> (np. długość aktu) włączysz w tym samym podmenu (<b>Stoper: start</b> / <b>stop</b> / <b>zeruj</b>)
+albo cue akcji; jest wtedy także w dużym oknie. Odliczanie, stoper, zegar komputera i najbliższy cue
+o godzinie widać też w telefonie – w pilocie i w monitorze reżysera.</li>
 <li><b>Dziennik przebiegu</b>: czas każdego GO od pierwszego GO zapisuje się po wyjściu z przedstawienia w
 <i>Dokumenty\BlindCue\przebiegi\&lt;nazwa przedstawienia&gt;</i> (plik CSV, otworzysz go w arkuszu). Przy następnym
 przedstawieniu pasek <b>NASTĘPNY</b> podpowiada, kiedy ten cue padł poprzednio („poprzednio o 12:34”).</li><!--/IF:countdown-->
-<!--IFNOT:mode_tabs--><li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Powrót do przygotowania</b>: przytrzymaj zakładkę <b>○ Przygotowanie</b> przez 1,5 s albo <b>Sterowanie → Zakończ przedstawienie…</b> (<kbd>Ctrl+Shift+F5</kbd>); to, co gra, gra dalej. <kbd>F5</kbd> i <kbd>Ctrl+L</kbd> tylko wchodzą – przypadkowe naciśnięcie nie wyrzuci Cię z przedstawienia. Alt+F4 w czasie przedstawienia najpierw pyta.</li><!--/IF:mode_tabs-->
+<!--IFNOT:mode_tabs--><li><b>Wróć do projektu</b> (<kbd>F5</kbd>) – powrót do edycji; to, co gra, gra dalej.</li><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><li><b>Powrót do przygotowania</b>: przytrzymaj zakładkę <b>○ Przygotowanie</b> przez 1,5 s albo <b>Sterowanie → Zakończ przedstawienie…</b> (<kbd>Ctrl+Shift+F5</kbd>); to, co gra, gra dalej. <kbd>F5</kbd> i <kbd>Ctrl+L</kbd> tylko wchodzą – przypadkowe naciśnięcie nie wyrzuci Cię z przedstawienia. Alt+F4 w czasie przedstawienia najpierw pyta. Czas przytrzymania (0,6–3 s, domyślnie 1,5 s) ustawisz dla tego komputera w <b>Sterowanie → ⚙ Ustawienia prowadzenia → ✋ Czas przytrzymania</b> (w Przygotowaniu); dotyczy też <b>−10 s</b> / <b>+10 s</b> na przedstawieniu.</li><!--/IF:mode_tabs-->
 </ol>
 <p class="tip">💡 Przy prowadzeniu przedstawienia trzymaj okno programu aktywne
 (kliknij w nie), żeby <kbd>Spacja</kbd> trafiała do programu. Inne programy zamknij.<!--IF:focus_warning--> Gdy klawiatura trafia gdzie indziej (np. kliknięto obraz na projektorze), w trybie LIVE pojawia się czerwony pasek – kliknij okno programu.<!--/IF:focus_warning--></p>
@@ -534,7 +537,8 @@ przytrzymaj kłódkę 1,2 s, żeby odblokować przewijanie/pauzę pojedynczych w
 i zeskanuj kod QR telefonem (telefon i komputer w tej samej sieci Wi-Fi).
 W telefonie pojawi się duży przycisk GO, pauza, wygaszenie i PANIC.
 Drugi kod (<b>Monitor reżysera</b>) daje podgląd bez możliwości klikania – np. dla reżysera
-na widowni. Dostęp chroni 6-cyfrowy PIN.</p>
+na widowni. Dostęp chroni 6-cyfrowy PIN. Obie strony w telefonie mówią w języku programu
+(<b>Widok → 🌐 Język</b>); nazwy cue zostają takie, jak je wpisałeś.</p>
 <p><img src="img/pl/11_remote.png" width="560"></p>
 
 <h3>Studio powierzchni projekcji (mapping) – <kbd>F7</kbd></h3>

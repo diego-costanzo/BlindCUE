@@ -4106,4 +4106,164 @@ T: dict[str, str] = {
         'Miniatury na liście: włączone',
     'Miniature nella lista: spente':
         'Miniatury na liście: wyłączone',
+    'BlindCUE · Live Remote':
+        'BlindCUE · pilot',
+    'ONLINE':
+        'POŁĄCZONO',
+    'Nessun media in onda':
+        'Nic nie gra',
+    'PROSSIMO IN STANDBY':
+        'NASTĘPNY',
+    '— Nessuna cue —':
+        '— brak cue —',
+    'PREV':
+        'Poprzedni',
+    'NEXT':
+        'Następny',
+    'SCALETTA LIVE':
+        'LISTA CUE',
+    'REGIA PROTETTA':
+        'STEROWANIE CHRONIONE',
+    'Inserisci il PIN a 6 cifre per sbloccare i comandi live sul palco.':
+        'Wpisz 6-cyfrowy PIN, żeby odblokować sterowanie przedstawieniem.',
+    'IN ONDA':
+        'GRA',
+    'IN ATTESA (PRE)':
+        'CZEKA NA START',
+    'IN ATTESA (POST)':
+        'CZEKA NA NASTĘPNY',
+    'Sessione scaduta o non autorizzata':
+        'Sesja wygasła albo brak dostępu',
+    'IN PAUSA':
+        'PAUZA',
+    'LAYER {}':
+        'WARSTWA {}',
+    'Media Live':
+        'Gra',
+    '— Fine Scaletta —':
+        '— Koniec listy —',
+    '⚠ OFFLINE':
+        '⚠ BRAK PLIKU',
+    'DISCONNESSO':
+        'ROZŁĄCZONO',
+    'Sessione revocata: reinserisci il PIN':
+        'Dostęp cofnięty: wpisz PIN jeszcze raz',
+    'PIN errato':
+        'Zły PIN',
+    'Errore di connessione alla regia':
+        'Brak połączenia z komputerem przedstawienia',
+    'BlindCUE · Monitor Regia':
+        'BlindCUE · podgląd reżysera',
+    'Monitor Regia · Sola Lettura':
+        'Podgląd reżysera · tylko do oglądania',
+    'LIVE SYNC':
+        'NA ŻYWO',
+    '● Livelli di Emissione in Tempo Reale (3 Layer)':
+        '● Warstwy wyjścia na żywo (3 warstwy)',
+    'LAYER 1 (FONDO)':
+        'WARSTWA 1 (TŁO)',
+    'LAYER 2 (MEDIO)':
+        'WARSTWA 2 (ŚRODEK)',
+    'LAYER 3 (OVERLAY)':
+        'WARSTWA 3 (WIERZCH)',
+    'IDLE':
+        'WOLNA',
+    '● Uscita B — Proiettore Indipendente (Layer B·1..B·3)':
+        '● Wyjście B — osobny projektor (warstwy B·1..B·3)',
+    'PROSSIMA CUE IN STANDBY (PROSSIMO LANCIO)':
+        'NASTĘPNY CUE (NASTĘPNE GO)',
+    '— Nessuna cue in standby —':
+        '— brak następnego cue —',
+    'SCALETTA COMPLETA DELLO SPETTACOLO':
+        'PEŁNA LISTA CUE',
+    'STATO':
+        'STAN',
+    'Q #':
+        'Nr',
+    'TITOLO CUE & NOTE':
+        'CUE I UWAGI',
+    'TIPO':
+        'TYP',
+    'LAYER':
+        'WARSTWA',
+    'DURATA':
+        'CZAS',
+    'FADE IN/OUT':
+        'WEJŚCIE / WYJŚCIE',
+    'AVANZAMENTO':
+        'POTEM',
+    '🔒 Interfaccia passiva di monitoraggio per la Direzione Artistica e di Scena · Nessun comando attivo abilitato · BlindCUE Native':
+        '🔒 Podgląd tylko do oglądania dla reżysera i inspicjenta · bez żadnych poleceń · BlindCUE',
+    'Inserisci il PIN a 6 cifre per accedere alla visualizzazione del Monitor Regia.':
+        'Wpisz 6-cyfrowy PIN, żeby zobaczyć podgląd reżysera.',
+    '🎬 VIDEO':
+        '🎬 WIDEO',
+    '🎵 AUDIO':
+        '🎵 DŹWIĘK',
+    '🖼 IMMAGINE':
+        '🖼 OBRAZ',
+    '📁 GRUPPO':
+        '📁 GRUPA',
+    '⚡ AZIONE':
+        '⚡ AKCJA',
+    'Fade:':
+        'Wejście / wyjście:',
+    'Tutte le cue eseguite':
+        'Wszystkie cue zagrane',
+    '○ PRONTA':
+        '○ GOTOWY',
+    '● IN ONDA':
+        '● GRA',
+    'Auto-follow':
+        'Auto-GO',
+    'Simultanea':
+        'Razem',
+    'PIN di regia richiesto':
+        'Wymagany PIN',
+    'PIN errato.':
+        'Zły PIN.',
+    'Troppi tentativi errati. Blocco temporaneo per {}s.':
+        'Za dużo błędnych prób. Blokada na {} s.',
+    'BlindCUE (Protetto)':
+        'BlindCUE (chroniony)',
+    'Pagina non trovata o richiesta non valida.':
+        'Nie ma takiej strony albo zapytanie jest błędne.',
+    'Torna al telecomando':
+        'Wróć do pilota',
+    'Ora del computer':
+        'Zegar komputera',
+    'Prossima cue a orario':
+        'Następny cue o godzinie',
+    'Tieni premuto {} per tornare alla preparazione (ciò che è in onda continua). Da tastiera: Ctrl+Maiusc+F5':
+        'Przytrzymaj {}, aby wrócić do przygotowania (to, co gra, gra dalej). Z klawiatury: Ctrl+Shift+F5',
+    'Torna alla preparazione: tieni premuto {}':
+        'Powrót do przygotowania: przytrzymaj {}',
+    'Tieni premuto {} per passare alla prova (ciò che è in onda continua)':
+        'Przytrzymaj {}, żeby przejść do próby (to, co gra, gra dalej)',
+    'Passa alla prova: tieni premuto {}':
+        'Przejdź do próby: przytrzymaj {}',
+    'Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per {} oppure Ctrl+Maiusc+F5':
+        'Aby wyjść z przedstawienia: przytrzymaj „○ Przygotowanie” przez {} albo Ctrl+Shift+F5',
+    'Tieni premuto più a lungo ({}) per uscire dallo spettacolo':
+        'Przytrzymaj dłużej ({}), aby wyjść z Przedstawienia',
+    'Tieni premuto per saltare di 10 s ({} nello spettacolo)':
+        'Przytrzymaj, żeby przeskoczyć o 10 s (na przedstawieniu {})',
+    'Tieni premuto «Preparazione» {}':
+        'Przytrzymaj „Przygotowanie” {}',
+    '4 cifre per uscire dallo spettacolo su questo computer (vuoto = basta tenere premuto {}):':
+        '4 cyfry do wyjścia z Przedstawienia na tym komputerze (puste = wystarczy przytrzymać {}):',
+    '✋ Tempo per tenere premuto':
+        '✋ Czas przytrzymania',
+    '{} (predefinito)':
+        '{} (domyślnie)',
+    'Il tempo per tenere premuto si cambia in Preparazione':
+        'Czas przytrzymania zmienia się w Przygotowaniu',
+    'Tenere premuto: {} su questo computer':
+        'Przytrzymanie: {} na tym komputerze',
+    'Avvia (di nuovo = niente finché suona)':
+        'Start (ponownie = nic, dopóki gra)',
+    "Effetto già in corso: '{}' (non riparte)":
+        "Efekt już gra: '{}' (nie startuje od nowa)",
+    '➕ Aggiungi':
+        '➕ Dodaj',
 }

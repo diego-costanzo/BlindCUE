@@ -234,7 +234,8 @@ class _Card(QFrame):
 
     @staticmethod
     def _hold_button(text: str, tip: str) -> HoldProgressButton:
-        btn = HoldProgressButton(text_idle=text, hold_ms=1500, is_toggle=False, fill_color="#38bdf8")
+        btn = HoldProgressButton(text_idle=text, hold_ms=1500, is_toggle=False, fill_color="#38bdf8",
+                                 scaled=True)  # W29: this computer's hold time in the show
         btn.setToolTip(tip)
         btn.setAccessibleName(tip)
         btn.setFixedSize(52, 26)
@@ -268,7 +269,7 @@ class _Card(QFrame):
             self.rehearsal_row.setVisible(on)
             self._apply_height()
             for btn in (self.btn_back, self.btn_fwd):
-                btn.set_hold_ms(200 if on else 1500)
+                btn.set_hold_ms(200 if on else 1500, scaled=not on)  # the rehearsal: at once, always
         self._last = None  # redraw with the new tools
 
     def set_compact(self, on: bool) -> None:

@@ -272,7 +272,7 @@ class _TransportMixin:
                 and not getattr(self, "_firing_aside", False)):
             self._clear_gate()  # another cue started by GO: the waiting OK lapses (1.9)
         if getattr(cue, "start_clock", ""):
-            self._clock_handled.add(cue.cue_id)  # 2.6: started by hand, the clock does not start it again
+            self._clock_mark(cue)  # 2.6: started by hand, the clock does not start it again
         self._undo_go_collect(cue)
         if cue.cue_id in self._held_auto_go:
             self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again

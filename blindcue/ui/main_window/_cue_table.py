@@ -330,9 +330,11 @@ class _CueTableMixin:
             self.set_live_mode(True)
 
     def _explain_how_to_leave(self) -> None:
-        self._status_label.setText(
-            "Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per 1,5 s oppure Ctrl+Maiusc+F5"
-        )
+        from ui.hold_button import hold_text
+
+        self._status_label.setText(  # W29: this computer's hold time
+            tr("Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per {} oppure Ctrl+Maiusc+F5")
+            .format(hold_text()))
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_alert()
 

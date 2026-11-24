@@ -36,6 +36,7 @@ from engine.action_cues import default_action_name, default_action_spec, describ
 from engine.show_engine import block_end, insert_position, relative_cycle
 from models.cue import (
     ACTION_KINDS,
+    HOTKEY_MODES,
     Cue,
     CueStatus,
     FollowMode,
@@ -319,7 +320,8 @@ EDITABLE: dict[str, tuple[str, Any]] = {
     "adlib": ("Effect on demand: outside the GO order, started by its key or tile.", _bool),
     "hotkey": ("Effect key: one letter or digit.", lambda v: _hotkey(v)),
     "hotkey_mode": ("Effect key: trigger (again = from the top), toggle (start/stop), note (plays while "
-                    "held).", lambda v: _choice(v, "hotkey_mode", ("trigger", "toggle", "note"))),
+                    "held), once (again = nothing while it plays).",
+                    lambda v: _choice(v, "hotkey_mode", HOTKEY_MODES)),
     "color": ("Colour mark in the list, '#RRGGBB' or ''.", lambda v: _color(v)),
     "output_target": ("Projector output A or B (B only with two outputs).",
                       lambda v: _choice(v, "output_target", ("A", "B"))),

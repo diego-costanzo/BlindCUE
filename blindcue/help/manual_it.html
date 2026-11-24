@@ -51,7 +51,7 @@ Questo manuale ti accompagna da un programma vuoto a uno spettacolo pronto.</p>
 <i>cue</i>: video <code>VID</code>, audio <code>AUD</code>, immagine <code>IMG</code> oppure
 gruppo <code>GRP</code>, azione <code>ACT</code>; le didascalie hanno l'icona 📝. Sotto la scaletta ci sono i pulsanti
 <b>＋ Aggiungi file… / + Testo / + Gruppo / + Azione</b>,
-<b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
+<b>Su / Giù</b> per spostare ed <b>Elimina</b>. Le stesse aggiunte sono nel menu <b>Modifica → ➕ Aggiungi</b> (da tastiera: Alt, frecce).</li>
 <li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
 <b>▶ Anteprima / Pausa / ⏹ Ferma anteprima</b> provano la cue selezionata (solo l'anteprima). Quando qualcosa suona
 in sala, sopra il GO compare <b>ORA IN ONDA – si sente in sala</b> con le schede delle cue e il loro <b>Sfuma</b>,
@@ -514,17 +514,20 @@ ciò che vede il pubblico, in piccolo (fino a 5 fotogrammi al secondo); <b>▾</
 ricorda.</li>
 <li>Le note delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu. Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.</li>
 <li><b>Sfuma</b> su una scheda abbassa la cue dolcemente: con il suo <b>Fade Out</b>, o in 3 s se non ne ha (si cambia in <b>Show → ⚙ Impostazioni dello spettacolo → ⏬ Tempo del pulsante Sfuma…</b>). Mentre una scena suona, sopra le sue cue c'è la scheda <b>🎬 scena</b> con <b>Sfuma la scena</b> (anche clic destro sulla scena nella lista): sfuma tutto ciò che la scena suona o mostra e il GO passa alla cue dopo la scena.</li>
-<li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b> oppure <b>Suona finché tieni premuto</b>. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li>
+<li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b>, <b>Suona finché tieni premuto</b> oppure <b>Avvia (di nuovo = niente finché suona)</b> – un campanello premuto due volte per sbaglio suona una volta sola. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li>
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
 <li><b>Conto alla rovescia</b> (per esempio l'intervallo): <b>Show → ⏳ Tempo → ⏳ Conto alla rovescia…</b>
 oppure la cue azione <b>⏳ Conto alla rovescia</b> (titolo e minuti; 0 minuti lo ferma). Compare sulla barra di
 stato e <b>🖥 Conto alla rovescia grande (quinte)</b> apre una finestra grande da spostare su un secondo schermo.
-L'ultimo minuto è ambra e lampeggia.</li>
+L'ultimo minuto è ambra e lampeggia. Il <b>cronometro</b> (per esempio la durata di un atto) è nello stesso
+sottomenu (<b>Cronometro: avvia</b> / <b>ferma</b> / <b>azzera</b>) o in una cue azione; compare allora anche nella
+finestra grande. Conto alla rovescia, cronometro, ora del computer e prossima cue a orario si vedono anche sul
+telefono, nel telecomando e nel monitor della regia.</li>
 <li><b>Registro della replica</b>: il momento di ogni GO dal primo GO viene salvato quando esci dallo spettacolo,
 in <i>Documenti\BlindCue\przebiegi\&lt;nome dello spettacolo&gt;</i> (file CSV per un foglio di calcolo). Allo
 spettacolo successivo la barra <b>PROSSIMA</b> dice quando quella cue è arrivata la volta scorsa («la volta
 scorsa a 12:34»).</li>
-<li><b>Ritorno alla preparazione</b>: tieni premuta la scheda <b>○ Preparazione</b> per 1,5 s oppure <b>Show → Termina lo spettacolo…</b> (<kbd>Ctrl+Maiusc+F5</kbd>); quello che sta andando continua. <kbd>F5</kbd> e <kbd>Ctrl+L</kbd> servono solo a entrare – un tasto premuto per sbaglio non ti fa uscire dallo spettacolo. Alt+F4 durante lo spettacolo chiede prima.</li>
+<li><b>Ritorno alla preparazione</b>: tieni premuta la scheda <b>○ Preparazione</b> per 1,5 s oppure <b>Show → Termina lo spettacolo…</b> (<kbd>Ctrl+Maiusc+F5</kbd>); quello che sta andando continua. <kbd>F5</kbd> e <kbd>Ctrl+L</kbd> servono solo a entrare – un tasto premuto per sbaglio non ti fa uscire dallo spettacolo. Alt+F4 durante lo spettacolo chiede prima. Il tempo di pressione (0,6–3 s, 1,5 s di base) si sceglie per questo computer in <b>Show → ⚙ Impostazioni dello spettacolo → ✋ Tempo per tenere premuto</b> (nella preparazione); vale anche per <b>−10 s</b> / <b>+10 s</b> nello spettacolo.</li>
 </ol>
 <p class="tip">💡 Durante lo spettacolo tieni attiva la finestra del programma (facci clic) perché
 <kbd>Spazio</kbd> arrivi al programma. Chiudi gli altri programmi. Quando la tastiera va altrove (per esempio dopo un clic sull’immagine del proiettore), in modalità LIVE compare una barra rossa – fai clic sulla finestra del programma.</p>
@@ -551,7 +554,8 @@ durante la pausa avvia solo la nuova cue (es. un annuncio); ciò che è in pausa
 e inquadra il codice QR con il telefono (telefono e computer sulla stessa rete Wi-Fi).
 Sul telefono compaiono un grande pulsante GO, pausa, blackout e PANIC.
 Il secondo codice (<b>Monitor Regista</b>) dà una vista di sola lettura – per esempio per il regista
-in platea. L'accesso è protetto da un PIN di 6 cifre.</p>
+in platea. L'accesso è protetto da un PIN di 6 cifre. Le due pagine del telefono usano la lingua del
+programma (<b>View → 🌐 Lingua</b>); i nomi delle cue restano come li hai scritti.</p>
 <p><img src="img/it/11_remote.png" width="560" height="452"></p>
 
 <h3>Studio Superfici di Proiezione &amp; Mapping – <kbd>F7</kbd></h3>

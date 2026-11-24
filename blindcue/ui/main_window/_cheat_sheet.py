@@ -9,6 +9,7 @@ from i18n import tr
 from PySide6.QtCore import QUrl
 from PySide6.QtGui import QDesktopServices
 
+from ui.hold_button import hold_text
 from ui.main_window._common import *  # noqa: F403,F401,F405
 
 
@@ -28,7 +29,7 @@ class _CheatSheetMixin:
             (tr("Ctrl+Spazio"), tr("GO forzato (anche se una cue esclusiva sta suonando)")),
             (tr("F5"), tr("Entra nello spettacolo")),
             (tr("Maiusc+F5"), tr("Prova")),
-            (tr("Tieni premuto «Preparazione» 1,5 s"), tr("Esci dallo spettacolo")),
+            (tr("Tieni premuto «Preparazione» {}").format(hold_text()), tr("Esci dallo spettacolo")),
         ]
         effects = [(c.hotkey.upper(), c.name) for c in self._cues
                    if getattr(c, "hotkey", "") and getattr(c, "adlib", False)]

@@ -51,7 +51,7 @@ This manual takes you from an empty program to a finished show.</p>
 <i>cue</i>: a video <code>VID</code>, sound <code>AUD</code>, picture <code>IMG</code> or
 group <code>GRP</code>, action <code>ACT</code>; captions have a 📝 icon. Under the list are the buttons
 <b>＋ Add files… / + Text / + Group / + Action</b>,
-<b>Up / Down</b> to move and <b>Delete</b>.</li>
+<b>Up / Down</b> to move and <b>Delete</b>. The same adding is in the <b>Edit → ➕ Add</b> menu (from the keyboard: Alt, arrows).</li>
 <li><b>Pre-Viz preview (middle)</b> – a private preview just for you. The audience never sees it.
 <b>▶ Preview / Pause / ⏹ Stop the preview</b> check the selected cue (the preview only). While something plays
 to the room, <b>ON AIR – heard in the room</b> shows above the GO with the cues' cards and their <b>Fade</b>,
@@ -503,16 +503,19 @@ top of the column, <b>Output preview</b> shows what the audience sees, small (up
 folds it, and this computer remembers that.</li>
 <li>Notes of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them. During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.</li>
 <li><b>Fade</b> on a card brings the cue down gently: over its own <b>Fade out</b>, or 3 s when it has none (change it in <b>Show → ⚙ Running settings → ⏬ Fade button time…</b>). While a scene plays, a <b>🎬 scene</b> card above its cues has <b>Fade the scene</b> (also a right click on the scene in the list): everything the scene plays or shows fades, and GO moves to the cue after the scene.</li>
-<li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b> or <b>Plays while the key is held</b>. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li>
+<li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b>, <b>Plays while the key is held</b> or <b>Start (again = nothing while it plays)</b> – a doorbell pressed twice by mistake rings once. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li>
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
 <li><b>Countdown</b> (e.g. the interval): <b>Show → ⏳ Time → ⏳ Countdown (interval)…</b> or the
 <b>⏳ Countdown</b> action cue (title and minutes; 0 minutes stops it). It shows on the status bar, and
 <b>🖥 Big countdown (backstage)</b> opens a big window you can move to a second screen. The last minute is amber
-and blinks.</li>
+and blinks. The <b>stopwatch</b> (e.g. the length of an act) is in the same submenu (<b>Stopwatch: start</b> /
+<b>stop</b> / <b>reset</b>) or an action cue; it then shows in the big window too. The countdown, the stopwatch,
+the computer's clock and the next cue at a time of day also show on the phone – on the remote and the director
+monitor.</li>
 <li><b>Run log</b>: the time of every GO since the first GO is saved when you leave the show, in
 <i>Documents\BlindCue\przebiegi\&lt;show name&gt;</i> (a CSV file for a spreadsheet). In the next show the
 <b>NEXT</b> bar says when that cue came last time ("last time at 12:34").</li>
-<li><b>Back to preparation</b>: hold the <b>○ Preparation</b> tab for 1.5 s or use <b>Show → End the show…</b> (<kbd>Ctrl+Shift+F5</kbd>); whatever plays keeps playing. <kbd>F5</kbd> and <kbd>Ctrl+L</kbd> only enter – a stray key press never takes you out of the show. Alt+F4 during a show asks first.</li>
+<li><b>Back to preparation</b>: hold the <b>○ Preparation</b> tab for 1.5 s or use <b>Show → End the show…</b> (<kbd>Ctrl+Shift+F5</kbd>); whatever plays keeps playing. <kbd>F5</kbd> and <kbd>Ctrl+L</kbd> only enter – a stray key press never takes you out of the show. Alt+F4 during a show asks first. The hold time (0.6–3 s, 1.5 s by default) is set for this computer in <b>Show → ⚙ Running settings → ✋ Hold time</b> (in preparation); it also applies to <b>−10 s</b> / <b>+10 s</b> in the show.</li>
 </ol>
 <p class="tip">💡 During the show keep the program window active (click it) so that
 <kbd>Space</kbd> goes to the program. Close other programs. When the keyboard goes elsewhere (e.g. someone clicked the picture on the projector), a red bar appears in LIVE mode – click the program window.</p>
@@ -539,7 +542,8 @@ during the pause starts just the new cue (e.g. an announcement); what is paused 
 and scan the QR code with your phone (phone and computer on the same Wi-Fi).
 The phone shows a big GO button, pause, blackout and PANIC.
 The second code (<b>Director Monitor</b>) gives a read-only view – e.g. for the director
-in the audience. Access is protected by a 6-digit PIN.</p>
+in the audience. Access is protected by a 6-digit PIN. Both phone pages use the program's language
+(<b>View → 🌐 Language</b>); cue names stay as you typed them.</p>
 <p><img src="img/en/11_remote.png" width="560" height="452"></p>
 
 <h3>Projection Surfaces &amp; Mapping Studio – <kbd>F7</kbd></h3>

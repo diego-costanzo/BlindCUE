@@ -12,9 +12,10 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
 
-from ui.hold_button import HoldProgressButton
+from i18n import tr
+from ui.hold_button import HoldProgressButton, hold_text
 
-LEAVE_HOLD_MS = 1500
+LEAVE_HOLD_MS = 1500  # this computer's hold time (W29: 0.6-3 s) replaces it, see hold_button
 
 PREPARATION = "preparation"
 REHEARSAL = "rehearsal"
@@ -41,6 +42,7 @@ def _hold_tab(text: str, tip: str, name: str) -> HoldProgressButton:
         border_idle="#3c4f6b",
         text_color_idle="#cbd5e1",
         fill_color="#38bdf8",
+        scaled=True,
     )
     btn.setFixedHeight(34)
     btn.setMinimumWidth(120)  # "hold 1.5 s" is in the tooltip and said when let go early
@@ -68,12 +70,7 @@ class ModeTabs(QWidget):
         self.tab_prep.setFixedHeight(34)
         self.tab_prep.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.tab_prep.clicked.connect(self._on_prep_clicked)
-        self.tab_prep_hold = _hold_tab(
-            "○ Preparazione",
-            "Tieni premuto 1,5 s per tornare alla preparazione (ciò che è in onda continua)."
-            " Da tastiera: Ctrl+Maiusc+F5",
-            "Torna alla preparazione: tieni premuto 1,5 secondi",
-        )
+        self.tab_prep_hold = _hold_tab("○ Preparazione", "", "")  # texts: refresh_hold_texts()
         self.tab_prep_hold.hold_completed.connect(self.leave_show_requested)
 
         self.tab_reh = QPushButton("◐ Prova")
@@ -81,12 +78,9 @@ class ModeTabs(QWidget):
         self.tab_reh.setFocusPolicy(Qt.FocusPolicy.TabFocus)
         self.tab_reh.setToolTip("Prova: lo spettacolo come in scena, con piccole correzioni [Maiusc+F5]")
         self.tab_reh.clicked.connect(self._on_reh_clicked)
-        self.tab_reh_hold = _hold_tab(
-            "◐ Prova",
-            "Tieni premuto 1,5 s per passare alla prova (ciò che è in onda continua)",
-            "Passa alla prova: tieni premuto 1,5 secondi",
-        )
+        self.tab_reh_hold = _hold_tab("◐ Prova", "", "")
         self.tab_reh_hold.hold_completed.connect(self.rehearsal_requested)
+        self.refresh_hold_texts()
 
         self.tab_show = QPushButton("● Spettacolo")
         self.tab_show.setFixedHeight(34)
@@ -98,6 +92,17 @@ class ModeTabs(QWidget):
             lay.addWidget(w)
         self._mode = ""
         self.set_mode(PREPARATION)
+
+    def refresh_hold_texts(self) -> None:
+        """Tooltips and names say this computer's hold time (W29: 0.6-3 s)."""
+        held = hold_text()
+        self.tab_prep_hold.setToolTip(
+            tr("Tieni premuto {} per tornare alla preparazione (ciò che è in onda continua). "
+               "Da tastiera: Ctrl+Maiusc+F5").format(held))
+        self.tab_prep_hold.setAccessibleName(tr("Torna alla preparazione: tieni premuto {}").format(held))
+        self.tab_reh_hold.setToolTip(
+            tr("Tieni premuto {} per passare alla prova (ciò che è in onda continua)").format(held))
+        self.tab_reh_hold.setAccessibleName(tr("Passa alla prova: tieni premuto {}").format(held))
 
     # ── State ─────────────────────────────────────────────────────────
     def mode(self) -> str:

@@ -59,7 +59,9 @@ class _RehearsalMixin:
 
     def _hold_longer(self) -> None:
         """A tab of the show let go too early: say so instead of nothing happening (W29)."""
-        self._status_label.setText(tr("Tieni premuto più a lungo (1,5 s) per uscire dallo spettacolo"))
+        from ui.hold_button import hold_text
+
+        self._status_label.setText(tr("Tieni premuto più a lungo ({}) per uscire dallo spettacolo").format(hold_text()))
         self.announce(self._status_label.text(), assertive=True)
 
     # ── Modes ─────────────────────────────────────────────────────────

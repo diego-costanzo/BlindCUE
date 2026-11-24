@@ -129,8 +129,13 @@ class _EffectsMixin:
         if idx < 0:
             return
         cue = self._cues[idx]
-        if getattr(cue, "hotkey_mode", "trigger") == "toggle" and self._effect_running(cue):
+        mode = getattr(cue, "hotkey_mode", "trigger")
+        if mode == "toggle" and self._effect_running(cue):
             self._stop_effect(cue)
+            return
+        if mode == "once" and self._effect_running(cue):
+            # Pressed again while it plays (or waits in its Pre-Delay): nothing, it is not restarted.
+            self._status_label.setText(tr("Effetto già in corso: '{}' (non riparte)").format(cue.name))
             return
         self._run_event("EFFECT", cue.name, cue.cue_id)  # 5.19
         if remember:

@@ -15,6 +15,7 @@ from __future__ import annotations
 from i18n import tr
 from PySide6.QtWidgets import QInputDialog, QLineEdit
 
+from ui.hold_button import hold_text
 from ui.main_window._common import *  # noqa: F403,F401,F405
 
 PIN_SETTINGS_KEY = "live/exit_pin"
@@ -76,7 +77,8 @@ class _PinMixin:
             return
         text, ok = QInputDialog.getText(
             self, tr("PIN di uscita dallo spettacolo"),
-            tr("4 cifre per uscire dallo spettacolo su questo computer (vuoto = basta tenere premuto 1,5 s):"),
+            tr("4 cifre per uscire dallo spettacolo su questo computer (vuoto = basta tenere premuto {}):")
+            .format(hold_text()),
             QLineEdit.EchoMode.Password, self._exit_pin())
         if not ok:
             return
@@ -86,3 +88,43 @@ class _PinMixin:
             return
         QSettings("BlindCue", "BlindCue").setValue(PIN_SETTINGS_KEY, text)
         self._status_label.setText(tr("PIN di uscita impostato") if text else tr("PIN di uscita tolto"))
+
+    # ── Hold time of this computer (accessibility W29) ──
+    def _build_hold_menu(self, menu) -> None:
+        """Show menu → settings → "Hold time": 0.6-3 s for every hold that leaves the show or jumps ±10 s."""
+        from ui.hold_button import HOLD_CHOICES, HOLD_DEFAULT_SEC, seconds_text
+
+        sub = menu.addMenu("✋ Tempo per tenere premuto")
+        sub.setToolTipsVisible(True)
+        self._hold_group = QActionGroup(self)
+        self._hold_group.setExclusive(True)
+        for seconds in HOLD_CHOICES:
+            text = seconds_text(seconds)
+            if seconds == HOLD_DEFAULT_SEC:
+                text = tr("{} (predefinito)").format(text)
+            act = QAction(text, self, checkable=True)
+            act.setData(seconds)
+            self._hold_group.addAction(act)
+            sub.addAction(act)
+        sub.aboutToShow.connect(self._sync_hold_menu)
+        self._hold_group.triggered.connect(self._on_hold_time_chosen)
+        self._sync_hold_menu()
+
+    def _sync_hold_menu(self) -> None:
+        from ui.hold_button import hold_seconds
+
+        now = hold_seconds()
+        for act in self._hold_group.actions():
+            act.setChecked(abs(float(act.data()) - now) < 0.05)
+
+    def _on_hold_time_chosen(self, act) -> None:
+        from ui.hold_button import seconds_text, set_hold_seconds
+
+        if self._live_mode:
+            self._sync_hold_menu()
+            self._status_label.setText(tr("Il tempo per tenere premuto si cambia in Preparazione"))
+            return
+        value = set_hold_seconds(float(act.data()))
+        for tabs in (self._mode_tabs, self._live_show_panel.mode_tabs):
+            tabs.refresh_hold_texts()
+        self._status_label.setText(tr("Tenere premuto: {} su questo computer").format(seconds_text(value)))

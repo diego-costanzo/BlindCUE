@@ -3876,4 +3876,134 @@ T: dict[str, str] = {
         'Thumbnails in the list: on',
     'Miniature nella lista: spente':
         'Thumbnails in the list: off',
+    'Nessun media in onda':
+        'Nothing playing',
+    'PROSSIMO IN STANDBY':
+        'NEXT',
+    '— Nessuna cue —':
+        '— no cue —',
+    'SCALETTA LIVE':
+        'CUE LIST',
+    'REGIA PROTETTA':
+        'CONTROLS LOCKED',
+    'Inserisci il PIN a 6 cifre per sbloccare i comandi live sul palco.':
+        'Enter the 6-digit PIN to unlock the show controls.',
+    'IN ONDA':
+        'PLAYING',
+    'IN ATTESA (PRE)':
+        'WAITING TO START',
+    'IN ATTESA (POST)':
+        'WAITING FOR THE NEXT',
+    'Sessione scaduta o non autorizzata':
+        'Session expired or not allowed',
+    'IN PAUSA':
+        'PAUSED',
+    'Media Live':
+        'Playing',
+    '— Fine Scaletta —':
+        '— End of the list —',
+    'DISCONNESSO':
+        'DISCONNECTED',
+    'Sessione revocata: reinserisci il PIN':
+        'Access revoked: enter the PIN again',
+    'PIN errato':
+        'Wrong PIN',
+    'Errore di connessione alla regia':
+        'No connection to the show computer',
+    'BlindCUE · Monitor Regia':
+        'BlindCUE · director monitor',
+    'Monitor Regia · Sola Lettura':
+        'Director monitor · read only',
+    '● Livelli di Emissione in Tempo Reale (3 Layer)':
+        '● Output layers live (3 layers)',
+    'LAYER 1 (FONDO)':
+        'LAYER 1 (BACKGROUND)',
+    'LAYER 2 (MEDIO)':
+        'LAYER 2 (MIDDLE)',
+    '● Uscita B — Proiettore Indipendente (Layer B·1..B·3)':
+        '● Output B — separate projector (layers B·1..B·3)',
+    'PROSSIMA CUE IN STANDBY (PROSSIMO LANCIO)':
+        'NEXT CUE (NEXT GO)',
+    '— Nessuna cue in standby —':
+        '— no next cue —',
+    'SCALETTA COMPLETA DELLO SPETTACOLO':
+        'FULL CUE LIST',
+    'STATO':
+        'STATE',
+    'Q #':
+        'No.',
+    'TITOLO CUE & NOTE':
+        'CUE & NOTES',
+    'TIPO':
+        'TYPE',
+    'DURATA':
+        'LENGTH',
+    'AVANZAMENTO':
+        'THEN',
+    '🔒 Interfaccia passiva di monitoraggio per la Direzione Artistica e di Scena · Nessun comando attivo abilitato · BlindCUE Native':
+        '🔒 Read-only monitor for the director and the stage manager · no commands · BlindCUE Native',
+    'Inserisci il PIN a 6 cifre per accedere alla visualizzazione del Monitor Regia.':
+        'Enter the 6-digit PIN to open the director monitor.',
+    '🖼 IMMAGINE':
+        '🖼 IMAGE',
+    '📁 GRUPPO':
+        '📁 GROUP',
+    '⚡ AZIONE':
+        '⚡ ACTION',
+    'Tutte le cue eseguite':
+        'All cues played',
+    '○ PRONTA':
+        '○ READY',
+    '● IN ONDA':
+        '● PLAYING',
+    'Simultanea':
+        'Together',
+    'PIN di regia richiesto':
+        'PIN required',
+    'PIN errato.':
+        'Wrong PIN.',
+    'Troppi tentativi errati. Blocco temporaneo per {}s.':
+        'Too many wrong attempts. Locked for {} s.',
+    'BlindCUE (Protetto)':
+        'BlindCUE (protected)',
+    'Pagina non trovata o richiesta non valida.':
+        'Page not found or invalid request.',
+    'Torna al telecomando':
+        'Back to the remote',
+    'Ora del computer':
+        "Computer's clock",
+    'Prossima cue a orario':
+        'Next cue at a time of day',
+    'Tieni premuto {} per tornare alla preparazione (ciò che è in onda continua). Da tastiera: Ctrl+Maiusc+F5':
+        'Hold {} to go back to preparation (what plays keeps playing). Keyboard: Ctrl+Shift+F5',
+    'Torna alla preparazione: tieni premuto {}':
+        'Back to preparation: hold for {}',
+    'Tieni premuto {} per passare alla prova (ciò che è in onda continua)':
+        'Hold for {} to go to the rehearsal (what plays keeps playing)',
+    'Passa alla prova: tieni premuto {}':
+        'Go to the rehearsal: hold for {}',
+    'Per uscire dallo spettacolo: tieni premuto «○ Preparazione» per {} oppure Ctrl+Maiusc+F5':
+        'To leave the show: hold "○ Preparation" for {} or press Ctrl+Shift+F5',
+    'Tieni premuto più a lungo ({}) per uscire dallo spettacolo':
+        'Hold longer ({}) to leave the show',
+    'Tieni premuto per saltare di 10 s ({} nello spettacolo)':
+        'Hold to jump 10 s ({} in the show)',
+    'Tieni premuto «Preparazione» {}':
+        'Hold «Preparation» for {}',
+    '4 cifre per uscire dallo spettacolo su questo computer (vuoto = basta tenere premuto {}):':
+        '4 digits to leave the show on this computer (empty = holding for {} is enough):',
+    '✋ Tempo per tenere premuto':
+        '✋ Hold time',
+    '{} (predefinito)':
+        '{} (default)',
+    'Il tempo per tenere premuto si cambia in Preparazione':
+        'The hold time is changed in Preparation',
+    'Tenere premuto: {} su questo computer':
+        'Hold time: {} on this computer',
+    'Avvia (di nuovo = niente finché suona)':
+        'Start (again = nothing while it plays)',
+    "Effetto già in corso: '{}' (non riparte)":
+        "Effect already playing: '{}' (not restarted)",
+    '➕ Aggiungi':
+        '➕ Add',
 }

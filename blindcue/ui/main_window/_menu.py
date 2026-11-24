@@ -86,6 +86,7 @@ class _MenuMixin:
         edit_menu.addAction(self._act_redo)
         edit_menu.addAction(QAction("🕘 Storia delle modifiche…", self, triggered=self._open_history))  # 5.11
         edit_menu.addSeparator()
+        self._build_add_menu(edit_menu)  # P2 / W73: the add bar also from the menu (keyboard, screen reader)
         edit_menu.addAction(QAction("🔢 Rinumera le Q…", self, triggered=self._renumber_q))  # 5.2
 
         show_menu = mb.addMenu("&Show")
@@ -141,6 +142,7 @@ class _MenuMixin:
         settings_menu.addAction(QAction("⌨ Tasti e telecomando di presentazione…", self,
                                         triggered=self._open_key_map))  # 5.7-5.8
         settings_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
+        self._build_hold_menu(settings_menu)  # accessibility W29: hold time 0.6-3 s on this computer
         settings_menu.addAction(self._act_jam_mode)
         # 2.3: versions of the show (named sets of cues that are off).
         self._versions_menu = show_menu.addMenu("🎭 Versioni dello spettacolo")
@@ -150,6 +152,11 @@ class _MenuMixin:
         time_menu.addAction(QAction("🖥 Conto alla rovescia grande (quinte)", self,
                                     triggered=lambda: self._show_countdown_window()))
         time_menu.addAction(QAction("⏹ Ferma il conto alla rovescia", self, triggered=lambda: self.stop_countdown()))
+        time_menu.addSeparator()
+        # 2.11: the stopwatch also by hand (not only from an action cue); it shows in the big window too.
+        for mode, text in (("start", "Cronometro: avvia"), ("stop", "Cronometro: ferma"),
+                           ("reset", "Cronometro: azzera")):
+            time_menu.addAction(QAction(text, self, triggered=lambda _=False, m=mode: self.stopwatch(m)))
         time_menu.addSeparator()
         self._act_clock_hold = QAction("❚❚ Sospendi il piano orario", self, checkable=True)
         self._act_clock_hold.toggled.connect(lambda on: self._toggle_clock_hold(on))
@@ -254,6 +261,21 @@ class _MenuMixin:
         help_menu.addAction(
             QAction("&About BlindCue", self, triggered=lambda: show_about_dialog(self))
         )
+
+    def _build_add_menu(self, edit_menu) -> None:
+        """Edit → Add: the buttons of the add bar as a menu (P2 / W73) - same signals, same rules."""
+        from ui.cue_list_panel import ADD_ACTIONS
+
+        add_menu = edit_menu.addMenu("➕ Aggiungi")
+        panel = lambda: self._cue_list_panel  # noqa: E731 - built after the menu bar
+        add_menu.addAction(QAction("＋ Aggiungi file…", self,
+                                   triggered=lambda: panel().add_media_requested.emit(None)))
+        add_menu.addAction(QAction("+ Testo", self, triggered=lambda: panel().add_text_requested.emit()))
+        add_menu.addAction(QAction("+ Gruppo", self, triggered=lambda: panel().add_group_requested.emit()))
+        actions = add_menu.addMenu("+ Azione")
+        for kind, label in ADD_ACTIONS:
+            actions.addAction(QAction(label, self,
+                                      triggered=lambda _=False, k=kind: panel().add_action_requested.emit(k)))
 
     def _set_ui_language(self, code: str) -> None:
         """Store the UI language and ask for a restart (texts are set at build time)."""

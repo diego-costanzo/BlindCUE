@@ -710,7 +710,8 @@ class CueInspectorPanel(QGroupBox):
         key_row.addWidget(self.edit_hotkey)
         self.combo_hotkey_mode = QComboBox()
         for value, label in (("trigger", "Avvia (di nuovo = da capo)"), ("toggle", "Avvia / ferma"),
-                             ("note", "Suona finché tieni premuto")):
+                             ("note", "Suona finché tieni premuto"),
+                             ("once", "Avvia (di nuovo = niente finché suona)")):
             self.combo_hotkey_mode.addItem(label, value)
         self.combo_hotkey_mode.currentIndexChanged.connect(lambda _i: self._emit_change("hotkey_mode"))
         key_row.addWidget(self.combo_hotkey_mode, stretch=1)

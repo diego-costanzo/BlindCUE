@@ -10,15 +10,24 @@ Serves a native-feeling touch-optimized web controller for smartphones and table
   - PIN Security Lock Screen protecting against unauthorized LAN access (Anti-Burlone)
   - Instant camera scan unlock via QR-embedded PIN tokens
   - 100% offline, zero external dependencies or CDNs
+
+Both pages speak the program's language (``i18n``): the Italian source
+strings stay in the HTML below; ``{{t:...}}`` marks a text of the page and
+``T("...")`` / ``Tf("... {} ...", value)`` a text of its script. When a page
+is served, the marks are translated and the script gets a small dictionary.
+Data of the show (cue names, notes, titles) is never translated.
 """
 
 from __future__ import annotations
 
+import functools
 import hmac
+import html
 import http.server
 import json
 import logging
 import queue
+import re
 import threading
 import time
 import urllib.parse
@@ -26,6 +35,8 @@ from typing import Any
 from collections.abc import Callable
 
 from PySide6.QtCore import QObject, Signal
+
+from i18n import current_language, tr
 
 logger = logging.getLogger("blindcue.web")
 
@@ -36,12 +47,48 @@ MAX_SSE_CLIENTS = 32
 # Sentinel pushed into SSE queues to unblock threads immediately on stop/revoke
 _SSE_CLOSE = object()
 
+# ── Language of the pages ─────────────────────────────────────────────
+_HTML_TEXT = re.compile(r"\{\{t:(.*?)\}\}")
+_SCRIPT_TEXT = re.compile(r"""\bTf?\(\s*(?:"([^"]*)"|'([^']*)')""")
+_DICTIONARY_SLOT = "/*I18N*/{}"
+
+
+def localize_page(page: str) -> str:
+    """*page* in the program's language: texts translated, the script's dictionary filled in."""
+    return _localized(page, current_language())
+
+
+@functools.lru_cache(maxsize=8)
+def _localized(page: str, language: str) -> str:
+    out = _HTML_TEXT.sub(lambda m: html.escape(tr(m.group(1)), quote=True), page)
+    table: dict[str, str] = {}
+    for double, single in _SCRIPT_TEXT.findall(page):
+        key = double or single
+        if key and tr(key) != key:
+            table[key] = tr(key)
+    data = json.dumps(table, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
+    out = out.replace(_DICTIONARY_SLOT, data, 1)
+    return out.replace('<html lang="it">', f'<html lang="{html.escape(language)}">', 1)
+
+
+def _error_page() -> str:
+    """http.server's error page template, in the program's language (no '%' left unescaped)."""
+    text = html.escape(tr("Pagina non trovata o richiesta non valida.")).replace("%", "%%")
+    back = html.escape(tr("Torna al telecomando")).replace("%", "%%")
+    return ('<!DOCTYPE html><html><head><meta charset="utf-8">'
+            '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+            "<title>%(code)d</title></head>"
+            '<body style="background:#09090b;color:#f4f4f5;font-family:sans-serif;padding:24px;">'
+            f"<h1>%(code)d</h1><p>{text}</p><p><a href='/' style='color:#38bdf8;'>{back}</a></p>"
+            "</body></html>")
+
+
 # ── Embedded Mobile Web App (HTML5 + CSS3 + Vanilla ES6) ─────────────
 _HTML_PAGE = """<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>BlindCUE · Live Remote</title>
+  <title>{{t:BlindCUE · Live Remote}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -89,6 +136,7 @@ _HTML_PAGE = """<!DOCTYPE html>
       font-weight: 900;
       letter-spacing: -0.5px;
       color: #38bdf8;
+      white-space: nowrap;
     }
     .brand-title {
       font-size: 13px;
@@ -241,6 +289,51 @@ _HTML_PAGE = """<!DOCTYPE html>
       font-weight: 800;
     }
 
+    /* ── Clock, countdown and stopwatch of the show (stage 2, 2.5) ── */
+    .timers { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+    .cd-box {
+      display: none;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 6px 14px;
+      border-radius: 12px;
+      background: #141417;
+      border: 1px solid #27272a;
+    }
+    .cd-box.on { display: flex; }
+    .cd-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #cbd5e1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cd-time { font-size: 40px; font-weight: 900; color: #f4f4f5; font-variant-numeric: tabular-nums; }
+    .cd-box.last-minute { border-color: #f59e0b; }
+    .cd-box.last-minute .cd-time { color: #f59e0b; animation: cdblink 1s steps(2, start) infinite; }
+    .cd-box.over { border-color: #ef4444; }
+    .cd-box.over .cd-time { color: #ef4444; }
+    @keyframes cdblink { 50% { opacity: 0.35; } }
+    .timer-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .timer-chip {
+      display: none;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .timer-chip.on { display: inline-block; }
+
     /* ── Standby Card ── */
     .standby-card {
       background: #18181b;
@@ -317,6 +410,7 @@ _HTML_PAGE = """<!DOCTYPE html>
       font-size: 11px;
       font-weight: 700;
       text-align: center;
+      text-transform: uppercase;
       cursor: pointer;
       display: flex;
       flex-direction: column;
@@ -570,12 +664,12 @@ _HTML_PAGE = """<!DOCTYPE html>
   <!-- Top Header -->
   <header>
     <div class="brand">
-      <span class="brand-logo">BlindCUE</span>
-      <span class="brand-title" id="showTitle">Spettacolo</span>
+      <span class="brand-logo">{{t:BlindCUE}}</span>
+      <span class="brand-title" id="showTitle">{{t:Spettacolo}}</span>
     </div>
     <div class="conn-badge" id="connBadge">
       <div class="conn-dot"></div>
-      <span id="connText">ONLINE</span>
+      <span id="connText">{{t:ONLINE}}</span>
     </div>
   </header>
 
@@ -584,10 +678,10 @@ _HTML_PAGE = """<!DOCTYPE html>
     <!-- In Onda (Live Hero Card) -->
     <div class="hero-card" id="heroCard">
       <div class="hero-top-row">
-        <span class="hero-phase-tag" id="heroPhase">STANDBY</span>
-        <span class="hero-layer-tag" id="heroLayer">LAYER 1</span>
+        <span class="hero-phase-tag" id="heroPhase">{{t:PRONTO}}</span>
+        <span class="hero-layer-tag" id="heroLayer">—</span>
       </div>
-      <div class="hero-title" id="heroTitle">Nessun media in onda</div>
+      <div class="hero-title" id="heroTitle">{{t:Nessun media in onda}}</div>
       <div class="hero-progress-bg">
         <div class="hero-progress-bar" id="heroProgressBar"></div>
       </div>
@@ -597,10 +691,23 @@ _HTML_PAGE = """<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Countdown (e.g. the interval), computer clock, stopwatch, next timed cue (stage 2, 2.5) -->
+    <div class="timers" id="timersBox">
+      <div class="cd-box" id="cdBox" role="timer" aria-label="{{t:Conto alla rovescia}}">
+        <span class="cd-title" id="cdTitle"></span>
+        <span class="cd-time" id="cdTime">00:00</span>
+      </div>
+      <div class="timer-chips">
+        <span class="timer-chip" id="chipClock" title="{{t:Ora del computer}}"></span>
+        <span class="timer-chip" id="chipStopwatch" title="{{t:Cronometro}}"></span>
+        <span class="timer-chip" id="chipNextTimed" title="{{t:Prossima cue a orario}}"></span>
+      </div>
+    </div>
+
     <!-- Next Standby Cue -->
     <div class="standby-card" id="standbyCard">
-      <div class="standby-label">PROSSIMO IN STANDBY</div>
-      <div class="standby-title" id="standbyTitle">— Nessuna cue —</div>
+      <div class="standby-label">{{t:PROSSIMO IN STANDBY}}</div>
+      <div class="standby-title" id="standbyTitle">{{t:— Nessuna cue —}}</div>
     </div>
 
     <!-- Tactile Controls Deck -->
@@ -612,15 +719,15 @@ _HTML_PAGE = """<!DOCTYPE html>
       <div class="sub-grid">
         <button class="btn-sub" id="btnPause" onclick="doAction('pause_toggle')">
           <span style="font-size: 14px;">❚❚</span>
-          <span id="lblPause">PAUSA</span>
+          <span id="lblPause">{{t:Pausa}}</span>
         </button>
         <button class="btn-sub" onclick="doAction('prev')">
           <span style="font-size: 14px;">⏮</span>
-          <span>PREV</span>
+          <span>{{t:PREV}}</span>
         </button>
         <button class="btn-sub" onclick="doAction('next')">
           <span style="font-size: 14px;">⏭</span>
-          <span>NEXT</span>
+          <span>{{t:NEXT}}</span>
         </button>
         <button class="btn-sub panic" onclick="doAction('panic')">
           <span style="font-size: 14px;">🚨</span>
@@ -632,7 +739,7 @@ _HTML_PAGE = """<!DOCTYPE html>
     <!-- Scrollable Scaletta (Live Cue List) -->
     <div class="cuelist-container">
       <div class="cuelist-header">
-        <span>SCALETTA LIVE</span>
+        <span>{{t:SCALETTA LIVE}}</span>
         <span id="cueCount">0 CUE</span>
       </div>
       <div class="cuelist-scroll" id="cueListScroll">
@@ -645,8 +752,8 @@ _HTML_PAGE = """<!DOCTYPE html>
   <div class="pin-overlay" id="pinOverlay">
     <div class="pin-card">
       <div class="pin-lock-icon">🔒</div>
-      <div class="pin-title">REGIA PROTETTA</div>
-      <div class="pin-desc">Inserisci il PIN a 6 cifre per sbloccare i comandi live sul palco.</div>
+      <div class="pin-title">{{t:REGIA PROTETTA}}</div>
+      <div class="pin-desc">{{t:Inserisci il PIN a 6 cifre per sbloccare i comandi live sul palco.}}</div>
 
       <div class="pin-dots" id="pinDots">
         <div class="pin-dot"></div>
@@ -677,6 +784,17 @@ _HTML_PAGE = """<!DOCTYPE html>
   </div>
 
   <script>
+    // Texts of the page in the program's language (filled in when the page is served).
+    const I18N = /*I18N*/{};
+    function T(s) { return Object.prototype.hasOwnProperty.call(I18N, s) ? I18N[s] : s; }
+    function Tf(s, ...args) {
+      const parts = T(s).split("{}");
+      let out = parts[0];
+      for (let i = 1; i < parts.length; i++) out += String(args[i - 1] ?? "") + parts[i];
+      return out;
+    }
+    const PHASE_NAMES = { "ON AIR": T("IN ONDA"), "PRE": T("IN ATTESA (PRE)"), "POST": T("IN ATTESA (POST)") };
+
     let evtSource = null;
     let lastState = null;
     let currentPin = sessionStorage.getItem('blindcue_pin') || "";
@@ -707,6 +825,41 @@ _HTML_PAGE = """<!DOCTYPE html>
 
     let lastCueListSig = "";
 
+    // Stage 2, 2.5: countdown, computer clock, stopwatch and the next timed cue.
+    function formatLeft(sec) {
+      const total = Math.max(0, Math.round(Number(sec) || 0));
+      const h = Math.floor(total / 3600);
+      const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+      const ss = String(total % 60).padStart(2, '0');
+      return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+    }
+
+    function setChip(id, text) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.classList.toggle('on', Boolean(text));
+    }
+
+    function renderTimers(t) {
+      t = t || {};
+      const box = document.getElementById('cdBox');
+      if (t.countdown) {
+        const left = Number(t.countdown.left) || 0;
+        box.classList.add('on');
+        box.classList.toggle('last-minute', left > 0 && left <= 60);
+        box.classList.toggle('over', left <= 0);
+        document.getElementById('cdTitle').textContent = '⏳ ' + (t.countdown.title || '');
+        document.getElementById('cdTime').textContent = formatLeft(left);
+      } else {
+        box.classList.remove('on', 'last-minute', 'over');
+      }
+      setChip('chipClock', t.clock ? '🕐 ' + t.clock : '');
+      const sw = t.stopwatch;
+      setChip('chipStopwatch', sw ? '⏱ ' + formatLeft(sw.sec) + (sw.running ? '' : ' ❚❚') : '');
+      const nt = t.next_timed;
+      setChip('chipNextTimed', nt ? '⏰ ' + nt.at + ' · ' + nt.name + (nt.held ? ' ' + T('(sospeso)') : '') : '');
+    }
+
     function formatTime(sec) {
       if (sec === undefined || sec === null || isNaN(sec) || sec < 0) return "00:00";
       const s = Math.round(sec);
@@ -732,7 +885,7 @@ _HTML_PAGE = """<!DOCTYPE html>
       })
       .then(res => {
         if (res.status === 401) {
-          showLockScreen("Sessione scaduta o non autorizzata");
+          showLockScreen(T("Sessione scaduta o non autorizzata"));
         }
       })
       .catch(err => console.error("Action error:", err));
@@ -751,7 +904,8 @@ _HTML_PAGE = """<!DOCTYPE html>
       }
 
       // 1. Show Title & Connection
-      document.getElementById('showTitle').textContent = state.show_title || "Spettacolo";
+      document.getElementById('showTitle').textContent = state.show_title || T("Spettacolo");
+      renderTimers(state.timers);
 
       // 2. In Onda / Live Hero Card
       const hero = document.getElementById('heroCard');
@@ -761,14 +915,14 @@ _HTML_PAGE = """<!DOCTYPE html>
         hero.classList.add('is-live');
         if (state.is_paused || active.is_paused) {
           hero.classList.add('is-paused');
-          document.getElementById('heroPhase').textContent = "IN PAUSA";
+          document.getElementById('heroPhase').textContent = T("IN PAUSA");
         } else {
           hero.classList.remove('is-paused');
-          document.getElementById('heroPhase').textContent = active.phase || "IN ONDA";
+          document.getElementById('heroPhase').textContent = PHASE_NAMES[active.phase] || active.phase || T("IN ONDA");
         }
 
-        document.getElementById('heroLayer').textContent = `LAYER ${active.layer}`;
-        document.getElementById('heroTitle').textContent = active.title || "Media Live";
+        document.getElementById('heroLayer').textContent = Tf("LAYER {}", active.layer);
+        document.getElementById('heroTitle').textContent = active.title || T("Media Live");
 
         const dur = Math.max(0.1, active.end_sec - active.start_sec);
         const elap = Math.max(0.0, active.pos_sec - active.start_sec);
@@ -780,9 +934,9 @@ _HTML_PAGE = """<!DOCTYPE html>
         document.getElementById('heroTimeRemaining').textContent = `-${formatTime(rem)}`;
       } else {
         hero.classList.remove('is-live', 'is-paused');
-        document.getElementById('heroPhase').textContent = "STANDBY";
-        document.getElementById('heroLayer').textContent = "LAYER 0";
-        document.getElementById('heroTitle').textContent = "Nessun media in onda";
+        document.getElementById('heroPhase').textContent = T("PRONTO");
+        document.getElementById('heroLayer').textContent = "—";
+        document.getElementById('heroTitle').textContent = T("Nessun media in onda");
         document.getElementById('heroProgressBar').style.width = "0%";
         document.getElementById('heroTimeElapsed').textContent = "00:00";
         document.getElementById('heroTimeRemaining').textContent = "--:--";
@@ -792,7 +946,7 @@ _HTML_PAGE = """<!DOCTYPE html>
       if (state.standby_cue) {
         document.getElementById('standbyTitle').textContent = `${state.standby_cue.ref} · ${state.standby_cue.name}`;
       } else {
-        document.getElementById('standbyTitle').textContent = "— Fine Scaletta —";
+        document.getElementById('standbyTitle').textContent = T("— Fine Scaletta —");
       }
 
       // 4. Pause button status
@@ -800,10 +954,10 @@ _HTML_PAGE = """<!DOCTYPE html>
       const lblP = document.getElementById('lblPause');
       if (state.is_paused) {
         btnP.classList.add('pause-active');
-        lblP.textContent = "RIPRENDI";
+        lblP.textContent = T("Riprendi");
       } else {
         btnP.classList.remove('pause-active');
-        lblP.textContent = "PAUSA";
+        lblP.textContent = T("Pausa");
       }
 
       // 5. Scaletta (Cue List) — only rebuild DOM when list state changes so mobile taps never drop
@@ -842,10 +996,10 @@ _HTML_PAGE = """<!DOCTYPE html>
                   <span class="${typeClass}">${icon} ${escapeHtml(c.ref || ('#' + c.id))}</span>
                   <span class="cue-name">${escapeHtml(c.name)}</span>
                 </div>
-                <div class="cue-meta">${c.type === 'ACTION' ? '⚡' : outPrefix + 'L' + escapeHtml(c.layer)} · ${formatTime(c.duration)}${isOffline ? ' · ⚠ OFFLINE' : ''}</div>
+                <div class="cue-meta">${c.type === 'ACTION' ? '⚡' : outPrefix + 'L' + escapeHtml(c.layer)} · ${formatTime(c.duration)}${isOffline ? ' · ' + escapeHtml(T('⚠ OFFLINE')) : ''}</div>
               </div>
               <button class="btn-cue-go" onclick="event.stopPropagation(); doAction('cue_go', ${safeIdArg})">
-                ${isLive ? '● LIVE' : '▶ GO'}
+                ${isLive ? escapeHtml(T('● LIVE')) : '▶ GO'}
               </button>
             </div>
           `;
@@ -859,10 +1013,10 @@ _HTML_PAGE = """<!DOCTYPE html>
       const t = document.getElementById('connText');
       if (online) {
         b.classList.remove('offline');
-        t.textContent = "ONLINE";
+        t.textContent = T("ONLINE");
       } else {
         b.classList.add('offline');
-        t.textContent = "DISCONNESSO";
+        t.textContent = T("DISCONNESSO");
       }
     }
 
@@ -898,7 +1052,7 @@ _HTML_PAGE = """<!DOCTYPE html>
             if (data.authenticated === false && data.pin_required) {
               currentPin = "";
               sessionStorage.removeItem('blindcue_pin');
-              showLockScreen(data.error || "Sessione revocata: reinserisci il PIN");
+              showLockScreen(data.error || T("Sessione revocata: reinserisci il PIN"));
             } else {
               setTimeout(initSSE, 2500);
             }
@@ -967,12 +1121,12 @@ _HTML_PAGE = """<!DOCTYPE html>
           } else {
             enteredBuffer = "";
             renderDots();
-            document.getElementById('pinErr').textContent = data.error || "PIN errato";
+            document.getElementById('pinErr').textContent = data.error || T("PIN errato");
             vibrate(80);
           }
         })
         .catch(() => {
-          document.getElementById('pinErr').textContent = "Errore di connessione alla regia";
+          document.getElementById('pinErr').textContent = T("Errore di connessione alla regia");
         });
     }
 
@@ -1003,7 +1157,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <title>BlindCUE · Monitor Regia</title>
+  <title>{{t:BlindCUE · Monitor Regia}}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1129,6 +1283,40 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
+
+    /* ── Clock, countdown and stopwatch of the show (stage 2, 2.5): large, for backstage ── */
+    .timers { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex-shrink: 0; }
+    .cd-box {
+      display: none;
+      align-items: baseline;
+      gap: 18px;
+      padding: 6px 18px;
+      border-radius: 12px;
+      background: #141417;
+      border: 1px solid #27272a;
+      flex: 1 1 100%;
+      justify-content: center;
+    }
+    .cd-box.on { display: flex; }
+    .cd-title { font-size: 20px; font-weight: 800; color: #cbd5e1; }
+    .cd-time { font-size: 72px; font-weight: 900; color: #f4f4f5; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .cd-box.last-minute { border-color: #f59e0b; }
+    .cd-box.last-minute .cd-time { color: #f59e0b; animation: cdblink 1s steps(2, start) infinite; }
+    .cd-box.over { border-color: #ef4444; }
+    .cd-box.over .cd-time { color: #ef4444; }
+    @keyframes cdblink { 50% { opacity: 0.35; } }
+    .timer-chip {
+      display: none;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 999px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
+    .timer-chip.on { display: inline-block; }
 
     /* ── 3 Layers Multi-track Live Section ── */
     .section-title {
@@ -1519,33 +1707,44 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
   <header>
     <div class="brand-group">
       <div class="brand-logo">
-        <span>👁️ BlindCUE</span>
+        <span>{{t:👁️ BlindCUE}}</span>
       </div>
-      <span class="badge-readonly">Monitor Regia · Sola Lettura</span>
-      <span class="show-title" id="showTitle">Spettacolo</span>
+      <span class="badge-readonly">{{t:Monitor Regia · Sola Lettura}}</span>
+      <span class="show-title" id="showTitle">{{t:Spettacolo}}</span>
     </div>
     <div class="header-right">
       <div class="conn-badge" id="connBadge">
         <div class="conn-dot"></div>
-        <span id="connText">LIVE SYNC</span>
+        <span id="connText">{{t:LIVE SYNC}}</span>
       </div>
     </div>
   </header>
 
   <!-- Main Viewport -->
   <main>
+    <!-- Countdown (e.g. the interval), computer clock, stopwatch, next timed cue (stage 2, 2.5) -->
+    <div class="timers" id="timersBox">
+      <div class="cd-box" id="cdBox" role="timer" aria-label="{{t:Conto alla rovescia}}">
+        <span class="cd-title" id="cdTitle"></span>
+        <span class="cd-time" id="cdTime">00:00</span>
+      </div>
+      <span class="timer-chip" id="chipClock" title="{{t:Ora del computer}}"></span>
+      <span class="timer-chip" id="chipStopwatch" title="{{t:Cronometro}}"></span>
+      <span class="timer-chip" id="chipNextTimed" title="{{t:Prossima cue a orario}}"></span>
+    </div>
+
     <!-- Section: 3-Layer Multitrack Compositing View -->
     <div class="section-title">
-      <span>● Livelli di Emissione in Tempo Reale (3 Layer)</span>
+      <span>{{t:● Livelli di Emissione in Tempo Reale (3 Layer)}}</span>
     </div>
     <div class="layers-grid">
       <!-- Layer 1 -->
       <div class="layer-card" id="layerCard1">
         <div class="layer-hdr">
-          <span class="layer-badge">LAYER 1 (FONDO)</span>
-          <span class="layer-status" id="layerStatus1">IDLE</span>
+          <span class="layer-badge">{{t:LAYER 1 (FONDO)}}</span>
+          <span class="layer-status" id="layerStatus1">{{t:IDLE}}</span>
         </div>
-        <div class="layer-title" id="layerTitle1">— Inattivo / Nero —</div>
+        <div class="layer-title" id="layerTitle1">{{t:— Inattivo / Nero —}}</div>
         <div class="layer-progress-bg">
           <div class="layer-progress-bar" id="layerBar1"></div>
         </div>
@@ -1558,10 +1757,10 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       <!-- Layer 2 -->
       <div class="layer-card" id="layerCard2">
         <div class="layer-hdr">
-          <span class="layer-badge">LAYER 2 (MEDIO)</span>
-          <span class="layer-status" id="layerStatus2">IDLE</span>
+          <span class="layer-badge">{{t:LAYER 2 (MEDIO)}}</span>
+          <span class="layer-status" id="layerStatus2">{{t:IDLE}}</span>
         </div>
-        <div class="layer-title" id="layerTitle2">— Inattivo / Nero —</div>
+        <div class="layer-title" id="layerTitle2">{{t:— Inattivo / Nero —}}</div>
         <div class="layer-progress-bg">
           <div class="layer-progress-bar" id="layerBar2"></div>
         </div>
@@ -1574,10 +1773,10 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       <!-- Layer 3 -->
       <div class="layer-card" id="layerCard3">
         <div class="layer-hdr">
-          <span class="layer-badge">LAYER 3 (OVERLAY)</span>
-          <span class="layer-status" id="layerStatus3">IDLE</span>
+          <span class="layer-badge">{{t:LAYER 3 (OVERLAY)}}</span>
+          <span class="layer-status" id="layerStatus3">{{t:IDLE}}</span>
         </div>
-        <div class="layer-title" id="layerTitle3">— Inattivo / Nero —</div>
+        <div class="layer-title" id="layerTitle3">{{t:— Inattivo / Nero —}}</div>
         <div class="layer-progress-bg">
           <div class="layer-progress-bar" id="layerBar3"></div>
         </div>
@@ -1590,33 +1789,33 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
 
     <!-- Output B Layers (shown dynamically when dual independent outputs are active) -->
     <div class="section-title" id="outputBTitle" style="display: none;">
-      <span>● Uscita B — Proiettore Indipendente (Layer B·1..B·3)</span>
+      <span>{{t:● Uscita B — Proiettore Indipendente (Layer B·1..B·3)}}</span>
     </div>
     <div class="layers-grid" id="outputBGrid" style="display: none;">
       <div class="layer-card" id="layerCard4">
         <div class="layer-hdr">
-          <span class="layer-badge">B·LAYER 1 (FONDO)</span>
-          <span class="layer-status" id="layerStatus4">IDLE</span>
+          <span class="layer-badge">B·{{t:LAYER 1 (FONDO)}}</span>
+          <span class="layer-status" id="layerStatus4">{{t:IDLE}}</span>
         </div>
-        <div class="layer-title" id="layerTitle4">— Inattivo / Nero —</div>
+        <div class="layer-title" id="layerTitle4">{{t:— Inattivo / Nero —}}</div>
         <div class="layer-progress-bg"><div class="layer-progress-bar" id="layerBar4"></div></div>
         <div class="layer-time-row"><span id="layerElap4">00:00</span><span id="layerRem4">--:--</span></div>
       </div>
       <div class="layer-card" id="layerCard5">
         <div class="layer-hdr">
-          <span class="layer-badge">B·LAYER 2 (MEDIO)</span>
-          <span class="layer-status" id="layerStatus5">IDLE</span>
+          <span class="layer-badge">B·{{t:LAYER 2 (MEDIO)}}</span>
+          <span class="layer-status" id="layerStatus5">{{t:IDLE}}</span>
         </div>
-        <div class="layer-title" id="layerTitle5">— Inattivo / Nero —</div>
+        <div class="layer-title" id="layerTitle5">{{t:— Inattivo / Nero —}}</div>
         <div class="layer-progress-bg"><div class="layer-progress-bar" id="layerBar5"></div></div>
         <div class="layer-time-row"><span id="layerElap5">00:00</span><span id="layerRem5">--:--</span></div>
       </div>
       <div class="layer-card" id="layerCard6">
         <div class="layer-hdr">
-          <span class="layer-badge">B·LAYER 3 (OVERLAY)</span>
-          <span class="layer-status" id="layerStatus6">IDLE</span>
+          <span class="layer-badge">B·{{t:LAYER 3 (OVERLAY)}}</span>
+          <span class="layer-status" id="layerStatus6">{{t:IDLE}}</span>
         </div>
-        <div class="layer-title" id="layerTitle6">— Inattivo / Nero —</div>
+        <div class="layer-title" id="layerTitle6">{{t:— Inattivo / Nero —}}</div>
         <div class="layer-progress-bg"><div class="layer-progress-bar" id="layerBar6"></div></div>
         <div class="layer-time-row"><span id="layerElap6">00:00</span><span id="layerRem6">--:--</span></div>
       </div>
@@ -1625,8 +1824,8 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
     <!-- Section: Standby Cue Banner -->
     <div class="standby-banner" id="standbyBanner">
       <div class="standby-left">
-        <div class="standby-tag">PROSSIMA CUE IN STANDBY (PROSSIMO LANCIO)</div>
-        <div class="standby-cue-name" id="standbyCueName">— Nessuna cue in standby —</div>
+        <div class="standby-tag">{{t:PROSSIMA CUE IN STANDBY (PROSSIMO LANCIO)}}</div>
+        <div class="standby-cue-name" id="standbyCueName">{{t:— Nessuna cue in standby —}}</div>
         <div class="standby-meta" id="standbyMeta"></div>
       </div>
     </div>
@@ -1634,21 +1833,21 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
     <!-- Section: Scaletta Spettacolo Completa -->
     <div class="table-container">
       <div class="table-header-bar">
-        <span>SCALETTA COMPLETA DELLO SPETTACOLO</span>
+        <span>{{t:SCALETTA COMPLETA DELLO SPETTACOLO}}</span>
         <span id="cuesCountBadge">0 CUE</span>
       </div>
       <div class="table-scroll">
         <table>
           <thead>
             <tr>
-              <th style="width: 105px;">STATO</th>
-              <th style="width: 70px;">Q #</th>
-              <th>TITOLO CUE & NOTE</th>
-              <th style="width: 95px;">TIPO</th>
-              <th style="width: 65px;">LAYER</th>
-              <th style="width: 75px;">DURATA</th>
-              <th style="width: 95px;">FADE IN/OUT</th>
-              <th style="width: 95px;">AVANZAMENTO</th>
+              <th style="width: 105px;">{{t:STATO}}</th>
+              <th style="width: 70px;">{{t:Q #}}</th>
+              <th>{{t:TITOLO CUE & NOTE}}</th>
+              <th style="width: 95px;">{{t:TIPO}}</th>
+              <th style="width: 65px;">{{t:LAYER}}</th>
+              <th style="width: 75px;">{{t:DURATA}}</th>
+              <th style="width: 95px;">{{t:FADE IN/OUT}}</th>
+              <th style="width: 95px;">{{t:AVANZAMENTO}}</th>
             </tr>
           </thead>
           <tbody id="cuesTableBody">
@@ -1661,15 +1860,15 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
 
   <!-- Footer Notice -->
   <footer>
-    🔒 Interfaccia passiva di monitoraggio per la Direzione Artistica e di Scena · Nessun comando attivo abilitato · BlindCUE Native
+    {{t:🔒 Interfaccia passiva di monitoraggio per la Direzione Artistica e di Scena · Nessun comando attivo abilitato · BlindCUE Native}}
   </footer>
 
   <!-- PIN Lock Screen Overlay -->
   <div class="pin-overlay" id="pinOverlay">
     <div class="pin-card">
       <div class="pin-lock-icon">🔒</div>
-      <div class="pin-title">REGIA PROTETTA</div>
-      <div class="pin-desc">Inserisci il PIN a 6 cifre per accedere alla visualizzazione del Monitor Regia.</div>
+      <div class="pin-title">{{t:REGIA PROTETTA}}</div>
+      <div class="pin-desc">{{t:Inserisci il PIN a 6 cifre per accedere alla visualizzazione del Monitor Regia.}}</div>
 
       <div class="pin-dots" id="pinDots">
         <div class="pin-dot"></div>
@@ -1700,6 +1899,18 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
   </div>
 
   <script>
+    // Texts of the page in the program's language (filled in when the page is served).
+    const I18N = /*I18N*/{};
+    function T(s) { return Object.prototype.hasOwnProperty.call(I18N, s) ? I18N[s] : s; }
+    function Tf(s, ...args) {
+      const parts = T(s).split("{}");
+      let out = parts[0];
+      for (let i = 1; i < parts.length; i++) out += String(args[i - 1] ?? "") + parts[i];
+      return out;
+    }
+    const PHASE_NAMES = { "ON AIR": T("IN ONDA"), "PRE": T("IN ATTESA (PRE)"), "POST": T("IN ATTESA (POST)") };
+    const TYPE_NAMES = { video: T("🎬 VIDEO"), audio: T("🎵 AUDIO"), image: T("🖼 IMMAGINE"), group: T("📁 GRUPPO"), action: T("⚡ AZIONE") };
+
     let evtSource = null;
     let lastState = null;
     let currentPin = sessionStorage.getItem('blindcue_pin') || "";
@@ -1724,6 +1935,41 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
 
     let lastMonitorTableSig = "";
 
+    // Stage 2, 2.5: countdown, computer clock, stopwatch and the next timed cue.
+    function formatLeft(sec) {
+      const total = Math.max(0, Math.round(Number(sec) || 0));
+      const h = Math.floor(total / 3600);
+      const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+      const ss = String(total % 60).padStart(2, '0');
+      return h ? `${h}:${mm}:${ss}` : `${mm}:${ss}`;
+    }
+
+    function setChip(id, text) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      el.classList.toggle('on', Boolean(text));
+    }
+
+    function renderTimers(t) {
+      t = t || {};
+      const box = document.getElementById('cdBox');
+      if (t.countdown) {
+        const left = Number(t.countdown.left) || 0;
+        box.classList.add('on');
+        box.classList.toggle('last-minute', left > 0 && left <= 60);
+        box.classList.toggle('over', left <= 0);
+        document.getElementById('cdTitle').textContent = '⏳ ' + (t.countdown.title || '');
+        document.getElementById('cdTime').textContent = formatLeft(left);
+      } else {
+        box.classList.remove('on', 'last-minute', 'over');
+      }
+      setChip('chipClock', t.clock ? '🕐 ' + t.clock : '');
+      const sw = t.stopwatch;
+      setChip('chipStopwatch', sw ? '⏱ ' + formatLeft(sw.sec) + (sw.running ? '' : ' ❚❚') : '');
+      const nt = t.next_timed;
+      setChip('chipNextTimed', nt ? '⏰ ' + nt.at + ' · ' + nt.name + (nt.held ? ' ' + T('(sospeso)') : '') : '');
+    }
+
     function formatTime(sec) {
       if (sec === undefined || sec === null || isNaN(sec) || sec < 0) return "00:00";
       const s = Math.round(sec);
@@ -1744,7 +1990,8 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       }
 
       // Show Title
-      document.getElementById('showTitle').textContent = state.show_title || "Spettacolo";
+      document.getElementById('showTitle').textContent = state.show_title || T("Spettacolo");
+      renderTimers(state.timers);
 
       // Layers Deck (1-3 Output A, plus 4-6 Output B when dual output is active)
       const layers = state.layers || {};
@@ -1753,7 +2000,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       document.getElementById('outputBGrid').style.display = dualActive ? 'grid' : 'none';
       const activeIds = dualActive ? [1, 2, 3, 4, 5, 6] : [1, 2, 3];
       activeIds.forEach(lIdx => {
-        const lData = layers[String(lIdx)] || { is_live: false, title: "— Inattivo / Nero —", phase: "IDLE", pos_sec: 0, end_sec: 0, start_sec: 0 };
+        const lData = layers[String(lIdx)] || { is_live: false, title: T("— Inattivo / Nero —"), phase: "IDLE", pos_sec: 0, end_sec: 0, start_sec: 0 };
         const card = document.getElementById(`layerCard${lIdx}`);
         const stat = document.getElementById(`layerStatus${lIdx}`);
         const title = document.getElementById(`layerTitle${lIdx}`);
@@ -1765,10 +2012,10 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
           card.classList.add('is-live');
           if (lData.is_paused || state.is_paused) {
             card.classList.add('is-paused');
-            stat.textContent = "IN PAUSA";
+            stat.textContent = T("IN PAUSA");
           } else {
             card.classList.remove('is-paused');
-            stat.textContent = lData.phase || "ON AIR";
+            stat.textContent = PHASE_NAMES[lData.phase] || lData.phase || T("IN ONDA");
           }
           title.textContent = `${lData.q_label ? lData.q_label + ' · ' : ''}${lData.title}`;
 
@@ -1782,8 +2029,8 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
           rem.textContent = `-${formatTime(rSec)}`;
         } else {
           card.classList.remove('is-live', 'is-paused');
-          stat.textContent = "IDLE";
-          title.textContent = "— Inattivo / Nero —";
+          stat.textContent = T("IDLE");
+          title.textContent = T("— Inattivo / Nero —");
           bar.style.width = "0%";
           elap.textContent = "00:00";
           rem.textContent = "--:--";
@@ -1798,14 +2045,14 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
         sbMeta.innerHTML = `
           ${state.standby_cue.type === 'ACTION'
             ? '<span class="standby-meta-item"><b>⚡</b></span>'
-            : `<span class="standby-meta-item"><b>Layer:</b> L${escapeHtml(state.standby_cue.layer)}</span>`}
-          <span class="standby-meta-item"><b>Durata:</b> ${formatTime(state.standby_cue.duration)}</span>
-          <span class="standby-meta-item"><b>Fade:</b> ${escapeHtml(state.standby_cue.fade_in || 0)}s IN / ${escapeHtml(state.standby_cue.fade_out || 0)}s OUT</span>
-          ${state.standby_cue.notes ? `<span class="standby-meta-item"><b>Note:</b> ${escapeHtml(state.standby_cue.notes)}</span>` : ''}
+            : `<span class="standby-meta-item"><b>${escapeHtml(T("Layer:"))}</b> L${escapeHtml(state.standby_cue.layer)}</span>`}
+          <span class="standby-meta-item"><b>${escapeHtml(T("Durata:"))}</b> ${formatTime(state.standby_cue.duration)}</span>
+          <span class="standby-meta-item"><b>${escapeHtml(T("Fade:"))}</b> ${escapeHtml(state.standby_cue.fade_in || 0)}s IN / ${escapeHtml(state.standby_cue.fade_out || 0)}s OUT</span>
+          ${state.standby_cue.notes ? `<span class="standby-meta-item"><b>${escapeHtml(T("Note:"))}</b> ${escapeHtml(state.standby_cue.notes)}</span>` : ''}
         `;
       } else {
-        sbName.textContent = "— Fine Scaletta —";
-        sbMeta.innerHTML = `<span class="standby-meta-item">Tutte le cue eseguite</span>`;
+        sbName.textContent = T("— Fine Scaletta —");
+        sbMeta.innerHTML = `<span class="standby-meta-item">${escapeHtml(T("Tutte le cue eseguite"))}</span>`;
       }
 
       // Scaletta Table (diffed to avoid repaint jitter)
@@ -1825,13 +2072,13 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
           const isSb = Boolean(c.is_standby);
           const rowClass = `${isLive ? 'is-live' : ''} ${isSb ? 'is-standby' : ''}`;
 
-          let stBadge = `<span class="status-badge">○ PRONTA</span>`;
+          let stBadge = `<span class="status-badge">${escapeHtml(T("○ PRONTA"))}</span>`;
           if (isLive) {
-            stBadge = `<span class="status-badge live">● IN ONDA</span>`;
+            stBadge = `<span class="status-badge live">${escapeHtml(T("● IN ONDA"))}</span>`;
           } else if (isSb) {
-            stBadge = `<span class="status-badge standby">▶ STANDBY</span>`;
+            stBadge = `<span class="status-badge standby">${escapeHtml(T("▶ STANDBY"))}</span>`;
           } else if (statusNorm === "offline") {
-            stBadge = `<span class="status-badge" style="color:#f87171;">⚠ OFFLINE</span>`;
+            stBadge = `<span class="status-badge" style="color:#f87171;">${escapeHtml(T("⚠ OFFLINE"))}</span>`;
           }
 
           const typeClass = `type-badge ${safeType}`;
@@ -1842,7 +2089,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
           else if (safeType === "action") icon = "⚡";
 
           const outPrefix = (String(c.output_target || "A").toUpperCase() === "B") ? "B·" : "";
-          const followTxt = c.follow_mode === 'AUTO_FOLLOW' ? 'Auto-follow' : (c.follow_mode === 'SIMULTANEOUS' ? 'Simultanea' : 'Manuale');
+          const followTxt = escapeHtml(c.follow_mode === 'AUTO_FOLLOW' ? T('Auto-follow') : (c.follow_mode === 'SIMULTANEOUS' ? T('Simultanea') : T('Manuale')));
 
           html += `
             <tr class="${rowClass}">
@@ -1852,7 +2099,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
                 <div class="cue-col-name">${escapeHtml(c.name)}</div>
                 ${c.notes ? `<div class="cue-notes">${escapeHtml(c.notes)}</div>` : ''}
               </td>
-              <td><span class="${typeClass}">${icon} ${escapeHtml(safeType.toUpperCase())}</span></td>
+              <td><span class="${typeClass}">${escapeHtml(TYPE_NAMES[safeType] || (icon + ' ' + safeType.toUpperCase()))}</span></td>
               <td><span style="font-weight:700; color:#38bdf8;">${outPrefix}L${escapeHtml(c.layer)}</span></td>
               <td style="font-family:ui-monospace, monospace;">${formatTime(c.duration)}</td>
               <td style="font-family:ui-monospace, monospace; color:#94a3b8;">${escapeHtml(c.fade_in || 0)}s / ${escapeHtml(c.fade_out || 0)}s</td>
@@ -1869,10 +2116,10 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
       const t = document.getElementById('connText');
       if (online) {
         b.classList.remove('offline');
-        t.textContent = "LIVE SYNC";
+        t.textContent = T("LIVE SYNC");
       } else {
         b.classList.add('offline');
-        t.textContent = "DISCONNESSO";
+        t.textContent = T("DISCONNESSO");
       }
     }
 
@@ -1903,7 +2150,7 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
             if (data.authenticated === false && data.pin_required) {
               currentPin = "";
               sessionStorage.removeItem('blindcue_pin');
-              showLockScreen(data.error || "Sessione revocata: reinserisci il PIN");
+              showLockScreen(data.error || T("Sessione revocata: reinserisci il PIN"));
             } else {
               setTimeout(initSSE, 2500);
             }
@@ -1965,11 +2212,11 @@ _HTML_MONITOR_PAGE = """<!DOCTYPE html>
           } else {
             enteredBuffer = "";
             renderDots();
-            document.getElementById('pinErr').textContent = data.error || "PIN errato";
+            document.getElementById('pinErr').textContent = data.error || T("PIN errato");
           }
         })
         .catch(() => {
-          document.getElementById('pinErr').textContent = "Errore di connessione alla regia";
+          document.getElementById('pinErr').textContent = T("Errore di connessione alla regia");
         });
     }
 
@@ -2064,7 +2311,12 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
                 cand = pin_vals[0].strip()
                 return self.controller.check_pin(cand, client_ip)
 
-        return False, "PIN di regia richiesto"
+        return False, tr("PIN di regia richiesto")
+
+    def send_error(self, code: int, message: str | None = None, explain: str | None = None) -> None:
+        """Error pages in the program's language (the status line stays plain ASCII)."""
+        self.error_message_format = _error_page()
+        super().send_error(code, message, explain)
 
     def do_OPTIONS(self) -> None:  # noqa: N802
         """Respond cleanly to CORS preflight requests from mobile/tablet browsers."""
@@ -2098,7 +2350,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
             self.send_error(404, "Not Found")
 
     def _serve_html(self) -> None:
-        content = _HTML_PAGE.encode("utf-8")
+        content = localize_page(_HTML_PAGE).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
@@ -2107,7 +2359,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
         self._write_body(content)
 
     def _serve_monitor_html(self) -> None:
-        content = _HTML_MONITOR_PAGE.encode("utf-8")
+        content = localize_page(_HTML_MONITOR_PAGE).encode("utf-8")
         self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(content)))
@@ -2123,7 +2375,7 @@ class _BlindCueHttpRequestHandler(http.server.BaseHTTPRequestHandler):
                 "authenticated": False,
                 "pin_required": True,
                 "error": err_msg,
-                "show_title": "BlindCUE (Protetto)",
+                "show_title": tr("BlindCUE (Protetto)"),
                 "cues": [],
             }
         else:
@@ -2321,7 +2573,7 @@ class WebRemoteServer:
             if fails >= 5:
                 if now < lockout:
                     rem = max(1, int(lockout - now))
-                    return False, f"Troppi tentativi errati. Blocco temporaneo per {rem}s."
+                    return False, tr("Troppi tentativi errati. Blocco temporaneo per {}s.").format(rem)
                 # Lockout period elapsed: reset strike counter cleanly
                 fails = 0
 
@@ -2332,7 +2584,7 @@ class WebRemoteServer:
                 fails += 1
                 lock = now + 30.0 if fails >= 5 else 0.0
                 self._failed_attempts[client_ip] = (fails, lock)
-                return False, "PIN errato."
+                return False, tr("PIN errato.")
 
     def _close_all_sse_clients(self) -> None:
         """Unblock and drop every active SSE queue immediately."""

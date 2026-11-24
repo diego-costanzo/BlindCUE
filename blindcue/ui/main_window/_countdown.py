@@ -51,6 +51,7 @@ class _CountdownMixin:
         self._prev_run: dict[int, float] = {}
         self._sw_total = 0.0                     # 2.11 stopwatch: seconds before the current run
         self._sw_since: float | None = None      # monotonic start of the current run (None = stopped)
+        self._sw_used = False                    # shown (status bar, big window, phone) once it was used
         self._sw_timer = QTimer(self)
         self._sw_timer.setInterval(500)
         self._sw_timer.timeout.connect(self._sw_tick)
@@ -59,7 +60,8 @@ class _CountdownMixin:
 
     # ── stopwatch (2.11) ──
     def stopwatch(self, mode: str) -> None:
-        """An action cue: "start", "stop" (it goes on from there next time) or "reset" (zero, keeps running)."""
+        """An action cue or the Show menu: "start", "stop" (goes on from there next time) or "reset" (zero)."""
+        self._sw_used = True
         now = time.monotonic()
         if mode == "start" and self._sw_since is None:
             self._sw_since = now
@@ -87,6 +89,27 @@ class _CountdownMixin:
         running = self._sw_since is not None
         self._lbl_stopwatch.setText(f"⏱ {_mmss(int(self.stopwatch_seconds()))}" + ("" if running else " ❚❚"))
         self._lbl_stopwatch.setStyleSheet(f"color: {'#7dd3fc' if running else '#94a3b8'}; padding: 0 8px;")
+        if self._cd_window is not None and self._cd_window.isVisible():
+            self._cd_window.show_stopwatch(self.stopwatch_seconds(), running)  # 2.11: also backstage
+
+    def remote_timers(self) -> dict:
+        """2.5: what the phone pages show next to the cues - the computer clock, the countdown,
+        the stopwatch (once used) and the next cue that starts at a time of day."""
+        from engine.clock_plan import next_timed
+
+        now = datetime.now()
+        data: dict = {"clock": now.strftime("%H:%M:%S")}
+        left = self.countdown_left()
+        if left is not None:
+            data["countdown"] = {"title": self._cd_title, "left": round(left, 1)}
+        if self._sw_used:
+            data["stopwatch"] = {"sec": round(self.stopwatch_seconds(), 1), "running": self._sw_since is not None}
+        if any(getattr(c, "start_clock", "") for c in self._cues):
+            coming = next_timed(self._cues, now, getattr(self, "_clock_handled", set()))
+            if coming is not None:
+                data["next_timed"] = {"at": coming[1].strftime("%H:%M:%S"), "name": coming[0].name,
+                                      "held": bool(getattr(self, "_clock_held", False))}
+        return data
 
     # ── countdown ──
     def start_countdown(self, seconds: float, title: str = "") -> None:
@@ -108,7 +131,10 @@ class _CountdownMixin:
         self._cd_timer.stop()
         self._lbl_countdown.setVisible(False)
         if self._cd_window is not None:
-            self._cd_window.close()
+            if self._sw_used and self._cd_window.isVisible():
+                self._cd_window.show_countdown_off()  # 2.11: the stopwatch stays on the big window
+            else:
+                self._cd_window.close()
 
     def countdown_left(self) -> float | None:
         return None if self._cd_end is None else max(0.0, self._cd_end - time.monotonic())
@@ -118,6 +144,11 @@ class _CountdownMixin:
 
         left = self.countdown_left()
         if left is None:
+            if self._cd_window is not None and self._cd_window.isVisible():
+                if self._sw_used:
+                    self._cd_window.show_countdown_off()  # 2.11: the stopwatch alone, in large digits
+                else:
+                    self._cd_window.show_idle()
             return
         last_minute = 0 < left <= 60
         colour = "#ef4444" if left <= 0 else ("#f59e0b" if last_minute else "#e2e8f0")
@@ -146,6 +177,10 @@ class _CountdownMixin:
         self._cd_window.show()
         self._cd_window.raise_()
         self._cd_tick()
+        if self._sw_used:
+            self._sw_tick()
+        else:
+            self._cd_window.show_stopwatch(None)
 
     # ── run log ──
     def _run_note(self, idx: int, by_hand: bool) -> None:

@@ -19,7 +19,7 @@ import pytest
 from engine.clock_plan import due, next_timed, normalize_clock, parse_clock
 from engine.show_engine import outside_go_order
 from models.cue import Cue, MediaType
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, QTimer
 from PySide6.QtWidgets import QApplication
 
 
@@ -148,3 +148,75 @@ def test_review_half_typed_time_and_one_way_to_start(window):
     insp._last_field = "start_clock"
     insp.apply_to_cue(nxt)
     assert nxt.start_clock == "07:05" and nxt.start_rel_cue is None   # the time set last wins
+
+
+class _NextDay(datetime):
+    @classmethod
+    def now(cls, tz=None):
+        return datetime(2026, 11, 25, 19, 55, 5)
+
+
+def test_review_l_never_twice_after_a_crash(window, monkeypatch):
+    """Review item L: the bell rang, the program crashed, the session came back in the same minute."""
+    from PySide6.QtWidgets import QMessageBox
+    from ui.main_window import _clock_plan
+
+    window.set_live_mode(True)
+    window._clock_tick(datetime(2026, 11, 24, 19, 55, 5))
+    assert window.fired == [9952]
+    saved = window._clock_settings()
+    # the bell started, "old" (18:00) skipped as too late: both moments are done
+    assert saved == {"clock_done": {"9952": "2026-11-24T19:55:00", "9953": "2026-11-24T18:00:00"}}
+    captured: dict = {}
+    real_build = window._project_manager.build_autosave_payload
+
+    def _build(cues, **kw):
+        captured.update(kw.get("settings") or {})
+        return real_build(cues, **kw)
+
+    monkeypatch.setattr(window._project_manager, "build_autosave_payload", _build)
+    for _ in range(100):                                         # the tick's own autosave is on its way
+        if not window._autosave_in_progress:
+            break
+        _pump(0.02)
+    window._auto_save()
+    assert captured.get("clock_done") == saved["clock_done"]     # the autosave carries it
+
+    # The crash: the program starts again and restores the session (back into the show).
+    payload = real_build(window._cues, current_index=0, settings={**saved, "live_mode": True})
+    window._force_closing = True
+    window.set_live_mode(False)
+    window._cues = []
+    window._clock_reset(forget=True)
+    window._force_closing = False
+    monkeypatch.setattr(window._project_manager, "check_crash_recovery", lambda: payload)
+
+    def _answer() -> None:
+        box = QApplication.activeModalWidget()
+        if isinstance(box, QMessageBox):
+            box.button(QMessageBox.StandardButton.Yes).click()
+
+    QTimer.singleShot(50, _answer)
+    window._check_crash_recovery()
+    assert len(window._cues) == 4 and window.is_live_mode()
+    window.fired.clear()
+    window._clock_tick(datetime(2026, 11, 24, 19, 55, 40))
+    assert window.fired == []                                    # never twice
+    window._clock_reset()                                        # a new run from the top: still not twice
+    window._clock_tick(datetime(2026, 11, 24, 19, 55, 50))
+    assert window.fired == []
+
+    # Another day is another moment: the restored list does not stop tomorrow's bell.
+    monkeypatch.setattr(_clock_plan, "datetime", _NextDay)
+    window._clock_load(saved)
+    window._clock_tick(datetime(2026, 11, 25, 19, 55, 5))
+    assert window.fired == [9952]
+    window._clock_reset(forget=True)                             # another show forgets them all
+    assert window._clock_done == {} and window._clock_settings() == {}
+
+
+def test_review_l_bad_autosave_values_are_ignored(window):
+    window._clock_load({"clock_done": {"x": "2026-11-24T19:55:00", "9952": "not a time", "9953": 5}})
+    assert window._clock_done == {}
+    window._clock_load({"clock_done": "nonsense"})
+    assert window._clock_done == {} and window._clock_handled == set()

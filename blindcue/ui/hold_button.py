@@ -20,7 +20,52 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QPushButton, QSizePolicy, QWidget
 
-from i18n import tr
+from i18n import current_language, tr
+
+# Accessibility W29: the safety holds (leave the show, unlock the layers, ±10 s
+# in the show) last 1.5 s by default; each computer may set 0.6-3 s
+# (trembling hands, slower movements - or a quicker operator).
+HOLD_SETTING = "ui/hold_sec"
+HOLD_DEFAULT_SEC = 1.5
+HOLD_MIN_SEC = 0.6
+HOLD_MAX_SEC = 3.0
+HOLD_CHOICES = (0.6, 1.0, 1.5, 2.0, 3.0)
+
+
+def hold_seconds() -> float:
+    """The hold time of this computer (QSettings ``ui/hold_sec``), within 0.6-3 s."""
+    try:
+        from PySide6.QtCore import QSettings
+
+        value = float(QSettings("BlindCue", "BlindCue").value(HOLD_SETTING, HOLD_DEFAULT_SEC))
+    except (TypeError, ValueError):
+        value = HOLD_DEFAULT_SEC
+    return min(HOLD_MAX_SEC, max(HOLD_MIN_SEC, value))
+
+
+def set_hold_seconds(seconds: float) -> float:
+    """Store the hold time (clamped to 0.6-3 s); returns what was stored."""
+    from PySide6.QtCore import QSettings
+
+    value = min(HOLD_MAX_SEC, max(HOLD_MIN_SEC, float(seconds)))
+    QSettings("BlindCue", "BlindCue").setValue(HOLD_SETTING, value)
+    return value
+
+
+def scaled_hold_ms(base_ms: int) -> int:
+    """A hold designed around the default 1.5 s (*base_ms*), for this computer's hold time."""
+    return max(200, int(round(base_ms * hold_seconds() / HOLD_DEFAULT_SEC)))
+
+
+def seconds_text(seconds: float) -> str:
+    """"1,5 s" / "1.5 s" (English) / "2 s" - for the texts that say how long to hold."""
+    text = f"{seconds:.1f}".removesuffix(".0")
+    return (text if current_language() == "en" else text.replace(".", ",")) + " s"
+
+
+def hold_text(base_ms: int = 1500) -> str:
+    """How long a hold of *base_ms* (designed around 1.5 s) lasts here, as text: "1,5 s"."""
+    return seconds_text(scaled_hold_ms(base_ms) / 1000.0)
 
 
 class ElidedButton(QPushButton):
@@ -83,6 +128,7 @@ class HoldProgressButton(QPushButton):
         fill_color: str = "#38bdf8",
         deactivate_hold_ms: int = 0,  # 0 = instantaneous click to deactivate/relock
         fill_orientation: str = "horizontal",  # "horizontal" or "vertical"
+        scaled: bool = False,  # W29: follow this computer's hold time (hold_ms is meant for 1.5 s)
     ) -> None:
         """Create a hold-to-confirm button; ``hold_ms`` is the time needed to trigger."""
         super().__init__("", parent)
@@ -91,6 +137,7 @@ class HoldProgressButton(QPushButton):
 
         self._text_idle = text_idle
         self._text_active = text_active or text_idle
+        self._scaled = bool(scaled)
         self._hold_ms = max(200, hold_ms)
         self._deactivate_hold_ms = deactivate_hold_ms
         self._is_toggle = is_toggle
@@ -120,10 +167,19 @@ class HoldProgressButton(QPushButton):
 
     # ── State Accessors & Compatibility Helpers ───────────────────────
 
-    def set_hold_ms(self, hold_ms: int) -> None:
-        """How long the button must be held (the rehearsal needs less than the show)."""
+    def set_hold_ms(self, hold_ms: int, *, scaled: bool | None = None) -> None:
+        """How long the button must be held (the rehearsal needs less than the show).
+
+        *scaled* (None = unchanged): follow this computer's hold time (W29).
+        """
         self._hold_ms = max(200, int(hold_ms))
+        if scaled is not None:
+            self._scaled = bool(scaled)
         self._current_hold_ms = self._hold_ms
+
+    def hold_ms(self) -> int:
+        """How long a press must last now (this computer's hold time when the button follows it)."""
+        return scaled_hold_ms(self._hold_ms) if self._scaled else self._hold_ms
 
     def is_active(self) -> bool:
         """True while the button is held (or latched active)."""
@@ -240,7 +296,7 @@ class HoldProgressButton(QPushButton):
         if self._is_toggle and self._is_active and self._deactivate_hold_ms > 0:
             self._current_hold_ms = self._deactivate_hold_ms
         else:
-            self._current_hold_ms = self._hold_ms
+            self._current_hold_ms = self.hold_ms()
         self._timer.start()
         self.update()
 
@@ -262,7 +318,7 @@ class HoldProgressButton(QPushButton):
             if self._is_toggle and self._is_active and self._deactivate_hold_ms > 0:
                 self._current_hold_ms = self._deactivate_hold_ms
             else:
-                self._current_hold_ms = self._hold_ms
+                self._current_hold_ms = self.hold_ms()
             self._timer.start()
             self.update()
             event.accept()
