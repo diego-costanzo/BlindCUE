@@ -41,6 +41,8 @@ SolidCompression=yes
 OutputDir={#Root}\dist
 OutputBaseFilename=BlindCue-Setup-{#AppVersion}
 CloseApplications=yes
+; 5.14: a double-click on a .blindcue file opens the show
+ChangesAssociations=yes
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
@@ -61,6 +63,13 @@ Name: "{autoprograms}\{#AppName} - Manual"; Filename: "{app}\_internal\help\manu
 Name: "{autoprograms}\{#AppName} - Instrukcja"; Filename: "{app}\_internal\help\manual_pl.html"; Languages: polish
 #endif
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\BlindCue.exe"; Tasks: desktopicon
+
+[Registry]
+; 5.14: .blindcue files open in the program (per user: HKA is HKCU with PrivilegesRequired=lowest).
+Root: HKA; Subkey: "Software\Classes\.blindcue"; ValueType: string; ValueName: ""; ValueData: "BlindCue.Show"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\BlindCue.Show"; ValueType: string; ValueName: ""; ValueData: "{#AppName}"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\BlindCue.Show\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\BlindCue.exe,0"
+Root: HKA; Subkey: "Software\Classes\BlindCue.Show\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\BlindCue.exe"" ""%1"""
 
 [Run]
 Filename: "{app}\BlindCue.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent

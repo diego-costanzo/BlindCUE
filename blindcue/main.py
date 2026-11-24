@@ -263,11 +263,12 @@ def main() -> int:
         app.setWindowIcon(app_icon)
 
     # ── One copy per user: a second launch brings the first to the front ──
-    from services.single_instance import SingleInstance, bring_to_front
+    from services.single_instance import SingleInstance, bring_to_front, show_file_from_args
     instance_guard = SingleInstance()
+    show_file = show_file_from_args(sys.argv)  # 5.14: a double-click on a .blindcue file
     if not instance_guard.acquire():
         logger.warning("[MAIN] BlindCue is already running - asking it to come to the front")
-        if not instance_guard.notify_running():
+        if not instance_guard.notify_running(show_file=show_file):
             QMessageBox.information(
                 None, "BlindCue",
                 "BlindCue è già in esecuzione ma non risponde.\n\n"
@@ -459,6 +460,7 @@ def main() -> int:
     main_win.bind_to_primary_screen(primary)
     main_win.show()
     instance_guard.activation_requested.connect(lambda: bring_to_front(main_win))
+    instance_guard.open_requested.connect(main_win.open_show_from_outside)
 
     # Attach OutputWindow strictly to target screen after MainWindow maps on primary
     if output_screen is not None:
@@ -2273,7 +2275,12 @@ def main() -> int:
     # processEvents() of OutputWindow.configure_screen(), half-way through
     # this boot: the output stayed full screen and on top, and unplugging the
     # projector left it covering the director screen.
-    QTimer.singleShot(150, main_win._check_crash_recovery)
+    def _startup_questions() -> None:
+        main_win._check_crash_recovery()
+        if show_file:
+            main_win.open_show_from_outside(show_file)  # after the restore question, never inside it
+
+    QTimer.singleShot(150, _startup_questions)
 
     return app.exec()
 

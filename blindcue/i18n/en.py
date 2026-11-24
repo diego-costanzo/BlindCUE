@@ -3616,4 +3616,6 @@ T: dict[str, str] = {
         'Look, language, operator sounds',
     'Conduzione dello spettacolo':
         'Running the show',
+    "Per aprire '{}' termina prima lo spettacolo":
+        "To open '{}', end the show first",
 }

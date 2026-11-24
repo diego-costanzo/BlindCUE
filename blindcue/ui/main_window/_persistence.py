@@ -361,6 +361,24 @@ class _PersistenceMixin:
             return
         self._open_project_file(file_path)
 
+    def open_show_from_outside(self, file_path: str) -> None:
+        """A .blindcue file double-clicked in Windows (5.14): open it, never over a running show."""
+        from engine.show_mode import PREPARATION
+        from i18n import tr
+
+        name = os.path.basename(file_path)
+        if self._current_mode() != PREPARATION:
+            self._status_label.setText(tr("Per aprire '{}' termina prima lo spettacolo").format(name))
+            self.announce(self._status_label.text(), assertive=True)
+            return
+        current = getattr(self, "_current_project_path", None)
+        if current and os.path.normcase(os.path.abspath(current)) == os.path.normcase(os.path.abspath(file_path)):
+            return  # already open
+        if not self._confirm_save_if_modified(
+            "Apri Show", "Ci sono modifiche non salvate.\nVuoi salvare prima di aprire un altro show?"):
+            return
+        self._open_project_file(file_path)
+
     def _open_project_file(self, file_path: str) -> None:
         """Load *file_path* into the window, restoring every project setting."""
         try:

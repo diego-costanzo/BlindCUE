@@ -23,7 +23,18 @@ from PySide6.QtWidgets import QApplication, QWidget
 logger = logging.getLogger(__name__)
 
 _ACTIVATE = b"activate\n"
+_OPEN = b"open "        # 5.14: "open <path>\n" - a double-clicked show file
 _ACK = b"ok\n"
+
+
+def show_file_from_args(args: list[str]) -> str | None:
+    """The show file the program was started with (a double-click on a .blindcue file), if any."""
+    for arg in args[1:]:
+        if arg.startswith("-"):
+            continue
+        if arg.lower().endswith(".blindcue") and os.path.isfile(arg):
+            return os.path.abspath(arg)
+    return None
 
 
 def default_key() -> str:
@@ -36,6 +47,7 @@ class SingleInstance(QObject):
     """Lock held by the running copy plus a socket to wake it up."""
 
     activation_requested = Signal()
+    open_requested = Signal(str)        # 5.14: another launch got this show file
 
     def __init__(self, key: str | None = None, lock_dir: str | None = None,
                  parent: QObject | None = None) -> None:
@@ -77,8 +89,8 @@ class SingleInstance(QObject):
             self._server = None
         self._lock.unlock()
 
-    def notify_running(self, timeout_ms: int = 3000) -> bool:
-        """Ask the running copy to show its window. True if it answered."""
+    def notify_running(self, timeout_ms: int = 3000, show_file: str | None = None) -> bool:
+        """Ask the running copy to show its window (and open *show_file*). True if it answered."""
         if sys.platform == "win32":
             # The copy just started by the user may give the foreground away;
             # without this Windows only flashes the other copy's taskbar button.
@@ -91,7 +103,7 @@ class SingleInstance(QObject):
         sock.connectToServer(self._key)
         if not sock.waitForConnected(timeout_ms):
             return False
-        sock.write(_ACTIVATE)
+        sock.write(_OPEN + show_file.encode("utf-8") + b"\n" if show_file else _ACTIVATE)
         sock.flush()
         answered = sock.waitForReadyRead(timeout_ms) and bytes(sock.readAll().data()).startswith(_ACK)
         sock.disconnectFromServer()
@@ -109,11 +121,16 @@ class SingleInstance(QObject):
         sock = sock or self.sender()
         if not isinstance(sock, QLocalSocket) or not sock.canReadLine():
             return
-        if bytes(sock.readLine().data()) == _ACTIVATE:
+        line = bytes(sock.readLine().data())
+        if line == _ACTIVATE or line.startswith(_OPEN):
             sock.write(_ACK)
             sock.flush()
             logger.info("[INSTANCE] Another launch asked for this window")
             self.activation_requested.emit()
+            if line.startswith(_OPEN):
+                path = line[len(_OPEN):].rstrip(b"\r\n").decode("utf-8", "replace")
+                if path:
+                    self.open_requested.emit(path)
 
 
 def bring_to_front(window: QWidget) -> None:

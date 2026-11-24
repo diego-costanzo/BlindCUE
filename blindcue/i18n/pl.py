@@ -3838,4 +3838,6 @@ T: dict[str, str] = {
         'Wygląd, język, dźwięki operatora',
     'Conduzione dello spettacolo':
         'Prowadzenie przedstawienia',
+    "Per aprire '{}' termina prima lo spettacolo":
+        'Żeby otworzyć „{}”, najpierw zakończ przedstawienie',
 }
