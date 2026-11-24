@@ -229,6 +229,9 @@ class _AssistantMixin:
                             "only in Preparation. Try again later.")
         if self._readiness_visible():
             raise ToolError("The teacher is looking at the readiness page: try again in a moment.")
+        if tool == "update_cue" and "q_label" in args and self._q_locked():
+            raise ToolError("The cue labels (Q) are locked: the script is approved. Leave q_label out, "
+                            "or ask the teacher to unlock them (Edit menu).")
         self._apply_inspector_to_cue()
         if self._undo.is_debounce_active():
             self._commit_undo_point()

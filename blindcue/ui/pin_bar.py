@@ -55,7 +55,10 @@ class PinBar(QFrame):
         if obj is self.edit and event.type() in (QEvent.Type.ShortcutOverride, QEvent.Type.KeyPress) \
                 and event.key() == Qt.Key.Key_Space:
             if event.type() == QEvent.Type.KeyPress and not event.isAutoRepeat():
-                self.go_requested.emit()
+                from ui.live_show_view import LiveCueTable
+
+                if LiveCueTable.space_starts_go:  # 5.7: the program's Space = GO may be off on this computer
+                    self.go_requested.emit()
             event.accept()
             return True
         return super().eventFilter(obj, event)

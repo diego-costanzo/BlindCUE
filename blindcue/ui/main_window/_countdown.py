@@ -267,11 +267,12 @@ class _CountdownMixin:
         labels = {rr.GO: tr("GO"), rr.AUTO: tr("automatico"), rr.PANIC: tr("PANIC"),
                   rr.FADE_ALL: tr("Sfuma tutto"), rr.PAUSE: tr("Pausa tutto"), rr.RESUME: tr("Riprendi"),
                   rr.BLACKOUT: tr("Blackout"), rr.UNDO_GO: tr("Annulla l'ultimo GO"), rr.EFFECT: tr("Effetto"),
-                  rr.FADE_SCENE: tr("Sfuma la scena"), rr.END: tr("Fine dello spettacolo")}
+                  rr.FADE_SCENE: tr("Sfuma la scena"), rr.END: tr("Fine dello spettacolo"),
+                  rr.NOTE: tr("📝 Annotazione")}  # 5.6: the operator's diary
         summary = {"start": tr("Inizio"), "end": tr("Fine"), "length": tr("Durata"),
                    rr.GO: tr("GO a mano"), rr.AUTO: tr("Partenze automatiche"), rr.EFFECT: tr("Effetti"),
                    rr.PAUSE: tr("Pause"), rr.FADE_ALL: tr("Sfuma tutto"), rr.PANIC: tr("PANIC"),
-                   rr.BLACKOUT: tr("Blackout"), rr.UNDO_GO: tr("GO annullati")}
+                   rr.BLACKOUT: tr("Blackout"), rr.UNDO_GO: tr("GO annullati"), rr.NOTE: tr("Annotazioni")}
         entries = [(secs, event, f"#{rows[cid] + 1}" if cid in rows else "", name)
                    for secs, cid, name, _hand, event in log]
         played = {cid for _s, cid, _n, _h, event in log if event in rr.CUE_EVENTS}

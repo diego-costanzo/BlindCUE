@@ -58,14 +58,22 @@ class _KeyMapFilter(QObject):
 
 class _KeyMapMixin:
     def _keymap_setup(self) -> None:
-        self._key_map: dict[str, list[str]] = km.from_text(
-            str(QSettings("BlindCue", "BlindCue").value("keys/map", "") or ""))
+        settings = QSettings("BlindCue", "BlindCue")
+        self._key_map: dict[str, list[str]] = km.from_text(str(settings.value("keys/map", "") or ""))
+        self._space_go = bool(settings.value(km.SPACE_GO_SETTING, True, type=bool))  # 5.7
         self._key_lookup: dict[str, str] = {}
         self._key_filter = _KeyMapFilter(self)
         self._key_filter_installed = False
         self._keymap_apply()
 
     def _keymap_apply(self) -> None:
+        from ui.live_show_view import LiveCueTable
+
+        # 5.7: the program's Space = GO, on or off for this computer (the menu, the show's list, the PIN bar).
+        LiveCueTable.space_starts_go = self._space_go
+        act = getattr(self, "_act_go", None)
+        if act is not None:
+            act.setShortcut(QKeySequence("Space") if self._space_go else QKeySequence())
         self._key_lookup = km.lookup(self._key_map)
         app = QApplication.instance()
         if self._key_lookup and not self._key_filter_installed:
@@ -75,9 +83,13 @@ class _KeyMapMixin:
             app.removeEventFilter(self._key_filter)
             self._key_filter_installed = False
 
-    def _keymap_store(self, key_map: dict[str, list[str]]) -> None:
+    def _keymap_store(self, key_map: dict[str, list[str]], space_go: bool | None = None) -> None:
         self._key_map = km.clean(key_map)
-        QSettings("BlindCue", "BlindCue").setValue("keys/map", km.to_text(self._key_map))
+        settings = QSettings("BlindCue", "BlindCue")
+        settings.setValue("keys/map", km.to_text(self._key_map))
+        if space_go is not None:
+            self._space_go = bool(space_go)
+            settings.setValue(km.SPACE_GO_SETTING, self._space_go)
         self._keymap_apply()
 
     def _run_key_function(self, func: str) -> None:
@@ -103,7 +115,8 @@ class _KeyMapMixin:
 
         effects = list(getattr(self, "_hotkey_map", {}).keys()) or [
             (c.hotkey or "").upper() for c in self._cues if getattr(c, "adlib", False) and c.hotkey]
-        dlg = KeyMapDialog(self._key_map, effects, self)
+        dlg = KeyMapDialog(self._key_map, effects, self, space_go=self._space_go)
         if dlg.exec() == QDialog.DialogCode.Accepted:
-            self._keymap_store(dlg.key_map())
-            self._status_label.setText(tr("Tasti aggiuntivi salvati per questo computer"))
+            self._keymap_store(dlg.key_map(), dlg.space_go())
+            self._status_label.setText(tr("Tasti aggiuntivi salvati per questo computer") if self._space_go
+                                       else tr("Tasti salvati per questo computer: lo Spazio non dà più il GO"))

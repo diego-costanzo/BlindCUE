@@ -72,6 +72,10 @@ from ui.main_window._slideshow import _SlideshowMixin
 from ui.main_window._picture_tools import _PictureToolsMixin
 from ui.main_window._playlist import _PlaylistMixin
 from ui.main_window._placeholder import _PlaceholderMixin
+from ui.main_window._bulk_change import _BulkChangeMixin
+from ui.main_window._show_diary import _ShowDiaryMixin
+from ui.main_window._library import _LibraryMixin
+from ui.main_window._show_files import _ShowFilesMixin
 
 
 class MainWindow(
@@ -131,6 +135,10 @@ class MainWindow(
     _PictureToolsMixin,
     _PlaylistMixin,
     _PlaceholderMixin,
+    _BulkChangeMixin,
+    _ShowDiaryMixin,
+    _LibraryMixin,
+    _ShowFilesMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""

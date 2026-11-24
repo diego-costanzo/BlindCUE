@@ -6,6 +6,12 @@ adds keys of this computer to a few safe functions, so a presenter remote
 run the show. PANIC is not offered: one button of a remote pressed by
 mistake must never stop everything. Keys are plain names as Qt writes them
 ("PgDown", "B", "."); no Ctrl / Alt / Shift.
+
+Of the program's own keys only Space = GO can be switched off (per
+computer, ``SPACE_GO_SETTING``): then GO comes from the map's keys, the GO
+buttons and Ctrl+Space. Esc (PANIC), Shift+Esc, Enter, the arrows and F5
+stay fixed: they keep their meaning in every view and every dialog, and a
+safety key that moves between computers is a risk, not a convenience.
 """
 
 from __future__ import annotations
@@ -43,6 +49,14 @@ RESERVED = {
 
 # The order the remote wizard asks for buttons in.
 WIZARD = (GO, PREV_CUE, PAUSE)
+
+# 5.7: QSettings key (bool, default True): the program's Space starts the GO on this computer.
+SPACE_GO_SETTING = "keys/space_go"
+
+
+def go_reachable(key_map: dict[str, list[str]], space_go: bool) -> bool:
+    """False when Space is off and no key of the map gives GO (GO by mouse / Ctrl+Space only)."""
+    return space_go or bool(clean(key_map).get(GO))
 
 
 def clean(raw: object) -> dict[str, list[str]]:
@@ -82,19 +96,24 @@ def lookup(key_map: dict[str, list[str]]) -> dict[str, str]:
     return out
 
 
-def conflicts(key_map: dict[str, list[str]], effect_keys: Iterable[str] = ()) -> list[tuple[str, str, str]]:
+def conflicts(key_map: dict[str, list[str]], effect_keys: Iterable[str] = (),
+              space_go: bool = True) -> list[tuple[str, str, str]]:
     """(key, kind, detail) for keys that will not do what the map says.
 
     kind: "reserved" (the program uses it: detail = what for), "twice" (two functions:
     detail = the second one), "effect" (an effect of this show uses it: the effect wins).
+    *space_go*: False when the program's Space = GO is off (Space is free for the map then).
     """
     effects = {k.upper() for k in effect_keys if k}
+    reserved = dict(RESERVED)
+    if not space_go:
+        reserved.pop("Space", None)
     out: list[tuple[str, str, str]] = []
     owner: dict[str, str] = {}
     for func in FUNCTIONS:
         for key in key_map.get(func, []):
-            if key in RESERVED:
-                out.append((key, "reserved", RESERVED[key]))
+            if key in reserved:
+                out.append((key, "reserved", reserved[key]))
             if key in owner:
                 out.append((key, "twice", func))
             else:

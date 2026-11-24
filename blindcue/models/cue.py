@@ -406,6 +406,13 @@ def resolve_output_target(value: object, dual_active: bool) -> str:
     return target if dual_active else "A"
 
 
+def _rooted(path: str) -> bool:
+    """A path absolute on some system: "/home/a.mp3", "\\\\server\\x", "C:\\a" or "C:/a" (5.11)."""
+    text = str(path or "")
+    return text.startswith(("/", "\\")) or (len(text) > 2 and text[0].isalpha() and text[1] == ":"
+                                            and text[2] in "\\/")
+
+
 def _sanitize_hex_color(value: object) -> str:
     """Validate optional '#RRGGBB' hex group colour; return '' when empty or malformed."""
     txt = str(value or "").strip()
@@ -677,7 +684,10 @@ class Cue:
         """
         root = Path(project_root).resolve()
         p = Path(self.file_path)
-        if not p.is_absolute():
+        # "/home/x.mp3" (a show made on Linux / macOS) is not absolute for Windows: joined to the root it
+        # pointed outside it and the whole cue was dropped. Such a path stays as it is (the cue is OFFLINE).
+        # An empty path (a cue waiting for its file) stays empty: it is not the show's folder.
+        if self.file_path and not p.is_absolute() and not _rooted(self.file_path):
             resolved = (root / p).resolve()
             if not resolved.is_relative_to(root):
                 raise ValueError(
@@ -687,7 +697,7 @@ class Cue:
 
         if self.original_file_path:
             orig_p = Path(self.original_file_path)
-            if not orig_p.is_absolute():
+            if not orig_p.is_absolute() and not _rooted(self.original_file_path):
                 resolved_orig = (root / orig_p).resolve()
                 if not resolved_orig.is_relative_to(root):
                     raise ValueError(

@@ -15,6 +15,11 @@ class _RenumberMixin:
 
         if not self._change_allowed(EDIT_LIST):
             return
+        if self._q_locked():  # 5.2: the script is approved, its labels stay
+            QMessageBox.information(self, tr("Rinumera le Q"),
+                                    tr("Le Q sono bloccate (copione approvato).\nPer rinumerare sbloccale prima: "
+                                       "Modifica → Blocca le Q."))
+            return
         self._apply_inspector_to_cue()  # what is typed in the inspector first, so it is not lost
         chosen = self._selected_rows() if len(self._selected_rows()) > 1 else []
         dlg = RenumberDialog(self._cues, chosen, self)

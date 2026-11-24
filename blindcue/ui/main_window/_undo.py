@@ -161,4 +161,6 @@ class _UndoRedoMixin:
 
     def _mark_modified(self, modified: bool = True) -> None:
         self._is_modified = modified
+        if not modified and hasattr(self, "_remember_saved_state"):
+            self._remember_saved_state()  # 5.6: "why is the show marked as changed?" compares with this
         self._update_window_title()

@@ -84,7 +84,9 @@ def test_window_history_and_backup(tmp_path, monkeypatch):
         win._commit_undo_point()
         assert win._do_save(str(show))
         assert len(backups_of(show)) == 1
-        monkeypatch.setattr(_history.QInputDialog, "getItem", staticmethod(lambda *a, **k: (a[3][0], True)))
+        versions = win._saved_versions()            # 5.6: the saved file first, then the backups
+        assert [v[0] for v in versions] == ["file", "backup"]
+        monkeypatch.setattr(win, "_choose_saved_version", lambda vs: 1)
         win._restore_backup()
         assert win._cues[0].name == "h0"          # the list as it was at the first save
         win._on_undo()
@@ -97,6 +99,24 @@ def test_window_history_and_backup(tmp_path, monkeypatch):
         win.deleteLater()
         output.deleteLater()
         _pump()
+
+
+def test_show_from_another_system_keeps_its_cues(tmp_path):
+    """A show saved on Linux / macOS ("/home/...") opened on Windows (and back): the cues stay, OFFLINE."""
+    import json
+
+    show = tmp_path / "Play.blindcue"
+    (tmp_path / "found.mp3").write_bytes(b"x")
+    rows = [{"cue_id": 1, "name": "linux", "media_type": "AUDIO", "file_path": "/home/teacher/song.mp3"},
+            {"cue_id": 2, "name": "windows", "media_type": "AUDIO", "file_path": "D:\\Show\\song.mp3"},
+            {"cue_id": 3, "name": "here by name", "media_type": "AUDIO", "file_path": "/media/usb/found.mp3"},
+            {"cue_id": 4, "name": "traversal", "media_type": "AUDIO", "file_path": "../../etc/passwd"}]
+    show.write_text(json.dumps({"app": "BlindCue", "cues": rows}), encoding="utf-8")
+    cues, _i, _s = ProjectManager(autosave_dir=tmp_path / "auto").load_project(show)
+    by_name = {c.name: c for c in cues}
+    assert set(by_name) == {"linux", "windows", "here by name"}           # the traversal is still refused
+    assert by_name["linux"].status.value == "OFFLINE" and by_name["linux"].file_path == "/home/teacher/song.mp3"
+    assert Path(by_name["here by name"].file_path) == (tmp_path / "found.mp3").resolve()
 
 
 def test_backup_of_a_portable_show_finds_its_media(tmp_path):

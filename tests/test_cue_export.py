@@ -116,6 +116,81 @@ def test_operator_list_follows_scenes():
     assert data[-1]["off"] and not data[0]["off"]
 
 
+def test_xlsx_is_a_workbook(tmp_path):
+    import xml.etree.ElementTree as ET
+    import zipfile
+
+    from engine.cue_export import COLUMNS, to_xlsx
+
+    show = _show()
+    show[0].name = "=1+1 <&>"
+    show[1].enabled = False
+    show[2].pre_delay = 1.5
+    target = tmp_path / "list.xlsx"
+    to_xlsx(rows(show), target, {"name": "Nazwa"}, sheet="Lista: [1]", title="Show")
+    ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    with zipfile.ZipFile(target) as zf:
+        assert {"[Content_Types].xml", "_rels/.rels", "xl/workbook.xml", "xl/_rels/workbook.xml.rels",
+                "xl/styles.xml", "xl/worksheets/sheet1.xml"} <= set(zf.namelist())
+        for part in zf.namelist():
+            ET.fromstring(zf.read(part))                       # every part is well-formed XML
+        sheet = ET.fromstring(zf.read("xl/worksheets/sheet1.xml"))
+        name = ET.fromstring(zf.read("xl/workbook.xml")).find(".//m:sheet", ns).get("name")
+    assert name == "Lista   1"                                   # no []: in a sheet name
+    table = {}
+    main = "{" + ns["m"] + "}"
+    for c in sheet.iter(main + "c"):
+        text = "".join(t.text or "" for t in c.iter(main + "t")) or (c.findtext("m:v", "", ns))
+        table[c.get("r")] = (text, c.get("s"), c.get("t"))
+    col = {k: chr(65 + i) for i, k in enumerate(COLUMNS)}
+    assert table[f"{col['name']}1"] == ("Nazwa", "1", "inlineStr")      # bold header
+    assert table[f"{col['name']}2"][0] == "=1+1 <&>"                    # text, never a formula
+    assert table[f"{col['pre']}4"][:2] == ("1.5", None) and table[f"{col['pre']}4"][2] is None  # a number
+    assert table[f"{col['name']}3"][1] == "2"                           # a cue that is off: struck through
+    assert table[f"{col['line']}2"][0] == "…and then the storm"
+
+
+def test_pdf_and_show_columns(tmp_path, monkeypatch):
+    QApplication.instance() or QApplication([])
+    from ui.live_show_view import COL_LINE, COL_PAGE
+    from ui.main_window import MainWindow, _export
+    from ui.output_window import OutputWindow
+
+    output = OutputWindow()
+    win = MainWindow(output)
+    win._clock_timer.stop()
+    try:
+        win._cues = _show()
+        target = tmp_path / "op.pdf"
+        monkeypatch.setattr(_export.QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(target), "")))
+        win._export_list_pdf("operator")
+        assert target.read_bytes()[:5] == b"%PDF-" and target.stat().st_size > 1000
+        win._export_list_pdf("prompter")
+        assert target.read_bytes()[:5] == b"%PDF-"
+        xlsx = tmp_path / "list"
+        monkeypatch.setattr(_export.QFileDialog, "getSaveFileName", staticmethod(lambda *a, **k: (str(xlsx), "")))
+        win._export_list_xlsx()
+        assert (tmp_path / "list.xlsx").is_file()
+
+        table = win._live_show_panel.live_table
+        win._live_show_panel.sync_cues(win._cues, 0, {})
+        assert not table.isColumnHidden(COL_PAGE) and not table.isColumnHidden(COL_LINE)
+        assert table.item(0, COL_PAGE).text() == "3" and table.item(0, COL_LINE).text().endswith("storm")
+        assert table.horizontalHeader().visualIndex(COL_PAGE) == 3      # next to the name, not at the end
+        for cue in win._cues:
+            cue.script_page = cue.script_line = ""
+        win._live_show_panel.sync_cues(win._cues, 0, {})
+        assert table.isColumnHidden(COL_PAGE) and table.isColumnHidden(COL_LINE)
+    finally:
+        win._force_closing = True
+        output.force_close()
+        win.close()
+        _pump()
+        win.deleteLater()
+        output.deleteLater()
+        _pump()
+
+
 def test_csv_keeps_text_and_decimal_comma(tmp_path):
     show = _show()
     show[0].name = "=1+1"

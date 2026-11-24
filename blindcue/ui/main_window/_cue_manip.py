@@ -29,9 +29,20 @@ class _CueManipMixin:
             return
         titles = {MediaType.VIDEO: tr("Aggiungi video"), MediaType.AUDIO: tr("Aggiungi audio"),
                   MediaType.IMAGE: tr("Aggiungi immagine")}
-        file_path, _ = QFileDialog.getOpenFileName(
-            self, titles.get(media_type, tr("Aggiungi file")), dialog_dirs.media_dir(media_type.value),
-            self._MEDIA_FILTERS.get(media_type, "*.*"))
+        if media_type == MediaType.AUDIO:
+            # 5.12: listen before choosing (in the headphones when a monitor output is set).
+            from ui.audio_pick_dialog import pick_audio_file
+
+            if not self._change_allowed(EDIT_LIST):
+                return
+            device_mgr = getattr(self, "_device_mgr", None)
+            file_path = pick_audio_file(self, titles[media_type], dialog_dirs.media_dir(media_type.value),
+                                        self._MEDIA_FILTERS[media_type],
+                                        getattr(device_mgr, "_monitor_device", None) if device_mgr else None)
+        else:
+            file_path, _ = QFileDialog.getOpenFileName(
+                self, titles.get(media_type, tr("Aggiungi file")), dialog_dirs.media_dir(media_type.value),
+                self._MEDIA_FILTERS.get(media_type, "*.*"))
         if file_path:
             dialog_dirs.remember_media_dir(file_path)
             self._add_cue_from_file(file_path, media_type)

@@ -72,7 +72,7 @@ def test_row_menu_open_with_and_refresh(tmp_path, monkeypatch):
         win._extend_file_menu(menu, [0])
         sub = menu.actions()[0].menu()
         texts = [a.text() for a in sub.actions() if a.text()]
-        assert len(texts) == 4 and "audacity" in texts[2]
+        assert len(texts) == 5 and "audacity" in texts[2] and "Rinomina" in texts[4]  # 5.10: rename the file
         monkeypatch.setattr(mod.QProcess, "startDetached",
                             staticmethod(lambda prog, args: started.append((prog, args)) or True))
         sub.actions()[2].trigger()

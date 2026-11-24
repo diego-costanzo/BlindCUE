@@ -45,9 +45,14 @@ class _EditCueMixin:
             edit_text=self._ask_text_spec,
             parent=self,
         )
+        if self._q_locked() and (cue.q_label or "").strip() and hasattr(dlg, "ed_q"):
+            dlg.ed_q.setReadOnly(True)  # 5.2: the script is approved, its labels stay
+            dlg.ed_q.setToolTip(tr("Q bloccata: il copione è approvato (menu Modifica)"))
         accepted = dlg.exec() == QDialog.DialogCode.Accepted
         changes = dlg.changes() if accepted else {}
         dlg.deleteLater()
+        if "q_label" in changes and self._q_label_blocked(cue, changes["q_label"]):
+            changes.pop("q_label")
         if not changes:
             return False
         self._apply_cue_changes(cue, changes)

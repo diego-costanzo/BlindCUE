@@ -4290,4 +4290,306 @@ T: dict[str, str] = {
         'End: the end of the file',
     "L'ascolto è prima dell'inizio: fine subito dopo l'inizio ({} s)":
         'The audition is before the start: the end just after the start ({} s)',
+    '📊 Esporta la scaletta (Excel)…':
+        '📊 Export the cue list (Excel)…',
+    '📄 Scaletta per la regia in PDF…':
+        "📄 Operator's cue list as PDF…",
+    '📄 Scaletta per il suggeritore in PDF…':
+        "📄 Prompter's cue list as PDF…",
+    'Scaletta':
+        'Cue list',
+    'Scaletta in PDF':
+        'Cue list as PDF',
+    'Impossibile scrivere il file:\n{}':
+        'Cannot write the file:\n{}',
+    'Scaletta salvata in PDF: {}':
+        'Cue list saved as PDF: {}',
+    'Pag.':
+        'Page',
+    '🔒 Blocca le Q (copione approvato)':
+        '🔒 Lock the Q labels (script approved)',
+    'Le Q già scritte non cambiano più; una cue nuova può ancora riceverne una':
+        'Labels already there no longer change; a new cue can still get one',
+    'Δ Cambia le cue selezionate…':
+        'Δ Change the selected cues…',
+    'Q bloccate: il copione è approvato':
+        'Q labels locked: the script is approved',
+    'Q sbloccate':
+        'Q labels unlocked',
+    'Le Q sono bloccate (copione approvato): sbloccale nel menu Modifica':
+        'The Q labels are locked (script approved): unlock them in the Edit menu',
+    'Q bloccata: il copione è approvato (menu Modifica)':
+        'Q label locked: the script is approved (Edit menu)',
+    'Le Q sono bloccate (copione approvato).\nPer rinumerare sbloccale prima: Modifica → Blocca le Q.':
+        'The Q labels are locked (script approved).\nTo renumber, unlock them first: Edit → Lock the Q labels.',
+    'Seleziona prima le cue da cambiare':
+        'Select the cues to change first',
+    'Cambiate {} cue (Ctrl+Z annulla)':
+        '{} cues changed (Ctrl+Z undoes)',
+    'Cambia le cue selezionate':
+        'Change the selected cues',
+    '{} cue selezionate. Ogni cue cambia del passo indicato e tiene la sua differenza dalle altre (0 = invariato).':
+        '{} cues selected. Each cue moves by the step given and keeps its difference from the others (0 = unchanged).',
+    'Più forte (+) o più piano (−); il volume resta tra 0 e 100 %':
+        'Louder (+) or quieter (−); the volume stays between 0 and 100 %',
+    'Volume ±':
+        'Volume ±',
+    'Anche le cue dentro le scene selezionate':
+        'Also the cues inside the selected scenes',
+    'Che cosa cambierà:':
+        'What will change:',
+    'Niente da cambiare: scegli un passo diverso da 0':
+        'Nothing to change: choose a step other than 0',
+    'Applica a {} cue':
+        'Apply to {} cues',
+    '📥 Importa uno spettacolo SCS (.scs11)…':
+        '📥 Import a show from SCS (.scs11)…',
+    'Importa uno spettacolo SCS':
+        'Import a show from SCS',
+    'Nessuna cue in questo file.':
+        'There are no cues in this file.',
+    'Tutte':
+        'All',
+    'Nessuna':
+        'None',
+    'Da sapere prima di importare ({}):':
+        'Good to know before importing ({}):',
+    'Niente da segnalare per le cue spuntate.':
+        'Nothing to report for the ticked cues.',
+    'Importa {} cue':
+        'Import {} cues',
+    'luci (DMX)':
+        'lighting (DMX)',
+    'messaggio di controllo':
+        'control message',
+    'avvio di un programma':
+        'run a program',
+    "posizione di un'altra cue":
+        'position of another cue',
+    'attiva / disattiva cue':
+        'enable / disable cues',
+    'ingresso dal vivo':
+        'live input',
+    "'{}': parte SCS non importata ({})":
+        "'{}': SCS part not imported ({})",
+    "'{}': partenza SCS «{}» non disponibile – parte con il GO":
+        '\'{}\': SCS start "{}" not available – it starts with GO',
+    "'{}': partenza automatica dopo «{}», che non ha un file – parte con il GO":
+        '\'{}\': automatic start after "{}", which has no file – it starts with GO',
+    "'{}': il tasto «{}» non è una lettera o una cifra – effetto senza tasto":
+        '\'{}\': the key "{}" is not a letter or digit – effect without a key',
+    "'{}': la cue «{}» non c'è – azione senza quel bersaglio":
+        '\'{}\': there is no cue "{}" – the action goes without that target',
+    "'{}': il loop di una parte del file non c'è – si ripete tutto il file":
+        "'{}': no loop of a part of the file here – the whole file repeats",
+    "'{}': il panorama (sinistra / destra) non viene importato":
+        "'{}': panning (left / right) is not imported",
+    "'{}': i livelli dentro il file non vengono importati":
+        "'{}': level points inside the file are not imported",
+    "'{}': più uscite audio – si usa l'uscita del palco":
+        "'{}': several audio outputs – the stage output is used",
+    "'{}': una parte partiva alla fine della precedente – ora partono insieme":
+        "'{}': a part started at the end of the previous one – now they start together",
+    "'{}': l'azione SCS «{}» non viene importata":
+        '\'{}\': the SCS action "{}" is not imported',
+    "'{}': partenza oltre 600 s – accorciata a 600 s":
+        "'{}': a start later than 600 s – shortened to 600 s",
+    "'{}': cue SCS con più parti – controllala nella prova":
+        "'{}': SCS cue with several parts – check it in the rehearsal",
+    "'{}': una scena o una playlist qui non parte da sola (tasto, chiamata o partenza automatica) – parte con il GO":
+        "'{}': a scene or playlist does not start by itself here (key, call or automatic start) – it starts with GO",
+    '📝 Diario dello spettacolo…':
+        '📝 Show diary…',
+    'Diario dello spettacolo':
+        'Show diary',
+    'Annotazione (per esempio: il microfono 2 gracchia)':
+        'Note (for example: mic 2 crackles)',
+    '📝 Annota':
+        '📝 Write',
+    "Spettacolo in corso: ogni GO, PANIC, pausa… si scrive qui con l'ora. Le annotazioni vanno anche nel rapporto dopo lo spettacolo.":
+        'The show is running: every GO, PANIC, pause… is written here with the time. The notes also go into the report after the show.',
+    "Il diario scrive solo durante lo spettacolo (non nella prova e nella preparazione). Il rapporto dell'ultimo spettacolo: File → Esporta e stampa.":
+        'The diary writes only during the show (not in the rehearsal or the preparation). The report of the last show: File → Export and print.',
+    'Ancora niente in questo spettacolo':
+        'Nothing has happened yet',
+    'Annotazione scritta nel diario':
+        'Note written in the diary',
+    '📝 Annotazione':
+        '📝 Note',
+    'Annotazioni':
+        'Notes',
+    '❓ Perché lo spettacolo risulta modificato?':
+        '❓ Why is the show marked as changed?',
+    'Perché lo spettacolo risulta modificato?':
+        'Why is the show marked as changed?',
+    'Lo spettacolo non ha modifiche da salvare.':
+        'The show has no changes to save.',
+    "Differenze dall'ultimo salvataggio ({}):":
+        'Differences from the last save ({}):',
+    'Lo spettacolo non è mai stato salvato. Differenze da quando è stato creato ({}):':
+        'The show has never been saved. Differences since it was made ({}):',
+    "Nessuna differenza nella lista: era cambiato qualcosa ed è tornato com'era. Salva per togliere l'asterisco.":
+        'No differences in the list: something changed and went back. Save to remove the asterisk.',
+    '💾 Salva ora':
+        '💾 Save now',
+    'Impostazioni dello spettacolo: {}':
+        'Show settings: {}',
+    'versioni dello spettacolo':
+        'versions of the show',
+    'versione scelta':
+        'chosen version',
+    'informazioni sullo spettacolo':
+        'show info',
+    'superfici di proiezione':
+        'projection surfaces',
+    '🕘 Ripristina una versione salvata…':
+        '🕘 Restore a saved version…',
+    'Ripristina una versione salvata':
+        'Restore a saved version',
+    'Ultimo salvataggio ({})':
+        'Last save ({})',
+    'Copia di sicurezza del {}':
+        'Backup of {}',
+    'Sessione messa da parte ({})':
+        'Session set aside ({})',
+    'Scegli una versione: a destra che cosa cambierebbe nella scaletta di adesso. Il ripristino si annulla con Ctrl+Z.':
+        'Choose a version: on the right, what it would change in the list as it is now. Ctrl+Z undoes the restore.',
+    '🕘 Ripristina questa versione':
+        '🕘 Restore this version',
+    '{} cue in questa versione':
+        '{} cues in this version',
+    'Uguale alla scaletta di adesso':
+        'Same as the list now',
+    'Ancora nessuna versione salvata: il programma tiene il file salvato e una copia a ogni salvataggio.':
+        'No saved version yet: the program keeps the saved file and a copy at every save.',
+    'Ripristinata: {} (Ctrl+Z torna indietro)':
+        'Restored: {} (Ctrl+Z goes back)',
+    'Spazio = GO (tasto del programma)':
+        "Space = GO (the program's key)",
+    'Togli la spunta se il GO deve venire solo dal telecomando o da un tasto scelto qui (per esempio uno Spazio premuto per sbaglio). Ctrl+Spazio e il pulsante GO restano.':
+        'Untick it when GO must come only from the remote or a key chosen here (for example against a Space pressed by mistake). Ctrl+Space and the GO button stay.',
+    '⚠ Senza Spazio e senza un tasto per il GO, il GO si dà solo con il pulsante GO o con Ctrl+Spazio':
+        '⚠ Without Space and without a key for GO, GO is given only by the GO button or Ctrl+Space',
+    'Tasti salvati per questo computer: lo Spazio non dà più il GO':
+        'Keys saved for this computer: Space no longer gives GO',
+    '🏫 Nuovo spettacolo: spettacolo scolastico':
+        '🏫 New show: school show',
+    '🔔 Biblioteca suoni':
+        '🔔 Sound library',
+    '📚 Biblioteca cue':
+        '📚 Cue library',
+    'Biblioteca suoni':
+        'Sound library',
+    'Biblioteca cue':
+        'Cue library',
+    'Campanella':
+        'Bell',
+    'Cartella della biblioteca':
+        'Library folder',
+    'Biblioteca: {}':
+        'Library: {}',
+    '(vuota: metti i suoni nella cartella)':
+        '(empty: put the sounds into the folder)',
+    '📂 Apri la cartella della biblioteca':
+        '📂 Open the library folder',
+    "📁 Usa un'altra cartella (chiavetta, cartella condivisa)…":
+        '📁 Use another folder (USB stick, shared folder)…',
+    '💾 Salva le cue selezionate nella biblioteca…':
+        '💾 Save the selected cues in the library…',
+    'Inserisci dopo la selezione: {}':
+        'Insert after the selection: {}',
+    '(vuota: seleziona delle cue e salvale qui)':
+        '(empty: select some cues and save them here)',
+    'File non trovato: {}':
+        'File not found: {}',
+    'Seleziona prima le cue da salvare':
+        'Select the cues to save first',
+    'Nome nella biblioteca:':
+        'Name in the library:',
+    "'{}' c'è già nella biblioteca. Sostituirlo?":
+        "'{}' is already in the library. Replace it?",
+    "Salvate {} cue nella biblioteca come '{}'":
+        "{} cues saved in the library as '{}'",
+    'file non copiati: {}':
+        'files not copied: {}',
+    'Spettacolo scolastico':
+        'School show',
+    'Modello pronto: {} cue aspettano il loro file (clic destro → Scegli il file…)':
+        'Template ready: {} cues wait for their file (right click → Choose the file…)',
+    "Musica d'ingresso del pubblico":
+        'Music while the audience comes in',
+    'Campanella – 3 minuti':
+        'Bell – 3 minutes',
+    'Campanella – 1 minuto':
+        'Bell – 1 minute',
+    'Per favore spegnete i telefoni':
+        'Please switch off your phones',
+    'Campanella – si comincia':
+        'Bell – we begin',
+    'Buio: sfuma musica e immagini':
+        'Lights down: fade music and pictures',
+    'Logo della scuola':
+        "The school's logo",
+    'Intervallo: 15 minuti':
+        'Interval: 15 minutes',
+    "Musica dell'intervallo":
+        'Interval music',
+    "Fine dell'intervallo: sfuma la musica":
+        'End of the interval: fade the music',
+    'Grazie!':
+        'Thank you!',
+    'Musica finale':
+        'Closing music',
+    'Fine: sfuma tutto':
+        'The end: fade everything',
+    '📦 Pacchetto ZIP con i media…':
+        '📦 ZIP package with the media…',
+    '🧹 Metti da parte i file non usati…':
+        '🧹 Set aside unused files…',
+    '✏ Rinomina il file…':
+        '✏ Rename the file…',
+    'Pacchetto ZIP':
+        'ZIP package',
+    'Scaletta vuota: niente da mettere nel pacchetto':
+        'The cue list is empty: nothing to pack',
+    "Playlist grandi:\n{}\n\nLasciarle fuori dal pacchetto? Il pacchetto resta piccolo; sull'altro computer quelle cue cercano i file dove sono qui (copiali a parte).":
+        'Big playlists:\n{}\n\nLeave them out of the package? The package stays small; on the other computer those cues look for the files where they are here (copy them separately).',
+    'Pacchetto ZIP scritto: {} file, {}':
+        'ZIP package written: {} files, {}',
+    'Lasciati fuori (playlist grandi): {}':
+        'Left out (big playlists): {}',
+    'File mancanti, non nel pacchetto:':
+        'Missing files, not in the package:',
+    'File non usati':
+        'Unused files',
+    "Questo spettacolo non ha una cartella dei media: c'è solo quando è salvato come spettacolo portatile (i file copiati accanto).":
+        'This show has no media folder: there is one only when it is saved as a portable show (the files copied next to it).',
+    'Nessun file non usato in {}':
+        'No unused files in {}',
+    'Tutti i file della cartella dei media sono usati.':
+        'Every file of the media folder is used.',
+    '{} file ({}) della cartella dei media non sono usati da nessuna cue né dalle copie di sicurezza:\n{}\n\nMetterli da parte nella sottocartella «_unused»? Non vengono cancellati.':
+        '{} files ({}) of the media folder are used by no cue and no backup copy:\n{}\n\nSet them aside in the "_unused" subfolder? They are not deleted.',
+    'Messi da parte {} file in {}':
+        '{} files set aside in {}',
+    'Rinomina il file':
+        'Rename the file',
+    'Questa cue non ha un file da rinominare':
+        'This cue has no file to rename',
+    'Il file è in onda: fermalo prima di rinominarlo':
+        'The file is on air: stop it before renaming it',
+    'Nuovo nome per «{}» (le {} cue che lo usano seguono; altri spettacoli che lo usano non lo troveranno più):':
+        'New name for "{}" (the {} cues using it follow; other shows using it will no longer find it):',
+    "C'è già un file con questo nome:\n{}":
+        'There is already a file with this name:\n{}',
+    "Impossibile rinominare il file: è aperto in un altro programma o nell'anteprima (seleziona prima un'altra cue).\n{}":
+        'Cannot rename the file: it is open in another program or in the preview (select another cue first).\n{}',
+    'File rinominato in «{}»: {} riferimenti aggiornati':
+        'File renamed to "{}": {} references updated',
+    '■ Ferma':
+        '■ Stop',
+    'Ascolta il suono selezionato prima di sceglierlo (in cuffia, se impostata)':
+        'Listen to the highlighted sound before choosing it (in the headphones when they are set)',
+    'Non si riesce a leggere questo file':
+        'This file cannot be read',
 }

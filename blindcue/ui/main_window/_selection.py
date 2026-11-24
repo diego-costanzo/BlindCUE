@@ -58,6 +58,7 @@ class _SelectionMixin:
             if cue.media_type == MediaType.GROUP:
                 children = [c for c in self._cues if c.parent_id == cue.cue_id]
                 self._inspector.load_group_children(children, cue)
+            self._apply_q_lock_to_inspector()  # 5.2: a locked Q label is read-only
 
             if cue.cue_id != prev_anchor_id:
                 self._img_previz_timer.stop()

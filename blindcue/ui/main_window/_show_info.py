@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QDialogButtonBox, QFormLayout, QLineEdit, QPlainTe
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
 
-INFO_KEYS = ("title", "author", "notes")
+INFO_KEYS = ("title", "author", "notes", "q_locked")  # q_locked: "1" = the Q labels are locked (5.2)
 
 
 def stats_text(stats: dict[str, int]) -> str:
@@ -32,6 +32,8 @@ class _ShowInfoMixin:
     def _show_info_load(self, settings: dict | None) -> None:
         raw = (settings or {}).get("info", {})
         self._show_info = {k: str(raw.get(k, "")) for k in INFO_KEYS} if isinstance(raw, dict) else {}
+        if hasattr(self, "_sync_q_lock_action"):
+            self._sync_q_lock_action()  # 5.2: the Edit menu tick follows the show
 
     def _open_show_info(self) -> None:
         from engine.show_mode import SHOW
@@ -66,7 +68,7 @@ class _ShowInfoMixin:
         if dlg.exec() != QDialog.DialogCode.Accepted or read_only:
             return
         new = {"title": edit_title.text().strip(), "author": edit_author.text().strip(),
-               "notes": edit_notes.toPlainText().strip()}
+               "notes": edit_notes.toPlainText().strip(), "q_locked": info.get("q_locked", "")}
         if new != {k: info.get(k, "") for k in INFO_KEYS}:
             self._show_info = new
             self._mark_modified(True)

@@ -47,6 +47,8 @@ class _ExternalToolsMixin:
             sub.addAction(tr("✎ Apri con {}").format(prog["name"]), lambda p=prog: self._open_external(path, p))
         sub.addSeparator()
         sub.addAction(tr("➕ Aggiungi un programma…"), self._add_tool_program)
+        if not self._cues[rows[0]].text_spec:  # 5.10: a caption's picture is the program's own
+            sub.addAction(tr("✏ Rinomina il file…"), lambda r=rows[0]: self._rename_media_file(r))
 
     def _show_in_folder(self, path: str) -> None:
         if sys.platform == "win32":

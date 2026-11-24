@@ -715,7 +715,7 @@ class _RemoteMixin:
         new_val = item.text().strip()
         old_val = cue.q_label if col == 1 else cue.name
 
-        if col == 2 and not new_val:
+        if (col == 2 and not new_val) or (col == 1 and self._q_label_blocked(cue, new_val)):  # 5.2: Q locked
             self._updating_cue_list = True
             self._cue_list.blockSignals(True)
             item.setText(old_val)

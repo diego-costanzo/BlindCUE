@@ -31,6 +31,7 @@ class _InspectorMixin:
         self._inspector.set_layer_conflict(self._layer_conflicts.get(cue.cue_id))
         if anchor_cue is not None:
             self._update_waveform_markers(anchor_cue)
+        self._apply_q_lock_to_inspector()  # 5.2: a locked Q label is read-only
 
     @Slot(str)
     def _on_batch_field_edited(self, field_key: str) -> None:

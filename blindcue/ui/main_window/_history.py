@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from i18n import tr
-from PySide6.QtWidgets import QDialogButtonBox, QInputDialog, QListWidget
+from PySide6.QtWidgets import QDialogButtonBox, QListWidget
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
 
@@ -91,41 +91,5 @@ class _HistoryMixin:
 
     # ── A backup put back ──
     def _restore_backup(self) -> None:
-        from models.project_manager import backups_of
-
-        if not self._change_allowed(EDIT_LIST):
-            return
-        path = getattr(self, "_current_project_path", None)
-        if not path:
-            self._status_label.setText(tr("Lo spettacolo non è ancora salvato: non ha copie di sicurezza"))
-            return
-        copies = backups_of(path)
-        if not copies:
-            QMessageBox.information(self, tr("Ripristina una copia di sicurezza"),
-                                    tr("Ancora nessuna copia: il programma ne fa una a ogni salvataggio."))
-            return
-        stem = Path(path).stem
-        labels = [c.stem[len(stem) + 1:] if c.stem.startswith(stem + " ") else c.stem for c in copies]
-        label, ok = QInputDialog.getItem(self, tr("Ripristina una copia di sicurezza"),
-                                         tr("La scaletta com'era al salvataggio delle:"), labels, 0, False)
-        if not ok:
-            return
-        chosen = copies[labels.index(label)]
-        try:
-            cues, _index, settings = ProjectManager().load_project(chosen, as_path=path)
-        except (OSError, ValueError) as exc:
-            QMessageBox.warning(self, tr("Ripristina una copia di sicurezza"), str(exc))
-            return
-        self._apply_inspector_to_cue()
-        if self._undo.is_debounce_active():
-            self._commit_undo_point()
-        self._cues = cues
-        self._versions_load(settings)
-        self._show_info_load(settings)
-        self._refresh_cue_list(keep_selection=False)
-        self._commit_undo_point()
-        self._mark_modified(True)
-        self._last_selection_sig = None
-        self._sync_selection_state()
-        self._auto_save()
-        self._status_label.setText(tr("Scaletta ripristinata dalla copia delle {} (Ctrl+Z torna indietro)").format(label))
+        """The saved file, a backup copy or a session set aside - in the window of 5.6 (``_show_diary``)."""
+        self._restore_saved_version()

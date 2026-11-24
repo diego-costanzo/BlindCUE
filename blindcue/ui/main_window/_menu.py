@@ -38,25 +38,39 @@ class _MenuMixin:
         file_menu.addAction(QAction("📁 Nuovo spettacolo da una cartella…", self,
                                     triggered=self._new_show_from_folder))  # 5.9
         file_menu.addAction(QAction("🎓 Spettacolo di prova", self, triggered=self._open_practice_show))  # 5.17
+        file_menu.addAction(QAction("🏫 Nuovo spettacolo: spettacolo scolastico", self,
+                                    triggered=self._new_show_from_template))  # 5.9 template
         # Rarely used items in submenus (evaluation 2026-11-24, #13): the menu fits on one screen.
         import_menu = file_menu.addMenu("📥 Importa")
         import_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
         import_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
         import_menu.addAction(QAction("📥 Importa cue da un altro spettacolo…", self,
                                       triggered=self._import_from_show))  # 5.3
+        import_menu.addAction(QAction("📥 Importa uno spettacolo SCS (.scs11)…", self,
+                                      triggered=self._import_scs_show))
         export_menu = file_menu.addMenu("🖨 Esporta e stampa")
         export_menu.addAction(QAction("📄 Esporta la scaletta (CSV)…", self, triggered=self._export_list_csv))  # 5.1
+        export_menu.addAction(QAction("📊 Esporta la scaletta (Excel)…", self, triggered=self._export_list_xlsx))
         export_menu.addAction(QAction("🖨 Stampa la scaletta per la regia…", self,
                                       triggered=lambda: self._print_list("operator")))
         export_menu.addAction(QAction("🖨 Stampa la scaletta per il suggeritore…", self,
                                       triggered=lambda: self._print_list("prompter")))
+        export_menu.addAction(QAction("📄 Scaletta per la regia in PDF…", self,
+                                      triggered=lambda: self._export_list_pdf("operator")))
+        export_menu.addAction(QAction("📄 Scaletta per il suggeritore in PDF…", self,
+                                      triggered=lambda: self._export_list_pdf("prompter")))
         export_menu.addAction(QAction("📋 Rapporto dell'ultimo spettacolo", self,
                                       triggered=self._open_last_run_report))  # 5.19
+        export_menu.addAction(QAction("📦 Pacchetto ZIP con i media…", self, triggered=self._export_zip_package))
         rescue_menu = file_menu.addMenu("🛟 Copie e file mancanti")
-        rescue_menu.addAction(QAction("🕘 Ripristina una copia di sicurezza…", self,
-                                      triggered=self._restore_backup))  # 5.11
+        rescue_menu.addAction(QAction("🕘 Ripristina una versione salvata…", self,
+                                      triggered=self._restore_backup))  # 5.11 / 5.6
+        rescue_menu.addAction(QAction("❓ Perché lo spettacolo risulta modificato?", self,
+                                      triggered=self._why_modified))  # 5.6
         rescue_menu.addAction(QAction("🔎 Cerca i file mancanti in una cartella…", self,
                                       triggered=self._find_missing_files))  # 5.10
+        rescue_menu.addAction(QAction("🧹 Metti da parte i file non usati…", self,
+                                      triggered=self._tidy_media_folder))  # 5.10
         self._build_settings_transfer_menu(file_menu)  # 5.13
         file_menu.addAction(QAction("ℹ Informazioni sullo spettacolo…", self, triggered=self._open_show_info))  # 5.6
         file_menu.addSeparator()
@@ -88,11 +102,18 @@ class _MenuMixin:
         edit_menu.addSeparator()
         self._build_add_menu(edit_menu)  # P2 / W73: the add bar also from the menu (keyboard, screen reader)
         edit_menu.addAction(QAction("🔢 Rinumera le Q…", self, triggered=self._renumber_q))  # 5.2
+        self._act_q_lock = QAction("🔒 Blocca le Q (copione approvato)", self, checkable=True)
+        self._act_q_lock.setToolTip("Le Q già scritte non cambiano più; una cue nuova può ancora riceverne una")
+        self._act_q_lock.toggled.connect(self._set_q_locked)
+        edit_menu.addAction(self._act_q_lock)
+        edit_menu.addAction(QAction("Δ Cambia le cue selezionate…", self, triggered=self._open_bulk_change))
+        edit_menu.addSeparator()
+        self._build_library_menus(edit_menu)  # 5.9: sound library, cue library
 
         show_menu = mb.addMenu("&Show")
-        show_menu.addAction(
-            QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"), triggered=self._on_go_shortcut)
-        )
+        self._act_go = QAction("&GO (Next Cue)", self, shortcut=QKeySequence("Space"),
+                               triggered=self._on_go_shortcut)  # 5.7: Space can be switched off per computer
+        show_menu.addAction(self._act_go)
         show_menu.addAction(
             QAction("GO &forzato (ignora cue esclusiva)", self, shortcut=QKeySequence("Ctrl+Space"),
                     triggered=self._on_go_forced)
@@ -119,6 +140,7 @@ class _MenuMixin:
                                      triggered=self._on_end_show_requested)
         self._act_end_show.setEnabled(False)
         show_menu.addAction(self._act_end_show)
+        show_menu.addAction(QAction("📝 Diario dello spettacolo…", self, triggered=self._open_show_diary))  # 5.6
         show_menu.addSeparator()
         self._build_layer0_menu(show_menu)  # black / picture / looping video / test pattern (#9)
         show_menu.addSeparator()

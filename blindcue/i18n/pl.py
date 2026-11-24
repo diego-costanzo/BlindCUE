@@ -4648,4 +4648,308 @@ T: dict[str, str] = {
         'Koniec: koniec pliku',
     "L'ascolto è prima dell'inizio: fine subito dopo l'inizio ({} s)":
         'Odsłuch jest przed początkiem: koniec tuż po początku ({} s)',
+    '📊 Esporta la scaletta (Excel)…':
+        '📊 Eksportuj listę (Excel)…',
+    '📄 Scaletta per la regia in PDF…':
+        '📄 Lista dla operatora jako PDF…',
+    '📄 Scaletta per il suggeritore in PDF…':
+        '📄 Lista dla suflera jako PDF…',
+    'Scaletta':
+        'Lista cue',
+    'Scaletta in PDF':
+        'Lista jako PDF',
+    'Impossibile scrivere il file:\n{}':
+        'Nie udało się zapisać pliku:\n{}',
+    'Scaletta salvata in PDF: {}':
+        'Lista zapisana jako PDF: {}',
+    'Pag.':
+        'Str.',
+    '🔒 Blocca le Q (copione approvato)':
+        '🔒 Zablokuj Q (scenariusz zatwierdzony)',
+    'Le Q già scritte non cambiano più; una cue nuova può ancora riceverne una':
+        'Wpisane Q już się nie zmienią; nowy cue nadal może dostać swoje',
+    'Δ Cambia le cue selezionate…':
+        'Δ Zmień zaznaczone cue…',
+    'Q bloccate: il copione è approvato':
+        'Q zablokowane: scenariusz jest zatwierdzony',
+    'Q sbloccate':
+        'Q odblokowane',
+    'Le Q sono bloccate (copione approvato): sbloccale nel menu Modifica':
+        'Q są zablokowane (scenariusz zatwierdzony): odblokujesz je w menu Edycja',
+    'Q bloccata: il copione è approvato (menu Modifica)':
+        'Q zablokowane: scenariusz jest zatwierdzony (menu Edycja)',
+    'Le Q sono bloccate (copione approvato).\nPer rinumerare sbloccale prima: Modifica → Blocca le Q.':
+        'Q są zablokowane (scenariusz zatwierdzony).\nŻeby przenumerować, najpierw je odblokuj: Edycja → Zablokuj Q.',
+    'Seleziona prima le cue da cambiare':
+        'Najpierw zaznacz cue do zmiany',
+    'Cambiate {} cue (Ctrl+Z annulla)':
+        'Zmienione cue: {} (Ctrl+Z cofa)',
+    'Cambia le cue selezionate':
+        'Zmień zaznaczone cue',
+    '{} cue selezionate. Ogni cue cambia del passo indicato e tiene la sua differenza dalle altre (0 = invariato).':
+        'Zaznaczone cue: {}. Każdy zmienia się o podany krok i zachowuje swoją różnicę względem innych (0 = bez zmian).',
+    'Più forte (+) o più piano (−); il volume resta tra 0 e 100 %':
+        'Głośniej (+) albo ciszej (−); głośność zostaje między 0 a 100 %',
+    'Volume ±':
+        'Głośność ±',
+    'Anche le cue dentro le scene selezionate':
+        'Także cue w zaznaczonych scenach',
+    'Che cosa cambierà:':
+        'Co się zmieni:',
+    'Niente da cambiare: scegli un passo diverso da 0':
+        'Nic do zmiany: wybierz krok inny niż 0',
+    'Applica a {} cue':
+        'Zastosuj do cue: {}',
+    '📥 Importa uno spettacolo SCS (.scs11)…':
+        '📥 Importuj przedstawienie z SCS (.scs11)…',
+    'Importa uno spettacolo SCS':
+        'Import przedstawienia z SCS',
+    'Nessuna cue in questo file.':
+        'W tym pliku nie ma cue.',
+    'Tutte':
+        'Wszystkie',
+    'Nessuna':
+        'Żadne',
+    'Da sapere prima di importare ({}):':
+        'Warto wiedzieć przed importem ({}):',
+    'Niente da segnalare per le cue spuntate.':
+        'Dla zaznaczonych cue nie ma uwag.',
+    'Importa {} cue':
+        'Importuj cue: {}',
+    'luci (DMX)':
+        'światło (DMX)',
+    'messaggio di controllo':
+        'komunikat sterujący',
+    'avvio di un programma':
+        'uruchomienie programu',
+    "posizione di un'altra cue":
+        'pozycja w innym cue',
+    'attiva / disattiva cue':
+        'włączanie / wyłączanie cue',
+    'ingresso dal vivo':
+        'wejście na żywo',
+    'time code':
+        'kod czasowy (time code)',
+    "'{}': parte SCS non importata ({})":
+        "'{}': część z SCS niezaimportowana ({})",
+    "'{}': partenza SCS «{}» non disponibile – parte con il GO":
+        "'{}': start z SCS „{}” niedostępny – startuje na GO",
+    "'{}': partenza automatica dopo «{}», che non ha un file – parte con il GO":
+        "'{}': automatyczny start po „{}”, który nie ma pliku – startuje na GO",
+    "'{}': il tasto «{}» non è una lettera o una cifra – effetto senza tasto":
+        "'{}': klawisz „{}” nie jest literą ani cyfrą – efekt bez klawisza",
+    "'{}': la cue «{}» non c'è – azione senza quel bersaglio":
+        "'{}': nie ma cue „{}” – akcja bez tego celu",
+    "'{}': il loop di una parte del file non c'è – si ripete tutto il file":
+        "'{}': pętla fragmentu pliku nie istnieje u nas – powtarza się cały plik",
+    "'{}': il panorama (sinistra / destra) non viene importato":
+        "'{}': panorama (lewo / prawo) nie jest importowana",
+    "'{}': i livelli dentro il file non vengono importati":
+        "'{}': zmiany poziomu wewnątrz pliku nie są importowane",
+    "'{}': più uscite audio – si usa l'uscita del palco":
+        "'{}': kilka wyjść dźwięku – używane jest wyjście sceny",
+    "'{}': una parte partiva alla fine della precedente – ora partono insieme":
+        "'{}': część startowała po końcu poprzedniej – teraz startują razem",
+    "'{}': l'azione SCS «{}» non viene importata":
+        "'{}': akcja SCS „{}” nie jest importowana",
+    "'{}': partenza oltre 600 s – accorciata a 600 s":
+        "'{}': start później niż 600 s – skrócony do 600 s",
+    "'{}': cue SCS con più parti – controllala nella prova":
+        "'{}': cue z SCS złożony z kilku części – sprawdź go w Próbie",
+    "'{}': una scena o una playlist qui non parte da sola (tasto, chiamata o partenza automatica) – parte con il GO":
+        "'{}': scena albo playlista nie startuje tu sama (klawisz, wywołanie, start automatyczny) – startuje na GO",
+    '📝 Diario dello spettacolo…':
+        '📝 Dziennik przedstawienia…',
+    'Diario dello spettacolo':
+        'Dziennik przedstawienia',
+    'Annotazione (per esempio: il microfono 2 gracchia)':
+        'Notatka (np. mikrofon 2 trzeszczy)',
+    '📝 Annota':
+        '📝 Zapisz',
+    "Spettacolo in corso: ogni GO, PANIC, pausa… si scrive qui con l'ora. Le annotazioni vanno anche nel rapporto dopo lo spettacolo.":
+        'Trwa przedstawienie: każde GO, PANIC, pauza… zapisuje się tu z godziną. Notatki trafią też do raportu po przedstawieniu.',
+    "Il diario scrive solo durante lo spettacolo (non nella prova e nella preparazione). Il rapporto dell'ultimo spettacolo: File → Esporta e stampa.":
+        'Dziennik zapisuje tylko w trakcie Przedstawienia (nie w Próbie ani Przygotowaniu). Raport z ostatniego przedstawienia: Plik → Eksportuj i drukuj.',
+    'Ancora niente in questo spettacolo':
+        'Na razie nic się nie wydarzyło',
+    'Annotazione scritta nel diario':
+        'Notatka zapisana w dzienniku',
+    '📝 Annotazione':
+        '📝 Notatka',
+    'Annotazioni':
+        'Notatki',
+    '❓ Perché lo spettacolo risulta modificato?':
+        '❓ Dlaczego przedstawienie jest oznaczone jako zmienione?',
+    'Perché lo spettacolo risulta modificato?':
+        'Dlaczego przedstawienie jest oznaczone jako zmienione?',
+    'Lo spettacolo non ha modifiche da salvare.':
+        'Przedstawienie nie ma zmian do zapisania.',
+    "Differenze dall'ultimo salvataggio ({}):":
+        'Różnice od ostatniego zapisu ({}):',
+    'Lo spettacolo non è mai stato salvato. Differenze da quando è stato creato ({}):':
+        'Przedstawienie nie było jeszcze zapisane. Różnice od jego utworzenia ({}):',
+    "Nessuna differenza nella lista: era cambiato qualcosa ed è tornato com'era. Salva per togliere l'asterisco.":
+        'Lista nie ma różnic: coś się zmieniło i wróciło do poprzedniego stanu. Zapisz, żeby zniknęła gwiazdka.',
+    '💾 Salva ora':
+        '💾 Zapisz teraz',
+    'Impostazioni dello spettacolo: {}':
+        'Ustawienia przedstawienia: {}',
+    'versioni dello spettacolo':
+        'wersje przedstawienia',
+    'versione scelta':
+        'wybrana wersja',
+    'informazioni sullo spettacolo':
+        'informacje o przedstawieniu',
+    'superfici di proiezione':
+        'powierzchnie projekcji',
+    '🕘 Ripristina una versione salvata…':
+        '🕘 Przywróć zapisaną wersję…',
+    'Ripristina una versione salvata':
+        'Przywróć zapisaną wersję',
+    'Ultimo salvataggio ({})':
+        'Ostatni zapis ({})',
+    'Copia di sicurezza del {}':
+        'Kopia zapasowa z {}',
+    'Sessione messa da parte ({})':
+        'Odłożona sesja ({})',
+    'Scegli una versione: a destra che cosa cambierebbe nella scaletta di adesso. Il ripristino si annulla con Ctrl+Z.':
+        'Wybierz wersję: po prawej widać, co zmieniłoby się w obecnej liście. Przywrócenie cofniesz Ctrl+Z.',
+    '🕘 Ripristina questa versione':
+        '🕘 Przywróć tę wersję',
+    '{} cue in questa versione':
+        'Cue w tej wersji: {}',
+    'Uguale alla scaletta di adesso':
+        'Taka sama jak obecna lista',
+    'Ancora nessuna versione salvata: il programma tiene il file salvato e una copia a ogni salvataggio.':
+        'Nie ma jeszcze zapisanych wersji: program trzyma zapisany plik i kopię z każdego zapisu.',
+    'Ripristinata: {} (Ctrl+Z torna indietro)':
+        'Przywrócono: {} (Ctrl+Z cofa)',
+    'Spazio = GO (tasto del programma)':
+        'Spacja = GO (klawisz programu)',
+    'Togli la spunta se il GO deve venire solo dal telecomando o da un tasto scelto qui (per esempio uno Spazio premuto per sbaglio). Ctrl+Spazio e il pulsante GO restano.':
+        'Odznacz, jeśli GO ma przychodzić tylko z pilota albo z klawisza wybranego tutaj (np. przez przypadkowo wciśniętą Spację). Ctrl+Spacja i przycisk GO zostają.',
+    '⚠ Senza Spazio e senza un tasto per il GO, il GO si dà solo con il pulsante GO o con Ctrl+Spazio':
+        '⚠ Bez Spacji i bez klawisza dla GO, GO da się tylko przyciskiem GO albo Ctrl+Spacją',
+    'Tasti salvati per questo computer: lo Spazio non dà più il GO':
+        'Klawisze zapisane dla tego komputera: Spacja nie daje już GO',
+    '🏫 Nuovo spettacolo: spettacolo scolastico':
+        '🏫 Nowe przedstawienie: spektakl szkolny',
+    '🔔 Biblioteca suoni':
+        '🔔 Biblioteka dźwięków',
+    '📚 Biblioteca cue':
+        '📚 Biblioteka cue',
+    'Biblioteca suoni':
+        'Biblioteka dźwięków',
+    'Biblioteca cue':
+        'Biblioteka cue',
+    'Campanella':
+        'Dzwonek',
+    'Cartella della biblioteca':
+        'Folder biblioteki',
+    'Biblioteca: {}':
+        'Biblioteka: {}',
+    '(vuota: metti i suoni nella cartella)':
+        '(pusta: włóż dźwięki do folderu)',
+    '📂 Apri la cartella della biblioteca':
+        '📂 Otwórz folder biblioteki',
+    "📁 Usa un'altra cartella (chiavetta, cartella condivisa)…":
+        '📁 Użyj innego folderu (pendrive, folder wspólny)…',
+    '💾 Salva le cue selezionate nella biblioteca…':
+        '💾 Zapisz zaznaczone cue w bibliotece…',
+    'Inserisci dopo la selezione: {}':
+        'Wstaw za zaznaczeniem: {}',
+    '(vuota: seleziona delle cue e salvale qui)':
+        '(pusta: zaznacz cue i zapisz je tutaj)',
+    'File non trovato: {}':
+        'Nie znaleziono pliku: {}',
+    'Seleziona prima le cue da salvare':
+        'Najpierw zaznacz cue do zapisania',
+    'Nome nella biblioteca:':
+        'Nazwa w bibliotece:',
+    "'{}' c'è già nella biblioteca. Sostituirlo?":
+        "'{}' jest już w bibliotece. Zastąpić?",
+    "Salvate {} cue nella biblioteca come '{}'":
+        "Zapisano cue w bibliotece ({}) jako '{}'",
+    'file non copiati: {}':
+        'nieskopiowane pliki: {}',
+    'Spettacolo scolastico':
+        'Spektakl szkolny',
+    'Modello pronto: {} cue aspettano il loro file (clic destro → Scegli il file…)':
+        'Szablon gotowy: cue czekające na plik: {} (prawy przycisk → Wybierz plik…)',
+    "Musica d'ingresso del pubblico":
+        'Muzyka na wejście widzów',
+    'Campanella – 3 minuti':
+        'Dzwonek – 3 minuty',
+    'Campanella – 1 minuto':
+        'Dzwonek – 1 minuta',
+    'Per favore spegnete i telefoni':
+        'Prosimy o wyciszenie telefonów',
+    'Campanella – si comincia':
+        'Dzwonek – zaczynamy',
+    'Buio: sfuma musica e immagini':
+        'Ciemność: wygaś muzykę i obraz',
+    'Logo della scuola':
+        'Logo szkoły',
+    'Intervallo: 15 minuti':
+        'Przerwa: 15 minut',
+    "Musica dell'intervallo":
+        'Muzyka w przerwie',
+    "Fine dell'intervallo: sfuma la musica":
+        'Koniec przerwy: wygaś muzykę',
+    'Grazie!':
+        'Dziękujemy!',
+    'Musica finale':
+        'Muzyka na koniec',
+    'Fine: sfuma tutto':
+        'Koniec: wygaś wszystko',
+    '📦 Pacchetto ZIP con i media…':
+        '📦 Paczka ZIP z mediami…',
+    '🧹 Metti da parte i file non usati…':
+        '🧹 Odłóż nieużywane pliki…',
+    '✏ Rinomina il file…':
+        '✏ Zmień nazwę pliku…',
+    'Pacchetto ZIP':
+        'Paczka ZIP',
+    'Scaletta vuota: niente da mettere nel pacchetto':
+        'Lista jest pusta: nie ma czego spakować',
+    "Playlist grandi:\n{}\n\nLasciarle fuori dal pacchetto? Il pacchetto resta piccolo; sull'altro computer quelle cue cercano i file dove sono qui (copiali a parte).":
+        'Duże playlisty:\n{}\n\nZostawić je poza paczką? Paczka będzie mała; na innym komputerze te cue szukają plików tam, gdzie są tutaj (skopiuj je osobno).',
+    'Pacchetto ZIP scritto: {} file, {}':
+        'Zapisano paczkę ZIP: pliki {}, {}',
+    'Lasciati fuori (playlist grandi): {}':
+        'Pominięte (duże playlisty): {}',
+    'File mancanti, non nel pacchetto:':
+        'Brakujące pliki, nie ma ich w paczce:',
+    'File non usati':
+        'Nieużywane pliki',
+    "Questo spettacolo non ha una cartella dei media: c'è solo quando è salvato come spettacolo portatile (i file copiati accanto).":
+        'To przedstawienie nie ma folderu mediów: jest tylko przy zapisie przenośnym (pliki skopiowane obok).',
+    'Nessun file non usato in {}':
+        'Brak nieużywanych plików w {}',
+    'Tutti i file della cartella dei media sono usati.':
+        'Wszystkie pliki z folderu mediów są używane.',
+    '{} file ({}) della cartella dei media non sono usati da nessuna cue né dalle copie di sicurezza:\n{}\n\nMetterli da parte nella sottocartella «_unused»? Non vengono cancellati.':
+        'Plików z folderu mediów nieużywanych przez żaden cue ani kopię zapasową: {} ({}):\n{}\n\nOdłożyć je do podfolderu „_unused”? Nie zostaną skasowane.',
+    'Messi da parte {} file in {}':
+        'Odłożono pliki ({}) do {}',
+    'Rinomina il file':
+        'Zmiana nazwy pliku',
+    'Questa cue non ha un file da rinominare':
+        'Ten cue nie ma pliku, któremu można zmienić nazwę',
+    'Il file è in onda: fermalo prima di rinominarlo':
+        'Plik jest na wyjściu: zatrzymaj go przed zmianą nazwy',
+    'Nuovo nome per «{}» (le {} cue che lo usano seguono; altri spettacoli che lo usano non lo troveranno più):':
+        'Nowa nazwa dla „{}” (cue, które go używają, nadążą: {}; inne przedstawienia z tym plikiem go nie znajdą):',
+    "C'è già un file con questo nome:\n{}":
+        'Plik o tej nazwie już istnieje:\n{}',
+    "Impossibile rinominare il file: è aperto in un altro programma o nell'anteprima (seleziona prima un'altra cue).\n{}":
+        'Nie udało się zmienić nazwy: plik jest otwarty w innym programie albo w podglądzie (najpierw zaznacz inny cue).\n{}',
+    'File rinominato in «{}»: {} riferimenti aggiornati':
+        'Nowa nazwa pliku: „{}”, zaktualizowane odwołania: {}',
+    '■ Ferma':
+        '■ Zatrzymaj',
+    'Ascolta il suono selezionato prima di sceglierlo (in cuffia, se impostata)':
+        'Posłuchaj zaznaczonego dźwięku przed wyborem (w słuchawkach, jeśli są ustawione)',
+    'Non si riesce a leggere questo file':
+        'Nie da się odczytać tego pliku',
 }

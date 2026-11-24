@@ -154,9 +154,12 @@ class LiveCueTable(QTableWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the high-contrast live rundown table."""
-        super().__init__(0, 6, parent)
+        super().__init__(0, 8, parent)  # 6 + page and line of the script (5.1)
         self.setAccessibleName("Scaletta Regia LIVE Show")
         self.setAccessibleDescription("Elenco scaletta ad alto contrasto per il live. Frecce Su e Giù per standby, Spazio per il GO, Esc due volte per il Panic.")
+
+    # 5.7: False when this computer switched the program's Space = GO off (GO from a remote's key only).
+    space_starts_go: bool = True
 
     def keyPressEvent(self, event) -> None:  # noqa: N802
         """Keyboard shortcuts on the live list (GO, arrows). ESC propagates to MainWindow double-ESC guard."""
@@ -164,7 +167,7 @@ class LiveCueTable(QTableWidget):
         if key == Qt.Key.Key_Space:
             if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
                 self.force_go_requested.emit()
-            else:
+            elif LiveCueTable.space_starts_go:
                 self.go_requested.emit()
             event.accept()
             return
@@ -833,6 +836,31 @@ class LiveCueRowDelegate(QStyledItemDelegate):
             painter.restore()
             return
 
+        # ── Col 6 / 7: page of the script and the line the cue comes on (5.1) ──
+        if col in (COL_PAGE, COL_LINE):
+            text = str(index.data(Qt.ItemDataRole.DisplayRole) or "").strip()
+            opt.text = ""
+            style.drawControl(QStyle.ControlElement.CE_ItemViewItem, opt, painter, opt.widget)
+            paint_cue_row_decorations(painter, opt.rect, index, is_selected=is_sel)
+            painter.save()
+            font = QFont(opt.font)
+            font.setPointSize(9)
+            font.setItalic(col == COL_LINE)
+            painter.setFont(font)
+            painter.setPen(QColor("#e4e4e7" if is_mono else "#cbd5e1") if text else QColor("#334155"))
+            rect = opt.rect.adjusted(6, 0, -6, 0)
+            shown = painter.fontMetrics().elidedText(text, Qt.TextElideMode.ElideRight, rect.width()) if text else "—"
+            align = Qt.AlignmentFlag.AlignVCenter | (
+                Qt.AlignmentFlag.AlignHCenter if col == COL_PAGE or not text else Qt.AlignmentFlag.AlignLeft)
+            painter.drawText(rect, align, shown)
+            painter.restore()
+            return
+
+
+# 5.1: the script columns, logical 6 and 7 (moved next to the name on screen); hidden when unused.
+COL_PAGE = 6
+COL_LINE = 7
+
 
 class LiveShowPanel(QWidget):
     """Full-width live operation console with extended cue table, GO, Global Pause, and PANIC."""
@@ -1052,7 +1080,7 @@ class LiveShowPanel(QWidget):
         # ── 2. Center Hero Area: Extended 6-Column Live Scaletta ──────────────
         self.live_table = LiveCueTable()
         self.live_table.setHorizontalHeaderLabels([
-            "#", "Q", "Media / Cue", "Note di Regia", "Tempi · Sequenza", "Layer / Stato"
+            "#", "Q", "Media / Cue", "Note di Regia", "Tempi · Sequenza", "Layer / Stato", "Pag.", "Battuta"
         ])
         self.live_table.verticalHeader().setVisible(False)
         self.live_table.verticalHeader().setDefaultSectionSize(38)
@@ -1084,6 +1112,15 @@ class LiveShowPanel(QWidget):
         self.live_table.setColumnWidth(3, 200)
         self.live_table.setColumnWidth(4, 204)
         self.live_table.setColumnWidth(5, 136)
+        # 5.1: page and line of the script right after the name; shown only when a cue has them.
+        hdr.setSectionResizeMode(COL_PAGE, QHeaderView.ResizeMode.Fixed)
+        hdr.setSectionResizeMode(COL_LINE, QHeaderView.ResizeMode.Interactive)
+        self.live_table.setColumnWidth(COL_PAGE, 54)
+        self.live_table.setColumnWidth(COL_LINE, 180)
+        hdr.moveSection(hdr.visualIndex(COL_PAGE), 3)
+        hdr.moveSection(hdr.visualIndex(COL_LINE), 4)
+        self.live_table.setColumnHidden(COL_PAGE, True)
+        self.live_table.setColumnHidden(COL_LINE, True)
         self.live_table.setItemDelegate(LiveCueRowDelegate(self.live_table))
 
         self.live_table.cellClicked.connect(self._on_table_clicked)
@@ -1958,7 +1995,7 @@ class LiveShowPanel(QWidget):
         if row is None or not (0 <= row < self.live_table.rowCount()):
             return False
         is_waiting = bool(phase_txt)
-        for c_idx in range(6):
+        for c_idx in range(self.live_table.columnCount()):  # 8 with the script columns (5.1)
             it = self.live_table.item(row, c_idx)
             if it is None:
                 return False
@@ -2043,6 +2080,11 @@ class LiveShowPanel(QWidget):
             phases = phase_tags or {}
             conflicts = layer_conflicts or {}
             played_ids = played or set()
+            # 5.1: the script columns only when the show uses them (the list keeps its room otherwise).
+            for col, field in ((COL_PAGE, "script_page"), (COL_LINE, "script_line")):
+                used = any(getattr(c, field, "") for c in cues)
+                if self.live_table.isColumnHidden(col) == used:
+                    self.live_table.setColumnHidden(col, not used)
 
             # Pre-index hierarchy once in O(N) instead of O(N^2) scans per row
             cue_by_id: dict[int, Cue] = {c.cue_id: c for c in cues}
@@ -2132,6 +2174,8 @@ class LiveShowPanel(QWidget):
                     cue.notes or "",
                     dur_str,
                     status_txt,
+                    getattr(cue, "script_page", "") or "",   # 5.1
+                    getattr(cue, "script_line", "") or "",
                 )
 
                 for c_idx, cell_text in enumerate(col_texts):

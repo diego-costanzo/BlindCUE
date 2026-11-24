@@ -106,6 +106,14 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "envelope_db": ("blindcue/engine/envelope.py", "def format_level_db"),
     "in_out_here": ("blindcue/engine/in_out.py", None),
     "tempo_times": ("blindcue/engine/live_state.py", "def cue_time(self, cue_id: int, rate: float"),
+    "cue_xlsx_pdf": ("blindcue/engine/cue_export.py", "def to_xlsx"),
+    "bulk_change": ("blindcue/engine/bulk_change.py", None),
+    "scs_import": ("blindcue/engine/scs_import.py", None),
+    "show_diary": ("blindcue/ui/main_window/_show_diary.py", None),
+    "space_go": ("blindcue/engine/key_map.py", "SPACE_GO_SETTING"),
+    "library": ("blindcue/engine/show_templates.py", None),
+    "show_package": ("blindcue/engine/show_package.py", None),
+    "audition": ("blindcue/ui/audio_pick_dialog.py", None),
 }
 
 

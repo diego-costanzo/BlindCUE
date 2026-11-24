@@ -12,6 +12,7 @@ from __future__ import annotations
 from i18n import tr
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QHBoxLayout,
@@ -70,10 +71,10 @@ class KeyCaptureDialog(QDialog):
 
 class KeyMapDialog(QDialog):
     def __init__(self, key_map: dict[str, list[str]], effect_keys: list[str],
-                 parent: QWidget | None = None) -> None:
+                 parent: QWidget | None = None, space_go: bool = True) -> None:
         super().__init__(parent)
         self.setWindowTitle(tr("Tasti e telecomando di presentazione"))
-        self.setMinimumSize(620, 420)
+        self.setMinimumSize(620, 460)
         self._map = {f: list(keys) for f, keys in km.clean(key_map).items()}
         self._effects = effect_keys
         lay = QVBoxLayout(self)
@@ -106,6 +107,14 @@ class KeyMapDialog(QDialog):
         for b in (wizard, presenter, defaults):
             tools.addWidget(b)
         lay.addLayout(tools)
+        # 5.7: the only key of the program that may be switched off here (Esc, Enter, arrows, F5 stay).
+        self.chk_space = QCheckBox(tr("Spazio = GO (tasto del programma)"))
+        self.chk_space.setChecked(space_go)
+        self.chk_space.setToolTip(tr("Togli la spunta se il GO deve venire solo dal telecomando o da un tasto "
+                                     "scelto qui (per esempio uno Spazio premuto per sbaglio). Ctrl+Spazio e "
+                                     "il pulsante GO restano."))
+        self.chk_space.toggled.connect(lambda _on: self._show())
+        lay.addWidget(self.chk_space)
         self.lbl_conflicts = QLabel()
         self.lbl_conflicts.setWordWrap(True)
         self.lbl_conflicts.setStyleSheet("color: #fbbf24;")
@@ -118,6 +127,9 @@ class KeyMapDialog(QDialog):
 
     def key_map(self) -> dict[str, list[str]]:
         return km.clean(self._map)
+
+    def space_go(self) -> bool:
+        return self.chk_space.isChecked()
 
     def _set_map(self, key_map: dict[str, list[str]]) -> None:
         self._map = {f: list(keys) for f, keys in key_map.items()}
@@ -155,7 +167,11 @@ class KeyMapDialog(QDialog):
             self.table.setItem(row, 1, QTableWidgetItem(", ".join(self._map.get(func, [])) or "—"))
         self.table.resizeColumnsToContents()
         lines = []
-        for key, kind, detail in km.conflicts(self._map, self._effects):
+        space_go = self.chk_space.isChecked() if hasattr(self, "chk_space") else True
+        if not km.go_reachable(self._map, space_go):
+            lines.append(tr("⚠ Senza Spazio e senza un tasto per il GO, il GO si dà solo con il pulsante GO "
+                            "o con Ctrl+Spazio"))
+        for key, kind, detail in km.conflicts(self._map, self._effects, space_go):
             if kind == "reserved":
                 lines.append(tr("⚠ {}: il programma lo usa già ({})").format(key, tr(detail)))
             elif kind == "twice":

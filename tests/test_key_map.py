@@ -121,3 +121,63 @@ def test_dialog_profile_capture_and_store(monkeypatch):
     finally:
         dlg.close()
         _pump()
+
+
+def test_space_go_can_be_switched_off(monkeypatch):
+    """5.7: the program's Space = GO off for this computer; Esc, Enter, arrows stay fixed."""
+    QApplication.instance() or QApplication([])
+    from ui import key_map_dialog as kd
+    from ui.live_show_view import LiveCueTable
+    from ui.main_window import MainWindow
+    from ui.output_window import OutputWindow
+
+    assert km.go_reachable({}, True) and not km.go_reachable({}, False)
+    assert km.go_reachable({"go": ["PgDown"]}, False)
+    assert ("Space", "reserved", "GO") not in km.conflicts({"pause_toggle": ["Space"]}, space_go=False)
+    assert ("Esc", "reserved", "PANIC (2×)") in km.conflicts({"go": ["Esc"]}, space_go=False)
+
+    dlg = kd.KeyMapDialog({}, [], space_go=True)
+    dlg.chk_space.setChecked(False)
+    assert not dlg.space_go() and "Ctrl+" in dlg.lbl_conflicts.text()   # GO only by the button now
+    dlg._set_map(km.PRESENTER)
+    assert "Ctrl+" not in dlg.lbl_conflicts.text()
+    dlg.close()
+
+    output = OutputWindow()
+    win = MainWindow(output)
+    win._clock_timer.stop()
+    try:
+        assert win._act_go.shortcut().toString() == "Space" and LiveCueTable.space_starts_go
+        win._keymap_store({}, space_go=False)
+        assert win._act_go.shortcut().isEmpty() and not LiveCueTable.space_starts_go
+        table = win._live_show_panel.live_table
+        went = []
+        table.go_requested.connect(lambda: went.append("go"))
+        table.force_go_requested.connect(lambda: went.append("forced"))
+        _press(table, Qt.Key.Key_Space, " ")
+        assert went == []                                   # Space does nothing on the show's list
+        QApplication.sendEvent(table, QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Space,
+                                                Qt.KeyboardModifier.ControlModifier, " "))
+        assert went == ["forced"]                           # Ctrl+Space still forces a GO
+        output2 = OutputWindow()
+        win2 = MainWindow(output2)                          # the next start of the program remembers it
+        win2._clock_timer.stop()
+        assert win2._act_go.shortcut().isEmpty()
+        win2._force_closing = True
+        output2.force_close()
+        win2.close()
+        _pump()
+        win2.deleteLater()
+        output2.deleteLater()
+        win._keymap_store({}, space_go=True)
+        _press(table, Qt.Key.Key_Space, " ")
+        assert went == ["forced", "go"] and win._act_go.shortcut().toString() == "Space"
+    finally:
+        win._keymap_store({}, space_go=True)
+        win._force_closing = True
+        output.force_close()
+        win.close()
+        _pump()
+        win.deleteLater()
+        output.deleteLater()
+        _pump()

@@ -52,11 +52,27 @@ def take_over(other: list[Cue], chosen_ids: Iterable[int],
     "key" (its effect key is used in this show too), "clock" (it starts at a time of day),
     "call" (only an action starts it and none came along), "enabled" (it was switched off there).
     """
+    return _take(other, chosen_ids, here, dry=False)
+
+
+def preview(other: list[Cue], chosen_ids: Iterable[int], here: Iterable[Cue] = ()) -> list[tuple[str, str, int]]:
+    """The warnings ``take_over`` would give, without making anything: shown while the cues are chosen."""
+    return _take(other, chosen_ids, here, dry=True)[1]
+
+
+def chosen_with_children(other: list[Cue], chosen_ids: Iterable[int]) -> set[int]:
+    """The ids that come along: the chosen cues and everything inside the chosen scenes."""
+    return _with_children(other, {int(i) for i in chosen_ids})
+
+
+def _take(other: list[Cue], chosen_ids: Iterable[int], here: Iterable[Cue],
+          dry: bool) -> tuple[list[Cue], list[tuple[str, str, int]]]:
     wanted = _with_children(other, {int(i) for i in chosen_ids})
     rows = [i for i, c in enumerate(other) if c.cue_id in wanted]
     all_rows = range(len(other))
     picked = [other[i] for i in rows]
-    new_id = {c.cue_id: next(Cue._id_counter) for c in picked}
+    # A dry run never takes numbers from the counter (the preview runs at every tick of a box).
+    new_id = {c.cue_id: (-1 - n if dry else next(Cue._id_counter)) for n, c in enumerate(picked)}
     keys_here = {(c.hotkey or "").upper() for c in here
                  if getattr(c, "adlib", False) and getattr(c, "hotkey", "")}
     called = {int(i) for c in picked if c.media_type == MediaType.ACTION and isinstance(c.action_spec, dict)
@@ -97,6 +113,10 @@ def take_over(other: list[Cue], chosen_ids: Iterable[int],
             warnings.append(("clock", cue.name, 1))
         if getattr(cue, "call_only", False) and cue.cue_id not in called:
             warnings.append(("call", cue.name, 1))
+        if dry:
+            if cue.media_type.has_file and not cue.text_spec and not Path(cue.file_path).is_file():
+                warnings.append(("file", cue.name, 1))
+            continue
         copy = Cue.from_dict(data)
         if copy.media_type.has_file and not copy.text_spec and not Path(copy.file_path).is_file():
             warnings.append(("file", cue.name, 1))
