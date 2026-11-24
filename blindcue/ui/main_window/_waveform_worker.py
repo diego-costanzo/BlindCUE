@@ -33,7 +33,12 @@ class _WaveformWorkerMixin:
             # selected would see its waveform only seconds later.
             return
         try:
-            analyzer = WaveformAnalyzer(cue.file_path, max(3200, self._waveform.width() * 6))
+            if not hasattr(self, "_peaks_cache_dir"):
+                from engine import peaks_cache
+
+                self._peaks_cache_dir = peaks_cache.default_dir()  # 3.4: waveforms kept on disk
+            analyzer = WaveformAnalyzer(cue.file_path, max(3200, self._waveform.width() * 6),
+                                        cache_dir=self._peaks_cache_dir)
             self._active_analyzers.add(analyzer)
             analyzer.signals.duration_ready.connect(
                 lambda path, dur: self._on_analyzer_duration(path, dur)

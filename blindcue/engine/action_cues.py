@@ -236,6 +236,9 @@ def describe_action(spec: Mapping[str, object], cues: Iterable[Cue] = ()) -> str
     sleep = float(spec["sleep_sec"])
     if kind == ACTION_PAUSE:
         return f"Addormenta in {_format_seconds(sleep)} s: {target}" if sleep > 0 else f"Pausa: {target}"
+    if kind == ACTION_RESUME and spec.get("wake_next"):  # 3.3: the next track of the playlist
+        return (f"Risveglia dal brano successivo in {_format_seconds(sleep)} s: {target}" if sleep > 0
+                else f"Riprendi dal brano successivo: {target}")
     if kind == ACTION_RESUME:
         return f"Risveglia in {_format_seconds(sleep)} s: {target}" if sleep > 0 else f"Riprendi: {target}"
     if kind == ACTION_LEVEL:

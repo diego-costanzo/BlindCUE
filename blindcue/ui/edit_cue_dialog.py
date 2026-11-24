@@ -325,11 +325,13 @@ class EditCueDialog(QDialog):
         transport.addWidget(self.btn_clip_view)
         transport.addStretch(1)
         self.btn_in_here = QPushButton("⇤ Inizio qui")
-        self.btn_in_here.setToolTip("L'inizio va dove si trova ora la riproduzione")
+        self.btn_in_here.setToolTip("L'inizio va dove si trova ora l'ascolto (tasto I, come «IN Testina» "
+                                    "sulla forma d'onda)")
         self.btn_in_here.clicked.connect(self._in_here)
         transport.addWidget(self.btn_in_here)
         self.btn_out_here = QPushButton("Fine qui ⇥")
-        self.btn_out_here.setToolTip("La fine va dove si trova ora la riproduzione")
+        self.btn_out_here.setToolTip("La fine va dove si trova ora l'ascolto (tasto O, come «OUT Testina» "
+                                     "sulla forma d'onda)")
         self.btn_out_here.clicked.connect(self._out_here)
         transport.addWidget(self.btn_out_here)
         lay.addLayout(transport)
@@ -693,6 +695,13 @@ class EditCueDialog(QDialog):
         self._on_position(sec)
 
     def _playhead(self) -> float | None:
+        """Where the audition is now: while it plays, the player itself at this very moment (the
+        waveform head follows it a little late); paused or stopped, the waveform head (it may
+        have been moved by hand)."""
+        if self._player is not None and self._player.is_playing() and hasattr(self._player, "position_seconds"):
+            pos = self._player.position_seconds()
+            if pos is not None and self._duration > 0:
+                return pos
         if self._waveform is None:
             return None
         return self._waveform.playhead_seconds()
@@ -716,14 +725,44 @@ class EditCueDialog(QDialog):
         self.btn_clip_view.setText("↔ Tutto il file")
 
     def _in_here(self) -> None:
+        """IN where the audition is now - the same rule as "IN Testina" / key I on the main waveform."""
+        from engine.in_out import in_at
+
         sec = self._playhead()
-        if sec is not None:
-            self._apply_in(sec)
+        if sec is None:
+            return
+        self._apply_in(in_at(sec, self._duration) if self._duration > 0 else sec)
+        self.lbl_status.setText(tr("Inizio: {} s").format(f"{self._vals['in_point']:.2f}"))
 
     def _out_here(self) -> None:
+        """OUT where the audition is now - the same rule as "OUT Testina" / key O on the main waveform."""
+        from engine.in_out import OUT_END, OUT_MIN, out_at
+
         sec = self._playhead()
-        if sec is not None:
-            self._apply_out(sec)
+        if sec is None:
+            return
+        target, how = out_at(sec, self._vals["in_point"], self._duration)
+        self._apply_out(target)
+        if how == OUT_END:
+            self.lbl_status.setText(tr("Fine: la fine del file"))
+        elif how == OUT_MIN:
+            self.lbl_status.setText(tr("L'ascolto è prima dell'inizio: fine subito dopo l'inizio ({} s)").format(
+                f"{target:.2f}"))
+        else:
+            self.lbl_status.setText(tr("Fine: {} s").format(f"{target:.2f}"))
+
+    def keyPressEvent(self, event) -> None:  # noqa: N802 - Qt override
+        """I / O set the start / end where the audition is (not while typing in a field)."""
+        from PySide6.QtWidgets import QAbstractSpinBox, QApplication, QComboBox, QLineEdit
+
+        focused = QApplication.focusWidget()
+        typing = isinstance(focused, (QLineEdit, QAbstractSpinBox, QComboBox))
+        if (self._kind in TIMED and not typing and event.modifiers() == Qt.KeyboardModifier.NoModifier
+                and event.key() in (Qt.Key.Key_I, Qt.Key.Key_O)):
+            (self._in_here if event.key() == Qt.Key.Key_I else self._out_here)()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     # ── Waveform peaks (made in the background by the main window) ──
 

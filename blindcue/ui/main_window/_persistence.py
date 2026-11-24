@@ -155,6 +155,7 @@ class _PersistenceMixin:
             self._goto_counts.clear()  # 2.1/2.2: another show, nothing waits, jumps count again
             self._clock_reset(forget=True)  # 2.6 (what it already did comes back with the settings)
             self._released_groups.clear()  # cue ids repeat between shows
+            self._playlist_runs.clear()  # 3.3
             self._checklist_ticks = {}
             self._current_project_path = recovery.get("active_project_path")
             self._project_bundled = bool(self._current_project_path) and \
@@ -239,6 +240,7 @@ class _PersistenceMixin:
         self._versions_load({})  # 2.3: a new show has only the full version
         self._show_info_load({})  # 5.6
         self._released_groups.clear()  # cue ids repeat between shows
+        self._playlist_runs.clear()  # 3.3
         self._rehearsal_before.clear()
         self._rehearsal_undo.clear()
         self._held_auto_go.clear()
@@ -396,6 +398,7 @@ class _PersistenceMixin:
             self._goto_counts.clear()  # 2.1/2.2: another show, nothing waits, jumps count again
             self._clock_reset(forget=True)  # 2.6: another show
             self._released_groups.clear()  # cue ids repeat between shows
+            self._playlist_runs.clear()  # 3.3
             self._rehearsal_before.clear()
             self._rehearsal_undo.clear()
             self._held_auto_go.clear()

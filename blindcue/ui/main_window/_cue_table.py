@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from i18n import tr
+from models.cue import is_placeholder
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
@@ -126,6 +127,8 @@ class _CueTableMixin:
             status_txt, colour = "PRE-VIZ", CLR_PREVIZ
         if not getattr(cue, "enabled", True):
             status_txt, colour = tr("⊘ ESCLUSA"), CLR_TEXT_MUTED  # 2.3: off in this version
+        elif not status_txt and is_placeholder(cue):
+            status_txt, colour = tr("🕳 SENZA FILE"), "#f59e0b"  # 3.4: a placeholder, plays nothing
 
         tooltip = self._cue_tooltip(row, cue)
 
@@ -264,6 +267,7 @@ class _CueTableMixin:
             self._goto_counts.clear()  # 2.2: jumps count again
             self._run_reset()  # 2.5: a new run of the show
             self._clock_reset()  # 2.6: today's time plan starts afresh
+            self._playlist_runs.clear()  # 3.3: playlists start from their first track again
         if not enabled:
             saved = self._run_save()  # 2.5: the run log of the show that just ended
             if saved is not None:

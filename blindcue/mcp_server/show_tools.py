@@ -62,7 +62,7 @@ DURATION_BUDGET_SEC = 20.0
 RECENT_AUTOSAVE_SEC = 15 * 60
 _ACTION_KEYS = {"target", "layer", "output", "cue_ids", "duration", "mode", "level", "db", "curve",
                 "text", "note_color", "items", "goto_play", "goto_max", "seek_mode", "seek_sec",
-                "countdown_sec", "sw_mode", "sleep_sec"}
+                "countdown_sec", "sw_mode", "sleep_sec", "wake_next"}
 
 
 class ToolError(Exception):
@@ -294,6 +294,8 @@ EDITABLE: dict[str, tuple[str, Any]] = {
                   lambda v: None if v in (None, "", 0) else _float(v, "out_point", 0.0, 86400.0)),
     "loop": ("Repeat the file.", _bool),
     "loop_count": ("Repeats when loop is on (0 = until stopped).", lambda v: int(_float(v, "loop_count", 0, 999))),
+    "loop_crossfade": ("Sound loops: seconds each pass runs into the next (0 = a cut).",
+                       lambda v: _float(v, "loop_crossfade", 0.0, 30.0)),
     "hold_time": ("Pictures: seconds on screen (0 = until replaced).", lambda v: _float(v, "hold_time", 0.0, 86400.0)),
     "pre_delay": ("Wait after GO before starting, seconds.", lambda v: _float(v, "pre_delay")),
     "post_delay": ("Wait after the end before an Auto-GO, seconds.", lambda v: _float(v, "post_delay")),
@@ -461,6 +463,8 @@ def _strict_action(kind: str, raw: Any, base: dict[str, Any], new: bool) -> dict
         _float(raw["countdown_sec"], "countdown_sec", 0.0, 14400.0)
     if "sleep_sec" in raw:
         _float(raw["sleep_sec"], "sleep_sec", 0.0, 600.0)
+    if "wake_next" in raw:
+        spec["wake_next"] = _bool(raw["wake_next"])
     if "sw_mode" in raw:
         _choice(raw["sw_mode"], "sw_mode", ("start", "stop", "reset"))
     if "items" in raw:
@@ -991,7 +995,8 @@ def cue_schema() -> dict[str, Any]:
             "countdown": "countdown_sec seconds (0 stops it), text = its title",
             "wait": "duration seconds, then the next cue starts by itself (a delay visible in the list)",
             "pause / resume": "target: pause the sound / video of the targets, or let them play on; "
-                              "sleep_sec > 0 = sleep (fade out, then pause) / wake (fade in)",
+                              "sleep_sec > 0 = sleep (fade out, then pause) / wake (fade in); "
+                              "resume with wake_next true = a playlist wakes with its next track",
             "stopwatch": "sw_mode start | stop | reset (a stopwatch on the status bar)",
         },
         "media_extensions": sorted(VIDEO_EXT | AUDIO_EXT | IMAGE_EXT),

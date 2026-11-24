@@ -195,6 +195,13 @@ class _NowPlayingMixin:
         logger.info("[SCENE] fade '%s' (%d layers)", self._cues[row].name, len(slots))
         self._sync_live_view()
 
+    @staticmethod
+    def _cue_tempo(cue: Cue) -> float:
+        """3.7: the tempo of a sound or video (1.0 for anything else): times are told in real seconds."""
+        if cue.media_type not in (MediaType.AUDIO, MediaType.VIDEO):
+            return 1.0
+        return float(getattr(cue, "playback_rate", 1.0) or 1.0)
+
     def _now_playing_cards(self) -> list[CardState]:
         cards: list[CardState] = []
         paused_all = getattr(self, "_is_global_paused", False)
@@ -210,7 +217,7 @@ class _NowPlayingMixin:
             if cue.status != CueStatus.LIVE and not waiting:
                 continue
             slot = self._runtime_slot(cue)
-            t = self._live_clocks.cue_time(cue.cue_id)
+            t = self._live_clocks.cue_time(cue.cue_id, self._cue_tempo(cue))  # 3.7: real seconds
             title = f"{_ICONS.get(cue.media_type, '•')} {format_cue_ref(row, cue)} '{cue.name}'"
             borrowed = cue.cue_id in self._slot_override
             layer = f"B·L{cue.layer}" if slot > 3 and not borrowed else f"L{cue.layer}"

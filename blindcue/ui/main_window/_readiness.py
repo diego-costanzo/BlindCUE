@@ -42,6 +42,7 @@ from engine.readiness import (
     problems,
 )
 from i18n import tr
+from models.cue import is_placeholder
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.readiness_page import ReadinessPage, RowView
@@ -131,7 +132,8 @@ class _ReadinessMixin:
             speakers, pinned, missing_dev = QMediaDevices.defaultAudioOutput().description(), False, None
         earcons = getattr(self, "_earcon_mgr", None)
         headphones = earcons is not None and not earcons.on_audience_speakers()
-        with_files = [(i, c) for i, c in enumerate(self._cues) if c.media_type.has_file]
+        # 3.4: a placeholder (sound without a file yet) is listed under "to fix in the list", not as missing
+        with_files = [(i, c) for i, c in enumerate(self._cues) if c.media_type.has_file and not is_placeholder(c)]
         missing = tuple(f"{format_cue_ref(i, c)} '{c.name}'" for i, c in with_files
                         if not os.path.isfile(c.file_path or ""))
         path = getattr(self, "_current_project_path", None)
@@ -195,6 +197,7 @@ class _ReadinessMixin:
             lc.EMPTY_SCENE: tr("scena senza nulla da suonare"),
             lc.NEVER_CALLED: tr("parte solo se chiamata, ma nessuna azione la chiama"),
             lc.PICTURE_TOO_SHORT: tr("immagine sullo schermo meno dei suoi passaggi + 0,5 s"),
+            lc.PLACEHOLDER: tr("ancora senza file: al GO non suona"),  # 3.4
         }.get(kind, kind)
 
     def _readiness_view(self, check: Check) -> RowView:
@@ -461,7 +464,8 @@ class _ReadinessMixin:
             self._readiness_refresh()
         elif action == "show_missing":
             row = next((i for i, c in enumerate(self._cues)
-                        if c.media_type.has_file and not os.path.isfile(c.file_path or "")), -1)
+                        if c.media_type.has_file and not os.path.isfile(c.file_path or "")
+                        and not is_placeholder(c)), -1)  # 3.4
             if not self._readiness_review:
                 self._on_readiness_stay()  # files are replaced in Preparation
             if row >= 0 and not self._live_mode:

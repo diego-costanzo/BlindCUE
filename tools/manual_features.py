@@ -98,6 +98,14 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "thumbnails": ("blindcue/ui/thumbnails.py", None),
     "output_windows": ("blindcue/ui/main_window/_picture_tools.py", "def clear_outputs"),
     "preview_off_in_show": ("blindcue/ui/main_window/_picture_tools.py", "def _end_preview_on_projector"),
+    # Stage 3 sound, rest of 3.3 / 3.4 / 3.7 (2026-11-24)
+    "playlist_flow": ("blindcue/engine/playlist_flow.py", None),
+    "loop_xfade": ("blindcue/models/cue.py", "loop_crossfade: float"),
+    "placeholder": ("blindcue/models/cue.py", "def is_placeholder"),
+    "peaks_cache": ("blindcue/engine/peaks_cache.py", None),
+    "envelope_db": ("blindcue/engine/envelope.py", "def format_level_db"),
+    "in_out_here": ("blindcue/engine/in_out.py", None),
+    "tempo_times": ("blindcue/engine/live_state.py", "def cue_time(self, cue_id: int, rate: float"),
 }
 
 

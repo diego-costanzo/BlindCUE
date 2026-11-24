@@ -92,7 +92,8 @@ def test_sanitize_fills_every_key_with_safe_defaults():
                          "goto_play", "goto_max", "seek_mode", "seek_sec",  # jump / seek (stage 2, 2.2)
                          "countdown_sec",  # countdown (stage 2, 2.5)
                          "sw_mode",  # stopwatch (stage 2, 2.11)
-                         "sleep_sec"}  # sleep / wake (stage 3, 3.3)
+                         "sleep_sec",  # sleep / wake (stage 3, 3.3)
+                         "wake_next"}  # wake with the next playlist track (stage 3, 3.3)
 
 
 def test_sanitize_clamps_damaged_values():

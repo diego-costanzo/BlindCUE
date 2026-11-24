@@ -25,6 +25,31 @@ def clamp01(val: float) -> float:
     return 0.0 if val <= 0.0 else (1.0 if val >= 1.0 else float(val))
 
 
+# 3.4: volume envelope points are stored as a level 0..1 (what the player gets) and shown /
+# typed in dB. The level is an amplitude factor: -6 dB = 0.5, -20 dB = 0.1.
+MIN_POINT_DB = -60.0
+
+
+def level_to_db(level: float) -> float:
+    """dB of a level 0..1 (-inf for silence)."""
+    return 20.0 * math.log10(level) if level > 0 else float("-inf")
+
+
+def db_to_level(db: float) -> float:
+    """Level 0..1 of *db* (at or below MIN_POINT_DB = silence)."""
+    if not math.isfinite(db) or db <= MIN_POINT_DB:
+        return 0.0
+    return clamp01(10.0 ** (min(0.0, db) / 20.0))
+
+
+def format_level_db(level: float) -> str:
+    """'-6.0 dB', '0.0 dB', '-∞ dB' (the minus sign as on the meters)."""
+    db = level_to_db(level)
+    if not math.isfinite(db) or db <= MIN_POINT_DB:
+        return "-∞ dB"
+    return f"{db:.1f} dB" if db < -0.05 else "0.0 dB"
+
+
 def section_label_for_index(idx: int) -> str:
     """Return 'A'..'Z' for 0..25, then 'S27'.. beyond."""
     if 0 <= idx < 26:

@@ -21,7 +21,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from models.cue import Cue, CueStatus, MediaType
+from models.cue import Cue, CueStatus, MediaType, is_placeholder
 
 logger = logging.getLogger(__name__)
 
@@ -484,7 +484,7 @@ class ProjectManager:
             for item in raw_cues:
                 try:
                     cue = Cue.from_dict(item, project_root=proj_dir)
-                    if not cue.media_type.has_file:
+                    if not cue.media_type.has_file or is_placeholder(cue):  # 3.4: a sound without a file yet
                         # Groups and action cues have no media file: always LOADED
                         cue.status = CueStatus.LOADED
                         loaded_cues.append(cue)

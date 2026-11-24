@@ -522,7 +522,8 @@ class _MenuMixin:
         drop_group = self._drop_group = QGroupBox("Caricamento Rapido (Drag && Drop)")
         drop_layout = QVBoxLayout(drop_group)
         self._drop_zone = DropZone()
-        self._drop_zone.file_dropped.connect(self._on_file_dropped)
+        # 3.3: the whole drop at once, as on the list (several sounds -> "make a playlist?", .m3u files)
+        self._drop_zone.files_dropped.connect(self._on_files_dropped_on_zone)
         drop_layout.addWidget(self._drop_zone)
         bottom_splitter.addWidget(drop_group)
 

@@ -6,7 +6,7 @@ import os
 from collections.abc import Iterable
 
 from engine.show_engine import go_stops
-from models.cue import Cue, MediaType
+from models.cue import Cue, MediaType, is_placeholder
 
 
 def show_stats(cues: Iterable[Cue]) -> dict[str, int]:
@@ -25,5 +25,5 @@ def show_stats(cues: Iterable[Cue]) -> dict[str, int]:
         "effects": sum(1 for c in cue_list if getattr(c, "adlib", False)),
         "off": sum(1 for c in cue_list if not getattr(c, "enabled", True)),
         "missing": sum(1 for c in cue_list if c.media_type.has_file and not getattr(c, "text_spec", None)
-                       and not os.path.isfile(c.file_path or "")),
+                       and not os.path.isfile(c.file_path or "") and not is_placeholder(c)),
     }

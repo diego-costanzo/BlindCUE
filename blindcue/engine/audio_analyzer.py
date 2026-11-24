@@ -77,11 +77,16 @@ class WaveformAnalyzer(QRunnable):
         Number of horizontal bins (pixels) for the waveform.
     """
 
-    def __init__(self, file_path: str, target_width: int = 800) -> None:
-        """Prepare a waveform peak-extraction job for ``file_path``."""
+    def __init__(self, file_path: str, target_width: int = 800, cache_dir: str | None = None) -> None:
+        """Prepare a waveform peak-extraction job for ``file_path``.
+
+        *cache_dir* (3.4): peaks kept on disk there are used instead of decoding,
+        and new ones are kept (``engine.peaks_cache``); None = no disk cache.
+        """
         super().__init__()
         self.file_path = file_path
         self.target_width = max(1, target_width)
+        self.cache_dir = cache_dir
         self.signals = _AnalyzerSignals()
         self.setAutoDelete(True)
 
@@ -283,6 +288,20 @@ class WaveformAnalyzer(QRunnable):
         result is delivered through ``signals.finished`` on the GUI thread.
         """
         try:
+            if self.cache_dir:
+                from engine import peaks_cache
+
+                hit = peaks_cache.load(self.cache_dir, self.file_path)
+                if hit is not None:  # 3.4: drawn before, the file has not changed
+                    peaks, cached_sec = hit
+                    try:
+                        if cached_sec:
+                            self.signals.duration_ready.emit(self.file_path, cached_sec)
+                        self.signals.finished.emit(self.file_path, peaks)
+                    except RuntimeError:
+                        pass
+                    logger.info("[WAVEFORM] %d bins from the disk cache for %s", len(peaks), self.file_path)
+                    return
             # Report the container duration as soon as it is known: the waveform
             # toolbar must enable split/zoom on first selection even when
             # QMediaPlayer does not (re-)emit durationChanged for the file, or
@@ -325,6 +344,10 @@ class WaveformAnalyzer(QRunnable):
 
             logger.info("[WAVEFORM] Extracted %d bins from %s",
                         len(peaks), self.file_path)
+            if self.cache_dir:
+                from engine import peaks_cache
+
+                peaks_cache.store(self.cache_dir, self.file_path, peaks, duration_sec)
             try:
                 self.signals.finished.emit(self.file_path, peaks)
             except RuntimeError:

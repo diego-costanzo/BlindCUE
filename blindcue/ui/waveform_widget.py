@@ -57,9 +57,13 @@ class _ZoomStepButton(QPushButton):
 
 from engine.envelope import (
     FADE_CURVE_LABELS,
+    MIN_POINT_DB,
     add_or_update_point,
     apply_fade_curve,
+    db_to_level,
     evaluate_points_envelope,
+    format_level_db,
+    level_to_db,
     move_point,
     normalize_points,
     normalize_sections,
@@ -572,6 +576,11 @@ class WaveformWidget(QWidget):
         pos = event.position()
         if pos.y() < _ENV_TOP_Y - 4:
             return
+        kind, idx = self._hit_test_detailed(pos.x(), pos.y())
+        if kind == "POINT" and idx >= 0 and self._envelope_mode == "volume":
+            self._dragging_kind, self._dragging_idx = None, -1
+            self.edit_point_db(idx)  # 3.4: type the level of this point in dB
+            return
         sec = max(self._in_sec, min(self._effective_end_sec(), self._x_to_sec(pos.x())))
         val = self._y_to_level(pos.y())
         updated, new_idx = add_or_update_point(self._active_points(), sec, val)
@@ -579,6 +588,27 @@ class WaveformWidget(QWidget):
         self.envelope_points_changed.emit(self._envelope_mode, updated)
         self._dragging_kind, self._dragging_idx = "POINT", new_idx
         self.update()
+
+    def edit_point_db(self, idx: int, db: float | None = None) -> bool:
+        """3.4: set the level of volume point *idx* in dB (asks for it when *db* is None)."""
+        pts = [list(p) for p in self._volume_points]
+        if not (0 <= idx < len(pts)):
+            return False
+        if db is None:
+            from PySide6.QtWidgets import QInputDialog
+
+            current = level_to_db(float(pts[idx][1]))
+            value, ok = QInputDialog.getDouble(
+                self, "Livello del punto", "Livello in dB (0 = pieno, -60 = silenzio):",
+                round(max(MIN_POINT_DB, current), 1), MIN_POINT_DB, 0.0, 1)
+            if not ok:
+                return False
+            db = value
+        pts[idx][1] = round(db_to_level(float(db)), 4)
+        self._volume_points = pts
+        self.envelope_points_changed.emit("volume", [list(p) for p in pts])
+        self.update()
+        return True
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         """Pan the view, drag an envelope element, or update the hover cursor."""
@@ -1136,7 +1166,10 @@ class WaveformWidget(QWidget):
             painter.setBrush(QColor("#ffffff") if is_hot else env_clr)
             painter.drawEllipse(QPointF(px, py), r, r)
             if is_hot:
-                tag = f"{int(round(pt_v * 100))}% @ {pt_t:.2f}s"
+                if self._envelope_mode == "opacity":
+                    tag = f"{int(round(pt_v * 100))}% @ {pt_t:.2f}s"
+                else:  # 3.4: volume points in dB (double-click types a value)
+                    tag = f"{format_level_db(pt_v)} @ {pt_t:.2f}s"
                 tx = max(4, min(w - 92, int(px) + 8))
                 ty = max(14, int(py) - 6)
                 painter.setPen(QColor("#ffffff"))

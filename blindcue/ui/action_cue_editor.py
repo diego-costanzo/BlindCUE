@@ -39,6 +39,7 @@ from models.cue import (
 )
 from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFormLayout,
     QHBoxLayout,
@@ -257,6 +258,12 @@ class ActionCueEditor(QWidget):
         self.lbl_sleep = _label("Dissolvenza:")
         form.addRow(self.lbl_sleep, self.spin_sleep)
 
+        self.chk_wake_next = QCheckBox("Dal brano successivo della playlist")
+        self.chk_wake_next.setToolTip("Dopo una pausa lunga (l'intervallo) la playlist riparte con il brano "
+                                      "seguente, non dal punto in cui si era addormentata.")
+        self.lbl_wake_next = _label("Risveglio:")
+        form.addRow(self.lbl_wake_next, self.chk_wake_next)
+
         self.combo_mode = QComboBox()
         self.combo_mode.addItem("Assoluto (%)", "absolute")
         self.combo_mode.addItem("Relativo (dB)", "relative")
@@ -349,6 +356,7 @@ class ActionCueEditor(QWidget):
         for spin in (self.spin_level, self.spin_db, self.spin_duration, self.spin_goto_max, self.spin_seek,
                      self.spin_countdown, self.spin_sleep):
             spin.valueChanged.connect(self._on_edit)
+        self.chk_wake_next.toggled.connect(self._on_edit)
         self.edit_text.textChanged.connect(self._on_edit)
         self.edit_items.textChanged.connect(self._on_edit)
         self.list_cues.itemChanged.connect(self._on_edit)
@@ -396,6 +404,7 @@ class ActionCueEditor(QWidget):
             self.spin_countdown.setValue(float(spec["countdown_sec"]) / 60.0)
             self._select(self.combo_sw, spec["sw_mode"])
             self.spin_sleep.setValue(float(spec["sleep_sec"]))
+            self.chk_wake_next.setChecked(bool(spec["wake_next"]))
             self._refresh_visibility()
         finally:
             self._loading = False
@@ -431,6 +440,7 @@ class ActionCueEditor(QWidget):
             "countdown_sec": round(self.spin_countdown.value() * 60.0, 1),
             "sw_mode": self.combo_sw.currentData(),
             "sleep_sec": self.spin_sleep.value(),
+            "wake_next": self.chk_wake_next.isChecked(),
         })
 
     # ── Internals ─────────────────────────────────────────────────────
@@ -512,6 +522,7 @@ class ActionCueEditor(QWidget):
              not has_target and not action_names_one_cue(kind) and kind != ACTION_COUNTDOWN and not no_text),
             (self.lbl_sw, self.combo_sw, kind == ACTION_STOPWATCH),
             (self.lbl_sleep, self.spin_sleep, kind in (ACTION_PAUSE, ACTION_RESUME)),
+            (self.lbl_wake_next, self.chk_wake_next, kind == ACTION_RESUME),
             (self.lbl_goal, self.combo_goal, action_names_one_cue(kind)),
             (self.lbl_goto_play, self.combo_goto_play, kind == ACTION_GOTO),
             (self.lbl_goto_max, self.spin_goto_max, kind == ACTION_GOTO),

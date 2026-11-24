@@ -13,7 +13,7 @@ from collections.abc import Iterable
 
 from engine.picture_timing import cue_too_short
 from engine.show_engine import outside_go_order
-from models.cue import ACTION_CALL, ACTION_GOTO, ACTION_TARGET_CUES, Cue, MediaType
+from models.cue import ACTION_CALL, ACTION_GOTO, ACTION_TARGET_CUES, Cue, MediaType, is_placeholder
 
 REL_MISSING = "relative_missing"
 NO_TARGET = "no_target"
@@ -21,6 +21,7 @@ JUMP_NOWHERE = "jump_nowhere"
 EMPTY_SCENE = "empty_scene"
 NEVER_CALLED = "never_called"
 PICTURE_TOO_SHORT = "picture_too_short"  # 4.4: shown shorter than its passages + 0.5 s
+PLACEHOLDER = "placeholder"   # 3.4: a sound cue without its file yet (plays nothing at its GO)
 
 
 def _ids(spec: dict) -> list[int]:
@@ -63,4 +64,6 @@ def list_problems(cues: Iterable[Cue]) -> list[tuple[int, str]]:
             out.append((row, NEVER_CALLED))
         if cue_too_short(cue):
             out.append((row, PICTURE_TOO_SHORT))
+        if is_placeholder(cue):
+            out.append((row, PLACEHOLDER))
     return out

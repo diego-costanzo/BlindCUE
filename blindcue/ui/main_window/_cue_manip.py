@@ -163,6 +163,11 @@ class _CueManipMixin:
     def _on_file_dropped(self, file_path: str) -> None:
         self._add_cue_from_file(file_path)
 
+    @Slot(list)
+    def _on_files_dropped_on_zone(self, paths: list) -> None:
+        """The quick-add zone: like a drop on the list, after the selected cue (3.3)."""
+        self._on_files_dropped_on_list([str(p) for p in paths], self._cue_list.currentRow())
+
     def _on_files_dropped_on_list(self, paths: list[str], row: int) -> None:
         """Files dropped on the cue list go after the row they were dropped on.
 
@@ -297,6 +302,7 @@ class _CueManipMixin:
         group = Cue(name=name, file_path="", media_type=MediaType.GROUP, group_mode=GroupMode.SEQUENCE.value,
                     color="#0ea5e9", layer=2, collapsed=True, status=CueStatus.LOADED)
         group.playlist = True
+        group.playlist_remember = True  # 3.3: interval music goes on with new songs at the next GO
         for cue in cues:
             cue.parent_id = group.cue_id
         self._cues.insert(first, group)

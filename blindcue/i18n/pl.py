@@ -4540,4 +4540,112 @@ T: dict[str, str] = {
         'Koniec ({}) musi być po początku ({})',
     'PRE-VIZ':
         'PODGLĄD',
+    '🎵 PLAYLIST':
+        '🎵 PLAYLISTA',
+    'Tra i brani:':
+        'Między utworami:',
+    'Passaggio tra i brani':
+        'Przejście między utworami',
+    'Nessuna (senza pause)':
+        'Brak (bez przerwy)',
+    'Sovrapposizione':
+        'Nakładanie',
+    'Pausa tra i brani':
+        'Pauza między utworami',
+    'Secondi del passaggio tra i brani':
+        'Sekundy przejścia między utworami',
+    'Ordine casuale':
+        'Losowa kolejność',
+    'Ogni giro in un ordine diverso.':
+        'Każde okrążenie w innej kolejności.',
+    'senza ripetere gli ultimi':
+        'bez powtórki ostatnich',
+    'Nessuna ripetizione tra gli ultimi brani':
+        'Bez powtórek wśród ostatnich utworów',
+    'Un brano non torna tra gli ultimi N brani suonati (per quanto lo permette la lunghezza della playlist).':
+        'Utwór nie wraca wśród N ostatnio granych utworów (na ile pozwala długość playlisty).',
+    "Dopo l'ultimo brano ricomincia (a ciclo)":
+        'Po ostatnim utworze od nowa (w kółko)',
+    "La musica dell'intervallo suona finché non la fermi o la addormenti.":
+        'Muzyka na przerwę gra, dopóki jej nie zatrzymasz albo nie uśpisz.',
+    'Il GO successivo continua dal brano seguente':
+        'Kolejne GO gra dalej od następnego utworu',
+    "Dopo uno stop o una pausa la playlist non riparte dal primo brano: continua con quello dopo l'ultimo suonato.":
+        'Po zatrzymaniu albo przerwie playlista nie zaczyna od pierwszego utworu: gra dalej od utworu po ostatnio granym.',
+    'Il brano successivo parte appena finisce quello in corso: il programma lo apre qualche secondo prima, così la pausa è la più corta possibile.':
+        'Następny utwór startuje, gdy tylko skończy się bieżący: program otwiera go kilka sekund wcześniej, więc przerwa jest jak najkrótsza.',
+    'Il brano successivo entra N secondi prima della fine di quello in corso, che sfuma nello stesso tempo.':
+        'Następny utwór wchodzi N sekund przed końcem bieżącego, który w tym czasie cichnie.',
+    'Il brano successivo entra N secondi prima della fine; quello in corso suona fino alla sua fine.':
+        'Następny utwór wchodzi N sekund przed końcem; bieżący gra do swojego końca.',
+    "Tra un brano e l'altro N secondi di silenzio.":
+        'Między utworami N sekund ciszy.',
+    "Playlist '{}' aggiornata":
+        "Playlista '{}' zmieniona",
+    'Dal brano successivo della playlist':
+        'Od następnego utworu playlisty',
+    "Dopo una pausa lunga (l'intervallo) la playlist riparte con il brano seguente, non dal punto in cui si era addormentata.":
+        'Po długiej przerwie (antrakt) playlista budzi się następnym utworem, a nie w miejscu, w którym zasnęła.',
+    'Risveglio:':
+        'Budzenie:',
+    'Risveglia dal brano successivo in {} s: {}':
+        'Obudź następnym utworem w {} s: {}',
+    'Riprendi dal brano successivo: {}':
+        'Wznów od następnego utworu: {}',
+    '🎚 Stesso volume percepito per tutti i brani (LUFS)':
+        '🎚 Ta sama głośność odczuwalna dla wszystkich utworów (LUFS)',
+    'Misura ogni brano e lo abbassa quanto serve, così tutti suonano forte uguale (il programma non può suonare più forte del file).':
+        'Mierzy każdy utwór i ścisza go tyle, ile trzeba, żeby wszystkie grały tak samo głośno (program nie zagra głośniej niż plik).',
+    'Nessun brano con il suo file in questa playlist':
+        'Żaden utwór tej playlisty nie ma pliku',
+    'Misuro il volume percepito di {} brani…':
+        'Mierzę głośność odczuwalną utworów ({})…',
+    'Volume percepito non misurabile: nessun brano analizzato':
+        'Nie da się zmierzyć głośności: żaden utwór nie został przeanalizowany',
+    "Playlist '{}': {} brani allo stesso volume percepito ({} LUFS)":
+        "Playlista '{}': utwory ({}) z tą samą głośnością odczuwalną ({} LUFS)",
+    'più basso di -16: il brano più debole non può suonare più forte':
+        'poniżej -16: najcichszy utwór nie zagra głośniej',
+    'non misurati: {}':
+        'niezmierzone: {}',
+    'Dissolvenza tra i giri:':
+        'Przenikanie między powtórzeniami:',
+    'stacco':
+        'cięcie',
+    'Dissolvenza tra i giri del loop':
+        'Przenikanie między powtórzeniami pętli',
+    'Suoni: ogni giro entra nel successivo con una dissolvenza incrociata di questi secondi, senza salto (0 = stacco).':
+        'Dźwięki: każde powtórzenie przechodzi w następne przenikaniem przez tyle sekund, bez przeskoku (0 = cięcie).',
+    '🕳 Suono da registrare (senza file)':
+        '🕳 Dźwięk do nagrania (bez pliku)',
+    "Un posto nella scaletta per un effetto che non c'è ancora: al GO non suona. Il file si sceglie dopo, dal menu della cue.":
+        'Miejsce na liście dla efektu, którego jeszcze nie ma: jego GO nic nie gra. Plik wybierzesz później z menu cue.',
+    'Effetto da registrare':
+        'Efekt do nagrania',
+    "Suono da registrare aggiunto: scegli il file quando c'è (menu della cue → Scegli il file…)":
+        'Dodano dźwięk do nagrania: wybierz plik, gdy będzie gotowy (menu cue → Wybierz plik…)',
+    "{} '{}': ancora senza file – non suona":
+        "{} '{}': jeszcze bez pliku – nic nie gra",
+    '🕳 SENZA FILE':
+        '🕳 BEZ PLIKU',
+    '🕳 Senza file, non suona — GO: {}':
+        '🕳 Bez pliku, nic nie gra — GO: {}',
+    'ancora senza file: al GO non suona':
+        'jeszcze bez pliku: GO nic nie zagra',
+    'Livello del punto':
+        'Poziom punktu',
+    'Livello in dB (0 = pieno, -60 = silenzio):':
+        'Poziom w dB (0 = pełny, -60 = cisza):',
+    "L'inizio va dove si trova ora l'ascolto (tasto I, come «IN Testina» sulla forma d'onda)":
+        'Początek tam, gdzie jest teraz odsłuch (klawisz I, jak «IN na głowicy» na przebiegu)',
+    "La fine va dove si trova ora l'ascolto (tasto O, come «OUT Testina» sulla forma d'onda)":
+        'Koniec tam, gdzie jest teraz odsłuch (klawisz O, jak «OUT na głowicy» na przebiegu)',
+    'Inizio: {} s':
+        'Początek: {} s',
+    'Fine: {} s':
+        'Koniec: {} s',
+    'Fine: la fine del file':
+        'Koniec: koniec pliku',
+    "L'ascolto è prima dell'inizio: fine subito dopo l'inizio ({} s)":
+        'Odsłuch jest przed początkiem: koniec tuż po początku ({} s)',
 }

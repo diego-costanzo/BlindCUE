@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import time
 
+from models.cue import is_placeholder
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -201,6 +202,8 @@ class _WindowSetupMixin:
         target = f"{format_cue_ref(row, cue)} '{cue.name}'"
         if getattr(self, "_focus_lost_shown", False):
             return f"⌨ Clicca qui: la tastiera è altrove — GO: {target}", True
+        if is_placeholder(cue):  # 3.4
+            return f"🕳 Senza file, non suona — GO: {target}", True
         # The file itself, not the status: a failed GO leaves the cue LOADED.
         if cue.status == CueStatus.OFFLINE or (
             cue.media_type.has_file and not os.path.isfile(cue.file_path or "")

@@ -612,6 +612,12 @@ class TestPlayer(QObject):
         """True while the preview is stopped."""
         return self._player.playbackState() == QMediaPlayer.PlaybackState.StoppedState
 
+    def position_seconds(self) -> float | None:
+        """Where the audition is in the file now (None while nothing is loaded)."""
+        if self._player.mediaStatus() in (QMediaPlayer.MediaStatus.NoMedia, QMediaPlayer.MediaStatus.InvalidMedia):
+            return None
+        return max(0, self._player.position()) / 1000.0
+
     def set_in_out(self, start: float, end: float | None = None,
                    seek_to_start: bool = True) -> None:
         """Update IN/OUT points dynamically; seek to start only when requested."""

@@ -1251,6 +1251,22 @@ class CueInspectorPanel(QGroupBox):
         self.spin_loop_count.setVisible(False)
         loop_options_row.addWidget(self.spin_loop_count)
         loop_card_layout.addLayout(loop_options_row)
+        xfade_row = QHBoxLayout()  # 3.4: a pass runs into the next one (sound)
+        self.lbl_loop_xfade = self._make_field_label("Dissolvenza tra i giri:")
+        xfade_row.addWidget(self.lbl_loop_xfade)
+        self.spin_loop_xfade = SmartDoubleSpinBox()
+        self.spin_loop_xfade.setRange(0.0, 30.0)
+        self.spin_loop_xfade.setDecimals(1)
+        self.spin_loop_xfade.setSingleStep(0.5)
+        self.spin_loop_xfade.setSuffix(" s")
+        self.spin_loop_xfade.setSpecialValueText("stacco")
+        self.spin_loop_xfade.setFixedWidth(74)
+        self.spin_loop_xfade.setAccessibleName("Dissolvenza tra i giri del loop")
+        self.spin_loop_xfade.setToolTip("Suoni: ogni giro entra nel successivo con una dissolvenza incrociata "
+                                        "di questi secondi, senza salto (0 = stacco).")
+        xfade_row.addWidget(self.spin_loop_xfade)
+        xfade_row.addStretch(1)
+        loop_card_layout.addLayout(xfade_row)
         lay.addWidget(self.loop_card)
 
         # Card 5: Livellamento & Loudness EBU R128
@@ -1464,6 +1480,12 @@ class CueInspectorPanel(QGroupBox):
         l2.addWidget(self.lbl_group_layer_conflict)
 
         lay.addWidget(c2)
+
+        from ui.playlist_settings import PlaylistSettingsBox
+
+        self.playlist_box = PlaylistSettingsBox()  # 3.3: shown for a playlist only
+        self.playlist_box.setVisible(False)
+        lay.addWidget(self.playlist_box)
 
         # Card 3: Elementi del Gruppo
         c3, l3 = self._make_card(
@@ -1800,6 +1822,7 @@ class CueInspectorPanel(QGroupBox):
             (self.slider_opacity.valueChanged, "opacity"),
             (self.slider_volume.valueChanged, "volume"),
             (self.spin_loop_count.valueChanged, "loop"),
+            (self.spin_loop_xfade.valueChanged, "loop"),
             (self.combo_aspect.currentIndexChanged, "aspect_ratio"),
             (self.edit_cue_q.textEdited, "q_label"),
             (self.edit_cue_name.textEdited, "name"),
@@ -1876,6 +1899,10 @@ class CueInspectorPanel(QGroupBox):
                 self.btn_group_collapse_toggle.setText("▼ Espandi Gruppo in Scaletta")
             else:
                 self.btn_group_collapse_toggle.setText("▶ Collassa Gruppo in Scaletta")
+        is_playlist = bool(group_cue is not None and getattr(group_cue, "playlist", False))
+        self.playlist_box.setVisible(is_playlist)  # 3.3: how the playlist plays
+        if is_playlist:
+            self.playlist_box.load(group_cue)
 
     def _on_layer_clicked(self, layer: int) -> None:
         self.set_layer_checked(layer)
@@ -2047,6 +2074,7 @@ class CueInspectorPanel(QGroupBox):
     def _on_loop_chk_toggled(self, checked: bool) -> None:
         self.combo_loop_mode.setEnabled(checked)
         self.spin_loop_count.setEnabled(checked)
+        self.spin_loop_xfade.setEnabled(checked)
         self._emit_change("loop")
 
     def _on_loop_mode_changed(self, index: int) -> None:
@@ -2453,7 +2481,7 @@ class CueInspectorPanel(QGroupBox):
             self.btn_mask_edit, self.btn_mask_clear,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset, self.combo_audio_output,
             self.spin_rate, self.chk_keep_pitch, self.mix_panel,
-            self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
+            self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count, self.spin_loop_xfade,
             self.spin_in, self.spin_out, self.btn_io_reset, self.btn_trim_silence, self.spin_hold_time,
             self.spin_pre_delay, self.spin_post_delay,
             self.card_loudness, self.btn_scan_loudness, self.chk_normalize_cue,
@@ -2539,6 +2567,10 @@ class CueInspectorPanel(QGroupBox):
         self.chk_hold_last_frame.setEnabled(media_type == MediaType.VIDEO)
         self.combo_loop_mode.setEnabled(is_timed and self.chk_loop.isChecked())
         self.spin_loop_count.setEnabled(is_timed and self.chk_loop.isChecked())
+        is_sound = media_type == MediaType.AUDIO  # 3.4: the loop crossfade is for sounds
+        self.lbl_loop_xfade.setVisible(is_sound)
+        self.spin_loop_xfade.setVisible(is_sound)
+        self.spin_loop_xfade.setEnabled(is_sound and self.chk_loop.isChecked())
 
         if media_type == MediaType.IMAGE:
             self.lbl_hold_hint.setText("0 s = Infinita in Live")
@@ -2746,6 +2778,8 @@ class CueInspectorPanel(QGroupBox):
         self.chk_loop.setChecked(cue.loop)
         self.combo_loop_mode.setEnabled(cue.loop)
         self.spin_loop_count.setEnabled(cue.loop)
+        self.spin_loop_xfade.setValue(float(getattr(cue, "loop_crossfade", 0.0)))
+        self.spin_loop_xfade.setEnabled(cue.loop and cue.media_type == MediaType.AUDIO)
 
         count = getattr(cue, "loop_count", 0)
         preset_idx = _COUNT_TO_PRESET_IDX.get(count)
@@ -3072,6 +3106,8 @@ class CueInspectorPanel(QGroupBox):
 
     def _apply_loop_to_cue(self, cue: Cue) -> None:
         cue.loop = self.chk_loop.isChecked()
+        if cue.media_type == MediaType.AUDIO:
+            cue.loop_crossfade = round(float(self.spin_loop_xfade.value()), 2)  # 3.4
         if cue.loop:
             idx = self.combo_loop_mode.currentIndex()
             if 0 <= idx < len(_LOOP_PRESET_COUNTS):

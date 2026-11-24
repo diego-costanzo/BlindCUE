@@ -60,6 +60,10 @@ class _RehearseFromMixin:
     def _fire_one_now(self, idx: int) -> None:
         """Start this one cue now: no "together" followers, no Pre-Delay, GO not moved."""
         cue = self._cues[idx]
+        from models.cue import is_placeholder
+
+        if is_placeholder(cue):
+            return  # 3.4: no file yet: nothing to bring back
         self._rel_extra[cue.cue_id] = -float(max(0.0, cue.pre_delay))  # main.py: Pre-Delay + this = 0
         aside = getattr(self, "_firing_aside", False)
         self._firing_aside = True

@@ -235,6 +235,25 @@ def _audio_mix(value: object, audio_output: str, media_type: MediaType) -> dict[
     return sanitize(value, audio_output)
 
 
+def _playlist_transition(value: object) -> str:
+    """3.3: a valid transition between playlist tracks ("none" for anything unknown)."""
+    from engine.playlist_flow import normalize_transition
+
+    return normalize_transition(value)
+
+
+def _playlist_seconds(value: object) -> float:
+    from engine.playlist_flow import clamp_seconds
+
+    return clamp_seconds(value)
+
+
+def _playlist_gap(value: object) -> int:
+    from engine.playlist_flow import clamp_gap
+
+    return clamp_gap(value)
+
+
 def _clock_text(value: object) -> str:
     """2.6: a valid "H:MM" / "H:MM:SS" time of day as given, "" for anything else."""
     import re
@@ -244,6 +263,19 @@ def _clock_text(value: object) -> str:
     if not match or int(match.group(1)) > 23 or int(match.group(2)) > 59 or int(match.group(3) or 0) > 59:
         return ""
     return text
+
+
+def is_placeholder(cue: object) -> bool:
+    """3.4: a media cue without a file yet - the script is written before the effects are recorded.
+
+    Made on purpose as a sound ("+ Action" menu), or by a CSV cue list row
+    without a file. It stays in the GO order (the operator's GOs keep their
+    count) but plays nothing; the readiness page lists it. Choosing its file
+    makes it an ordinary cue.
+    """
+    kind = getattr(cue, "media_type", None)
+    return (isinstance(kind, MediaType) and kind.has_file and not getattr(cue, "text_spec", None)
+            and not str(getattr(cue, "file_path", "") or "").strip())
 
 
 def action_needs_target(kind: str) -> bool:
@@ -330,6 +362,8 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
         "sw_mode": sw_mode if sw_mode in STOPWATCH_MODES else "start",
         # 3.3: pause / resume with sleep_sec > 0 = put the music to sleep / wake it (0 = at once)
         "sleep_sec": round(_safe_float(raw.get("sleep_sec", 0.0), 0.0, min_val=0.0, max_val=ACTION_MAX_SECONDS), 3),
+        # 3.3: resume wakes a playlist with its next track (after a break) instead of the paused one
+        "wake_next": bool(raw.get("wake_next", False)),
     }
 
 
@@ -530,6 +564,7 @@ class Cue:
     volume: float = 1.0
     loop: bool = False
     loop_count: int = 0  # 0 = infinite loop; N >= 1 = repeat N times
+    loop_crossfade: float = 0.0  # 3.4: sound loops: each pass runs into the next over this many s (0 = a cut)
     in_point: float = 0.0
     out_point: float | None = None
     fade_in: float = 0.0
@@ -579,6 +614,15 @@ class Cue:
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
     collapsed: bool = False  # UI collapse state for GROUP cues
     playlist: bool = False   # 3.3: a GROUP made as a playlist: stops after its last track, GO goes on after it
+    # 3.3: how a playlist plays (engine.playlist_flow): transition between tracks (none / crossfade /
+    # overlap / gap) and its seconds, random order with no repeat among the last N, start again after
+    # the last track, a new GO goes on after the track that played last.
+    playlist_transition: str = "none"
+    playlist_transition_sec: float = 3.0
+    playlist_shuffle: bool = False
+    playlist_shuffle_gap: int = 3
+    playlist_loop: bool = False
+    playlist_remember: bool = False
     fade_curve: str = "log"  # "log" (perceptual), "scurve" (cosine), "linear"
     volume_points: list[list[float]] = field(default_factory=list)   # [[time_sec, level 0..1], ...]
     opacity_points: list[list[float]] = field(default_factory=list)  # [[time_sec, opacity 0..1], ...]
@@ -669,7 +713,7 @@ class Cue:
         """
         errors: list[str] = []
 
-        if self.media_type.has_file and not os.path.isfile(self.file_path):
+        if self.media_type.has_file and not os.path.isfile(self.file_path) and not is_placeholder(self):
             errors.append(f"Media file not found: {self.file_path}")
 
         if self.group_mode not in _VALID_GROUP_MODES:
@@ -751,6 +795,7 @@ class Cue:
             "volume": self.volume,
             "loop": self.loop,
             "loop_count": self.loop_count,
+            "loop_crossfade": round(float(self.loop_crossfade), 3),
             "in_point": self.in_point,
             "out_point": self.out_point,
             "fade_in": self.fade_in,
@@ -818,6 +863,18 @@ class Cue:
                 sanitize_action_spec(self.action_spec)
                 if self.media_type == MediaType.ACTION else {}
             ),
+            **(self._playlist_dict() if self.playlist else {}),
+        }
+
+    def _playlist_dict(self) -> dict[str, Any]:
+        """3.3: the playlist settings (written only for a playlist group)."""
+        return {
+            "playlist_transition": self.playlist_transition,
+            "playlist_transition_sec": round(float(self.playlist_transition_sec), 2),
+            "playlist_shuffle": self.playlist_shuffle,
+            "playlist_shuffle_gap": int(self.playlist_shuffle_gap),
+            "playlist_loop": self.playlist_loop,
+            "playlist_remember": self.playlist_remember,
         }
 
     @classmethod
@@ -855,6 +912,7 @@ class Cue:
             volume=_safe_float(data.get("volume", 1.0), 1.0, min_val=0.0, max_val=1.0),
             loop=bool(data.get("loop", False)),
             loop_count=_safe_int(data.get("loop_count", 0), 0, min_val=0),
+            loop_crossfade=_safe_float(data.get("loop_crossfade", 0.0), 0.0, min_val=0.0, max_val=30.0),
             in_point=in_pt,
             out_point=out_pt,
             fade_in=_safe_float(data.get("fade_in", 0.0), 0.0, min_val=0.0),
@@ -911,6 +969,12 @@ class Cue:
             ),
             collapsed=bool(data.get("collapsed", False)),
             playlist=bool(data.get("playlist", False)),
+            playlist_transition=_playlist_transition(data.get("playlist_transition", "none")),
+            playlist_transition_sec=_playlist_seconds(data.get("playlist_transition_sec", 3.0)),
+            playlist_shuffle=bool(data.get("playlist_shuffle", False)),
+            playlist_shuffle_gap=_playlist_gap(data.get("playlist_shuffle_gap", 3)),
+            playlist_loop=bool(data.get("playlist_loop", False)),
+            playlist_remember=bool(data.get("playlist_remember", False)),
             fade_curve=(
                 data.get("fade_curve", "log")
                 if data.get("fade_curve", "log") in _VALID_FADE_CURVES
@@ -945,8 +1009,8 @@ class Cue:
         current_next = next(cls._id_counter)
         if isinstance(cue.cue_id, int) and cue.cue_id >= current_next:
             cls._id_counter = itertools.count(cue.cue_id + 1)
-        if project_root is not None and cue.media_type.has_file:
-            cue.resolve_media_path(project_root)
+        if project_root is not None and cue.media_type.has_file and cue.file_path:
+            cue.resolve_media_path(project_root)  # never for a placeholder: "" would become the show folder
         if cue.text_spec and not Path(cue.file_path).is_file():
             # Text cues are re-creatable from their settings (e.g. a show
             # opened on another computer without the cached caption image).

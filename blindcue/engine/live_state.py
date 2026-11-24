@@ -125,8 +125,13 @@ class LiveClocks:
             for layer in [lyr for lyr, c in store.items() if c.cue_id not in keep]:
                 del store[layer]
 
-    def cue_time(self, cue_id: int) -> CueTime | None:
-        """Timing of *cue_id*, or None when nothing measurable is known."""
+    def cue_time(self, cue_id: int, rate: float = 1.0) -> CueTime | None:
+        """Timing of *cue_id*, or None when nothing measurable is known.
+
+        *rate* (3.7): the tempo of the cue. Positions are seconds of the file;
+        at 200 % one second of the file passes in half a second, so elapsed and
+        remaining are told in real seconds. Waits (Pre/Post-Delay) are real time.
+        """
         clock = next(
             (c for c in (*self._layers.values(), *self._waits.values()) if c.cue_id == cue_id), None
         )
@@ -138,11 +143,13 @@ class LiveClocks:
             return CueTime(elapsed, max(0.0, total - elapsed), elapsed / total, False, clock.phase)
         if not clock.timed:
             return None
-        elapsed = max(0.0, clock.pos - clock.start)
+        speed = rate if rate and rate > 0 and math.isfinite(rate) else 1.0
+        file_elapsed = max(0.0, clock.pos - clock.start)
+        elapsed = file_elapsed / speed
         if clock.end > clock.start:
             span = clock.end - clock.start
-            return CueTime(elapsed, max(0.0, clock.end - clock.pos),
-                           min(1.0, elapsed / span), clock.looping_inf, "")
+            return CueTime(elapsed, max(0.0, clock.end - clock.pos) / speed,
+                           min(1.0, file_elapsed / span), clock.looping_inf, "")
         return CueTime(elapsed, None, -1.0, clock.looping_inf, "")
 
 

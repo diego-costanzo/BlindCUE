@@ -18,6 +18,8 @@ class DropZone(QLabel):
     """Drag-and-drop file import zone."""
 
     file_dropped = Signal(str)  # absolute path of dropped file
+    # 3.3: all files of one drop at once (several sounds -> "make a playlist?", like the cue list)
+    files_dropped = Signal(list)
 
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the drag-and-drop target shown when the rundown is empty."""
@@ -44,10 +46,14 @@ class DropZone(QLabel):
             event.acceptProposedAction()
 
     def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
-        """Emit one ``file_dropped`` per existing local file."""
-        for url in event.mimeData().urls():
-            path = url.toLocalFile()
-            if path and os.path.isfile(path):
-                self.file_dropped.emit(path)
-                logger.info("[DROP] File dropped: %s", path)
+        """Emit ``files_dropped`` with every existing local file of the drop, and one
+        ``file_dropped`` per file (connect one of the two)."""
+        paths = [url.toLocalFile() for url in event.mimeData().urls()]
+        paths = [p for p in paths if p and os.path.isfile(p)]
+        if not paths:
+            return
+        self.files_dropped.emit(paths)  # 3.3
+        for path in paths:
+            self.file_dropped.emit(path)
+            logger.info("[DROP] File dropped: %s", path)
 

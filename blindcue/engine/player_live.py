@@ -26,15 +26,20 @@ _TAILS: list[_TailFade] = []
 
 class _TailFade(QObject):
     """An outgoing sound handed over by a crossfade: it keeps playing and fades to
-    silence (equal-power curve), then stops and goes away."""
+    silence (equal-power curve), then stops and goes away.
 
-    def __init__(self, player: QMediaPlayer, audio: QAudioOutput, seconds: float) -> None:
+    *hold_sec* (3.3, playlist "overlap"): it first plays on at its level for that
+    long and fades only over the rest of *seconds*.
+    """
+
+    def __init__(self, player: QMediaPlayer, audio: QAudioOutput, seconds: float, hold_sec: float = 0.0) -> None:
         super().__init__()
         self._player, self._audio = player, audio
         player.setParent(self)
         audio.setParent(self)
         self._start_volume = audio.volume()
         self._seconds = max(0.05, float(seconds))
+        self._hold = max(0.0, min(float(hold_sec), self._seconds - 0.05))
         self._t0 = time.monotonic()
         self._timer = QTimer(self)
         self._timer.setInterval(30)
@@ -45,11 +50,14 @@ class _TailFade(QObject):
     def _tick(self) -> None:
         import math
 
-        k = (time.monotonic() - self._t0) / self._seconds
-        if k >= 1.0 or self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
+        elapsed = time.monotonic() - self._t0
+        if elapsed >= self._seconds or self._player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
             self.stop()
             return
-        self._audio.setVolume(self._start_volume * math.cos(k * math.pi / 2))
+        if elapsed < self._hold:
+            return
+        k = (elapsed - self._hold) / max(0.05, self._seconds - self._hold)
+        self._audio.setVolume(self._start_volume * math.cos(min(1.0, k) * math.pi / 2))
 
     def finish_within(self, seconds: float) -> None:
         """Fade All: reach silence within *seconds* (never later than planned)."""
@@ -58,6 +66,7 @@ class _TailFade(QObject):
             self._start_volume = self._audio.volume()
             self._t0 = time.monotonic()
             self._seconds = max(0.05, seconds)
+            self._hold = 0.0
 
     def set_paused(self, paused: bool) -> None:
         """Pause All holds the fading sound too; it goes on fading after the resume."""
@@ -131,6 +140,10 @@ _RELEASE_MARGIN_MS = 40
 # to keep must be taken while the deck is still paused on it.
 HOLD_MARGIN_MS = 150
 
+# 3.4: a crossfaded whole-file loop treats the file as ending this many ms early, so the pass that
+# fades out is paused before EndOfMedia (pause() at EndOfMedia freezes, see _pause_unless_at_end).
+_LOOP_XFADE_END_MARGIN_MS = 120
+
 
 def _pause_unless_at_end(player: QMediaPlayer) -> None:
     """Pause *player*, except when it has already reached the end of the file.
@@ -143,6 +156,10 @@ def _pause_unless_at_end(player: QMediaPlayer) -> None:
     """
     if player.mediaStatus() != QMediaPlayer.MediaStatus.EndOfMedia:
         player.pause()
+
+
+def _same_path(a: str, b: str) -> bool:
+    return os.path.normcase(os.path.abspath(a or "")) == os.path.normcase(os.path.abspath(b or ""))
 
 
 class _PlayerSignals(QObject):
@@ -176,6 +193,11 @@ class LivePlayer(QObject):
         self._is_looping: bool = False
         self._loop_count: int = 0
         self._current_loop_iteration: int = 0
+        # 3.4: loop with a crossfade (sound only): the next pass starts on the second deck this many
+        # seconds before the end of the pass; the old pass fades out over them (_xf, _xf_in).
+        self._loop_xfade_sec: float = 0.0
+        self._xf: dict | None = None
+        self._xf_in: float = 1.0
 
         # Lazy standby deck for pre-cued anti-stutter jumps (allocated only when needed)
         self._audio_device: QAudioDevice | None = None
@@ -185,6 +207,8 @@ class LivePlayer(QObject):
         self._standby_ready: bool = False
         self._standby_seek_pending: bool = False
         self._active_deck: int = 0  # 0 = primary, 1 = standby deck
+        # 3.3: (player, audio, start ms, path) of the next playlist track opened in advance
+        self._preload: tuple[QMediaPlayer, QAudioOutput, int, str] | None = None
 
         # Automation & sections state
         self._base_volume: float = 1.0
@@ -264,19 +288,143 @@ class LivePlayer(QObject):
             if self._video_output is not None:
                 self._player.setVideoOutput(self._video_output)
 
-            # Only the current deck 0 speaks (a deck replaced by the other backend is silent).
-            p = self._player
-            p.positionChanged.connect(lambda ms, p=p: self._on_deck_pos(0, ms) if p is self._player else None)
-            p.durationChanged.connect(lambda ms, p=p: self._on_deck_dur(0, ms) if p is self._player else None)
-            p.mediaStatusChanged.connect(
-                lambda st, p=p: self._on_deck_status(0, st) if p is self._player else None)
-            p.errorOccurred.connect(
-                lambda err, msg, p=p: self._on_deck_error(0, err, msg) if p is self._player else None)
+            self._wire_main_player()
 
             logger.info("[LIVE] Native Wayland Multimedia player initialised (%s)", self._backend)
         except Exception as exc:
             logger.critical("[LIVE] Failed to initialise QtMultimedia: %s", exc, exc_info=True)
             self.signals.error_occurred.emit(f"Live Player init failed: {exc}")
+
+    def _wire_main_player(self) -> None:
+        """Deck 0 reports to this player (a fresh deck, or one opened in advance). Only the current
+        deck 0 speaks: a deck replaced by the other backend (3.2) or handed over (3.3) is silent."""
+        p = self._player
+        p.positionChanged.connect(lambda ms, p=p: self._on_deck_pos(0, ms) if p is self._player else None)
+        p.durationChanged.connect(lambda ms, p=p: self._on_deck_dur(0, ms) if p is self._player else None)
+        p.mediaStatusChanged.connect(lambda st, p=p: self._on_deck_status(0, st) if p is self._player else None)
+        p.errorOccurred.connect(
+            lambda err, msg, p=p: self._on_deck_error(0, err, msg) if p is self._player else None)
+
+    @staticmethod
+    def _unwire(player: QMediaPlayer) -> None:
+        for sig in (player.positionChanged, player.durationChanged, player.mediaStatusChanged,
+                    player.errorOccurred):
+            try:
+                sig.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+
+    def _retap_main(self) -> None:
+        """The VU meter listens to the current deck 0 (after it was replaced)."""
+        taps = getattr(self, "_level_taps", None)
+        if not taps:
+            return
+        try:
+            taps[0].audioBufferReceived.disconnect()
+        except (RuntimeError, TypeError):
+            pass
+        from PySide6.QtMultimedia import QAudioBufferOutput
+
+        tap = QAudioBufferOutput(self)
+        self._player.setAudioBufferOutput(tap)
+        tap.audioBufferReceived.connect(self._on_level_buffer, Qt.ConnectionType.QueuedConnection)
+        taps[0] = tap
+
+    # ── 3.3: gapless playlists - the next track opened before it is needed ──
+    def preload_next(self, file_path: str, start: float = 0.0) -> bool:
+        """Open *file_path* on a spare player, paused at *start* and silent.
+
+        The next ``load()`` of the same file takes that player over, so the
+        track starts without the delay of opening the file (as close to
+        gapless as Qt Multimedia allows). Sound only: no picture is bound.
+        """
+        try:
+            if not file_path or not os.path.isfile(file_path):
+                return False
+            start_ms = max(0, int(start * 1000))
+            pre = getattr(self, "_preload", None)
+            if pre is not None and _same_path(pre[3], file_path):
+                if pre[2] != start_ms:
+                    self._preload = (pre[0], pre[1], start_ms, pre[3])
+                    pre[0].setPosition(start_ms)
+                return True
+            self.discard_preload()
+            player = QMediaPlayer(self)
+            audio = QAudioOutput(self)
+            if self._audio_device is not None and not self._audio_device.isNull():
+                audio.setDevice(self._audio_device)
+            audio.setVolume(0.0)
+            player.setAudioOutput(audio)
+            self._preload = (player, audio, start_ms, file_path)
+
+            def _ready(status, p=player) -> None:
+                pre_now = getattr(self, "_preload", None)
+                if pre_now is None or pre_now[0] is not p:
+                    return
+                if status in (QMediaPlayer.MediaStatus.LoadedMedia, QMediaPlayer.MediaStatus.BufferedMedia) \
+                        and pre_now[2] > 0 and abs(p.position() - pre_now[2]) > 40:
+                    p.setPosition(pre_now[2])
+
+            player.mediaStatusChanged.connect(_ready)
+            player.setSource(QUrl.fromLocalFile(file_path))
+            player.pause()  # decodes the first buffers; never at EndOfMedia (it never played)
+            logger.info("[LIVE] next track opened in advance: %s", os.path.basename(file_path))
+            return True
+        except Exception as exc:  # a preload is only a help: never an error for the show
+            logger.warning("[LIVE] preload failed: %s", exc)
+            self.discard_preload()
+            return False
+
+    def preloaded_path(self) -> str:
+        pre = getattr(self, "_preload", None)
+        return pre[3] if pre is not None else ""
+
+    def discard_preload(self) -> None:
+        pre = getattr(self, "_preload", None)
+        self._preload = None
+        if pre is None:
+            return
+        player, audio = pre[0], pre[1]
+        try:
+            try:
+                player.mediaStatusChanged.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+            player.stop()  # it never played: not at EndOfMedia
+            player.deleteLater()
+            audio.deleteLater()
+        except RuntimeError:
+            pass
+
+    def _adopt_preload(self, file_path: str, resume_at: float | None) -> bool:
+        """``load()`` of the file opened in advance: that player becomes deck 0."""
+        pre = getattr(self, "_preload", None)
+        if pre is None:
+            return False
+        player, audio, _start_ms, path = pre
+        ready = player.mediaStatus() in (QMediaPlayer.MediaStatus.LoadedMedia,
+                                         QMediaPlayer.MediaStatus.BufferedMedia)
+        if not _same_path(path, file_path) or resume_at is not None or not ready:
+            self.discard_preload()
+            return False
+        self._preload = None
+        try:
+            player.mediaStatusChanged.disconnect()
+        except (RuntimeError, TypeError):
+            pass
+        old_p, old_a = self._player, self._audio
+        self._unwire(old_p)
+        old_p.stop()  # never pause(): it may sit at EndOfMedia (see _pause_unless_at_end)
+        old_p.setVideoOutput(None)
+        old_p.deleteLater()
+        old_a.deleteLater()
+        self._player, self._audio = player, audio
+        if self._video_output is not None:
+            player.setVideoOutput(self._video_output)
+        self._wire_main_player()
+        self._retap_main()
+        logger.info("[LIVE] the track opened in advance takes over: %s", os.path.basename(file_path))
+        return True
 
     def _ensure_standby_deck(self) -> None:
         if self._standby_player is not None:
@@ -452,13 +600,14 @@ class LivePlayer(QObject):
                 fence = self._end_ms
         setter(fence)
 
-    def hand_over_tail(self, seconds: float) -> bool:
+    def hand_over_tail(self, seconds: float, hold_sec: float = 0.0) -> bool:
         """Crossfade of sound (evaluation 2026-11-24): what plays now keeps playing on its own
         and fades to silence over *seconds*; this player gets a fresh deck for the next cue.
 
         Before, a new cue on the same layer cut the old sound at once. Only the
         main deck is handed over (a cue playing on the loop / section deck is cut
-        as before). Returns False when nothing was handed over.
+        as before). *hold_sec*: it plays on at its level that long before the
+        fade (3.3, playlist "overlap"). Returns False when nothing was handed over.
         """
         try:
             if self._active_deck != 0 or seconds <= 0:
@@ -466,31 +615,14 @@ class LivePlayer(QObject):
             player, audio = self._player, self._audio
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
                 return False
-            for sig in (player.positionChanged, player.durationChanged, player.mediaStatusChanged,
-                        player.errorOccurred):
-                try:
-                    sig.disconnect()
-                except (RuntimeError, TypeError):
-                    pass
-            taps = getattr(self, "_level_taps", None)
-            if taps:
-                try:
-                    taps[0].audioBufferReceived.disconnect()
-                except (RuntimeError, TypeError):
-                    pass
+            self._unwire(player)
             # The picture belongs to the next cue; the output dissolves its own snapshot.
             player.setVideoOutput(None)
             self._driver_timer.stop()
             self._stop_fade_timer()
-            _TailFade(player, audio, seconds)
+            _TailFade(player, audio, seconds, hold_sec)
             self._setup_player()
-            if taps:
-                from PySide6.QtMultimedia import QAudioBufferOutput
-
-                tap = QAudioBufferOutput(self)
-                self._player.setAudioBufferOutput(tap)
-                tap.audioBufferReceived.connect(self._on_level_buffer, Qt.ConnectionType.QueuedConnection)
-                taps[0] = tap
+            self._retap_main()
             logger.info("[LIVE] crossfade: the outgoing sound fades over %.1fs on its own", seconds)
             return True
         except Exception as exc:  # noqa: BLE001 - a crossfade must never break the next cue
@@ -564,6 +696,9 @@ class LivePlayer(QObject):
             self._audio.setDevice(device)
         if self._standby_audio is not None and device is not None and not device.isNull():
             self._standby_audio.setDevice(device)
+        pre = getattr(self, "_preload", None)
+        if pre is not None and device is not None and not device.isNull():
+            pre[1].setDevice(device)  # 3.3: the track opened in advance plays there too
         logger.info("[LIVE] Audio device assigned: %s", device.description() if device and not device.isNull() else "Default")
 
     # ── Automation & Section Configuration ────────────────────────────
@@ -753,7 +888,7 @@ class LivePlayer(QObject):
         target_sec: float | None = None
         if self._sequencer.active:
             target_sec = self._sequencer.peek_next_jump_target()
-        elif self._is_video_cue and self._is_looping and self._file_path:
+        elif (self._is_video_cue or self._loop_xfade_sec > 0) and self._is_looping and self._file_path:
             target_sec = self._start_ms / 1000.0
 
         if target_sec is None or not self._file_path or not os.path.isfile(self._file_path):
@@ -767,6 +902,10 @@ class LivePlayer(QObject):
         self._standby_target_ms = target_ms
 
         want_url = QUrl.fromLocalFile(self._file_path)
+        if idle_player.mediaStatus() == QMediaPlayer.MediaStatus.EndOfMedia:
+            # Never pause() a deck at EndOfMedia (see _pause_unless_at_end): open the file again.
+            idle_player.stop()
+            idle_player.setSource(QUrl())
         if idle_player.source() != want_url:
             self._standby_ready = False
             self._standby_seek_pending = True
@@ -818,6 +957,8 @@ class LivePlayer(QObject):
         looping_inf = self._is_looping and self._loop_count <= 0
         has_inf_section = any(s.loops == 0 and not s.skip for s in self._sections_cfg)
         allow_fo = self._apply_fade_out_at_end and (not looping_inf) and (not has_inf_section)
+        if self._is_looping and self._loop_xfade_sec > 0:
+            allow_fo = allow_fo and self._xf_last_pass()  # 3.4: the Fade Out ends the last pass only
         allow_fi = self._apply_fade_in and (self._current_loop_iteration == 0)
         level = evaluate_cue_level(
             pos_sec,
@@ -831,7 +972,7 @@ class LivePlayer(QObject):
             base_level=self._base_volume,
             apply_fade_out_at_end=allow_fo,
         )
-        return max(0.0, min(1.0, level * self._level_trim * self._master_gain))
+        return max(0.0, min(1.0, level * self._level_trim * self._master_gain * self._xf_in))
 
     def set_master_gain(self, gain: float) -> None:
         """Master volume of the whole show (0..1, MUTE = 0): multiplies everything.
@@ -924,6 +1065,9 @@ class LivePlayer(QObject):
             if hold_end is not None and pos_ms >= hold_end - HOLD_MARGIN_MS:
                 self._handle_cue_finished()  # paused on a frame that is still shown (4.4)
                 return
+        if self._is_looping and self._loop_xfade_sec > 0:
+            self._loop_xfade_boundary(pos_ms)  # 3.4
+            return
 
         if self._end_ms is not None and pos_ms >= self._end_ms - 18:
             if self._is_looping:
@@ -935,6 +1079,93 @@ class LivePlayer(QObject):
                 self._execute_jump_ms(self._start_ms)
             else:
                 self._handle_cue_finished()
+
+    # ── 3.4: loop with a crossfade ────────────────────────────────────
+    def _xf_last_pass(self) -> bool:
+        """The pass playing now is the last one of a counted loop (or the loop was released)."""
+        if not self._is_looping:
+            return True
+        return self._loop_count > 0 and self._current_loop_iteration >= self._loop_count - 1
+
+    def _loop_end_ms(self) -> int | None:
+        """Where a pass ends: the OUT point, else a little before the file end (never at EndOfMedia)."""
+        if self._end_ms is not None and self._end_ms > self._start_ms:
+            return self._end_ms
+        if self._duration_sec <= 0:
+            return None
+        return max(self._start_ms + 1, int(self._duration_sec * 1000) - _LOOP_XFADE_END_MARGIN_MS)
+
+    def _loop_xfade_boundary(self, pos_ms: int) -> None:
+        end_ms = self._loop_end_ms()
+        if end_ms is None:
+            return  # length not known yet
+        if self._xf_last_pass():
+            if pos_ms >= end_ms - 18:
+                self._handle_cue_finished()
+            return
+        if self._xf is not None:
+            return  # this pass already handed over
+        rate = max(0.5, float(getattr(self, "_rate", 1.0)))
+        xf_ms = min(self._loop_xfade_sec * 1000.0 * rate, (end_ms - self._start_ms) / 2.0)
+        if pos_ms < end_ms - xf_ms:
+            return
+        ready = (self._standby_player is not None and self._standby_ready and self._standby_target_ms is not None
+                 and abs(self._standby_target_ms - self._start_ms) <= 60)
+        if not ready:
+            if pos_ms >= end_ms - 18:  # no second deck ready: a plain jump at the end, as before
+                self._current_loop_iteration += 1
+                self._execute_jump_ms(self._start_ms)
+                self._boundary_armed = True
+            return
+        idle_idx = self._idle_deck_idx()
+        old_p, old_a = self._deck_pair(self._active_deck)
+        new_p, new_a = self._deck_pair(idle_idx)
+        seconds = max(0.05, (end_ms - pos_ms) / 1000.0 / rate)
+        self._xf = {"player": old_p, "audio": old_a, "t0": time.monotonic(), "sec": seconds,
+                    "from": old_a.volume(), "held": None}
+        self._current_loop_iteration += 1
+        self._xf_in = 0.0
+        new_a.setVolume(0.0)
+        new_p.play()
+        self._active_deck = idle_idx
+        self._standby_target_ms = None
+        self._apply_envelope_at(self._start_ms / 1000.0)
+        logger.info("[LIVE] loop crossfade %.2fs (pass %d)", seconds, self._current_loop_iteration + 1)
+
+    def _advance_loop_xfade(self) -> None:
+        import math
+
+        xf = self._xf
+        if xf is None or xf["held"] is not None:
+            return
+        k = (time.monotonic() - xf["t0"]) / xf["sec"]
+        if k >= 1.0:
+            self._xf = None
+            self._xf_in = 1.0
+            xf["audio"].setVolume(0.0)
+            _pause_unless_at_end(xf["player"])
+            self._pre_cue_next_target()  # the old deck waits at the loop start for the next pass
+            return
+        out_level = 0.0 if self._output_gain <= 0.0 else xf["from"] * math.cos(k * math.pi / 2)
+        xf["audio"].setVolume(out_level)
+        self._xf_in = math.sin(k * math.pi / 2)
+
+    def _hold_loop_xfade(self, held: bool) -> None:
+        """Pause / play hold the pass that is fading out too."""
+        xf = self._xf
+        if xf is None:
+            return
+        if held and xf["held"] is None:
+            xf["held"] = time.monotonic()
+            _pause_unless_at_end(xf["player"])
+        elif not held and xf["held"] is not None:
+            xf["t0"] += time.monotonic() - xf["held"]
+            xf["held"] = None
+            xf["player"].play()
+
+    def _drop_loop_xfade(self) -> None:
+        self._xf = None
+        self._xf_in = 1.0
 
     def _handle_cue_finished(self) -> None:
         self._finished = True
@@ -952,6 +1183,7 @@ class LivePlayer(QObject):
         if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
             self._driver_timer.stop()
             return
+        self._advance_loop_xfade()  # 3.4
         pos_ms = player.position()
         self._apply_envelope_at(pos_ms / 1000.0)
         self._update_fence()
@@ -1044,6 +1276,15 @@ class LivePlayer(QObject):
                     self._execute_jump_ms(int(round(target_sec * 1000)))
             elif not self._is_looping:
                 self._handle_cue_finished()
+            elif self._loop_xfade_sec > 0:
+                # 3.4: a crossfaded loop is played pass by pass (no Qt loop): the end of the file
+                # without a crossfade (length unknown, no second deck) ends the last pass or starts
+                # the next one from the IN point.
+                if self._xf_last_pass():
+                    self._handle_cue_finished()
+                else:
+                    self._current_loop_iteration += 1
+                    self.play()
 
     def _on_deck_error(self, deck_idx: int, error: QMediaPlayer.Error, msg: str) -> None:
         if deck_idx != self._active_deck:
@@ -1079,6 +1320,8 @@ class LivePlayer(QObject):
             self._driver_timer.stop()
             self._stop_fade_timer()
             self._reset_level_trim()
+            self._drop_loop_xfade()
+            self._loop_xfade_sec = 0.0  # set again by set_loop() for the new cue
             self._swap_backend()  # 3.2: own mixer for this cue, or Qt Multimedia (the default)
             if self._standby_player is not None:
                 self._standby_player.stop()
@@ -1107,8 +1350,22 @@ class LivePlayer(QObject):
             self._current_loop_iteration = 0
             self._last_emitted_opacity = None
 
-            self._player.stop()
             url = QUrl.fromLocalFile(file_path)
+            if self._adopt_preload(file_path, resume_at):
+                # 3.3: opened in advance (the next playlist track): already loaded, so no
+                # durationChanged will come - publish the length now.
+                ready_ms = self._player.duration()
+                if ready_ms > 0:
+                    self._duration_sec = ready_ms / 1000.0
+                    self.signals.duration_changed.emit(self._duration_sec)
+                if abs(self._player.position() - self._start_ms) > 40:
+                    self._player.setPosition(self._start_ms)
+                self._load_watchdog.stop()
+                self._watchdog_trials = 0
+                self._watchdog_armed = False
+                logger.info("[LIVE] Loaded %s (start=%.1f, end=%s, opened in advance)", file_path, start, end)
+                return
+            self._player.stop()
             current = self._player.source()
             status = self._player.mediaStatus()
             if current != url or status in (
@@ -1190,6 +1447,7 @@ class LivePlayer(QObject):
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
                 player.play()
                 logger.debug("[LIVE] play()")
+            self._hold_loop_xfade(False)  # 3.4
             self._arm_load_watchdog()
             self._ensure_driver_timer()
             if self._sequencer.active:
@@ -1274,6 +1532,7 @@ class LivePlayer(QObject):
                 self._level_ramp_clock[1] = time.monotonic()  # hold a running level ramp
             player, _ = self._deck_pair()
             _pause_unless_at_end(player)
+            self._hold_loop_xfade(True)  # 3.4: the pass fading out holds too
             logger.debug("[LIVE] pause()")
         except Exception as exc:
             logger.error("[LIVE] pause() failed: %s", exc, exc_info=True)
@@ -1321,6 +1580,7 @@ class LivePlayer(QObject):
             self._watchdog_armed = False
             self._stop_fade_timer()
             self._reset_level_trim()
+            self._drop_loop_xfade()
             self._player.stop()
             if self._standby_player is not None:
                 self._standby_player.stop()
@@ -1375,17 +1635,29 @@ class LivePlayer(QObject):
         except Exception as exc:
             logger.error("[LIVE] set_volume() failed: %s", exc)
 
-    def set_loop(self, loop: bool, loop_count: int = 0) -> None:
-        """Enable or disable seamless looping. When sections exist, section sequencer governs."""
+    def set_loop(self, loop: bool, loop_count: int = 0, crossfade: float = 0.0) -> None:
+        """Enable or disable seamless looping. When sections exist, section sequencer governs.
+
+        3.4: *crossfade* > 0 (sound only): each pass runs into the next over that many
+        seconds on the second deck, and the loop is played pass by pass instead of by Qt.
+        """
         try:
             self._is_looping = loop
             self._loop_count = loop_count
             self._current_loop_iteration = 0
+            self._drop_loop_xfade()
+            self._loop_xfade_sec = (max(0.0, float(crossfade))
+                                    if loop and not self._is_video_cue and not self._sequencer.active else 0.0)
             if self._sequencer.active:
                 self._player.setLoops(QMediaPlayer.Loops.Once)
                 return
             if not loop:
                 self._player.setLoops(QMediaPlayer.Loops.Once)
+            elif self._loop_xfade_sec > 0:
+                self._player.setLoops(QMediaPlayer.Loops.Once)
+                self._pre_cue_next_target()  # the next pass waits on the second deck
+                self._ensure_driver_timer()
+                return
             elif loop_count <= 0:
                 self._player.setLoops(QMediaPlayer.Loops.Infinite)
             else:
@@ -1602,6 +1874,7 @@ class LivePlayer(QObject):
             self._driver_timer.stop()
             self._stop_fade_timer()
             self._reset_level_trim()
+            self.discard_preload()
             self._player.stop()
             if self._standby_player is not None:
                 self._standby_player.stop()

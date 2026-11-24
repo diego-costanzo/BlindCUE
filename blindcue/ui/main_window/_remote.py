@@ -493,7 +493,7 @@ class _RemoteMixin:
         for cue in self._cues:
             if cue.cue_id not in on_air:
                 continue
-            t = self._live_clocks.cue_time(cue.cue_id)
+            t = self._live_clocks.cue_time(cue.cue_id, self._cue_tempo(cue))  # 3.7: real seconds
             if t is None:
                 continue
             warn = ends_soon(t) and not self._hands_over_by_itself(cue)
@@ -516,8 +516,8 @@ class _RemoteMixin:
         mode = ShowEngine.group_mode_of(self._cues, cue)
         parent = ShowEngine.group_parent(self._cues, cue)
         if mode == GroupMode.SEQUENCE.value and getattr(parent, "playlist", False):
-            kids = ShowEngine.children_of(self._cues, cue.parent_id)
-            return not (kids and kids[-1] is cue)  # 3.3: a playlist stops after its last track
+            # 3.3: a playlist stops after its last track (in its own order; a loop never stops)
+            return bool(self.playlist_hands_over(cue))
         if mode == GroupMode.LOOP.value and cue.parent_id in self._released_groups:
             kids = ShowEngine.children_of(self._cues, cue.parent_id)
             return not (kids and kids[-1] is cue)
@@ -623,7 +623,9 @@ class _RemoteMixin:
         Not when the operator already started that cue by hand while this one
         was still playing or waiting for its Auto-GO: it would start twice.
         """
-        next_idx = ShowEngine.auto_follow_target(self._cues, finished_cue, self._released_groups)
+        next_idx = self.playlist_next_row(finished_cue)  # 3.3: random order, loop of a playlist
+        if next_idx is None:
+            next_idx = ShowEngine.auto_follow_target(self._cues, finished_cue, self._released_groups)
         if next_idx < 0:
             return
         if finished_cue.cue_id in self._held_auto_go:

@@ -128,6 +128,7 @@ from models.cue import (
     FollowMode,
     GroupMode,
     MediaType,
+    is_placeholder,
     resolve_output_target,
     runtime_layer,
 )
@@ -527,6 +528,11 @@ def main() -> int:
     # Layers fading out after a stop (cut / Fade All): their EOF must not start
     # a Post-Delay or an auto-follow – the operator asked them to stop.
     fading_layers: set[int] = set()
+    # 3.3: playlist transitions. cue_id -> (kind, seconds, extra) for the track about to start
+    # ("crossfade" / "overlap": extra = seconds the old track holds its level; "wake": extra = level),
+    # and per runtime layer what was already done for the track playing there.
+    pending_transitions: dict[int, tuple[str, float, float]] = {}
+    playlist_state: dict[int, dict] = {}
 
     # ── Live video-load guard ─────────────────────────────────────────
     # Measured on this hardware class: one 1080p video per output holds
@@ -807,10 +813,12 @@ def main() -> int:
             return 0.0
         if float(getattr(cue, "post_delay", 0.0) or 0.0) > 0.02 or cue.cue_id in main_win._held_auto_go:
             return 0.0
-        idx = ShowEngine.auto_follow_target(main_win._cues, cue, main_win._released_groups)
-        if idx < 0:
-            return 0.0
-        nxt = main_win._cues[idx]
+        nxt = main_win.playlist_peek_next(cue)  # 3.3: a photo playlist in random order
+        if nxt is None:
+            idx = ShowEngine.auto_follow_target(main_win._cues, cue, main_win._released_groups)
+            if idx < 0:
+                return 0.0
+            nxt = main_win._cues[idx]
         seconds = float(getattr(nxt, "crossfade", 0.0) or 0.0)
         if nxt.media_type != MediaType.IMAGE or seconds <= 0 or not getattr(nxt, "enabled", True) \
                 or float(getattr(nxt, "pre_delay", 0.0) or 0.0) > 0.02 or _base_layer(nxt) != _base_layer(cue):
@@ -820,7 +828,8 @@ def main() -> int:
     def _enter_post_delay_or_finalize(cue: Cue, layer: int, expected_gen: int) -> None:
         if layer_fire_gen.get(layer) != expected_gen:
             return
-        post_d = max(0.0, float(getattr(cue, "post_delay", 0.0)))
+        # 3.3: the "pause between tracks" of a playlist waits like a Post-Delay
+        post_d = max(0.0, float(getattr(cue, "post_delay", 0.0))) + main_win.playlist_gap_after(cue)
         if post_d > 0.02:
             lp = live_players.get(layer)
             if lp is not None and not held.holds(layer, cue.cue_id):  # 4.4: a held frame is a still already
@@ -982,11 +991,22 @@ def main() -> int:
             # Crossfade of sound (evaluation 2026-11-24): the sound on this layer keeps
             # playing and fades out over the crossfade time instead of being cut.
             xfade = float(getattr(cue, "crossfade", 0.0) or 0.0)
+            hold, wake = 0.0, None
+            trans = pending_transitions.pop(cue.cue_id, None) if start_at is None else None
+            if trans is not None:  # 3.3: the transition of a playlist into this track
+                if trans[0] == "crossfade":
+                    xfade = max(xfade, trans[1])
+                elif trans[0] == "overlap":
+                    xfade, hold = trans[1], trans[2]
+                elif trans[0] == "wake":
+                    wake = (trans[1], trans[2])
             handed = bool(
                 xfade > 0 and lp is not None and start_at is None and before is not None
                 and before.media_type in (MediaType.AUDIO, MediaType.VIDEO)
                 and cue.media_type in (MediaType.AUDIO, MediaType.VIDEO)
-                and lp.hand_over_tail(xfade))
+                and lp.hand_over_tail(xfade, hold))
+            if hold > 0:
+                handed = False  # overlap: the track starts at its own level (no longer fade in)
 
             if cue.media_type == MediaType.VIDEO:
                 if lp is not None:
@@ -1043,7 +1063,7 @@ def main() -> int:
                     _apply_cue_automation(lp, cue, hot=False)
                     if handed:
                         lp.extend_fade_in(xfade)
-                    lp.set_loop(cue.loop, cue.loop_count)
+                    lp.set_loop(cue.loop, cue.loop_count, getattr(cue, "loop_crossfade", 0.0))  # 3.4
                     lp.play()
                     if start_at is not None:
                         lp.ramp_level(0.0, 0.0)
@@ -1082,6 +1102,9 @@ def main() -> int:
                     if not live_img_timer.isActive():
                         live_img_timer.start()
                 logger.info("[MAIN] Image cue fired on Layer %d: %s", layer, cue)
+            if wake is not None and lp is not None and cue.media_type in (MediaType.AUDIO, MediaType.VIDEO):
+                lp.ramp_level(0.0, 0.0)  # 3.3: woken with the next track: it comes in to the level it slept at
+                lp.ramp_level(wake[1], wake[0])
 
         except Exception as exc:
             logger.error("[MAIN] Error firing cue on L%d: %s", layer, exc, exc_info=True)
@@ -1303,7 +1326,8 @@ def main() -> int:
                 main_win.start_countdown(float(spec.get("countdown_sec", 0.0)), str(spec.get("text", "")).strip())
             elif kind in (ACTION_PAUSE, ACTION_RESUME):  # 2.11
                 sleep = float(spec.get("sleep_sec", 0.0))
-                layers = [l_idx for l_idx in layers if _pause_layer(l_idx, kind == ACTION_PAUSE, sleep)]
+                wake_next = kind == ACTION_RESUME and bool(spec.get("wake_next"))  # 3.3
+                layers = [l_idx for l_idx in layers if _pause_layer(l_idx, kind == ACTION_PAUSE, sleep, wake_next)]
             elif kind == ACTION_STOPWATCH:
                 layers = []
                 main_win.stopwatch(str(spec.get("sw_mode", "start")))
@@ -1329,6 +1353,9 @@ def main() -> int:
         rel_extra = main_win.take_rel_extra(cue.cue_id)  # 2.1: N s after/before another cue
         if not getattr(cue, "enabled", True):
             logger.info("[MAIN] '%s' is off in this version of the show: not started", cue.name)
+            return
+        if is_placeholder(cue):
+            logger.info("[MAIN] '%s' has no file yet (placeholder): nothing plays", cue.name)  # 3.4
             return
         if cue.media_type == MediaType.ACTION:
             # Branch before the layer logic: an action must not cancel the
@@ -1585,6 +1612,46 @@ def main() -> int:
         )
         return start_sec, max(start_sec + 0.001, eff_end), is_inf
 
+    def _playlist_tick(layer: int, cue: Cue, pos_sec: float, dur: float) -> None:
+        """3.3: near the end of a playlist track: open the next track in advance (gapless) and, for a
+        crossfade / overlap, start it before this one ends (it fades out / plays on as a tail)."""
+        from engine import playlist_flow
+
+        if cue.media_type != MediaType.AUDIO or dur <= 0 or layer in fading_layers or cue.loop:
+            return
+        st = playlist_state.get(layer)
+        if st is None or st["cue"] != cue.cue_id:
+            st = playlist_state[layer] = {"cue": cue.cue_id, "pre": False, "led": False}
+        if st["led"] or _sleep_state(layer) is not None or scheduler.is_paused():
+            return
+        plan = main_win.playlist_lead(cue)
+        if plan is None:
+            return
+        mode, seconds, nxt = plan
+        if (nxt.media_type != MediaType.AUDIO or _base_layer(nxt) != layer or not getattr(nxt, "enabled", True)
+                or float(getattr(nxt, "pre_delay", 0.0) or 0.0) > 0.02 or is_placeholder(nxt)):
+            return  # another layer, a wait of its own, no file yet: the next track starts at the end, as before
+        rest = _remaining_from(cue, dur, pos_sec)
+        lp = live_players.get(layer)
+        if rest is None or lp is None:
+            return
+        if not st["pre"] and rest <= playlist_flow.PRELOAD_SEC:
+            st["pre"] = True
+            lp.preload_next(nxt.file_path, nxt.in_point)
+        start, end, _inf = _live_effective_bounds(cue, dur)
+        lead = playlist_flow.lead_seconds(mode, seconds, (end - start) / max(0.5, float(cue.playback_rate)))
+        if lead <= 0.05 or rest > lead or float(getattr(cue, "post_delay", 0.0) or 0.0) > 0.02:
+            return
+        st["led"] = True
+        hold = max(0.0, rest - float(cue.fade_out or 0.0)) if mode == playlist_flow.OVERLAP else 0.0
+        pending_transitions[nxt.cue_id] = (mode, rest, hold)
+        logger.info("[PLAYLIST] '%s' -> '%s': %s over %.1fs", cue.name, nxt.name, mode, rest)
+        try:
+            main_win.cue_ended(cue)
+            main_win.trigger_auto_follow_from(cue)
+        finally:
+            pending_transitions.pop(nxt.cue_id, None)
+
     def _on_live_duration(layer: int, dur_sec: float) -> None:
         live_durations[layer] = max(0.001, dur_sec)
         live_cue = active_live_cues.get(layer)
@@ -1648,6 +1715,7 @@ def main() -> int:
                     start_sec=start_sec,
                     is_looping_inf=is_inf,
                 )
+            _playlist_tick(layer, live_cue, pos_sec, dur)
 
         if preview_manual_position:
             return
@@ -1924,11 +1992,32 @@ def main() -> int:
         main_win.cue_paused(active_live_cues[layer])
         logger.info("[MAIN] Live Layer %d asleep", layer)
 
-    def _pause_layer(layer: int, pause: bool, fade: float = 0.0) -> bool:
+    def _wake_with_next_track(layer: int, live_cue: Cue, lp, st: dict | None, fade: float) -> bool:
+        """3.3: a playlist wakes up with its next track (after a break), not where it slept."""
+        nxt = main_win.playlist_peek_next(live_cue)
+        if nxt is None:
+            return False
+        level = st["trim"] if st is not None else lp.level_trim()
+        sleeping.pop(layer, None)
+        paused_layers_by_global.discard(layer)
+        main_win.set_live_layer_paused(layer, False)
+        if _base_layer(nxt) != layer or is_placeholder(nxt):
+            main_win.mark_layer_stopped(layer)  # the next track plays elsewhere (or not at all): this one goes
+            _on_layer_clear_requested(layer, fade_override=0.05)
+        pending_transitions[nxt.cue_id] = ("wake", max(0.0, fade), level)
+        try:
+            started = main_win.playlist_skip_to_next(live_cue)
+        finally:
+            pending_transitions.pop(nxt.cue_id, None)
+        logger.info("[MAIN] Live Layer %d woken with the next track '%s'", layer, nxt.name)
+        return started
+
+    def _pause_layer(layer: int, pause: bool, fade: float = 0.0, wake_next: bool = False) -> bool:
         """Pause or resume the sound / video on *layer* (its card, a pause action); False: nothing changed.
 
         3.3: with *fade* the music goes to sleep (fades out, then pauses) or wakes up (plays on from
-        where it slept, fading in to the level it had).
+        where it slept, fading in to the level it had). *wake_next*: a playlist wakes up with its
+        next track instead.
         """
         live_cue = active_live_cues.get(layer)
         lp = live_players.get(layer)
@@ -1937,6 +2026,9 @@ def main() -> int:
         if held.holds(layer):
             return False  # 4.4: a held last frame has ended - "resume" would play the video again
         st = _sleep_state(layer)
+        if (not pause and wake_next and (st is not None or not lp.is_playing())
+                and _wake_with_next_track(layer, live_cue, lp, st, fade)):
+            return True
         if pause:
             if st is not None and st["falling"] and fade <= 0.02:
                 st["falling"] = False  # paused at once while falling asleep: asleep now, same level to wake to
@@ -2127,6 +2219,9 @@ def main() -> int:
                 preview_manual_position = False
                 main_win.set_preview_time(0.0, 0.0)
                 main_win.set_preview_audio_playing(False)
+                if is_placeholder(cue):
+                    test_player.stop()  # 3.4: no file yet, nothing to preview
+                    return
                 if cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
                     # Prime the waveform section toolbar with a duration measured
                     # earlier: QMediaPlayer emits durationChanged only once per
@@ -2176,8 +2271,8 @@ def main() -> int:
         def _test_play_selected(mw: MainWindow, tp: TestPlayer) -> None:
             nonlocal preview_manual_position
             cue = mw._selected_cue()
-            if cue is None or not cue.media_type.has_file:
-                return  # groups and action cues have nothing to rehearse here
+            if cue is None or not cue.media_type.has_file or is_placeholder(cue):
+                return  # groups, action cues and placeholders (3.4) have nothing to rehearse here
             if cue.media_type == MediaType.IMAGE:
                 preview_manual_position = True
                 mw.start_image_preview_playback(cue)

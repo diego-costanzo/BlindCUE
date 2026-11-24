@@ -274,6 +274,7 @@ class _TransportMixin:
         if getattr(cue, "start_clock", ""):
             self._clock_mark(cue)  # 2.6: started by hand, the clock does not start it again
         self._undo_go_collect(cue)
+        self._playlist_note_started(cue)  # 3.3: the playlist goes on from this track
         if cue.cue_id in self._held_auto_go:
             self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again
             self._live_show_panel.set_auto_go_held(self._held_auto_go)
@@ -394,6 +395,9 @@ class _TransportMixin:
                 self._current_index = c_idx
                 logger.info("[GO] Fired chained group #%d: %s", cue.cue_id, cue)
                 continue
+            if self._placeholder_go(cue):  # 3.4: no file yet - nothing plays, the GO order goes on
+                self._current_index = c_idx
+                continue
             # An action cue takes no layer: it must not demote what plays there.
             waits = cue.pre_delay + self._rel_extra.get(cue.cue_id, 0.0)  # 2.1: a relative start may wait
             if waits <= 0.02 and cue.media_type != MediaType.ACTION:
@@ -511,7 +515,9 @@ class _TransportMixin:
                 self._cue_list.setCurrentRow(next_idx)
 
         elif mode == GroupMode.SEQUENCE.value:
-            first_child = children[0]
+            # 3.3: a playlist starts at a random track or after the last one played, if so set
+            first_child = self._playlist_first(group_cue, children) if getattr(group_cue, "playlist", False) \
+                else children[0]
             self._fire_group_child(first_child, depth)
             logger.info("[GO-GROUP-SEQ] Fired child 0 #%d '%s'", first_child.cue_id, first_child.name)
             self._refresh_cue_list(keep_selection=False)
@@ -558,6 +564,8 @@ class _TransportMixin:
                 logger.warning("[GO-GROUP] Annidamento troppo profondo su '%s'", child.name)
                 return
             self._fire_group_cue(self._cues.index(child), child, depth + 1)
+            return
+        if self._placeholder_go(child, note=True):  # 3.4
             return
         if child.pre_delay <= 0.02 and child.media_type != MediaType.ACTION:
             ShowEngine.promote_to_live(self._cues, child, dual_active=self._dual_output_active,

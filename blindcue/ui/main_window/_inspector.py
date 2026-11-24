@@ -249,7 +249,9 @@ class _InspectorMixin:
         playhead_sec = self._waveform.playhead_seconds()
         if cue is None or cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO) or dur <= 0 or playhead_sec is None:
             return
-        target_in = round(max(0.0, min(max(0.0, dur - 0.05), playhead_sec)), 2)
+        from engine.in_out import in_at
+
+        target_in = in_at(playhead_sec, dur)  # the same rule as "start here" in the Edit cue window
         self._commit_waveform_in(target_in, clear_conflicting_out=True, seek_preview=False)
         self._status_label.setText(f"Punto IN spostato sulla testina: {target_in:.2f}s")
 
@@ -260,17 +262,19 @@ class _InspectorMixin:
         playhead_sec = self._waveform.playhead_seconds()
         if cue is None or cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO) or dur <= 0 or playhead_sec is None:
             return
-        if playhead_sec >= dur - 0.05:
+        from engine.in_out import OUT_END, OUT_MIN, out_at
+
+        target_out, how = out_at(playhead_sec, cue.in_point, dur)  # the same rule as "end here" (Edit cue)
+        if how == OUT_END:
             applied = self._commit_waveform_out(None)
             self._status_label.setText("Punto OUT impostato sulla fine del file (Fine)")
-        elif playhead_sec <= cue.in_point + 0.04:
-            target_out = round(min(dur, cue.in_point + 0.05), 2)
+        elif how == OUT_MIN:
             applied = self._commit_waveform_out(target_out)
             self._status_label.setText(
                 f"Testina prima di IN: OUT impostato al minimo ({applied:.2f}s)" if applied else "OUT aggiornato"
             )
         else:
-            applied = self._commit_waveform_out(round(playhead_sec, 2))
+            applied = self._commit_waveform_out(target_out)
             self._status_label.setText(
                 f"Punto OUT spostato sulla testina: {applied:.2f}s" if applied else "OUT aggiornato"
             )

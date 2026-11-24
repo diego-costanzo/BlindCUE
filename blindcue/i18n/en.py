@@ -4182,4 +4182,112 @@ T: dict[str, str] = {
         '📡 Remote: OFF',
     'PRE-VIZ':
         'PREVIEW',
+    '🎵 PLAYLIST':
+        '🎵 PLAYLIST',
+    'Tra i brani:':
+        'Between tracks:',
+    'Passaggio tra i brani':
+        'Transition between tracks',
+    'Nessuna (senza pause)':
+        'None (no pause)',
+    'Sovrapposizione':
+        'Overlap',
+    'Pausa tra i brani':
+        'Pause between tracks',
+    'Secondi del passaggio tra i brani':
+        'Seconds of the transition between tracks',
+    'Ordine casuale':
+        'Random order',
+    'Ogni giro in un ordine diverso.':
+        'Every round in a different order.',
+    'senza ripetere gli ultimi':
+        'no repeat of the last',
+    'Nessuna ripetizione tra gli ultimi brani':
+        'No repeat among the last tracks',
+    'Un brano non torna tra gli ultimi N brani suonati (per quanto lo permette la lunghezza della playlist).':
+        'A track does not come back among the last N tracks played (as far as the length of the playlist allows).',
+    "Dopo l'ultimo brano ricomincia (a ciclo)":
+        'After the last track start again (loop)',
+    "La musica dell'intervallo suona finché non la fermi o la addormenti.":
+        'The interval music plays until you stop it or put it to sleep.',
+    'Il GO successivo continua dal brano seguente':
+        'The next GO goes on with the next track',
+    "Dopo uno stop o una pausa la playlist non riparte dal primo brano: continua con quello dopo l'ultimo suonato.":
+        'After a stop or a break the playlist does not start from its first track again: it goes on with the one after the last played.',
+    'Il brano successivo parte appena finisce quello in corso: il programma lo apre qualche secondo prima, così la pausa è la più corta possibile.':
+        'The next track starts as soon as the current one ends: the program opens it a few seconds before, so the pause is as short as possible.',
+    'Il brano successivo entra N secondi prima della fine di quello in corso, che sfuma nello stesso tempo.':
+        'The next track comes in N seconds before the end of the current one, which fades out over the same time.',
+    'Il brano successivo entra N secondi prima della fine; quello in corso suona fino alla sua fine.':
+        'The next track comes in N seconds before the end; the current one plays on to its end.',
+    "Tra un brano e l'altro N secondi di silenzio.":
+        'N seconds of silence between the tracks.',
+    "Playlist '{}' aggiornata":
+        "Playlist '{}' updated",
+    'Dal brano successivo della playlist':
+        'With the next track of the playlist',
+    "Dopo una pausa lunga (l'intervallo) la playlist riparte con il brano seguente, non dal punto in cui si era addormentata.":
+        'After a long break (the interval) the playlist wakes up with the next track, not where it fell asleep.',
+    'Risveglio:':
+        'Wake up:',
+    'Risveglia dal brano successivo in {} s: {}':
+        'Wake with the next track in {} s: {}',
+    'Riprendi dal brano successivo: {}':
+        'Resume with the next track: {}',
+    '🎚 Stesso volume percepito per tutti i brani (LUFS)':
+        '🎚 Same loudness for every track (LUFS)',
+    'Misura ogni brano e lo abbassa quanto serve, così tutti suonano forte uguale (il programma non può suonare più forte del file).':
+        'Measures every track and turns it down as much as needed, so they all sound equally loud (the program cannot play louder than the file).',
+    'Nessun brano con il suo file in questa playlist':
+        'No track of this playlist has its file',
+    'Misuro il volume percepito di {} brani…':
+        'Measuring the loudness of {} tracks…',
+    'Volume percepito non misurabile: nessun brano analizzato':
+        'Loudness could not be measured: no track was analysed',
+    "Playlist '{}': {} brani allo stesso volume percepito ({} LUFS)":
+        "Playlist '{}': {} tracks at the same loudness ({} LUFS)",
+    'più basso di -16: il brano più debole non può suonare più forte':
+        'below -16: the quietest track cannot play louder',
+    'non misurati: {}':
+        'not measured: {}',
+    'Dissolvenza tra i giri:':
+        'Crossfade between passes:',
+    'stacco':
+        'cut',
+    'Dissolvenza tra i giri del loop':
+        'Crossfade between the loop passes',
+    'Suoni: ogni giro entra nel successivo con una dissolvenza incrociata di questi secondi, senza salto (0 = stacco).':
+        'Sounds: each pass runs into the next with a crossfade of this many seconds, with no jump (0 = a cut).',
+    '🕳 Suono da registrare (senza file)':
+        '🕳 Sound to record (no file yet)',
+    "Un posto nella scaletta per un effetto che non c'è ancora: al GO non suona. Il file si sceglie dopo, dal menu della cue.":
+        "A place in the cue list for an effect that does not exist yet: its GO plays nothing. Choose the file later, from the cue's menu.",
+    'Effetto da registrare':
+        'Effect to record',
+    "Suono da registrare aggiunto: scegli il file quando c'è (menu della cue → Scegli il file…)":
+        'Sound to record added: choose its file when you have it (cue menu → Choose the file…)',
+    "{} '{}': ancora senza file – non suona":
+        "{} '{}': no file yet – plays nothing",
+    '🕳 SENZA FILE':
+        '🕳 NO FILE',
+    '🕳 Senza file, non suona — GO: {}':
+        '🕳 No file, plays nothing — GO: {}',
+    'ancora senza file: al GO non suona':
+        'no file yet: its GO plays nothing',
+    'Livello del punto':
+        'Level of the point',
+    'Livello in dB (0 = pieno, -60 = silenzio):':
+        'Level in dB (0 = full, -60 = silence):',
+    "L'inizio va dove si trova ora l'ascolto (tasto I, come «IN Testina» sulla forma d'onda)":
+        'The start goes where the audition is now (key I, like «IN at Playhead» on the waveform)',
+    "La fine va dove si trova ora l'ascolto (tasto O, come «OUT Testina» sulla forma d'onda)":
+        'The end goes where the audition is now (key O, like «OUT at Playhead» on the waveform)',
+    'Inizio: {} s':
+        'Start: {} s',
+    'Fine: {} s':
+        'End: {} s',
+    'Fine: la fine del file':
+        'End: the end of the file',
+    "L'ascolto è prima dell'inizio: fine subito dopo l'inizio ({} s)":
+        'The audition is before the start: the end just after the start ({} s)',
 }
