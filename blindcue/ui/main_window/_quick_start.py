@@ -40,7 +40,7 @@ class _QuickStartMixin:
         together = self._ask_folder_layout(len(files), sounds_only)
         if together is None or not self._on_new_show():
             return
-        self._cue_list.setCurrentRow(len(self._cues) - 1)  # after the checklist of a new show
+        self._cue_list.setCurrentRow(len(self._cues) - 1)
         self._undo_batch = True
         try:
             added = self._add_files_collect(files)

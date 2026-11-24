@@ -165,7 +165,6 @@ odpalasz go GO; może mieć Pre-Delay, Auto-GO i należeć do grupy.</p>
 <tr><td><b>🎚 Zmiana poziomu</b></td><td>zmienia głośność tego, co gra, bez zatrzymywania: <b>bezwzględnie</b> (tak, jakby Głośność cue miała podaną wartość) albo <b>względnie</b> (np. −10 dB), w podanym czasie i z wybraną krzywą. Muzyka pod dialog: jedna akcja −10 dB, później druga +10 dB.</td></tr>
 <tr><td><b>🌓 Krycie warstwy</b></td><td>przyciemnia całą warstwę (obrazy i wideo), np. tło do 30 % na czas sceny. Następny cue na tej warstwie zaczyna z pełnym kryciem.</td></tr>
 <tr><td><b>📝 Notatka dla operatora</b></td><td>tekst w kolorowym pasku u góry okna programu – nigdy na projektorze. Nie blokuje GO; znika przy następnym GO albo po kliknięciu ✕.</td></tr>
-<tr><td><b>☑ Lista kontrolna</b></td><td>notatka z polami do odhaczenia (np. „mikrofony włączone”). Pokazuje się po GO, a także przy każdym wejściu w tryb LIVE, dopóki wszystko nie jest odhaczone. Odhaczenia nie są zapisywane – każde przedstawienie sprawdzasz od nowa.</td></tr>
 <!--IF:jump_actions--><tr><td><b>↪ Skok do pozycji</b></td><td>uruchamia wybrany cue (dalej GO idzie od niego) albo – <b>Tylko jako następne GO</b> – jedynie ustawia go jako następny. <b>Najwyżej N×</b> ogranicza powtórzenia: np. scena grana dwa razy, potem GO idzie dalej. Licznik zeruje się, gdy przedstawienie zaczyna się od początku.</td></tr>
 <tr><td><b>📞 Wywołaj pozycję</b></td><td>uruchamia wybrany cue bez przesuwania GO (jak efekt). Cue z zaznaczonym <b>📞 Tylko na wywołanie</b> (karta 3 · Czasy) jest poza kolejnością GO; w Inspektorze widać, skąd jest wywoływany.</td></tr>
 <tr><td><b>⏩ Przewiń odtwarzanie</b></td><td>przesuwa grający dźwięk lub film: <b>do miejsca</b> w pliku, <b>o N s</b> do przodu lub do tyłu, albo <b>na N s przed końcem</b> (np. pominięcie zwrotki na próbie).</td></tr><!--/IF:jump_actions-->
@@ -186,6 +185,15 @@ muzyka (tryb <b>Razem</b>), ustaw akcję na liście <b>przed</b> nią albo wska�
 Możesz też zaznaczyć <b>kilka cue tego samego typu</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+klik)
 i zmienić je wszystkie naraz.</p>
 <p><img src="img/pl/04_inspector_video_cue.png" width="520"></p>
+<!--IF:edit_window--><p><b>Okno „Edytuj pozycję”</b> – najprostsza droga, w każdym układzie widoku: <b>dwuklik</b> na pozycji (poza kolumną z numerem), <kbd>Enter</kbd> na liście albo przycisk <b>✏ Edytuj…</b> pod listą. W jednym oknie jest to, co najważniejsze dla danej pozycji:</p>
+<ul>
+<li><b>dźwięk i film</b> – przebieg dźwięku z początkiem i końcem do przeciągnięcia, <b>▶ Odsłuchaj</b> (w słuchawkach, jeśli są wybrane), <b>⇤ Początek tutaj</b> / <b>Koniec tutaj ⇥</b> w miejscu, które właśnie gra, <b>✂</b> utnij ciszę, <b>↺ Cały plik</b>, głośność, pętla;</li>
+<li><b>zdjęcie i film</b> – wielkość i położenie (<b>⌖ Środek</b>), dla zdjęcia czas na ekranie;</li>
+<li><b>napis</b> – <b>✏ Zmień tekst…</b>;</li>
+<li><b>scena</b> – jak ma grać (wszystko naraz, po kolei, krok po kroku…);</li>
+<li>u wszystkich: nazwa, Q, uwagi, „Potem” oraz przejścia – pojawianie, wygaszanie, przenikanie.</li>
+</ul>
+<p><b>OK</b> zapisuje wszystko jako jeden krok (<kbd>Ctrl+Z</kbd> cofa całość), <b>Anuluj</b> niczego nie zmienia. Nazwę na samej liście zmienisz też klawiszem <kbd>F2</kbd>. W Przedstawieniu okno się nie otwiera – pozycje się wtedy nie zmieniają.</p><!--/IF:edit_window-->
 
 <h3>Karta „Cue · czasy”</h3>
 <ul>
@@ -344,9 +352,8 @@ nakłada się na niego.</li>
 Dlatego nowe cue audio trafiają domyślnie na <b>L2</b>, a zdjęcia i filmy na <b>L1</b>.</li><!--/IF:audio_l2-->
 <!--IFNOT:audio_l2--><li>Dotyczy to też dźwięku: muzyka i zdjęcie na tej samej warstwie wyłączają się nawzajem.
 Muzykę, która ma grać razem ze zdjęciami, ustaw na inną warstwę (np. <b>L2</b>).</li><!--/IFNOT:audio_l2-->
-<li>Zaślepkę zmienisz w <b>Przedstawienie → Ustaw obraz zaślepki</b> albo przyciskiem
-<b>Zmień zaślepkę…</b> – np. na plakat przedstawienia lub czerń.
-Domyślna zaślepka to plansza z logo i siatką do ustawiania projektora.</li>
+<li>Zaślepkę wybierzesz w <b>Przedstawienie → Zaślepka (gdy nic nie gra)</b> albo przyciskiem
+<b>Zmień zaślepkę…</b>: <b>⬛ Czarny ekran</b> (domyślna), <b>🖼 Obraz lub logo…</b> (np. plakat przedstawienia), <b>🎞 Film w pętli (bez dźwięku)…</b> (np. kurtyna) albo <b>▦ Wzór testowy</b> do ustawiania projektora – ten pokazuje się tylko w Przygotowaniu, w Próbie i w Przedstawieniu jest wtedy czarny ekran. Wybór zapisuje się w przedstawieniu (film i obraz jadą też w paczce przenośnej). Film zaślepki staje, gdy coś go zasłania, i rusza, gdy znów go widać.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -389,9 +396,7 @@ albo <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> Ekran robi się prosty i duży – t
 <b>✓ TAK</b>, <b>✗ NIE</b> albo <b>– NIE SPRAWDZONO</b> i ma przycisk naprawy: obraz na projektorze
 (<b>Pokaż numery ekranów</b>, <b>Wybierz ekran…</b>), głośność główna (<b>Przywróć 100 %</b>), głośnik
 (<b>▶ Ton próbny</b> – sekundowy dźwięk przez głośniki pokazu, potem odpowiedz <b>Tak, słychać</b> / <b>Nie słychać</b>),
-brakujące pliki (<b>Pokaż na liście</b>), zasilacz laptopa (sprawdza sam co 2 s) i lista kontrolna pokazu
-(odhaczasz w miejscu; nowy pokaz ma ją od razu na górze listy, do starego dodasz ją przyciskiem albo
-<b>Sterowanie → Dodaj domyślną listę kontrolną</b>). Strona kończy się przyciskami startu (<b>▶ Zacznij</b> albo
+brakujące pliki (<b>Pokaż na liście</b>) i zasilacz laptopa (sprawdza sam co 2 s). Strona kończy się przyciskami startu (<b>▶ Zacznij</b> albo
 <b>Od początku / Od zaznaczonego / Wznów</b>) i <b>Zostań w Przygotowaniu</b>. Gdy wszystko jest na TAK, <kbd>Enter</kbd>
 i <kbd>Spacja</kbd> zaczynają; gdy coś jest nie tak, sprawdzają ponownie – zacząć mimo to możesz klawiszem
 <kbd>Tab</kbd> do przycisku startu albo myszą. Kolejne wejścia pokazują tylko to, co jest nie tak (albo nic).
@@ -475,7 +480,7 @@ sam (Auto-GO poprzedniego), pasek <b>▶ NASTĘPNY</b> ma przycisk <b>Wstrzymaj<
 na Twoje GO (np. aktor się spóźnia) – <b>Pauza wszystko</b> zatrzymałaby też muzykę. Na górze kolumny jest
 <b>Podgląd wyjścia</b> – to, co widzi widownia, w małym okienku (do 5 klatek na sekundę); <b>▾</b> zwija go,
 program pamięta to na tym komputerze.</li><!--/IF:now_playing-->
-<!--IF:action_cues--><li>Notatki i listy kontrolne z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.<!--IF:now_playing--> W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.<!--/IF:now_playing--></li><!--/IF:action_cues-->
+<!--IF:action_cues--><li>Notatki z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.<!--IF:now_playing--> W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <!--IF:gentle_fade--><li><b>Wygaś</b> na karcie ścisza pozycję łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej pozycjami jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do pozycji po scenie.</li><!--/IF:gentle_fade-->
 <!--IF:effects--><li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w Inspektorze zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b> albo <b>Gra, dopóki trzymasz klawisz</b>. Kilka pozycji na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li><!--/IF:effects-->
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
@@ -524,7 +529,7 @@ maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
 
 <!--IF:assistant--><h3>Asystent AI (Claude Desktop i inne programy MCP)</h3>
 <p>Asystent AI może przygotować przedstawienie za Ciebie: ułożyć listę cue z folderu plików
-według scenariusza, dodać napisy, sceny, notatki i listy kontrolne dla operatora, a na koniec
+według scenariusza, dodać napisy, sceny, notatki dla operatora, a na koniec
 sprawdzić całość. Ty tylko sprawdzasz wynik w <b>Próbie</b> i prowadzisz przedstawienie.</p>
 <ol>
 <li><b>Przedstawienie → 🤖 Asystent AI…</b> → <b>Dodaj do Claude Desktop…</b>. Program tworzy plik
@@ -567,6 +572,7 @@ wskażesz. Do dostawcy AI trafiają nazwy cue, uwagi i nazwy plików – nie ich
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>grupuj / rozgrupuj</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>przesuń cue</td></tr>
 <tr><td><kbd>Del</kbd></td><td>usuń cue</td></tr>
+<!--IF:edit_window--><tr><td><kbd>Enter</kbd> / dwuklik</td><td>okno „Edytuj pozycję” (lista w Przygotowaniu)</td></tr><!--/IF:edit_window-->
 <tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>punkt IN / OUT na głowicy</td></tr>
 <tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>cofnij / ponów</td></tr>
 <tr><td><kbd>Ctrl+S</kbd></td><td>zapisz</td></tr>
@@ -586,7 +592,6 @@ ostatniego cue.</li>
 na projektorze, a działa płynnie.</li>
 <li>Zapisz przedstawienie z <b>kopiowaniem plików</b> i miej kopię na pendrivie.</li>
 <li>Wpisz w <b>Uwagi</b>, po jakiej kwestii odpalić dany cue.</li>
-<!--IF:action_cues--><li>Na początku listy dodaj cue <b>☑ Lista kontrolna</b> z tym, co trzeba sprawdzić – pokaże się sama przy wejściu w tryb LIVE.</li><!--/IF:action_cues-->
 <li>Wyłącz <b>MIRROR LIVE</b>, zamknij inne programy, wyłącz powiadomienia i usypianie
 ekranu w systemie.</li>
 <li>Ustaw zaślepkę (plakat lub czerń), żeby przed startem widownia nie widziała pulpitu.</li>

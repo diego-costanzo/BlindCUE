@@ -3672,4 +3672,104 @@ T: dict[str, str] = {
         'Dodaj obraz',
     'Video, suoni e immagini':
         'Filmy, dźwięki i obrazy',
+    'Modifica cue':
+        'Edytuj pozycję',
+    'Dati della cue':
+        'Pozycja',
+    "Che cosa fa l'azione si sceglie nel pannello a destra (scheda «⚡ Azione»).":
+        'Co robi akcja, wybierasz w panelu po prawej (karta „⚡ Akcja”).',
+    'Come suona la scena':
+        'Jak gra scena',
+    "Il file non c'è":
+        'Brak pliku',
+    "Il file non c'è: scegline un altro con il menu della cue.":
+        'Brak pliku: wybierz inny w menu pozycji (prawy przycisk).',
+    'Suono':
+        'Dźwięk',
+    'Film':
+        'Film',
+    "Forma d'onda: trascina l'inizio e la fine":
+        'Przebieg dźwięku: przeciągnij początek i koniec',
+    "Forma d'onda in caricamento…":
+        'Wczytuję przebieg dźwięku…',
+    '▶ Ascolta':
+        '▶ Odsłuchaj',
+    "Ascolta dall'inizio scelto (in cuffia, se è scelta)":
+        'Odsłuch od wybranego początku (w słuchawkach, jeśli są wybrane)',
+    '⇤ Inizio qui':
+        '⇤ Początek tutaj',
+    "L'inizio va dove si trova ora la riproduzione":
+        'Początek tam, gdzie jest teraz odtwarzanie',
+    'Fine qui ⇥':
+        'Koniec tutaj ⇥',
+    'La fine va dove si trova ora la riproduzione':
+        'Koniec tam, gdzie jest teraz odtwarzanie',
+    'fine del file':
+        'koniec pliku',
+    '↺ Tutto il file':
+        '↺ Cały plik',
+    'In loop':
+        'W pętli',
+    'Immagine':
+        'Obraz',
+    'Tempo sullo schermo':
+        'Czas na ekranie',
+    'Dimensione':
+        'Wielkość',
+    'Posizione':
+        'Położenie',
+    '✏ Cambia il testo…':
+        '✏ Zmień tekst…',
+    'Passaggi':
+        'Przejścia',
+    "La fine deve stare dopo l'inizio":
+        'Koniec musi być po początku',
+    'Scegli prima una cue nella lista':
+        'Najpierw wybierz pozycję na liście',
+    "'{}' modificata":
+        'Zmieniono „{}”',
+    '✏ Modifica…':
+        '✏ Edytuj…',
+    'Modifica la cue scelta: inizio e fine, volume, passaggi (anche doppio clic o Invio)':
+        'Edytuj wybraną pozycję: początek i koniec, głośność, przejścia (także dwuklik albo Enter)',
+    'Modifica la cue':
+        'Edytuj pozycję',
+    'Tappo (quando non va niente)':
+        'Zaślepka (gdy nic nie gra)',
+    '⬛ Nero':
+        '⬛ Czarny ekran',
+    '🖼 Immagine o logo…':
+        '🖼 Obraz lub logo…',
+    '🎞 Video in loop (senza suono)…':
+        '🎞 Film w pętli (bez dźwięku)…',
+    '▦ Schema di prova (solo in preparazione)':
+        '▦ Wzór testowy (tylko w przygotowaniu)',
+    'Tappo: nero':
+        'Zaślepka: czarny ekran',
+    'Tappo: schema di prova (solo in preparazione)':
+        'Zaślepka: wzór testowy (tylko w przygotowaniu)',
+    'Tappo: {}':
+        'Zaślepka: {}',
+    'File non valido':
+        'Nieprawidłowy plik',
+    'Impossibile usare questo file come tappo.':
+        'Nie da się użyć tego pliku jako zaślepki.',
+    'Immagine del tappo':
+        'Obraz zaślepki',
+    'Video del tappo':
+        'Film zaślepki',
+    'Tutti i file':
+        'Wszystkie pliki',
+    'Tappo (L0): nero':
+        'Zaślepka (L0): czarny ekran',
+    'Tappo (L0): schema di prova (solo in preparazione)':
+        'Zaślepka (L0): wzór testowy (tylko w przygotowaniu)',
+    'Tappo (L0): 🎞 {} (in loop)':
+        'Zaślepka (L0): 🎞 {} (w pętli)',
+    'Tappo (L0): {}':
+        'Zaślepka (L0): {}',
+    "Che cosa mostra il proiettore quando non va niente: nero, un'immagine o un logo, un video in loop":
+        'Co pokazuje projektor, gdy nic nie gra: czarny ekran, obraz lub logo, film w pętli',
+    'Tappo nero (predefinito)':
+        'Czarna zaślepka (domyślna)',
 }

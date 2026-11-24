@@ -86,8 +86,8 @@ def test_new_show_from_a_folder_as_a_scene(win, tmp_path, monkeypatch):
     monkeypatch.setattr(win, "_confirm_save_if_modified", lambda *a: True)
     win._new_show_from_folder()
     names = [c.name for c in win._cues]
-    assert names[2:] == ["1", "2", "10"] and win._cues[1].media_type == MediaType.GROUP
-    assert all(c.parent_id == win._cues[1].cue_id for c in win._cues[2:])
+    assert names[1:] == ["1", "2", "10"] and win._cues[0].media_type == MediaType.GROUP   # no checklist on top
+    assert all(c.parent_id == win._cues[0].cue_id for c in win._cues[1:])
     monkeypatch.setattr(win, "_ask_folder_layout", lambda count, sounds: None)   # cancelled: nothing changes
     win._new_show_from_folder()
     assert [c.name for c in win._cues] == names

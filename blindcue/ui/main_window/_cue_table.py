@@ -288,7 +288,6 @@ class _CueTableMixin:
             prof = self._device_mgr.get_effective_profile() if self._device_mgr else "auto"
             ShowRuntimeGuard.on_live_mode_enter(prof)
             self._sync_live_view()
-            self._show_pending_checklist()
             self._status_label.setText("MODALITÀ LIVE ATTIVA — Interfaccia semplificata per la regia [ESC ×2 = PANIC]")
             # Keyboard on the list at once: arrows move the next cue, Space = GO.
             if hasattr(self, "_live_show_panel"):

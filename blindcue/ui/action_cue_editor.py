@@ -153,6 +153,7 @@ class ActionCueEditor(QWidget):
         self.combo_kind = QComboBox()
         for kind, label in _KIND_LABELS:
             self.combo_kind.addItem(label, kind)
+        self.combo_kind.view().setRowHidden(self.combo_kind.findData(ACTION_CHECKLIST), True)
         self.combo_kind.setAccessibleName("Tipo di azione")
         form.addRow(_label("Azione:"), self.combo_kind)
 
@@ -366,6 +367,10 @@ class ActionCueEditor(QWidget):
         self._loading = True
         try:
             self._cue_id = int(cue_id)
+            # The checklist was taken out (2026-11-24): listed only for a cue that already is one.
+            idx = self.combo_kind.findData(ACTION_CHECKLIST)
+            if idx >= 0:
+                self.combo_kind.view().setRowHidden(idx, spec["kind"] != ACTION_CHECKLIST)
             self._select(self.combo_kind, spec["kind"])
             self._select(self.combo_target, spec["target"])
             self._select(self.combo_layer, spec["layer"])

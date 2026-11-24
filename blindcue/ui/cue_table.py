@@ -658,6 +658,7 @@ class CueSequenceTable(QTableWidget):
     extract_child_requested = Signal()
     open_timeline_requested = Signal()
     edit_text_requested = Signal()
+    edit_requested = Signal()            # the "Edit cue" window: Enter, menu (evaluation 2026-11-24)
     enabled_toggle_requested = Signal()  # 2.3: cue on/off in this version of the show
     rehearse_from_requested = Signal()   # 2.4: rehearse from the selected cue
     layout_copy_requested = Signal()     # 4.4: copy the picture layout of the selected cue
@@ -831,6 +832,10 @@ class CueSequenceTable(QTableWidget):
             is_grp = bool(curr_item and curr_item.data(ROLE_IS_GROUP))
             parent_id = curr_item.data(ROLE_PARENT_ID) if curr_item else None
 
+            if len(rows) == 1:
+                act_edit = menu.addAction("✏ Modifica…")
+                act_edit.triggered.connect(self.edit_requested)
+                menu.addSeparator()
             if not is_grp and len(rows) == 1:
                 act_text = menu.addAction("✏ Modifica testo…")
                 act_text.triggered.connect(self.edit_text_requested)
@@ -881,6 +886,10 @@ class CueSequenceTable(QTableWidget):
                 self.setCurrentCell(self.currentRow(), 1)
                 self.editItem(item_q)
                 return
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and self.currentRow() >= 0 \
+                and self.state() != QAbstractItemView.State.EditingState:
+            self.edit_requested.emit()
+            return
         if event.key() == Qt.Key.Key_Space and self.state() != QAbstractItemView.State.EditingState:
             event.ignore()
             return

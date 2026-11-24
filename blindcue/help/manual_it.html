@@ -177,7 +177,6 @@ Come ogni cue parte con il GO; può avere Pre-Delay, Auto-GO e stare in un grupp
 <tr><td><b>🎚 Cambio livello</b></td><td>cambia il volume di ciò che suona senza fermarlo: <b>assoluto</b> (come se il Volume della cue fosse il valore indicato) oppure <b>relativo</b> (es. −10 dB), nel tempo e con la curva scelti. Musica sotto il dialogo: un'azione −10 dB, più tardi un'altra +10 dB.</td></tr>
 <tr><td><b>🌓 Opacità layer</b></td><td>scurisce tutto il layer (immagini e video), es. lo sfondo al 30 % durante una scena. La cue successiva sullo stesso layer riparte piena.</td></tr>
 <tr><td><b>📝 Nota per la regia</b></td><td>testo in una fascia colorata in cima alla finestra del programma, mai sul proiettore. Non blocca il GO; sparisce al GO successivo o con ✕.</td></tr>
-<tr><td><b>☑ Checklist</b></td><td>nota con caselle da spuntare (es. «microfoni accesi»). Compare con il GO e anche a ogni ingresso in modalità LIVE finché non è tutta spuntata. Le spunte non vengono salvate: ogni spettacolo si controlla da capo.</td></tr>
 <tr><td><b>↪ Salta a una cue</b></td><td>avvia la cue scelta (il GO prosegue da lì) oppure – <b>Solo come prossimo GO</b> – la mette soltanto come prossima. <b>Al massimo N×</b> limita le ripetizioni: per esempio una scena ripetuta due volte, poi il GO prosegue. Il conteggio riparte quando lo spettacolo ricomincia dall'inizio.</td></tr>
 <tr><td><b>📞 Chiama una cue</b></td><td>avvia la cue scelta senza spostare il GO (come un effetto). Una cue con <b>📞 Solo su chiamata</b> (scheda 3 · Tempi) è fuori dall'ordine del GO; l'Inspector mostra da dove viene chiamata.</td></tr>
 <tr><td><b>⏩ Sposta la riproduzione</b></td><td>sposta un suono o un video in onda: <b>a una posizione</b> del file, <b>di N s</b> avanti o indietro, oppure <b>a N s dalla fine</b> (per esempio per saltare una strofa in prova).</td></tr>
@@ -198,6 +197,15 @@ scegli come bersaglio le cue precise.</p>
 Puoi anche selezionare <b>più cue dello stesso tipo</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+clic)
 e modificarle tutte insieme.</p>
 <p><img src="img/it/04_inspector_video_cue.png" width="520" height="646"></p>
+<p><b>La finestra «Modifica cue»</b> – la via più semplice, in ogni vista: <b>doppio clic</b> su una cue (non sulla colonna del numero), <kbd>Invio</kbd> sulla scaletta o il pulsante <b>✏ Modifica…</b> sotto la scaletta. In una sola finestra c'è l'essenziale della cue:</p>
+<ul>
+<li><b>suono e video</b> – la forma d'onda con inizio e fine da trascinare, <b>▶ Ascolta</b> (in cuffia, se è scelta), <b>⇤ Inizio qui</b> / <b>Fine qui ⇥</b> nel punto che sta suonando, <b>✂</b> taglia il silenzio, <b>↺ Tutto il file</b>, volume, loop;</li>
+<li><b>immagine e video</b> – dimensione e posizione (<b>⌖ Centro</b>), per un'immagine il tempo sullo schermo;</li>
+<li><b>testo</b> – <b>✏ Cambia il testo…</b>;</li>
+<li><b>scena</b> – come suona (tutto insieme, in sequenza, passo-passo…);</li>
+<li>per tutte: nome, Q, note, «Poi» e i passaggi – fade in, fade out, crossfade.</li>
+</ul>
+<p><b>OK</b> salva tutto in un solo passo (<kbd>Ctrl+Z</kbd> lo annulla tutto), <b>Annulla</b> non cambia niente. <kbd>F2</kbd> rinomina ancora la cue direttamente nella scaletta. Durante lo spettacolo la finestra non si apre: le cue allora non cambiano.</p>
 
 <h3>La scheda "Cue · Tempi"</h3>
 <ul>
@@ -356,9 +364,8 @@ trascinando i blocchi decidi quando entra ciascuno (per esempio musica, dopo 3 s
 <li>Vale anche per l'audio: musica e foto sullo stesso layer si spengono a vicenda.
 Per questo le nuove cue audio vanno di default su <b>L2</b>, foto e video su <b>L1</b>.</li>
 
-<li>Il tappo si cambia con <b>Show → Imposta Immagine di Tappo (Layer 0)…</b> oppure con il pulsante
-<b>Cambia Tappo…</b> – per esempio la locandina dello spettacolo o il nero.
-Il tappo predefinito è un pannello con il logo e una griglia per allineare il proiettore.</li>
+<li>Il tappo si sceglie in <b>Show → Tappo (quando non va niente)</b> oppure con il pulsante
+<b>Cambia Tappo…</b>: <b>⬛ Nero</b> (predefinito), <b>🖼 Immagine o logo…</b> (per esempio la locandina), <b>🎞 Video in loop (senza suono)…</b> (per esempio un sipario) o <b>▦ Schema di prova</b> per allineare il proiettore – si vede solo in preparazione; nella prova e nello spettacolo il tappo è allora nero. La scelta si salva con lo spettacolo (video e immagine vanno anche nell'archivio portatile). Il video del tappo si ferma quando qualcosa lo copre e riparte quando torna visibile.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -400,9 +407,8 @@ o <kbd>Ctrl+L</kbd>. Lo schermo diventa semplice e grande – solo ciò che serv
 Ogni riga dice <b>✓ SÌ</b>, <b>✗ NO</b> o <b>– NON VERIFICATO</b> e ha un pulsante per sistemare: l'immagine sul
 proiettore (<b>Mostra i numeri degli schermi</b>, <b>Scegli lo schermo…</b>), il volume generale (<b>Riporta a 100 %</b>),
 le casse (<b>▶ Tono di prova</b> – un secondo di suono dalle casse dello spettacolo, poi rispondi <b>Sì, si sente</b> /
-<b>Non si sente</b>), i file mancanti (<b>Mostra nella lista</b>), l'alimentatore del portatile (controllato da solo ogni
-2 s) e la checklist dello spettacolo (si spunta lì; uno spettacolo nuovo la ha già in cima alla lista, a uno vecchio la
-aggiungi col pulsante o con <b>Show → Aggiungi la checklist predefinita</b>). La pagina finisce con i pulsanti di
+<b>Non si sente</b>), i file mancanti (<b>Mostra nella lista</b>) e l'alimentatore del portatile (controllato da solo ogni
+2 s). La pagina finisce con i pulsanti di
 partenza (<b>▶ Inizia</b> o <b>Dall'inizio / Dalla cue selezionata / Riprendi da</b>) e <b>Resta in Preparazione</b>.
 Quando tutto è SÌ, <kbd>Invio</kbd> e <kbd>Spazio</kbd> fanno partire; se qualcosa non va ricontrollano – per partire
 lo stesso usa <kbd>Tab</kbd> fino a un pulsante di partenza o il mouse. Gli ingressi successivi mostrano solo ciò che non
@@ -489,7 +495,7 @@ della cue). Quando una cue azione cambia un livello, la scheda del bersaglio lo 
 ritardo) – <b>Pausa tutto</b> fermerebbe anche la musica. In cima alla colonna l'<b>Anteprima uscita</b> mostra
 ciò che vede il pubblico, in piccolo (fino a 5 fotogrammi al secondo); <b>▾</b> la chiude e questo computer se lo
 ricorda.</li>
-<li>Note e checklist delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu. Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.</li>
+<li>Le note delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu. Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.</li>
 <li><b>Sfuma</b> su una scheda abbassa la cue dolcemente: con il suo <b>Fade Out</b>, o in 3 s se non ne ha (si cambia in <b>Show → ⏬ Tempo del pulsante Sfuma…</b>). Mentre una scena suona, sopra le sue cue c'è la scheda <b>🎬 scena</b> con <b>Sfuma la scena</b> (anche clic destro sulla scena nella lista): sfuma tutto ciò che la scena suona o mostra e il GO passa alla cue dopo la scena.</li>
 <li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b> oppure <b>Suona finché tieni premuto</b>. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li>
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
@@ -584,6 +590,7 @@ non il loro contenuto.</p>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>raggruppa / separa</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>sposta la cue</td></tr>
 <tr><td><kbd>Canc</kbd></td><td>elimina la cue</td></tr>
+<tr><td><kbd>Invio</kbd> / doppio clic</td><td>la finestra «Modifica cue» (scaletta in preparazione)</td></tr>
 <tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>punto IN / OUT sulla testina</td></tr>
 <tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>annulla / ripeti</td></tr>
 <tr><td><kbd>Ctrl+S</kbd></td><td>salva</td></tr>
@@ -603,7 +610,6 @@ fotocamera o dal telefono (bitrate molto alto) può scattare. Una versione Full 
 8–10 Mb/s sul proiettore è identica e scorre fluida.</li>
 <li>Salva lo spettacolo <b>copiando i file</b> e tienine una copia su una chiavetta USB.</li>
 <li>Scrivi nelle <b>Note Regia</b> dopo quale battuta parte ogni cue.</li>
-<li>All'inizio della scaletta aggiungi una cue <b>☑ Checklist</b> con quello che va controllato: comparirà da sola entrando in modalità LIVE.</li>
 <li>Spegni <b>MIRROR LIVE</b>, chiudi gli altri programmi, disattiva le notifiche e la
 sospensione dello schermo nel sistema.</li>
 <li>Imposta un tappo (locandina o nero) così il pubblico non vede mai il desktop prima dell'inizio.</li>

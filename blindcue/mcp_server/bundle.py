@@ -70,7 +70,7 @@ def manifest(version: str, command: str, first_args: list[str]) -> dict[str, Any
         "tools": [{"name": n, "description": d} for n, d in (
             ("open_show", "Open a show file"), ("new_show", "Start a new show file"),
             ("list_media", "Media files in a folder"), ("add_media_cue", "Add a video, sound or picture"),
-            ("add_text_cue", "Add a caption"), ("add_action_cue", "Add a note, checklist or level change"),
+            ("add_text_cue", "Add a caption"), ("add_action_cue", "Add a note, a fade or a level change"),
             ("add_group", "Make a scene"), ("validate_show", "Check the show"),
             ("save_show", "Save the show"), ("use_program", "Work on the show open in BlindCue"))],
     }

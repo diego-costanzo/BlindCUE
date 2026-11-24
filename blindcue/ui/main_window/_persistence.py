@@ -38,7 +38,7 @@ class _PersistenceMixin:
             )
 
     def _auto_save(self) -> None:
-        if not (self._cues or self._layer0_image):
+        if not (self._cues or self._layer0_image or self._layer0_video or self._layer0_kind != "black"):
             return
         if self._autosave_in_progress:
             # A previous background write is still running: remember to re-run
@@ -47,7 +47,7 @@ class _PersistenceMixin:
             return
         try:
             self._apply_inspector_to_cue()
-            settings: dict[str, Any] = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+            settings: dict[str, Any] = self._layer0_settings()
             settings["surfaces"] = [s.to_dict() for s in self._surfaces]
             output = self._output_settings()
             if output:
@@ -160,11 +160,7 @@ class _PersistenceMixin:
                 self._project_manager.uses_media_archive(self._current_project_path, self._cues)
 
             rec_settings = recovery.get("settings", {})
-            lay0 = rec_settings.get("layer0_image") if isinstance(rec_settings, dict) else None
-            if lay0 and os.path.isfile(lay0):
-                self.set_layer0_image(lay0)
-            else:
-                self._on_reset_layer0()
+            self._restore_layer0(rec_settings)
             surfaces_raw = rec_settings.get("surfaces") if isinstance(rec_settings, dict) else None
             if surfaces_raw:
                 try:
@@ -218,7 +214,7 @@ class _PersistenceMixin:
 
     @Slot()
     def _on_new_show(self) -> bool:
-        """A new show (the checklist on top); False when it was not made (Show mode, cancelled)."""
+        """A new, empty show; False when it was not made (Show mode, cancelled)."""
         if not self._change_allowed(EDIT_LIST):  # Ctrl+N next to Ctrl+M must not end a show
             return False
         if not self._confirm_save_if_modified(
@@ -231,9 +227,6 @@ class _PersistenceMixin:
             self._on_panic()
 
         self._cues.clear()
-        # A new show starts with the checklist for people (edit it freely).
-        self._cues.append(self._default_checklist_cue())
-        self._cues[0].status = CueStatus.LOADED
         self._readiness_full_due = True
         self._current_index = -1
         self._live_resume_id = None
@@ -255,7 +248,7 @@ class _PersistenceMixin:
         if getattr(self, "_output_b", None) is not None:
             self._output_b.set_surfaces(self._surfaces)
         self._inspector.set_available_surfaces(self._surfaces)
-        self._on_reset_layer0()
+        self._apply_layer0("black")
         self._refresh_cue_list()
         self._reset_idle_preview_ui()
         self._update_inspector(None)
@@ -391,11 +384,7 @@ class _PersistenceMixin:
             # A show saved as a portable bundle must stay one on the next Ctrl+S.
             self._project_bundled = self._project_manager.uses_media_archive(file_path, cues)
 
-            layer0 = settings.get("layer0_image") if isinstance(settings, dict) else None
-            if layer0 and os.path.isfile(layer0):
-                self.set_layer0_image(layer0)
-            else:
-                self._on_reset_layer0()
+            self._restore_layer0(settings)
 
             surfaces_raw = settings.get("surfaces") if isinstance(settings, dict) else None
             if surfaces_raw:
@@ -486,7 +475,7 @@ class _PersistenceMixin:
 
     def _do_save(self, file_path: str) -> bool:
         self._apply_inspector_to_cue()
-        settings = {"layer0_image": self._layer0_image} if self._layer0_image else {}
+        settings = self._layer0_settings()
         settings["surfaces"] = [s.to_dict() for s in self._surfaces]
         output = self._output_settings()
         if output:

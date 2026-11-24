@@ -477,6 +477,14 @@ class TestPlayer(QObject):
         finally:
             self._enforce_mute()
 
+    def set_bounds(self, start: float, end: float | None) -> None:
+        """New IN / OUT while the file stays loaded (the "Edit cue" window moves them while it plays)."""
+        self._start_ms = max(0, int(start * 1000))
+        self._end_ms = int(end * 1000) if (end is not None and end > 0) else None
+        self._finished = False
+        self._boundary_armed = True
+        self._ensure_driver_timer()
+
     def play(self) -> None:
         """Start or resume the preview from the IN point when it was at the end."""
         self._enforce_mute()

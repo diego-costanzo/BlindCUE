@@ -165,7 +165,6 @@ cue it is fired with GO; it can have a Pre-Delay and Auto-GO and belong to a gro
 <tr><td><b>🎚 Level change</b></td><td>changes the volume of what is playing without stopping it: <b>absolute</b> (as if the cue Volume were the given value) or <b>relative</b> (e.g. −10 dB), over the given time with the chosen curve. Music under a dialogue: one action −10 dB, later another +10 dB.</td></tr>
 <tr><td><b>🌓 Layer opacity</b></td><td>dims the whole layer (pictures and videos), e.g. the background to 30 % during a scene. The next cue on that layer starts at full opacity.</td></tr>
 <tr><td><b>📝 Note for the operator</b></td><td>text in a coloured strip at the top of the program window, never on the projector. It does not block GO; it goes away at the next GO or with ✕.</td></tr>
-<tr><td><b>☑ Checklist</b></td><td>a note with boxes to tick (e.g. “microphones on”). It appears on GO and also every time you enter LIVE mode until everything is ticked. Ticks are not saved: every show is checked from scratch.</td></tr>
 <!--IF:jump_actions--><tr><td><b>↪ Jump to a cue</b></td><td>starts the chosen cue (GO then goes on from it) or – <b>Only as the next GO</b> – just makes it the next one. <b>At most N×</b> limits the repeats: e.g. a scene played twice, then GO goes on. The count starts again when the show runs from the top.</td></tr>
 <tr><td><b>📞 Call a cue</b></td><td>starts the chosen cue without moving GO (like an effect). A cue with <b>📞 Call only</b> ticked (3 · Timing card) is outside the GO order; the Inspector shows where it is called from.</td></tr>
 <tr><td><b>⏩ Move the playback</b></td><td>moves a playing sound or film: <b>to a position</b> in the file, <b>by N s</b> forward or back, or <b>to N s before the end</b> (e.g. skipping a verse in a rehearsal).</td></tr><!--/IF:jump_actions-->
@@ -186,6 +185,15 @@ is playing, the action does nothing and says so in the status bar.</p>
 You can also select <b>several cues of the same type</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+click)
 and change them all at once.</p>
 <p><img src="img/en/04_inspector_video_cue.png" width="520"></p>
+<!--IF:edit_window--><p><b>The “Edit cue” window</b> – the simplest way, in every view layout: <b>double-click</b> a cue (not on the number column), <kbd>Enter</kbd> on the list or the <b>✏ Edit…</b> button under the list. One window holds what matters for that cue:</p>
+<ul>
+<li><b>sound and video</b> – the waveform with a start and an end to drag, <b>▶ Listen</b> (in the headphones, if chosen), <b>⇤ Start here</b> / <b>End here ⇥</b> where it is playing now, <b>✂</b> cut the silence, <b>↺ Whole file</b>, volume, loop;</li>
+<li><b>picture and video</b> – size and position (<b>⌖ Centre</b>), for a picture its time on screen;</li>
+<li><b>caption</b> – <b>✏ Change the text…</b>;</li>
+<li><b>scene</b> – how it plays (all at once, in sequence, step by step…);</li>
+<li>for all: name, Q, notes, “Then” and the transitions – fade in, fade out, crossfade.</li>
+</ul>
+<p><b>OK</b> saves everything as one step (<kbd>Ctrl+Z</kbd> undoes all of it), <b>Cancel</b> changes nothing. <kbd>F2</kbd> still renames a cue right in the list. During the Show the window does not open – cues do not change then.</p><!--/IF:edit_window-->
 
 <h3>The "Cue · Timing" tab</h3>
 <ul>
@@ -343,9 +351,8 @@ goes on top of it.</li>
 That is why new audio cues go to <b>L2</b> by default, photos and videos to <b>L1</b>.</li><!--/IF:audio_l2-->
 <!--IFNOT:audio_l2--><li>This applies to sound too: music and a photo on the same layer switch each other off.
 Put music that should play together with photos on another layer (e.g. <b>L2</b>).</li><!--/IFNOT:audio_l2-->
-<li>Change the cover with <b>Show → Set Cover Image (Layer 0)…</b> or the
-<b>Change Cover…</b> button – e.g. to the show poster or plain black.
-The default cover is a board with the logo and a grid for lining up the projector.</li>
+<li>Choose the cover in <b>Show → Cover (when nothing plays)</b> or with the
+<b>Change Cover…</b> button: <b>⬛ Black</b> (the default), <b>🖼 Picture or logo…</b> (e.g. the show poster), <b>🎞 Looping video (no sound)…</b> (e.g. a curtain) or <b>▦ Test pattern</b> for lining up the projector – it shows only in Preparation; in the Rehearsal and the Show the cover is black then. The choice is saved with the show (the video and the picture travel in a portable bundle too). The cover video stops while something covers it and goes on when it can be seen again.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -388,9 +395,7 @@ or <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> The screen becomes simple and large �
 <b>✓ YES</b>, <b>✗ NO</b> or <b>– NOT CHECKED</b> and has a fix button: the picture on the projector
 (<b>Show screen numbers</b>, <b>Choose the screen…</b>), the master volume (<b>Back to 100 %</b>), the speakers
 (<b>▶ Test tone</b> – a one-second sound through the show's speakers, then answer <b>Yes, heard</b> / <b>Not heard</b>),
-missing files (<b>Show in the list</b>), the laptop charger (checked by itself every 2 s) and the show's checklist
-(tick it in place; a new show has it at the top of the list, an older one gets it with the button or
-<b>Show → Add the default checklist</b>). The page ends with the start buttons (<b>▶ Start</b> or
+missing files (<b>Show in the list</b>) and the laptop charger (checked by itself every 2 s). The page ends with the start buttons (<b>▶ Start</b> or
 <b>From the top / From the selected cue / Resume</b>) and <b>Stay in Preparation</b>. When everything is YES,
 <kbd>Enter</kbd> and <kbd>Space</kbd> start; when something is wrong they check again – to start anyway, <kbd>Tab</kbd>
 to a start button or use the mouse. Later entries show only what is wrong (or nothing). If you entered with
@@ -473,7 +478,7 @@ cue will start by itself (Auto-GO of the one before), the <b>▶ NEXT</b> bar ha
 the next cue waits for your GO (an actor is late, say) – <b>Pause All</b> would stop the music as well. At the
 top of the column, <b>Output preview</b> shows what the audience sees, small (up to 5 frames a second); <b>▾</b>
 folds it, and this computer remembers that.</li><!--/IF:now_playing-->
-<!--IF:action_cues--><li>Notes and checklists of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.<!--IF:now_playing--> During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.<!--/IF:now_playing--></li><!--/IF:action_cues-->
+<!--IF:action_cues--><li>Notes of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them.<!--IF:now_playing--> During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.<!--/IF:now_playing--></li><!--/IF:action_cues-->
 <!--IF:gentle_fade--><li><b>Fade</b> on a card brings the cue down gently: over its own <b>Fade out</b>, or 3 s when it has none (change it in <b>Show → ⏬ Fade button time…</b>). While a scene plays, a <b>🎬 scene</b> card above its cues has <b>Fade the scene</b> (also a right click on the scene in the list): everything the scene plays or shows fades, and GO moves to the cue after the scene.</li><!--/IF:gentle_fade-->
 <!--IF:effects--><li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b> or <b>Plays while the key is held</b>. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li><!--/IF:effects-->
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
@@ -524,7 +529,7 @@ round masks and cut-outs. Assign a cue to a surface in the Inspector
 
 <!--IF:assistant--><h3>AI assistant (Claude Desktop and other MCP programs)</h3>
 <p>An AI assistant can prepare the show for you: build the cue list from a folder of files
-following the script, add captions, scenes, notes and checklists for the operator, and check the
+following the script, add captions, scenes, notes for the operator, and check the
 whole show. You only check the result in the <b>Rehearsal</b> and run the show.</p>
 <ol>
 <li><b>Show → 🤖 AI assistant…</b> → <b>Add to Claude Desktop…</b>. The program makes the extension
@@ -568,6 +573,7 @@ the files.</p><!--/IF:assistant-->
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>group / ungroup</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>move cue</td></tr>
 <tr><td><kbd>Del</kbd></td><td>delete cue</td></tr>
+<!--IF:edit_window--><tr><td><kbd>Enter</kbd> / double-click</td><td>the “Edit cue” window (list in Preparation)</td></tr><!--/IF:edit_window-->
 <tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>IN / OUT point at the playhead</td></tr>
 <tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>undo / redo</td></tr>
 <tr><td><kbd>Ctrl+S</kbd></td><td>save</td></tr>
@@ -587,7 +593,6 @@ the last cue.</li>
 on the projector and plays smoothly.</li>
 <li>Save the show <b>with the files copied</b> and keep a copy on a USB stick.</li>
 <li>Write in <b>Director's Notes</b> after which line each cue goes.</li>
-<!--IF:action_cues--><li>Put a <b>☑ Checklist</b> cue at the top of the list with what has to be checked: it appears by itself when you enter LIVE mode.</li><!--/IF:action_cues-->
 <li>Turn off <b>MIRROR LIVE</b>, close other programs, turn off notifications and screen
 sleep in the system.</li>
 <li>Set a cover (poster or black) so the audience never sees the desktop before the start.</li>

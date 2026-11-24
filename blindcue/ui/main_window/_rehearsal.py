@@ -76,6 +76,7 @@ class _RehearsalMixin:
         self._mode_shown = mode
         if mode != before:
             self._undo_go_end()  # a change of mode ends the Undo GO offer (L7)
+            self._layer0_follow_mode()  # the test pattern only in Preparation (#9)
             dlg = getattr(self, "_rehearsal_review", None)
             if dlg is not None and mode == "show":
                 dlg.close()

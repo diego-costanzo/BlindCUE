@@ -270,7 +270,7 @@ class _WindowSetupMixin:
                   context=Qt.ShortcutContext.WidgetShortcut)
         for key in ("Return", "Enter"):  # the OK of a cue waiting for confirmation (1.9)
             QShortcut(QKeySequence(key), table, self._confirm_gate, context=Qt.ShortcutContext.WidgetShortcut)
-        QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_group)
+        QShortcut(QKeySequence("Ctrl+G"), self, self._on_add_scene_interactive)
         QShortcut(QKeySequence("Ctrl+Shift+G"), self, self._on_ctrl_shift_g)
         self._install_focus_watch()
 

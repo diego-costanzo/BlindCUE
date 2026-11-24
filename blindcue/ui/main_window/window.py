@@ -62,6 +62,7 @@ from ui.main_window._key_map import _KeyMapMixin
 from ui.main_window._quick_start import _QuickStartMixin
 from ui.main_window._relink import _RelinkMixin
 from ui.main_window._history import _HistoryMixin
+from ui.main_window._edit_cue import _EditCueMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -112,6 +113,7 @@ class MainWindow(
     _QuickStartMixin,
     _RelinkMixin,
     _HistoryMixin,
+    _EditCueMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
@@ -186,6 +188,8 @@ class MainWindow(
         else:
             self._surfaces = [create_default_surface()]
         self._layer0_image: str | None = None
+        self._layer0_video: str | None = None
+        self._layer0_kind: str = "black"     # evaluation #9: black / image / video / pattern
         self._is_modified: bool = False
         self._updating_cue_list: bool = False
         self._force_closing: bool = False
@@ -258,6 +262,8 @@ class MainWindow(
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._keymap_setup()  # extra keys and a presenter remote (stage 5, 5.7-5.8)
         self._relink_setup()  # choose a cue's file, find missing files (stage 5, 5.10)
+        self._edit_cue_setup()  # the "Edit cue" window (evaluation 2026-11-24)
+        self._apply_layer0("black")  # the default placeholder (evaluation #9); a show sets its own
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()
         self._update_inspector(None)

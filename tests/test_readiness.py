@@ -16,7 +16,6 @@ if str(APP_DIR) not in sys.path:
 
 import pytest
 from engine.readiness import (
-    CHECKLIST,
     INFO,
     MEDIA,
     OK,
@@ -36,7 +35,7 @@ from PySide6.QtCore import QCoreApplication, QSettings
 from PySide6.QtWidgets import QApplication
 
 GOOD = Facts(screen_name="LG (screen 2)", screen_external=True, screen_count=2, speakers="Realtek",
-             heard=True, media_total=3, power=(False, 100), checklist=(7, 7), show_name="Kapturek")
+             heard=True, media_total=3, power=(False, 100), show_name="Kapturek")
 
 
 def _states(facts: Facts) -> dict[str, str]:
@@ -48,7 +47,7 @@ def _states(facts: Facts) -> dict[str, str]:
 
 def test_everything_right_and_in_the_walking_order():
     rows = checks(GOOD)
-    assert [c.key for c in rows] == [SCREEN, VOLUME, SPEAKERS, MEDIA, POWER, CHECKLIST, SHOW]
+    assert [c.key for c in rows] == [SCREEN, VOLUME, SPEAKERS, MEDIA, POWER, SHOW]
     assert not problems(rows) and rows[-1].state == INFO
 
 
@@ -56,25 +55,24 @@ def test_each_problem_is_said():
     from dataclasses import replace
 
     bad = replace(GOOD, screen_external=False, master_level=0.4, master_muted=True,
-                  speakers_missing="JBL", missing=("#6 'brak.mp3'",), power=(True, 54), checklist=(2, 7))
+                  speakers_missing="JBL", missing=("#6 'brak.mp3'",), power=(True, 54))
     states = _states(bad)
-    assert all(states[k] == PROBLEM for k in (SCREEN, VOLUME, SPEAKERS, MEDIA, POWER, CHECKLIST))
-    assert [c.key for c in page_rows(checks(bad), full=False)] == [SCREEN, VOLUME, SPEAKERS, MEDIA, POWER,
-                                                                    CHECKLIST]
+    assert all(states[k] == PROBLEM for k in (SCREEN, VOLUME, SPEAKERS, MEDIA, POWER))
+    assert [c.key for c in page_rows(checks(bad), full=False)] == [SCREEN, VOLUME, SPEAKERS, MEDIA, POWER]
 
 
 def test_tone_not_tried_is_not_checked_and_no_battery_no_row():
     from dataclasses import replace
 
-    states = _states(replace(GOOD, heard=None, power=None, checklist=None))
-    assert states[SPEAKERS] == SKIPPED and POWER not in states and states[CHECKLIST] == INFO
+    states = _states(replace(GOOD, heard=None, power=None))
+    assert states[SPEAKERS] == SKIPPED and POWER not in states and "checklist" not in states
     assert _states(replace(GOOD, heard=False))[SPEAKERS] == PROBLEM
     assert _states(GOOD)[SPEAKERS] == OK
 
 
 def test_later_entries_show_only_what_is_wrong():
     assert page_rows(checks(GOOD), full=False) == []
-    assert len(page_rows(checks(GOOD), full=True)) == 7
+    assert len(page_rows(checks(GOOD), full=True)) == 6   # no checklist row any more
 
 
 # ── Window ───────────────────────────────────────────────────────────
@@ -153,19 +151,14 @@ def test_later_entry_shows_only_problems_and_none_means_no_page(window, monkeypa
     assert window.is_live_mode()                                # nothing to say: straight in
 
 
-def test_volume_fix_and_checklist_on_the_page(window):
+def test_volume_fix_on_the_page_and_no_checklist_row(window):
     window._set_master(level=0.4, muted=True)
-    window._add_default_checklist()
-    assert window._cues[0].action_spec["kind"] == "checklist" and len(window._cues[0].action_spec["items"]) == 7
     window._enter_show_from_key()
     page = window._readiness_page
     assert "volume" in page.row_buttons
     page.row_buttons["volume"].click()
     assert window._master_level == 1.0 and not window._master_muted
-    row = next(r for r in page.rows if r.key == CHECKLIST)
-    assert row.state == PROBLEM and len(row.items) == 7
-    page.checklist_toggled.emit(row.cue_id, 0, True)
-    assert 0 in window._checklist_ticks[row.cue_id]
+    assert "checklist" not in [r.key for r in page.rows]           # taken out (evaluation 2026-11-24)
 
 
 def test_review_from_the_show_goes_back_to_it(window):
@@ -178,11 +171,15 @@ def test_review_from_the_show_goes_back_to_it(window):
     assert window.is_live_mode() and window._central_stack.currentIndex() == 1
 
 
-def test_new_show_starts_with_the_default_checklist(window, monkeypatch):
+def test_new_show_starts_empty_and_no_menu_adds_a_checklist(window, monkeypatch):
     monkeypatch.setattr(window, "_confirm_save_if_modified", lambda *a: True)
     window._on_new_show()
-    assert len(window._cues) == 1 and window._cues[0].action_spec["kind"] == "checklist"
-    assert window._readiness_full_due
+    assert window._cues == [] and window._readiness_full_due
+    from PySide6.QtWidgets import QMenu
+
+    texts = [a.text() for m in window.findChildren(QMenu) for a in m.actions()]
+    assert not any("checklist" in t.lower() for t in texts)
+    assert not hasattr(window, "_add_default_checklist")
 
 
 def test_turned_off_goes_straight_in(window):
@@ -198,23 +195,17 @@ def test_delete_on_the_readiness_page_never_touches_the_hidden_list(window):
     assert len(window._cues) == n and window._readiness_visible()
 
 
-def test_start_from_the_top_skips_a_checklist_on_top(window):
-    window._add_default_checklist()                     # the checklist becomes #1
+def test_an_old_checklist_on_top_is_skipped(window):
+    from models.cue import Cue, CueStatus, MediaType
+
+    old = Cue(name="Checklist", media_type=MediaType.ACTION, file_path="",
+              action_spec={"kind": "checklist", "target": "all", "items": ["mic"]})
+    old.status = CueStatus.LOADED
+    window._cues.insert(0, old)                         # kept from an older show: #1, outside the GO order
+    window._refresh_cue_list(keep_selection=False)
     window._cue_list.setCurrentRow(0)
     window._enter_show_from_key()
     starts = window._readiness_page.start_buttons
     assert "#2" in starts[0].text()
     starts[0].click()
     assert window._go_target_index() == 1
-
-
-def test_ticking_keeps_the_keyboard_on_the_checklist(window):
-    window._add_default_checklist()
-    window._enter_show_from_key()
-    page = window._readiness_page
-    box = next(iter(page.checkboxes.values()))
-    box.setFocus()
-    box.toggle()
-    key = next(iter(page.checkboxes))
-    assert page.checkboxes[key].hasFocus() or not page.isVisible()
-    assert "1 di 7" in window._status_label.text()

@@ -179,11 +179,10 @@ def add_action_cue(kind: str, after_cue_id: int | None = None, spec: dict[str, A
                    name: str | None = None, fields: dict[str, Any] | None = None) -> dict[str, Any]:
     """Add a cue without a file that acts on other cues or speaks to the operator.
 
-    *kind*: stop, fade, release, level, opacity, note, checklist. *spec*
+    *kind*: stop, fade, release, level, opacity, note (see describe_fields). *spec*
     examples: {"target": "cues", "cue_ids": [12], "duration": 3} (fade a cue),
     {"target": "layer", "layer": 2, "mode": "relative", "db": -12, "duration": 2}
-    (music down under a dialogue), {"text": "Wait for the curtain"} (note),
-    {"items": ["Microphones on", "Lights"]} (checklist).
+    (music down under a dialogue), {"text": "Wait for the curtain"} (note).
     """
     return _call(_session().add_action_cue, kind, after_cue_id, spec, name, fields)
 

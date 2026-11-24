@@ -18,7 +18,6 @@ from PySide6.QtWidgets import (
 )
 
 from models.cue import (
-    ACTION_CHECKLIST,
     ACTION_FADE,
     ACTION_LEVEL,
     ACTION_NOTE,
@@ -64,6 +63,7 @@ class CueListPanel(QGroupBox):
     add_text_requested = Signal()
     add_action_requested = Signal(str)  # action kind (models.cue.ACTION_*)
     edit_text_requested = Signal()
+    edit_cue_requested = Signal()     # the "Edit cue" window (evaluation 2026-11-24)
     ungroup_requested = Signal()
     extract_child_requested = Signal()
     move_up_requested = Signal()
@@ -175,7 +175,6 @@ class CueListPanel(QGroupBox):
             (ACTION_LEVEL, "🎚 Cambio livello"),
             (ACTION_OPACITY, "🌓 Opacità layer"),
             (ACTION_NOTE, "📝 Nota per la regia"),
-            (ACTION_CHECKLIST, "☑ Checklist prima dello spettacolo"),
         ):
             act = action_menu.addAction(label)
             act.triggered.connect(lambda _=False, k=kind: self.add_action_requested.emit(k))
@@ -220,7 +219,13 @@ class CueListPanel(QGroupBox):
         self.btn_add_files.setAccessibleName("Aggiungi file")
         self.btn_add_files.setFixedHeight(28)
         self.btn_add_files.clicked.connect(lambda: self.add_media_requested.emit(None))
-        btn_grid.addWidget(self.btn_add_files, 0, 0, 1, 3)
+        btn_grid.addWidget(self.btn_add_files, 0, 0, 1, 2)
+        self.btn_edit_cue = QPushButton("✏ Modifica…")
+        self.btn_edit_cue.setToolTip("Modifica la cue scelta: inizio e fine, volume, passaggi (anche doppio clic o Invio)")
+        self.btn_edit_cue.setAccessibleName("Modifica la cue")
+        self.btn_edit_cue.setFixedHeight(28)
+        self.btn_edit_cue.clicked.connect(self.edit_cue_requested)
+        btn_grid.addWidget(self.btn_edit_cue, 0, 2)
         for btn in (self.btn_add_video, self.btn_add_audio, self.btn_add_image):
             btn.setParent(self)
             btn.setVisible(False)  # still there for the keyboard map and old shortcuts

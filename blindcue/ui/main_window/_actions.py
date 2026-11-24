@@ -131,17 +131,3 @@ class _ActionsMixin:
         banner = getattr(self, "_note_banner", None)
         if banner is not None and banner.is_shown() and not banner.is_checklist():
             banner.dismiss()
-
-    def _show_pending_checklist(self) -> None:
-        """Entering LIVE shows the first checklist that still has unticked items."""
-        banner = getattr(self, "_note_banner", None)
-        if banner is None or banner.is_shown():
-            return
-        ticks = getattr(self, "_checklist_ticks", {})
-        for cue in self._cues:
-            if cue.media_type != MediaType.ACTION or cue.action_spec.get("kind") != ACTION_CHECKLIST:
-                continue
-            items = cue.action_spec.get("items", [])
-            if items and len(ticks.get(cue.cue_id, set())) < len(items):
-                self.show_operator_note(cue)
-                return

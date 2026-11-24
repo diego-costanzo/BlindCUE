@@ -49,6 +49,9 @@ from models.cue import (
 from models.project_manager import ProjectManager
 from ui.theme import AUDIO_EXT, IMAGE_EXT, VIDEO_EXT
 
+# The pre-show checklist was taken out (2026-11-24): old shows keep theirs, nothing makes a new one.
+NEW_ACTION_KINDS = tuple(k for k in ACTION_KINDS if k != "checklist")
+
 SHOW_SUFFIX = ".blindcue"
 MAX_SECONDS = 600.0
 MAX_LIST_MEDIA = 500
@@ -726,7 +729,7 @@ class ShowSession:
                        spec: dict[str, Any] | None = None, name: str | None = None,
                        fields: dict[str, Any] | None = None) -> dict[str, Any]:
         self._need_show()
-        kind = _choice(kind, "kind", ACTION_KINDS)
+        kind = _choice(kind, "kind", NEW_ACTION_KINDS)
         clean = _strict_action(kind, spec or {}, default_action_spec(kind), new=True)
         missing = [cid for cid in clean.get("cue_ids", []) if not any(c.cue_id == cid for c in self.cues)]
         if missing:
@@ -926,15 +929,15 @@ def cue_schema() -> dict[str, Any]:
         "types": {"VIDEO": "video file", "AUDIO": "audio file (layer 2 by default)",
                   "IMAGE": "picture or caption (captions on layer 3)", "GROUP": "a scene that holds cues",
                   "ACTION": "no file: stop / fade / release / level / opacity / pause / resume / seek of "
-                            "other cues, jump / call, a wait, a countdown, a stopwatch, or a note / "
-                            "checklist for the operator"},
+                            "other cues, jump / call, a wait, a countdown, a stopwatch, or a note for "
+                            "the operator"},
         "fields": {name: desc for name, (desc, _conv) in EDITABLE.items()},
-        "action_kinds": list(ACTION_KINDS),
+        "action_kinds": list(NEW_ACTION_KINDS),
         "action_spec": {
             "target": "all | layer | cues", "layer": "1-3 (target layer)", "output": "A | B",
             "cue_ids": "[cue_id, ...] (target cues)", "duration": "seconds (fade/level/opacity)",
             "mode": "absolute | relative (level)", "level": "0.0-1.0 (level absolute, opacity)",
-            "db": "-60..+20 (level relative)", "text": "note text", "items": "checklist lines",
+            "db": "-60..+20 (level relative)", "text": "note text",
             "goto (jump)": "cue_ids [one cue]; goto_play true = start it, false = only make it the next GO; "
                            "goto_max N = at most N times per run (0 = always)",
             "call": "cue_ids [one cue]: starts it without moving GO (mark that cue call_only)",

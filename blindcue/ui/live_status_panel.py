@@ -880,7 +880,7 @@ class LiveStatusPanel(QGroupBox):
         row_tappo = QHBoxLayout()
         row_tappo.setContentsMargins(0, 2, 0, 0)
         row_tappo.setSpacing(8)
-        self.lbl_tappo_info = QLabel("Tappo (L0): Logo BlindCue (Predefinito)")
+        self.lbl_tappo_info = QLabel("Tappo (L0): nero")
         self.lbl_tappo_info.setMinimumWidth(0)
         self.lbl_tappo_info.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_tappo_info.setStyleSheet("color: #94a3b8; font-size: 11px; padding: 2px;")
@@ -888,7 +888,7 @@ class LiveStatusPanel(QGroupBox):
         self.btn_choose_tappo = QPushButton("📁 Cambia Tappo…")
         self.btn_choose_tappo.setFixedHeight(24)
         self.btn_choose_tappo.setToolTip(
-            "Seleziona un'immagine personalizzata per il Layer 0 (locandina festival, logo evento, nero)"
+            "Che cosa mostra il proiettore quando non va niente: nero, un'immagine o un logo, un video in loop"
         )
         self.btn_choose_tappo.setStyleSheet(
             f"QPushButton {{ background-color: #1e293b; color: {CLR_PREVIZ}; border: 1px solid {CLR_PREVIZ}; "
@@ -899,7 +899,7 @@ class LiveStatusPanel(QGroupBox):
 
         self.btn_reset_tappo = QPushButton("🔄 Reset")
         self.btn_reset_tappo.setFixedHeight(24)
-        self.btn_reset_tappo.setToolTip("Ripristina il logo predefinito di BlindCue come Layer 0")
+        self.btn_reset_tappo.setToolTip("Tappo nero (predefinito)")
         self.btn_reset_tappo.setStyleSheet(
             "QPushButton { background-color: #1e293b; color: #94a3b8; border: 1px solid #334155; "
             "border-radius: 4px; padding: 0px 8px; font-size: 11px; font-weight: bold; } "
@@ -1091,10 +1091,19 @@ class LiveStatusPanel(QGroupBox):
         self._previous_screen[output] = str(name)
         self.output_screen_changed.emit(output, str(name))
 
-    def set_layer0_label(self, file_path: str | None) -> None:
-        """Show which file backs Layer 0 (the always-on background)."""
-        name = Path(file_path).name if file_path else "Logo BlindCue (Predefinito)"
-        self.lbl_tappo_info.setText(f"Tappo (L0): {name}")
+    def set_layer0_label(self, file_path: str | None, kind: str = "image") -> None:
+        """Show what Layer 0 (the placeholder) is: black, a picture, a looping video or the test pattern."""
+        from i18n import tr
+
+        if kind == "black":
+            text = tr("Tappo (L0): nero")
+        elif kind == "pattern" or not file_path:
+            text = tr("Tappo (L0): schema di prova (solo in preparazione)")
+        elif kind == "video":
+            text = tr("Tappo (L0): 🎞 {} (in loop)").format(Path(file_path).name)
+        else:
+            text = tr("Tappo (L0): {}").format(Path(file_path).name)
+        self.lbl_tappo_info.setText(text)
 
     def refresh_theme_styles(self) -> None:
         """Update button styles and hold button palettes according to the active theme."""

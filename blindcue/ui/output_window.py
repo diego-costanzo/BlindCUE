@@ -77,6 +77,8 @@ logger = logging.getLogger(__name__)
 # Logo di fallback (Layer 0): asset di runtime dentro il pacchetto, così esiste
 # anche dopo l'installazione in una cartella diversa dal repository.
 _DEFAULT_LOGO = DEFAULT_LOGO_PATH
+# Layer 0 shown as plain black (the default placeholder since the teacher evaluation, 2026-11-24).
+LAYER0_BLACK = "::black"
 
 
 class SurfaceCalibrationOverlayItem(QGraphicsItem):
@@ -397,6 +399,7 @@ class OutputWindow(QWidget):
         self._layer0_pattern_cache: tuple[int, int, float, str, QPixmap] | None = None
         self._layer0_path = fallback_image or str(_DEFAULT_LOGO)
         self._panic_black: bool = False
+        self._layer0_video: tuple | None = None  # (QMediaPlayer, QGraphicsVideoItem) of a looping video
         self._build_layer0()
 
         # ── Virtual Surfaces & Projection Mapping ────────────────────
@@ -555,16 +558,31 @@ class OutputWindow(QWidget):
                 (h - scaled.height()) / 2,
             )
 
+        if self._layer0_video is not None:
+            item = self._layer0_video[1]
+            item.setSize(QSizeF(w, h))
+            item.setPos(0, 0)
+
         self._scene.setSceneRect(0, 0, w, h)
         self._view.fitInView(self._scene.sceneRect(), Qt.AspectRatioMode.KeepAspectRatio)
 
     def set_layer0_image(self, image_path: str | None) -> bool:
-        """Set or change the Layer 0 failsafe image dynamically."""
+        """Set or change the Layer 0 failsafe image dynamically (``LAYER0_BLACK``: plain black)."""
         self._panic_black = False
+        if image_path == LAYER0_BLACK:
+            self._stop_layer0_video()
+            self._layer0_path = LAYER0_BLACK
+            self._layer0_pattern_cache = None
+            self._original_logo_pixmap = None
+            if self._logo_item is not None:
+                self._logo_item.setPixmap(QPixmap())
+            logger.info("[OUTPUT] Layer 0 (Tappo) set to plain black")
+            return True
         target_path = image_path or str(_DEFAULT_LOGO)
         self._layer0_pattern_cache = None
 
         if is_default_tappo_path(target_path):
+            self._stop_layer0_video()
             self._layer0_path = str(_DEFAULT_LOGO)
             self._original_logo_pixmap = None
             cw, ch = self._canvas_size()
@@ -587,6 +605,7 @@ class OutputWindow(QWidget):
             logger.warning("[OUTPUT] Target Layer 0 pixmap could not be loaded: %s", target_path)
             return False
 
+        self._stop_layer0_video()
         self._layer0_path = target_path
         self._original_logo_pixmap = pix
 
@@ -603,6 +622,74 @@ class OutputWindow(QWidget):
     def get_layer0_path(self) -> str:
         """Return the current Layer 0 image file path."""
         return self._layer0_path
+
+    def set_layer0_video(self, video_path: str) -> bool:
+        """Layer 0 as a video playing in a loop without sound (e.g. curtains); False when it cannot be used."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        if not video_path or not os.path.isfile(video_path):
+            logger.warning("[OUTPUT] Layer 0 video not found: %s", video_path)
+            return False
+        self._panic_black = False
+        self._stop_layer0_video()
+        player = QMediaPlayer(self)            # no audio output: the placeholder never makes a sound
+        item = QGraphicsVideoItem()
+        item.setZValue(-49)
+        self._scene.addItem(item)
+        player.setVideoOutput(item)
+        player.setLoops(QMediaPlayer.Loops.Infinite)
+        player.setSource(QUrl.fromLocalFile(video_path))
+        self._layer0_video = (player, item)
+        self._layer0_path = video_path
+        self._layer0_pattern_cache = None
+        self._original_logo_pixmap = None
+        if self._logo_item is not None:
+            self._logo_item.setPixmap(QPixmap())
+        self._fit_layer0()
+        self._update_tappo_visibility()
+        logger.info("[OUTPUT] Layer 0 (Tappo) set to a looping video: %s", video_path)
+        return True
+
+    def layer0_video_playing(self) -> bool:
+        """True while a looping placeholder video runs (tests, readiness)."""
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        return self._layer0_video is not None and \
+            self._layer0_video[0].playbackState() == QMediaPlayer.PlaybackState.PlayingState
+
+    def _stop_layer0_video(self) -> None:
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        video, self._layer0_video = self._layer0_video, None
+        if video is None:
+            return
+        player, item = video
+        try:
+            if player.mediaStatus() != QMediaPlayer.MediaStatus.EndOfMedia:  # never stop() at the end (pl3)
+                player.stop()
+            player.setVideoOutput(None)
+        except RuntimeError:
+            pass
+        self._scene.removeItem(item)
+        item.deleteLater()
+        player.deleteLater()
+
+    def _set_layer0_visible(self, visible: bool) -> None:
+        """Show or hide Layer 0; a looping video only runs while it can be seen."""
+        from PySide6.QtMultimedia import QMediaPlayer
+
+        if self._logo_item is not None:
+            self._logo_item.setVisible(visible)
+        if self._layer0_video is None:
+            return
+        player, item = self._layer0_video
+        item.setVisible(visible)
+        playing = player.playbackState() == QMediaPlayer.PlaybackState.PlayingState
+        if visible and not playing:
+            player.play()
+        elif not visible and playing and player.mediaStatus() != QMediaPlayer.MediaStatus.EndOfMedia:
+            player.pause()
 
     def reset_layer0_default(self) -> None:
         """Reset Layer 0 to the bundled BlindCue official logo."""
@@ -629,8 +716,7 @@ class OutputWindow(QWidget):
         has_active_media = self._has_active_media()
         if has_active_media:
             self._panic_black = False
-        if self._logo_item is not None:
-            self._logo_item.setVisible((not has_active_media) and (not self._panic_black))
+        self._set_layer0_visible((not has_active_media) and (not self._panic_black))
 
     @staticmethod
     def _stop_timer_entry(timer_map: dict[int, QTimer], layer: int) -> None:
@@ -1716,8 +1802,7 @@ class OutputWindow(QWidget):
         has_media = bool(visible_videos) or self._has_active_media()
         if not has_media or fade_duration_sec <= 0:
             self.clear_all_layers()
-            if self._logo_item is not None:
-                self._logo_item.setVisible(True)
+            self._set_layer0_visible(True)
             logger.info("[OUTPUT] Fallback (Layer 0 Tappo) restored immediately")
             if callback:
                 callback()
@@ -1738,8 +1823,7 @@ class OutputWindow(QWidget):
             if self._fallback_gen != expected_gen:
                 return
             self.clear_all_layers()
-            if self._logo_item is not None:
-                self._logo_item.setVisible(True)
+            self._set_layer0_visible(True)
             logger.info("[OUTPUT] Fallback (Layer 0 Tappo) restored after %.2fs fade", fade_duration_sec)
             if callback:
                 callback()
@@ -1922,6 +2006,7 @@ class OutputWindow(QWidget):
     def force_close(self) -> None:
         """Close the output reliably during shutdown, bypassing hide logic."""
         self._force_close_allowed = True
+        self._stop_layer0_video()  # the looping placeholder video (evaluation #9)
         self._cancel_fallback_timer()
         for timer_map in (self._video_fade_timers, self._layer_fade_timers, self._deck_swap_timers,
                           self._master_fade_timers):

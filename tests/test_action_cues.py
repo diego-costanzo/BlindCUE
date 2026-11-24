@@ -768,7 +768,7 @@ def test_deleting_a_waiting_action_cancels_it_and_leaves_the_layers(window):
     assert music.status == CueStatus.LIVE
 
 
-def test_checklist_stays_until_closed_and_returns_in_live(window):
+def test_an_old_checklist_stays_until_closed_and_never_returns_by_itself(window):
     from PySide6.QtCore import Qt
 
     check = _action(92, kind=ACTION_CHECKLIST, items=["mic", "projector"])
@@ -784,13 +784,7 @@ def test_checklist_stays_until_closed_and_returns_in_live(window):
     boxes[0].setChecked(True)
     banner.dismiss()
     assert not banner.isVisibleTo(window)
-    window.set_live_mode(True)  # one item still open: shown again
-    assert banner.isVisibleTo(window)
-    assert banner._boxes[0].isChecked()
-    banner._boxes[1].setChecked(True)
-    banner.dismiss()
-    window.set_live_mode(False)
-    window.set_live_mode(True)  # all ticked: not shown again
+    window.set_live_mode(True)  # the checklist was taken out (2026-11-24): the show never brings it back
     assert not banner.isVisibleTo(window)
     window.set_live_mode(False)
 

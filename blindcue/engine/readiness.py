@@ -1,10 +1,10 @@
 """Readiness check before the show (stage 1 C2a step 7; plan items 5.6 + 4.5).
 
 Pure logic, no Qt: the main window collects the facts (screens, speakers,
-files, power, the show's checklist) and :func:`checks` turns them into rows
+files, power) and :func:`checks` turns them into rows
 for the "Before the show" page. Order: what needs cables and walking first
 (picture, then the master volume before the test tone, then the speakers),
-then files, power and the checklist for people.
+then files and power.
 
 A row is ``OK``, a ``PROBLEM`` (the operator may still start), ``SKIPPED``
 (not checked, e.g. no test tone yet) or ``INFO`` (no verdict).
@@ -26,7 +26,6 @@ SPEAKERS = "speakers"
 AUDIO_OUTS = "audio_outputs"  # 3.1: hall / foldback used by the show
 MEDIA = "media"
 POWER = "power"
-CHECKLIST = "checklist"
 EARCONS = "earcons"
 SHOW = "show"
 LIST = "list"          # 5.6: cues that will not do what the list suggests
@@ -34,20 +33,6 @@ VERSION = "version"    # 5.6: the version of the show and the cues switched off 
 DISK = "disk"          # 5.6: little free space for saving
 CLOCK = "clock"        # 5.6: cues at a time of day follow the computer clock
 LOW_DISK_MB = 500
-
-# Items of the checklist a new show starts with (Italian source; stored in
-# the show in the operator's language, then edited freely).
-DEFAULT_CHECKLIST = [
-    "Alimentatore collegato al portatile",
-    "Notifiche disattivate (Windows: Non disturbare)",
-    "Altri programmi chiusi (Teams, browser, OneDrive)",
-    "Schermo del portatile abbassato",
-    "Amplificatore e casse accesi, manopola come alla prova",
-    "Copia dello spettacolo su chiavetta (File → Salva con nome, portatile)",
-    "Telefono del telecomando carico, nella stessa rete",
-]
-DEFAULT_CHECKLIST_NAME = "Checklist prima dello spettacolo"
-
 
 @dataclass(frozen=True)
 class Facts:
@@ -66,7 +51,6 @@ class Facts:
     missing: tuple[str, ...] = ()       # "#6 'name'" of cues whose file is gone
     media_total: int = 0
     power: tuple[bool, int] | None = None  # (on battery, percent); None = no battery
-    checklist: tuple[int, int] | None = None  # (ticked, items); None = the show has none
     show_name: str = ""
     earcons_on: bool = False            # operator sounds switched on
     headphones: bool = False            # a monitor output other than the audience speakers
@@ -133,12 +117,6 @@ def checks(f: Facts) -> list[Check]:
     if f.power is not None:
         on_battery, percent = f.power
         rows.append(Check(POWER, PROBLEM if on_battery else OK, {"percent": percent}))
-
-    if f.checklist is None:
-        rows.append(Check(CHECKLIST, INFO, {"none": True}))
-    else:
-        done, total = f.checklist
-        rows.append(Check(CHECKLIST, OK if done >= total else PROBLEM, {"done": done, "total": total}))
 
     # Operator sounds: offered when headphones are there, said when they keep quiet (W42, W44).
     if f.headphones and not f.earcons_on:

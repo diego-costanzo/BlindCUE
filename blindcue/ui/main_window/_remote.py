@@ -691,10 +691,9 @@ class _RemoteMixin:
             return
         if col == 0:
             self._on_go()
-        elif col in (1, 2):
-            item = self._cue_list.item(row, col)
-            if item is not None:
-                self._cue_list.editItem(item)
+        else:
+            # The "Edit cue" window (evaluation 2026-11-24); F2 still renames in the list.
+            self._open_cue_editor(row)
 
     @Slot(QTableWidgetItem)
     def _on_cue_item_changed(self, item: QTableWidgetItem) -> None:

@@ -19,14 +19,11 @@ from pathlib import Path
 
 from engine.readiness import (
     AUDIO_OUTS,
-    CHECKLIST,
     CLOCK,
     DISK,
     LIST,
     VERSION,
-    DEFAULT_CHECKLIST,
     EARCONS,
-    DEFAULT_CHECKLIST_NAME,
     INFO,
     MEDIA,
     OK,
@@ -84,7 +81,6 @@ class _ReadinessMixin:
         self._readiness_page.action_requested.connect(self._on_readiness_action)
         self._readiness_page.start_chosen.connect(self._on_readiness_start)
         self._readiness_page.stay_requested.connect(self._on_readiness_stay)
-        self._readiness_page.checklist_toggled.connect(self._on_readiness_tick)
         self._readiness_timer = QTimer(self)
         self._readiness_timer.setInterval(2000)  # the power row changes by itself
         self._readiness_timer.timeout.connect(
@@ -122,10 +118,6 @@ class _ReadinessMixin:
         name = tr("{} (schermo {})").format(label, index) if index else label
         return name, target != QGuiApplication.primaryScreen(), len(screens)
 
-    def _readiness_checklist_cue(self) -> Cue | None:
-        return next((c for c in self._cues if c.media_type == MediaType.ACTION
-                     and c.action_spec.get("kind") == "checklist"), None)
-
     def _readiness_facts(self) -> Facts:
         from PySide6.QtMultimedia import QMediaDevices
 
@@ -142,12 +134,6 @@ class _ReadinessMixin:
         with_files = [(i, c) for i, c in enumerate(self._cues) if c.media_type.has_file]
         missing = tuple(f"{format_cue_ref(i, c)} '{c.name}'" for i, c in with_files
                         if not os.path.isfile(c.file_path or ""))
-        checklist = None
-        cue = self._readiness_checklist_cue()
-        if cue is not None:
-            items = cue.action_spec.get("items", [])
-            ticks = getattr(self, "_checklist_ticks", {}).get(cue.cue_id, set())
-            checklist = (len([i for i in ticks if i < len(items)]), len(items))
         path = getattr(self, "_current_project_path", None)
         show = Path(path).stem if path else tr("(non salvato)")
         if self._is_modified:
@@ -172,7 +158,7 @@ class _ReadinessMixin:
             speakers=speakers, speakers_pinned=pinned, speakers_missing=missing_dev,
             heard=self._readiness_heard, playing=playing,
             missing=missing, media_total=len(with_files),
-            power=power_status(), checklist=checklist, show_name=show,
+            power=power_status(), show_name=show,
             earcons_on=bool(earcons is not None and earcons.enabled), headphones=headphones,
         )
 
@@ -281,17 +267,6 @@ class _ReadinessMixin:
                 return RowView(POWER, OK, tr("Portatile collegato all'alimentatore"))
             return RowView(POWER, PROBLEM, tr("Portatile a batteria ({} %): collega l'alimentatore").format(
                 v["percent"]))
-        if check.key == CHECKLIST:
-            if v.get("none"):
-                return RowView(CHECKLIST, check.state, tr("Lo spettacolo non ha una checklist"),
-                               [(tr("Aggiungi la checklist predefinita"), "add_checklist")])
-            cue = self._readiness_checklist_cue()
-            return RowView(
-                CHECKLIST, check.state, tr("Checklist: {} di {} spuntate").format(v["done"], v["total"]),
-                items=list(cue.action_spec.get("items", [])) if cue else [],
-                ticked=set(getattr(self, "_checklist_ticks", {}).get(cue.cue_id, set())) if cue else set(),
-                cue_id=cue.cue_id if cue else -1,
-            )
         if check.key == EARCONS:
             if v.get("offer"):
                 return RowView(EARCONS, check.state, tr(
@@ -336,9 +311,10 @@ class _ReadinessMixin:
             return f"{format_cue_ref(row, cue)} '{name}'"
 
         def first_cue(row: int) -> int:
-            # A checklist on top is for the people before the show: GO starts with the first cue after it.
-            while row < len(self._cues) - 1 and self._cues[row].media_type == MediaType.ACTION \
-                    and self._cues[row].action_spec.get("kind") == "checklist":
+            # A cue GO skips (an old checklist on top, an effect…) is not where the show starts.
+            from engine.show_engine import outside_go_order
+
+            while row < len(self._cues) - 1 and outside_go_order(self._cues[row]):
                 row += 1
             return row
 
@@ -398,7 +374,7 @@ class _ReadinessMixin:
 
     def _readiness_short(self, key: str) -> str:
         return tr({SCREEN: "proiettore", VOLUME: "volume", SPEAKERS: "audio", MEDIA: "file",
-                   POWER: "alimentatore", CHECKLIST: "checklist", AUDIO_OUTS: "uscite audio"}.get(key, key))
+                   POWER: "alimentatore", AUDIO_OUTS: "uscite audio"}.get(key, key))
 
     def _update_readiness_warning(self, count: int | None = None) -> None:
         """"⚠ N" in the show while entered with problems (gone once they are fixed)."""
@@ -452,15 +428,6 @@ class _ReadinessMixin:
         self._apply_mode_visuals()
         self._cue_list.setFocus()
 
-    @Slot(int, int, bool)
-    def _on_readiness_tick(self, cue_id: int, index: int, ticked: bool) -> None:
-        self._on_note_item_toggled(cue_id, index, ticked)  # same ticks as the note zone
-        cue = next((c for c in self._cues if c.cue_id == cue_id), None)
-        total = len(cue.action_spec.get("items", [])) if cue is not None else 0
-        done = len(self._checklist_ticks.get(cue_id, set()))
-        self._status_label.setText(tr("Checklist: {} di {} spuntate").format(done, total))
-        self._readiness_refresh(rebuild=False)
-
     @Slot(str)
     def _on_readiness_action(self, action: str) -> None:
         if action == "recheck":
@@ -508,9 +475,6 @@ class _ReadinessMixin:
             self._readiness_refresh()
         elif action == "review_changes":
             self._review_rehearsal_changes()
-        elif action == "add_checklist":
-            self._add_default_checklist()
-            self._readiness_refresh()
 
     def _play_test_tone(self) -> None:
         """1 s chime through the show's speakers and master volume; never while something plays."""
@@ -546,25 +510,3 @@ class _ReadinessMixin:
         from ui.identify_screens import show_screen_numbers
 
         self._screen_number_windows = show_screen_numbers(QGuiApplication.screens())
-
-    # ── Default checklist ─────────────────────────────────────────────
-    def _default_checklist_cue(self) -> Cue:
-        return Cue(
-            name=tr(DEFAULT_CHECKLIST_NAME),
-            media_type=MediaType.ACTION,
-            file_path="",
-            action_spec={"kind": "checklist", "target": "all", "items": [tr(i) for i in DEFAULT_CHECKLIST]},
-        )
-
-    def _add_default_checklist(self) -> None:
-        """Sterowanie → "Add the default checklist": at the top of the list (Preparation only)."""
-        if not self._change_allowed(EDIT_LIST):
-            return
-        cue = self._default_checklist_cue()
-        cue.status = CueStatus.LOADED
-        self._cues.insert(0, cue)
-        self._refresh_cue_list(keep_selection=False)
-        self._cue_list.setCurrentRow(0)
-        self._commit_undo_point()
-        self._mark_modified(True)
-        self._status_label.setText(tr("Checklist predefinita aggiunta in cima alla scaletta"))

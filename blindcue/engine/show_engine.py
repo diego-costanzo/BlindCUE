@@ -57,10 +57,15 @@ def demote_live_on_layer(
 
 
 def outside_go_order(cue: Cue) -> bool:
-    """Effects on demand, relative starts, call-only and disabled cues: GO skips them."""
+    """Effects on demand, relative starts, call-only and disabled cues: GO skips them.
+
+    So does a pre-show checklist kept from an older show (the checklist was taken out
+    after the teacher-workflow evaluation, 2026-11-24).
+    """
     return (bool(getattr(cue, "adlib", False)) or getattr(cue, "start_rel_cue", None) is not None
             or bool(getattr(cue, "call_only", False)) or not getattr(cue, "enabled", True)
-            or bool(getattr(cue, "start_clock", "")))
+            or bool(getattr(cue, "start_clock", ""))
+            or (getattr(cue, "action_spec", None) or {}).get("kind") == "checklist")
 
 
 def is_enabled(cue: Cue) -> bool:

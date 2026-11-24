@@ -110,19 +110,12 @@ class _MenuMixin:
         show_menu.addAction(QAction("◐ Prova", self, shortcut=QKeySequence("Shift+F5"),
                                     triggered=self._enter_rehearsal_from_key))
         show_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
-        show_menu.addAction(QAction("Aggiungi la checklist predefinita", self,
-                                    triggered=self._add_default_checklist))
         self._act_end_show = QAction("Termina lo spettacolo…", self, shortcut=QKeySequence("Ctrl+Shift+F5"),
                                      triggered=self._on_end_show_requested)
         self._act_end_show.setEnabled(False)
         show_menu.addAction(self._act_end_show)
         show_menu.addSeparator()
-        show_menu.addAction(
-            QAction("Imposta Immagine di &Tappo (Layer 0)…", self, triggered=self._on_choose_layer0)
-        )
-        show_menu.addAction(
-            QAction("&Ripristina Tappo Predefinito", self, triggered=self._on_reset_layer0)
-        )
+        self._build_layer0_menu(show_menu)  # black / picture / looping video / test pattern (#9)
         show_menu.addSeparator()
         self._act_jam_mode = QAction("🎚 Modalità &Jam / Contest (Auto-Gain EBU R128)", self, checkable=True)
         self._act_jam_mode.setToolTip("Abilita il livellamento automatico EBU R128 (-16 LUFS) per contest, jam session e file non calibrati.")
@@ -350,7 +343,7 @@ class _MenuMixin:
         self._cue_list.color_selected.connect(self._set_cue_color)
         self._cue_list.files_dropped.connect(self._on_files_dropped_on_list)
         self._cue_list_panel.add_media_requested.connect(self._on_add_media)
-        self._cue_list_panel.add_group_requested.connect(self._on_add_group)
+        self._cue_list_panel.add_group_requested.connect(self._on_add_scene_interactive)
         self._cue_list_panel.add_text_requested.connect(self._on_add_text_cue)
         self._cue_list_panel.add_action_requested.connect(self._on_add_action_cue)
         self._cue_list_panel.edit_text_requested.connect(self._on_edit_text_cue)
@@ -470,7 +463,7 @@ class _MenuMixin:
         self._lbl_tappo_info = self._live_status.lbl_tappo_info
         self._live_status.clear_layer_clicked.connect(self._on_clear_live_layer)
         self._live_status.blackout_clicked.connect(self._on_blackout)
-        self._live_status.choose_layer0_clicked.connect(self._on_choose_layer0)
+        self._live_status.choose_layer0_clicked.connect(self._on_layer0_button)
         self._live_status.reset_layer0_clicked.connect(self._on_reset_layer0)
         self._live_status.layer_play_pause_clicked.connect(self.layer_play_pause_requested.emit)
         self._live_status.layer_seek_requested.connect(self.layer_seek_requested.emit)

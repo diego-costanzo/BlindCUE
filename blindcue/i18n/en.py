@@ -3450,4 +3450,104 @@ T: dict[str, str] = {
         'Add a picture',
     'Video, suoni e immagini':
         'Videos, sounds and pictures',
+    'Modifica cue':
+        'Edit cue',
+    'Dati della cue':
+        'Cue',
+    "Che cosa fa l'azione si sceglie nel pannello a destra (scheda «⚡ Azione»).":
+        'What the action does is chosen in the panel on the right (tab “⚡ Action”).',
+    'Come suona la scena':
+        'How the scene plays',
+    "Il file non c'è":
+        'The file is missing',
+    "Il file non c'è: scegline un altro con il menu della cue.":
+        "The file is missing: choose another in the cue's menu (right click).",
+    'Suono':
+        'Sound',
+    'Film':
+        'Video',
+    "Forma d'onda: trascina l'inizio e la fine":
+        'Waveform: drag the start and the end',
+    "Forma d'onda in caricamento…":
+        'Loading the waveform…',
+    '▶ Ascolta':
+        '▶ Listen',
+    "Ascolta dall'inizio scelto (in cuffia, se è scelta)":
+        'Listen from the chosen start (in the headphones, if chosen)',
+    '⇤ Inizio qui':
+        '⇤ Start here',
+    "L'inizio va dove si trova ora la riproduzione":
+        'The start goes where the playback is now',
+    'Fine qui ⇥':
+        'End here ⇥',
+    'La fine va dove si trova ora la riproduzione':
+        'The end goes where the playback is now',
+    'fine del file':
+        'end of the file',
+    '↺ Tutto il file':
+        '↺ Whole file',
+    'In loop':
+        'Loop',
+    'Immagine':
+        'Picture',
+    'Tempo sullo schermo':
+        'Time on screen',
+    'Dimensione':
+        'Size',
+    'Posizione':
+        'Position',
+    '✏ Cambia il testo…':
+        '✏ Change the text…',
+    'Passaggi':
+        'Transitions',
+    "La fine deve stare dopo l'inizio":
+        'The end must come after the start',
+    'Scegli prima una cue nella lista':
+        'Choose a cue in the list first',
+    "'{}' modificata":
+        "'{}' changed",
+    '✏ Modifica…':
+        '✏ Edit…',
+    'Modifica la cue scelta: inizio e fine, volume, passaggi (anche doppio clic o Invio)':
+        'Edit the chosen cue: start and end, volume, transitions (also a double-click or Enter)',
+    'Modifica la cue':
+        'Edit the cue',
+    'Tappo (quando non va niente)':
+        'Cover (when nothing plays)',
+    '⬛ Nero':
+        '⬛ Black',
+    '🖼 Immagine o logo…':
+        '🖼 Picture or logo…',
+    '🎞 Video in loop (senza suono)…':
+        '🎞 Looping video (no sound)…',
+    '▦ Schema di prova (solo in preparazione)':
+        '▦ Test pattern (Preparation only)',
+    'Tappo: nero':
+        'Cover: black',
+    'Tappo: schema di prova (solo in preparazione)':
+        'Cover: test pattern (Preparation only)',
+    'Tappo: {}':
+        'Cover: {}',
+    'File non valido':
+        'Invalid file',
+    'Impossibile usare questo file come tappo.':
+        'This file cannot be used as the cover.',
+    'Immagine del tappo':
+        'Cover picture',
+    'Video del tappo':
+        'Cover video',
+    'Tutti i file':
+        'All files',
+    'Tappo (L0): nero':
+        'Cover (L0): black',
+    'Tappo (L0): schema di prova (solo in preparazione)':
+        'Cover (L0): test pattern (Preparation only)',
+    'Tappo (L0): 🎞 {} (in loop)':
+        'Cover (L0): 🎞 {} (loop)',
+    'Tappo (L0): {}':
+        'Cover (L0): {}',
+    "Che cosa mostra il proiettore quando non va niente: nero, un'immagine o un logo, un video in loop":
+        'What the projector shows when nothing plays: black, a picture or logo, a looping video',
+    'Tappo nero (predefinito)':
+        'Black cover (default)',
 }

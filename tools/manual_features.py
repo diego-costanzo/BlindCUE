@@ -81,6 +81,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "history": ("blindcue/engine/undo_names.py", None),
     "gentle_fade": ("blindcue/ui/main_window/_now_playing.py", "def fade_scene"),
     "drop_scene": ("blindcue/ui/main_window/_cue_manip.py", "_offer_scene"),
+    "edit_window": ("blindcue/ui/edit_cue_dialog.py", "class EditCueDialog"),
 }
 
 

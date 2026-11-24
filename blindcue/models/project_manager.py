@@ -368,6 +368,13 @@ class ProjectManager:
             )
             if rel_l0:
                 eff_settings["layer0_image"] = rel_l0
+        layer0_video = eff_settings.get("layer0_video")
+        if isinstance(layer0_video, str) and layer0_video and os.path.isfile(layer0_video):
+            rel_v0 = self._archive_single_file(
+                layer0_video, "Layer 0 (Tappo video)", media_dir, media_map, claimed, problems
+            )
+            if rel_v0:
+                eff_settings["layer0_video"] = rel_v0
 
         surf_dicts: list[Any] | None = None
         if surfaces is not None:
@@ -467,6 +474,8 @@ class ProjectManager:
 
             if "layer0_image" in settings:
                 settings["layer0_image"] = _resolve_relative_asset(settings.get("layer0_image"))
+            if "layer0_video" in settings:
+                settings["layer0_video"] = _resolve_relative_asset(settings.get("layer0_video"))
             if isinstance(settings.get("surfaces"), list):
                 for sd in settings["surfaces"]:
                     if isinstance(sd, dict) and sd.get("mask_image_path"):
