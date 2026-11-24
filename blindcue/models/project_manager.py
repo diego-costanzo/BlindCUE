@@ -32,6 +32,44 @@ AUTOSAVE_FILENAME = "autosave.json"
 # Folder created next to the project file when the operator wants a portable
 # archive: "<project name>_media/".
 MEDIA_DIR_SUFFIX = "_media"
+# 5.6: the show file as it was before each save, in "<project name>_backups/"
+# next to it; the newest KEEP_BACKUPS stay.
+BACKUP_DIR_SUFFIX = "_backups"
+KEEP_BACKUPS = 5
+
+
+def _backups(folder: Path, stem: str) -> list[Path]:
+    """Copies of *stem* in *folder*, oldest first (the names end with the date and time)."""
+    if not folder.is_dir():
+        return []
+    return sorted(p for p in folder.iterdir()
+                  if p.name.startswith(stem + " ") and p.suffix.lower() == ".blindcue")
+
+
+def keep_backup(path: Path, keep: int = KEEP_BACKUPS) -> Path | None:
+    """Copy the show file about to be overwritten into its backups folder; the copy, or None.
+
+    Nothing when the file is new or the newest copy is the same; never raises
+    (a backup that fails must not stop the save).
+    """
+    try:
+        if not path.is_file() or path.suffix.lower() != ".blindcue":
+            return None
+        folder = path.parent / f"{path.stem}{BACKUP_DIR_SUFFIX}"
+        old = _backups(folder, path.stem)
+        data = path.read_bytes()
+        if old and old[-1].read_bytes() == data:
+            return None
+        folder.mkdir(exist_ok=True)
+        stamp = datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d %H-%M-%S")
+        target = folder / f"{path.stem} {stamp}.blindcue"
+        target.write_bytes(data)
+        for extra in _backups(folder, path.stem)[:-keep]:
+            extra.unlink()
+        return target
+    except OSError as exc:
+        logger.warning("[PROJECT] No backup of %s: %s", path, exc)
+        return None
 
 
 class ProjectManager:
@@ -291,6 +329,7 @@ class ProjectManager:
                 "cues": cue_dicts,
             }
 
+            keep_backup(path)  # 5.6: the previous save stays in "<name>_backups/"
             self._atomic_write_json(path, project_data)
             logger.info("[PROJECT] Successfully saved show to: %s (%d cues)", path, len(cues))
             return True

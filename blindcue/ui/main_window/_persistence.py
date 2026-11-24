@@ -55,6 +55,7 @@ class _PersistenceMixin:
             # After a crash during the show the restore question offers to go back into it.
             settings["live_mode"] = bool(self._live_mode)
             settings.update(self._versions_settings())  # 2.3
+            settings.update(self._show_info_settings())  # 5.6
             payload = self._project_manager.build_autosave_payload(
                 self._cues,
                 current_index=self._current_index,
@@ -179,6 +180,7 @@ class _PersistenceMixin:
             self._inspector.set_available_surfaces(self._surfaces)
             self._apply_output_settings(rec_settings)
             self._versions_load(rec_settings if isinstance(rec_settings, dict) else {})  # 2.3
+            self._show_info_load(rec_settings if isinstance(rec_settings, dict) else {})  # 5.6
 
             self._refresh_cue_list(keep_selection=False)
             if 0 <= start_row < len(self._cues):
@@ -239,6 +241,7 @@ class _PersistenceMixin:
         self._goto_counts.clear()  # 2.1/2.2: another show, nothing waits, jumps count again
         self._clock_reset()  # 2.6
         self._versions_load({})  # 2.3: a new show has only the full version
+        self._show_info_load({})  # 5.6
         self._released_groups.clear()  # cue ids repeat between shows
         self._rehearsal_before.clear()
         self._rehearsal_undo.clear()
@@ -401,6 +404,7 @@ class _PersistenceMixin:
             self._inspector.set_available_surfaces(self._surfaces)
             self._apply_output_settings(settings)
             self._versions_load(settings)  # 2.3
+            self._show_info_load(settings)  # 5.6
 
             self._refresh_cue_list(keep_selection=False)
             if 0 <= self._current_index < len(self._cues):
@@ -478,6 +482,7 @@ class _PersistenceMixin:
         if output:
             settings["output"] = output
         settings.update(self._versions_settings())  # 2.3
+        settings.update(self._show_info_settings())  # 5.6
         problems: list[str] = []
         copied = 0
         if getattr(self, "_project_bundled", False):

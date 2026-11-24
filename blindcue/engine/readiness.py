@@ -29,6 +29,11 @@ POWER = "power"
 CHECKLIST = "checklist"
 EARCONS = "earcons"
 SHOW = "show"
+LIST = "list"          # 5.6: cues that will not do what the list suggests
+VERSION = "version"    # 5.6: the version of the show and the cues switched off in it
+DISK = "disk"          # 5.6: little free space for saving
+CLOCK = "clock"        # 5.6: cues at a time of day follow the computer clock
+LOW_DISK_MB = 500
 
 # Items of the checklist a new show starts with (Italian source; stored in
 # the show in the operator's language, then edited freely).
@@ -67,6 +72,12 @@ class Facts:
     headphones: bool = False            # a monitor output other than the audience speakers
     # 3.1: (output label, where it plays now, plays on its own device, cues using it) for hall / foldback
     outputs: tuple[tuple[str, str, bool, int], ...] = ()
+    list_problems: tuple[str, ...] = ()  # 5.6: "#4 'name': what is wrong"
+    version: str = ""                   # 5.6: the version of the show in use ("" = the whole show)
+    switched_off: int = 0               # cues switched off in it
+    disk_free_mb: int | None = None     # free space where the show is saved; None = unknown
+    timed: int = 0                      # cues that start at a time of day
+    clock: str = ""                     # the computer clock now, "HH:MM"
 
 
 @dataclass(frozen=True)
@@ -110,6 +121,15 @@ def checks(f: Facts) -> list[Check]:
     else:
         rows.append(Check(MEDIA, OK, {"count": f.media_total}))
 
+    if f.list_problems:
+        rows.append(Check(LIST, PROBLEM, {"count": len(f.list_problems), "items": list(f.list_problems)}))
+
+    if f.timed:
+        rows.append(Check(CLOCK, INFO, {"count": f.timed, "time": f.clock}))
+
+    if f.disk_free_mb is not None and f.disk_free_mb < LOW_DISK_MB:
+        rows.append(Check(DISK, PROBLEM, {"mb": f.disk_free_mb}))
+
     if f.power is not None:
         on_battery, percent = f.power
         rows.append(Check(POWER, PROBLEM if on_battery else OK, {"percent": percent}))
@@ -126,6 +146,8 @@ def checks(f: Facts) -> list[Check]:
     elif f.earcons_on and not f.headphones:
         rows.append(Check(EARCONS, INFO, {"silent": True}))
 
+    if f.version or f.switched_off:
+        rows.append(Check(VERSION, INFO, {"name": f.version, "off": f.switched_off}))
     rows.append(Check(SHOW, INFO, {"name": f.show_name}))
     return rows
 

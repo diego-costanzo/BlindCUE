@@ -3188,4 +3188,34 @@ T: dict[str, str] = {
         'Projector / external',
     'Schermo {}':
         'Screen {}',
+    "parte dopo una cue che non c'è più":
+        'starts after a cue that is no longer there',
+    'le sue cue bersaglio non ci sono più: non fa nulla':
+        'its target cues are gone: it does nothing',
+    "salta o chiama una cue che non c'è":
+        'jumps to or calls a cue that is not there',
+    'scena senza nulla da suonare':
+        'a scene with nothing to play',
+    'parte solo se chiamata, ma nessuna azione la chiama':
+        'starts only when called, but no action calls it',
+    'Da sistemare nella lista ({}): {}':
+        'To fix in the list ({}): {}',
+    "Cue a un'ora del giorno: {} – l'orologio del computer segna {}. È giusto?":
+        'Cues at a time of day: {} – the computer clock says {}. Is that right?',
+    'Poco spazio libero sul disco dello spettacolo: {} MB – il salvataggio può non riuscire':
+        "Little free space on the show's disk: {} MB – saving may fail",
+    'ℹ Informazioni sullo spettacolo…':
+        'ℹ Show info…',
+    'Informazioni sullo spettacolo':
+        'Show info',
+    'Titolo:':
+        'Title:',
+    'Autore / regia:':
+        'Author / director:',
+    'Note:':
+        'Notes:',
+    'Cue: {} · GO: {} · video {} · audio {} · immagini {} · testi {} · scene {} · azioni {} · effetti {} · escluse {} · file mancanti {}':
+        'Cues: {} · GO: {} · video {} · audio {} · pictures {} · captions {} · scenes {} · actions {} · effects {} · switched off {} · missing files {}',
+    'Informazioni sullo spettacolo salvate con lo spettacolo':
+        'The info is saved with the show',
 }

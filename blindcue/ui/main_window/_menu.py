@@ -42,6 +42,7 @@ class _MenuMixin:
                                     triggered=lambda: self._print_list("operator")))
         file_menu.addAction(QAction("🖨 Stampa la scaletta per il suggeritore…", self,
                                     triggered=lambda: self._print_list("prompter")))
+        file_menu.addAction(QAction("ℹ Informazioni sullo spettacolo…", self, triggered=self._open_show_info))  # 5.6
         file_menu.addSeparator()
         file_menu.addAction(
             QAction("&Quit", self, shortcut=QKeySequence.StandardKey.Quit, triggered=self._on_quit)

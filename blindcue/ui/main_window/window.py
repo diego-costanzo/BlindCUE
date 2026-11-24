@@ -57,6 +57,7 @@ from ui.main_window._markers import _MarkersMixin
 from ui.main_window._renumber import _RenumberMixin
 from ui.main_window._search import _SearchMixin
 from ui.main_window._show_import import _ShowImportMixin
+from ui.main_window._show_info import _ShowInfoMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -102,6 +103,7 @@ class MainWindow(
     _RenumberMixin,
     _SearchMixin,
     _ShowImportMixin,
+    _ShowInfoMixin,
     _SlideshowMixin,
     QMainWindow,
 ):

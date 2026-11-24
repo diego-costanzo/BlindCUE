@@ -3410,4 +3410,34 @@ T: dict[str, str] = {
         'Projektor / zewnętrzny',
     'Schermo {}':
         'Ekran {}',
+    "parte dopo una cue che non c'è più":
+        'startuje po pozycji, której już nie ma',
+    'le sue cue bersaglio non ci sono più: non fa nulla':
+        'jej pozycji docelowych już nie ma: nic nie zrobi',
+    "salta o chiama una cue che non c'è":
+        'skacze do pozycji albo wywołuje pozycję, której nie ma',
+    'scena senza nulla da suonare':
+        'scena bez niczego do zagrania',
+    'parte solo se chiamata, ma nessuna azione la chiama':
+        'startuje tylko z wywołania, ale żadna akcja jej nie wywołuje',
+    'Da sistemare nella lista ({}): {}':
+        'Do poprawienia na liście ({}): {}',
+    "Cue a un'ora del giorno: {} – l'orologio del computer segna {}. È giusto?":
+        'Pozycje o wyznaczonej godzinie: {} – zegar komputera pokazuje {}. Czy to dobra godzina?',
+    'Poco spazio libero sul disco dello spettacolo: {} MB – il salvataggio può non riuscire':
+        'Mało miejsca na dysku przedstawienia: {} MB – zapis może się nie udać',
+    'ℹ Informazioni sullo spettacolo…':
+        'ℹ Informacje o przedstawieniu…',
+    'Informazioni sullo spettacolo':
+        'Informacje o przedstawieniu',
+    'Titolo:':
+        'Tytuł:',
+    'Autore / regia:':
+        'Autor / reżyseria:',
+    'Note:':
+        'Notatki:',
+    'Cue: {} · GO: {} · video {} · audio {} · immagini {} · testi {} · scene {} · azioni {} · effetti {} · escluse {} · file mancanti {}':
+        'Pozycje: {} · GO: {} · wideo {} · dźwięk {} · obrazy {} · napisy {} · sceny {} · akcje {} · efekty {} · wyłączone {} · brakujące pliki {}',
+    'Informazioni sullo spettacolo salvate con lo spettacolo':
+        'Informacje zostaną zapisane razem z przedstawieniem',
 }

@@ -74,6 +74,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "renumber": ("blindcue/engine/renumber.py", None),
     "show_import": ("blindcue/engine/show_import.py", None),
     "identify_screens": ("blindcue/ui/identify_screens.py", None),
+    "preshow": ("blindcue/engine/list_check.py", None),
 }
 
 

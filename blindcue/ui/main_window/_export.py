@@ -31,6 +31,9 @@ def follow_names() -> dict[str, str]:
 
 class _ExportMixin:
     def _show_title(self) -> str:
+        title = getattr(self, "_show_info", {}).get("title", "")
+        if title:
+            return title  # 5.6: the title from "Show info", not the file name
         path = getattr(self, "_current_project_path", None)
         return Path(path).stem if path else tr("Spettacolo")
 

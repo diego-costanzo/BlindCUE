@@ -11,16 +11,23 @@ Setting ``live/readiness_check`` (this computer) turns it off.
 from __future__ import annotations
 
 import math
+import shutil
 import struct
 import wave
+from datetime import datetime
 from pathlib import Path
 
 from engine.readiness import (
     AUDIO_OUTS,
     CHECKLIST,
+    CLOCK,
+    DISK,
+    LIST,
+    VERSION,
     DEFAULT_CHECKLIST,
     EARCONS,
     DEFAULT_CHECKLIST_NAME,
+    INFO,
     MEDIA,
     OK,
     POWER,
@@ -146,7 +153,19 @@ class _ReadinessMixin:
         if self._is_modified:
             show += " · " + tr("modifiche non salvate")
         playing = any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags)
+        from engine.list_check import list_problems
+
+        wrong = tuple(f"{format_cue_ref(i, self._cues[i])} '{self._cues[i].name}': {self._list_problem_text(kind)}"
+                      for i, kind in list_problems(self._cues))
+        try:
+            free_mb = shutil.disk_usage(Path(path).parent if path else Path.home()).free // (1024 * 1024)
+        except OSError:
+            free_mb = None
+        timed = sum(1 for c in self._cues if getattr(c, "start_clock", "") and getattr(c, "enabled", True))
         return Facts(
+            list_problems=wrong, version=getattr(self, "_version_name", ""),
+            switched_off=sum(1 for c in self._cues if not getattr(c, "enabled", True)),
+            disk_free_mb=free_mb, timed=timed, clock=datetime.now().strftime("%H:%M"),
             outputs=self._readiness_outputs(dm),
             screen_name=name, screen_external=external, screen_count=count,
             master_level=self._master_level, master_muted=self._master_muted,
@@ -179,8 +198,35 @@ class _ReadinessMixin:
             rows.append((tr(LABELS[key]), where, own, n))
         return tuple(rows)
 
+    @staticmethod
+    def _list_problem_text(kind: str) -> str:
+        from engine import list_check as lc
+
+        return {
+            lc.REL_MISSING: tr("parte dopo una cue che non c'è più"),
+            lc.NO_TARGET: tr("le sue cue bersaglio non ci sono più: non fa nulla"),
+            lc.JUMP_NOWHERE: tr("salta o chiama una cue che non c'è"),
+            lc.EMPTY_SCENE: tr("scena senza nulla da suonare"),
+            lc.NEVER_CALLED: tr("parte solo se chiamata, ma nessuna azione la chiama"),
+        }.get(kind, kind)
+
     def _readiness_view(self, check: Check) -> RowView:
         v = check.values
+        if check.key == LIST:
+            shown = "; ".join(v["items"][:3]) + (" …" if len(v["items"]) > 3 else "")
+            return RowView(LIST, PROBLEM, tr("Da sistemare nella lista ({}): {}").format(v["count"], shown),
+                           [(tr("Mostra nella lista"), "show_list_problem")])
+        if check.key == CLOCK:
+            return RowView(CLOCK, INFO, tr(
+                "Cue a un'ora del giorno: {} – l'orologio del computer segna {}. È giusto?"
+            ).format(v["count"], v["time"]))
+        if check.key == DISK:
+            return RowView(DISK, PROBLEM, tr(
+                "Poco spazio libero sul disco dello spettacolo: {} MB – il salvataggio può non riuscire"
+            ).format(v["mb"]))
+        if check.key == VERSION:
+            name = v["name"] or tr("Spettacolo completo")
+            return RowView(VERSION, INFO, tr("Versione: {} · {} cue escluse").format(name, v["off"]))
         if check.key == AUDIO_OUTS:
             parts = " · ".join(f"{label} ({n}) → {where}" for label, where, _own, n in v["rows"])
             if check.state == OK:
@@ -442,6 +488,14 @@ class _ReadinessMixin:
                 self._on_readiness_stay()  # files are replaced in Preparation
             if row >= 0 and not self._live_mode:
                 self._cue_list.setCurrentRow(row)
+        elif action == "show_list_problem":
+            from engine.list_check import list_problems
+
+            found = list_problems(self._cues)
+            if not self._readiness_review:
+                self._on_readiness_stay()  # the list is fixed in Preparation
+            if found and not self._live_mode:
+                self._cue_list.setCurrentRow(found[0][0])
         elif action == "earcons_on":
             self._set_earcons_enabled(True)
             if hasattr(self, "_act_earcons"):
