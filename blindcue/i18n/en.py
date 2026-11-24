@@ -3122,4 +3122,40 @@ T: dict[str, str] = {
         'Print with Ctrl+P (landscape for many columns).',
     'Scaletta aperta nel browser: stampa con Ctrl+P':
         'Cue list opened in the browser: print with Ctrl+P',
+    'Rinumera le Q':
+        'Renumber the Q',
+    '🔢 Rinumera le Q…':
+        '🔢 Renumber the Q…',
+    'Le cue selezionate lanciate con GO ({})':
+        'The selected cues started by GO ({})',
+    'Tutte le cue lanciate con GO ({})':
+        'All the cues started by GO ({})',
+    'Prefisso:':
+        'Prefix:',
+    'Primo numero:':
+        'First number:',
+    'Passo:':
+        'Step:',
+    'Passo 10 lascia spazio per le cue aggiunte dopo (Q10, Q15, Q20)':
+        'A step of 10 leaves room for cues added later (Q10, Q15, Q20)',
+    'Prima':
+        'Before',
+    'Dopo':
+        'After',
+    'Q rinumerate: {}':
+        'Q renumbered: {}',
+    '📥 Importa cue da un altro spettacolo…':
+        '📥 Import cues from another show…',
+    'Importa cue da un altro spettacolo':
+        'Import cues from another show',
+    'Spunta le cue da importare (una scena porta le sue cue):':
+        'Tick the cues to import (a scene brings its cues):',
+    "'{}': partenza relativa a una cue non importata – parte con il GO":
+        "'{}': start relative to a cue not imported – it starts with GO",
+    "'{}': {} cue bersaglio non importate":
+        "'{}': {} target cues not imported",
+    "'{}': file non trovato":
+        "'{}': file not found",
+    "Importate {} cue da '{}'":
+        "Imported {} cues from '{}'",
 }

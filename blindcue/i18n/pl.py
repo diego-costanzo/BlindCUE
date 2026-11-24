@@ -3344,4 +3344,40 @@ T: dict[str, str] = {
         'Drukuj Ctrl+P (poziomo, gdy kolumn jest dużo).',
     'Scaletta aperta nel browser: stampa con Ctrl+P':
         'Lista otwarta w przeglądarce: drukuj Ctrl+P',
+    'Rinumera le Q':
+        'Przenumeruj Q',
+    '🔢 Rinumera le Q…':
+        '🔢 Przenumeruj Q…',
+    'Le cue selezionate lanciate con GO ({})':
+        'Zaznaczone pozycje uruchamiane GO ({})',
+    'Tutte le cue lanciate con GO ({})':
+        'Wszystkie pozycje uruchamiane GO ({})',
+    'Prefisso:':
+        'Przedrostek:',
+    'Primo numero:':
+        'Pierwszy numer:',
+    'Passo:':
+        'Krok:',
+    'Passo 10 lascia spazio per le cue aggiunte dopo (Q10, Q15, Q20)':
+        'Krok 10 zostawia miejsce na pozycje dodane później (Q10, Q15, Q20)',
+    'Prima':
+        'Przed',
+    'Dopo':
+        'Po',
+    'Q rinumerate: {}':
+        'Przenumerowane Q: {}',
+    '📥 Importa cue da un altro spettacolo…':
+        '📥 Importuj pozycje z innego przedstawienia…',
+    'Importa cue da un altro spettacolo':
+        'Import pozycji z innego przedstawienia',
+    'Spunta le cue da importare (una scena porta le sue cue):':
+        'Zaznacz pozycje do importu (scena przynosi swoje pozycje):',
+    "'{}': partenza relativa a una cue non importata – parte con il GO":
+        "'{}': start względem pozycji, której nie importujesz – startuje z GO",
+    "'{}': {} cue bersaglio non importate":
+        "'{}': pozycje docelowe bez importu: {}",
+    "'{}': file non trovato":
+        "'{}': nie znaleziono pliku",
+    "Importate {} cue da '{}'":
+        "Zaimportowane pozycje: {} z '{}'",
 }

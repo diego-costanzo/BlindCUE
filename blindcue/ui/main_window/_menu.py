@@ -35,6 +35,8 @@ class _MenuMixin:
         )
         file_menu.addSeparator()
         file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
+        file_menu.addAction(QAction("📥 Importa cue da un altro spettacolo…", self,
+                                    triggered=self._import_from_show))  # 5.3
         file_menu.addAction(QAction("📄 Esporta la scaletta (CSV)…", self, triggered=self._export_list_csv))  # 5.1
         file_menu.addAction(QAction("🖨 Stampa la scaletta per la regia…", self,
                                     triggered=lambda: self._print_list("operator")))
@@ -65,6 +67,8 @@ class _MenuMixin:
         self._act_redo.setEnabled(False)
         edit_menu.addAction(self._act_undo)
         edit_menu.addAction(self._act_redo)
+        edit_menu.addSeparator()
+        edit_menu.addAction(QAction("🔢 Rinumera le Q…", self, triggered=self._renumber_q))  # 5.2
 
         show_menu = mb.addMenu("&Show")
         show_menu.addAction(

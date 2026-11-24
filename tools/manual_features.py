@@ -71,6 +71,8 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "picture_layout": ("blindcue/ui/main_window/_layout_copy.py", None),
     "slideshow": ("blindcue/ui/main_window/_slideshow.py", None),
     "cue_export": ("blindcue/engine/cue_export.py", None),
+    "renumber": ("blindcue/engine/renumber.py", None),
+    "show_import": ("blindcue/engine/show_import.py", None),
 }
 
 

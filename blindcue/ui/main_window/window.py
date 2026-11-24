@@ -54,7 +54,9 @@ from ui.main_window._clock_plan import _ClockPlanMixin
 from ui.main_window._export import _ExportMixin
 from ui.main_window._layout_copy import _LayoutCopyMixin
 from ui.main_window._markers import _MarkersMixin
+from ui.main_window._renumber import _RenumberMixin
 from ui.main_window._search import _SearchMixin
+from ui.main_window._show_import import _ShowImportMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -97,7 +99,9 @@ class MainWindow(
     _ExportMixin,
     _LayoutCopyMixin,
     _MarkersMixin,
+    _RenumberMixin,
     _SearchMixin,
+    _ShowImportMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
