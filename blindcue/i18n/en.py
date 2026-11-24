@@ -3218,4 +3218,58 @@ T: dict[str, str] = {
         'Cues: {} · GO: {} · video {} · audio {} · pictures {} · captions {} · scenes {} · actions {} · effects {} · switched off {} · missing files {}',
     'Informazioni sullo spettacolo salvate con lo spettacolo':
         'The info is saved with the show',
+    '⌨ Tasti e telecomando di presentazione…':
+        '⌨ Keys and presenter remote…',
+    'Tasti e telecomando di presentazione':
+        'Keys and presenter remote',
+    'Tasti in più per questo computer, attivi nella prova e nello spettacolo. I tasti del programma restano (Spazio = GO, Esc due volte = PANIC). Un telecomando di presentazione funziona come una tastiera: premi i suoi pulsanti qui sotto.':
+        "Extra keys for this computer, active in the rehearsal and the show. The program's keys stay (Space = GO, Esc twice = PANIC). A presenter remote works like a keyboard: press its buttons below.",
+    'Funzione':
+        'Function',
+    'Tasti':
+        'Keys',
+    'Aggiungi un tasto…':
+        'Add a key…',
+    'Togli':
+        'Remove',
+    '🎯 Procedura guidata del telecomando…':
+        '🎯 Remote wizard…',
+    'Telecomando di presentazione (tasti tipici)':
+        'Presenter remote (usual keys)',
+    'Predefiniti (nessun tasto in più)':
+        'Defaults (no extra keys)',
+    'Premi un tasto':
+        'Press a key',
+    'Interrompi':
+        'Stop',
+    'Premi il tasto o il pulsante del telecomando per: {}':
+        "Press the key or the remote's button for: {}",
+    'Premi sul telecomando il pulsante per: {}':
+        "Press the remote's button for: {}",
+    '⚠ {}: il programma lo usa già ({})':
+        '⚠ {}: the program already uses it ({})',
+    '⚠ {}: assegnato a due funzioni – vale la prima':
+        '⚠ {}: given to two functions – the first one counts',
+    "⚠ {}: è il tasto di un effetto di questo spettacolo – vale l'effetto":
+        '⚠ {}: it is the key of an effect of this show – the effect counts',
+    'Tasti aggiuntivi salvati per questo computer':
+        'Extra keys saved for this computer',
+    'Cue precedente (solo selezione)':
+        'Previous cue (selection only)',
+    'Cue successiva (solo selezione)':
+        'Next cue (selection only)',
+    'Pausa tutto / riprendi':
+        'Pause all / resume',
+    'Sfuma tutto':
+        'Fade all',
+    'PANIC (2×)':
+        'PANIC (2×)',
+    'Selezione':
+        'Selection',
+    'Punto IN':
+        'IN point',
+    'Punto OUT':
+        'OUT point',
+    'Elimina':
+        'Delete',
 }

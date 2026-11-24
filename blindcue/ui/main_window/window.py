@@ -58,6 +58,7 @@ from ui.main_window._renumber import _RenumberMixin
 from ui.main_window._search import _SearchMixin
 from ui.main_window._show_import import _ShowImportMixin
 from ui.main_window._show_info import _ShowInfoMixin
+from ui.main_window._key_map import _KeyMapMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -104,6 +105,7 @@ class MainWindow(
     _SearchMixin,
     _ShowImportMixin,
     _ShowInfoMixin,
+    _KeyMapMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
@@ -245,6 +247,7 @@ class MainWindow(
         self._layout_setup()  # copy / paste the picture layout (stage 4, 4.4)
         self._slideshow_setup()  # photos to music (stage 4, 4.3)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
+        self._keymap_setup()  # extra keys and a presenter remote (stage 5, 5.7-5.8)
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()
         self._update_inspector(None)

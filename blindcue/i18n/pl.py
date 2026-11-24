@@ -3440,4 +3440,58 @@ T: dict[str, str] = {
         'Pozycje: {} · GO: {} · wideo {} · dźwięk {} · obrazy {} · napisy {} · sceny {} · akcje {} · efekty {} · wyłączone {} · brakujące pliki {}',
     'Informazioni sullo spettacolo salvate con lo spettacolo':
         'Informacje zostaną zapisane razem z przedstawieniem',
+    '⌨ Tasti e telecomando di presentazione…':
+        '⌨ Klawisze i pilot prezentera…',
+    'Tasti e telecomando di presentazione':
+        'Klawisze i pilot prezentera',
+    'Tasti in più per questo computer, attivi nella prova e nello spettacolo. I tasti del programma restano (Spazio = GO, Esc due volte = PANIC). Un telecomando di presentazione funziona come una tastiera: premi i suoi pulsanti qui sotto.':
+        'Dodatkowe klawisze na tym komputerze, działają w Próbie i w Przedstawieniu. Klawisze programu zostają (Spacja = GO, Esc dwa razy = PANIC). Pilot prezentera działa jak klawiatura: naciśnij jego przyciski poniżej.',
+    'Funzione':
+        'Funkcja',
+    'Tasti':
+        'Klawisze',
+    'Aggiungi un tasto…':
+        'Dodaj klawisz…',
+    'Togli':
+        'Usuń',
+    '🎯 Procedura guidata del telecomando…':
+        '🎯 Kreator pilota…',
+    'Telecomando di presentazione (tasti tipici)':
+        'Pilot prezentera (typowe klawisze)',
+    'Predefiniti (nessun tasto in più)':
+        'Domyślne (bez dodatkowych klawiszy)',
+    'Premi un tasto':
+        'Naciśnij klawisz',
+    'Interrompi':
+        'Przerwij',
+    'Premi il tasto o il pulsante del telecomando per: {}':
+        'Naciśnij klawisz albo przycisk pilota dla: {}',
+    'Premi sul telecomando il pulsante per: {}':
+        'Naciśnij na pilocie przycisk dla: {}',
+    '⚠ {}: il programma lo usa già ({})':
+        '⚠ {}: program już go używa ({})',
+    '⚠ {}: assegnato a due funzioni – vale la prima':
+        '⚠ {}: przypisany do dwóch funkcji – działa pierwsza',
+    "⚠ {}: è il tasto di un effetto di questo spettacolo – vale l'effetto":
+        '⚠ {}: to klawisz efektu w tym przedstawieniu – działa efekt',
+    'Tasti aggiuntivi salvati per questo computer':
+        'Dodatkowe klawisze zapisane na tym komputerze',
+    'Cue precedente (solo selezione)':
+        'Poprzednia pozycja (tylko zaznaczenie)',
+    'Cue successiva (solo selezione)':
+        'Następna pozycja (tylko zaznaczenie)',
+    'Pausa tutto / riprendi':
+        'Wstrzymaj wszystko / wznów',
+    'Sfuma tutto':
+        'Wygaś wszystko',
+    'PANIC (2×)':
+        'PANIC (2×)',
+    'Selezione':
+        'Zaznaczenie',
+    'Punto IN':
+        'Punkt IN',
+    'Punto OUT':
+        'Punkt OUT',
+    'Elimina':
+        'Usuń',
 }

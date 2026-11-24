@@ -95,6 +95,8 @@ class _MenuMixin:
         self._act_undo_go = QAction("↶ Annulla l'ultimo GO", self, triggered=self._on_undo_go)
         self._act_undo_go.setEnabled(False)
         show_menu.addAction(self._act_undo_go)
+        show_menu.addAction(QAction("⌨ Tasti e telecomando di presentazione…", self,
+                                    triggered=self._open_key_map))  # 5.7-5.8
         show_menu.addAction(QAction("◐ Prova", self, shortcut=QKeySequence("Shift+F5"),
                                     triggered=self._enter_rehearsal_from_key))
         show_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
