@@ -152,6 +152,8 @@ class _CueManipMixin:
         # (not inside a scene: a playlist is a row of the show of its own).
         in_scene = 0 <= row < len(self._cues) and self._cues[row].parent_id is not None
         offer = len(sounds) >= 2 and len(sounds) == len(media) and not lists and not skipped and not in_scene
+        # 5.12: several files that are not only sounds -> offered as one step-by-step scene
+        offer_scene = len(media) >= 2 and len(sounds) != len(media) and not lists and not skipped and not in_scene
         if 0 <= row < len(self._cues):
             self._cue_list.setCurrentRow(row)
         else:
@@ -172,6 +174,44 @@ class _CueManipMixin:
             self._status_label.setText(f"File non supportati, ignorati: {', '.join(skipped)}")
         if offer and len(added) >= 2:
             self._offer_playlist(added)
+        elif offer_scene and len(added) >= 2:
+            self._offer_scene(added)
+
+    def _offer_scene(self, added: list[Cue]) -> None:
+        """5.12: the files just dropped (already in the list) may become one scene (its own undo step)."""
+        ids = [c.cue_id for c in added]
+
+        def answer(make: bool) -> None:
+            self._playlist_question = None
+            if not make:
+                return
+            rows = [i for i, c in enumerate(self._cues) if c.cue_id in ids]
+            still = (len(rows) == len(ids) and rows == list(range(rows[0], rows[0] + len(rows)))
+                     and all(self._cues[r].parent_id is None for r in rows))
+            if not still or not self._change_allowed(EDIT_LIST):
+                return  # the list changed meanwhile: they stay separate cues
+            if self._undo.is_debounce_active():
+                self._commit_undo_point()
+            self._make_scene([self._cues[r] for r in rows], tr("Scena ({} elementi)").format(len(rows)))
+            self._commit_undo_point()
+            self._auto_save()
+
+        self._ask_scene(len(added), answer)
+
+    def _ask_scene(self, count: int, answer) -> None:
+        """Ask without blocking (the drop is over): *answer(True)* for one scene."""
+        old = getattr(self, "_playlist_question", None)
+        if old is not None:
+            old.close()
+        box = QMessageBox(QMessageBox.Icon.Question, tr("Scena"),
+                          tr("{} file: farne una scena (un GO per elemento)?").format(count), parent=self)
+        one = box.addButton(tr("Una scena"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(tr("Cue separate"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(one)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        box.buttonClicked.connect(lambda button: answer(button is one))
+        self._playlist_question = box
+        box.open()
 
     # ── 3.3: playlists ──
     def _ask_playlist(self, count: int, answer) -> None:

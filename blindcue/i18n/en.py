@@ -3408,4 +3408,12 @@ T: dict[str, str] = {
         'markers',
     'uscita audio':
         'audio output',
+    'Scena':
+        'Scene',
+    '{} file: farne una scena (un GO per elemento)?':
+        '{} files: make them one scene (one GO per item)?',
+    'Una scena':
+        'One scene',
+    'Scena ({} elementi)':
+        'Scene ({} items)',
 }

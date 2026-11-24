@@ -79,6 +79,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "quick_start": ("blindcue/engine/quick_start.py", None),
     "relink": ("blindcue/engine/relink.py", None),
     "history": ("blindcue/engine/undo_names.py", None),
+    "drop_scene": ("blindcue/ui/main_window/_cue_manip.py", "_offer_scene"),
 }
 
 

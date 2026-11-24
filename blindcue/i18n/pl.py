@@ -3630,4 +3630,12 @@ T: dict[str, str] = {
         'znaczniki',
     'uscita audio':
         'wyjście dźwięku',
+    'Scena':
+        'Scena',
+    '{} file: farne una scena (un GO per elemento)?':
+        'Plików: {} – zrobić z nich jedną scenę (GO na każdy element)?',
+    'Una scena':
+        'Jedna scena',
+    'Scena ({} elementi)':
+        'Scena ({} elementów)',
 }

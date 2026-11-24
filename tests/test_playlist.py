@@ -146,3 +146,20 @@ def test_review_no_playlist_inside_a_scene(window, monkeypatch):
     window._refresh_cue_list(keep_selection=False)
     window._on_files_dropped_on_list(window.files[1:], 1)
     assert [c.media_type for c in window._cues].count(MediaType.GROUP) == 1   # no nested playlist
+
+
+def test_dropped_pictures_become_one_scene(window, tmp_path, monkeypatch):
+    """5.12: several files that are not only sounds -> one step-by-step scene on request."""
+    pictures = []
+    for name in ("p1.png", "p2.png"):
+        path = tmp_path / name
+        path.write_bytes(b"png")
+        pictures.append(str(path))
+    monkeypatch.setattr(window, "_ask_playlist", lambda n, answer: pytest.fail("no playlist for pictures"))
+    monkeypatch.setattr(window, "_ask_scene", lambda n, answer: answer(True))
+    window._on_files_dropped_on_list(pictures + window.files[:1], -1)
+    group = window._cues[0]
+    assert group.media_type == MediaType.GROUP and group.group_mode == GroupMode.STEP.value
+    assert [c.parent_id for c in window._cues[1:]] == [group.cue_id] * 3
+    window._on_undo()
+    assert [c.media_type for c in window._cues] == [MediaType.IMAGE, MediaType.IMAGE, MediaType.AUDIO]
