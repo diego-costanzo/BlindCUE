@@ -240,6 +240,7 @@ class _MenuMixin:
             QAction("📖 Manuale utente", self, shortcut=QKeySequence(Qt.Key.Key_F1),
                     triggered=lambda: show_help(self))
         )
+        help_menu.addAction(QAction("🖨 Promemoria da stampare", self, triggered=self._open_cheat_sheet))  # 5.18
         help_menu.addAction(QAction("🎓 Spettacolo di prova", self, triggered=self._open_practice_show))  # 5.17
         help_menu.addSeparator()
         help_menu.addAction(

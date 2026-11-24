@@ -3932,4 +3932,60 @@ T: dict[str, str] = {
         'Pokazuj ten ekran przy starcie',
     'Vai alla scaletta →':
         'Przejdź do listy →',
+    '🖨 Promemoria da stampare':
+        '🖨 Ściągawka do druku',
+    'Promemoria da stampare':
+        'Ściągawka do druku',
+    'promemoria':
+        'ściągawka',
+    'Spazio':
+        'Spacja',
+    'GO – la cue successiva':
+        'GO – następna pozycja',
+    'Esc due volte (entro 0,6 s)':
+        'Esc dwa razy (w ciągu 0,6 s)',
+    'PANIC – ferma subito tutto':
+        'PANIC – natychmiast zatrzymuje wszystko',
+    'Maiusc+Esc':
+        'Shift+Esc',
+    'Sfuma tutto (dolcemente)':
+        'Wygaś wszystko (łagodnie)',
+    'Blackout: il tappo sul proiettore':
+        'Wygaszenie główne: zaślepka na projektorze',
+    'Scegli la prossima cue':
+        'Wybierz następną pozycję',
+    'Ctrl+Spazio':
+        'Ctrl+Spacja',
+    'GO forzato (anche se una cue esclusiva sta suonando)':
+        'GO wymuszone (także gdy gra pozycja wyłączna)',
+    'Maiusc+F5':
+        'Shift+F5',
+    'Prova':
+        'Próba',
+    'Tieni premuto «Preparazione» 1,5 s':
+        'Przytrzymaj „Przygotowanie” 1,5 s',
+    'Esci dallo spettacolo':
+        'Wyjście z przedstawienia',
+    'Durante lo spettacolo':
+        'W trakcie przedstawienia',
+    'Effetti di questo spettacolo':
+        'Efekty tego przedstawienia',
+    'Tasti aggiuntivi di questo computer':
+        'Dodatkowe klawisze tego komputera',
+    'Se qualcosa non va':
+        'Gdy coś nie działa',
+    "Non si sente niente: guarda il volume in alto (e «Silenzia»), poi l'amplificatore e i cavi; nella pagina «Prima dello spettacolo» c'è il tono di prova.":
+        'Nic nie słychać: sprawdź głośność na górze (i „Wycisz”), potem wzmacniacz i kable; na stronie „Przed przedstawieniem” jest ton próbny.',
+    "Sul proiettore non c'è niente o c'è il desktop: Win+P → «Estendi», poi Dispositivi → scegli il proiettore.":
+        'Na projektorze nic nie ma albo widać pulpit: Win+P → „Rozszerz”, potem Urządzenia → wybierz projektor.',
+    'Lo Spazio non fa niente: clicca nella finestra del programma (la striscia rossa dice che la tastiera è altrove).':
+        'Spacja nic nie robi: kliknij w okno programu (czerwony pasek mówi, że klawiatura jest gdzie indziej).',
+    'Suona qualcosa che non deve: «Sfuma» sulla sua scheda, Maiusc+Esc per tutto, Esc due volte solo in emergenza.':
+        'Gra coś, co nie powinno: „Wygaś” na jego karcie, Shift+Esc dla wszystkiego, Esc dwa razy tylko w nagłym wypadku.',
+    'Il programma si è chiuso: riaprilo e scegli «Riprendi: la successiva».':
+        'Program się zamknął: uruchom go ponownie i wybierz „Wznów: następna”.',
+    'Stampa con Ctrl+P e tienila accanto al portatile.':
+        'Wydrukuj (Ctrl+P) i połóż obok laptopa.',
+    'Promemoria aperto nel browser: stampalo con Ctrl+P':
+        'Ściągawka otwarta w przeglądarce: wydrukuj ją (Ctrl+P)',
 }

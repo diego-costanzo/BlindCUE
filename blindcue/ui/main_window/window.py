@@ -67,6 +67,7 @@ from ui.main_window._settings_transfer import _SettingsTransferMixin
 from ui.main_window._external_tools import _ExternalToolsMixin
 from ui.main_window._practice_show import _PracticeShowMixin
 from ui.main_window._start_page import _StartPageMixin
+from ui.main_window._cheat_sheet import _CheatSheetMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -122,6 +123,7 @@ class MainWindow(
     _ExternalToolsMixin,
     _PracticeShowMixin,
     _StartPageMixin,
+    _CheatSheetMixin,
     _SlideshowMixin,
     QMainWindow,
 ):

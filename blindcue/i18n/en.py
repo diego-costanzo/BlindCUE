@@ -3710,4 +3710,60 @@ T: dict[str, str] = {
         'Show this page at start',
     'Vai alla scaletta →':
         'Go to the cue list →',
+    '🖨 Promemoria da stampare':
+        '🖨 Cheat sheet to print',
+    'Promemoria da stampare':
+        'Cheat sheet to print',
+    'promemoria':
+        'cheat sheet',
+    'Spazio':
+        'Space',
+    'GO – la cue successiva':
+        'GO – the next cue',
+    'Esc due volte (entro 0,6 s)':
+        'Esc twice (within 0.6 s)',
+    'PANIC – ferma subito tutto':
+        'PANIC – stops everything at once',
+    'Maiusc+Esc':
+        'Shift+Esc',
+    'Sfuma tutto (dolcemente)':
+        'Fade out everything (gently)',
+    'Blackout: il tappo sul proiettore':
+        'Blackout: the cover on the projector',
+    'Scegli la prossima cue':
+        'Choose the next cue',
+    'Ctrl+Spazio':
+        'Ctrl+Space',
+    'GO forzato (anche se una cue esclusiva sta suonando)':
+        'Forced GO (even while an exclusive cue plays)',
+    'Maiusc+F5':
+        'Shift+F5',
+    'Prova':
+        'Rehearsal',
+    'Tieni premuto «Preparazione» 1,5 s':
+        'Hold «Preparation» for 1.5 s',
+    'Esci dallo spettacolo':
+        'Leave the show',
+    'Durante lo spettacolo':
+        'During the show',
+    'Effetti di questo spettacolo':
+        'Effects of this show',
+    'Tasti aggiuntivi di questo computer':
+        'Extra keys of this computer',
+    'Se qualcosa non va':
+        'When something does not work',
+    "Non si sente niente: guarda il volume in alto (e «Silenzia»), poi l'amplificatore e i cavi; nella pagina «Prima dello spettacolo» c'è il tono di prova.":
+        'Nothing can be heard: check the volume at the top (and «Mute»), then the amplifier and the cables; the «Before the show» page has a test tone.',
+    "Sul proiettore non c'è niente o c'è il desktop: Win+P → «Estendi», poi Dispositivi → scegli il proiettore.":
+        'Nothing on the projector, or the desktop: Win+P → «Extend», then Devices → choose the projector.',
+    'Lo Spazio non fa niente: clicca nella finestra del programma (la striscia rossa dice che la tastiera è altrove).':
+        "Space does nothing: click into the program's window (the red strip says the keyboard is elsewhere).",
+    'Suona qualcosa che non deve: «Sfuma» sulla sua scheda, Maiusc+Esc per tutto, Esc due volte solo in emergenza.':
+        'Something plays that should not: «Fade» on its card, Shift+Esc for everything, Esc twice only in an emergency.',
+    'Il programma si è chiuso: riaprilo e scegli «Riprendi: la successiva».':
+        'The program closed: open it again and choose «Resume: the next one».',
+    'Stampa con Ctrl+P e tienila accanto al portatile.':
+        'Print it with Ctrl+P and keep it next to the laptop.',
+    'Promemoria aperto nel browser: stampalo con Ctrl+P':
+        'Cheat sheet opened in the browser: print it with Ctrl+P',
 }
