@@ -3,7 +3,7 @@
 Before, Save / Open / "New show from a folder" opened in the program's own
 install folder and the "Add" dialogs at C:\\ - a teacher saved a show where
 she would never find it again (and an uninstall could take it). Now:
-shows: the folder used last, at first ``Documents\\Teatr POZA``; media: the
+shows: the folder used last, at first ``Documents\\BlindCue``; media: the
 folder used last, at first the system Videos / Music / Pictures folder.
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QSettings, QStandardPaths
 
-SHOWS_FOLDER = "Teatr POZA"
+SHOWS_FOLDER = "BlindCue"
 
 
 def _settings() -> QSettings:
@@ -28,7 +28,7 @@ def _existing(value) -> str:
 
 
 def show_dir() -> str:
-    """The folder for show files: the last one used, else Documents\\Teatr POZA (made if missing)."""
+    """The folder for show files: the last one used, else Documents\\BlindCue (made if missing)."""
     last = _existing(_settings().value("paths/show_dir", ""))
     if last:
         return last

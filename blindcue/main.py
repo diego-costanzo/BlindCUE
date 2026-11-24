@@ -622,6 +622,16 @@ def main() -> int:
                     active_live_cues[l_idx] = cue_item
                     entry["cue"] = cue_item
                 elapsed = max(0.0, now - entry["started"])
+                if "lead" not in entry:
+                    entry["lead"] = _crossfade_lead(cue_item)  # once per picture: the list does not change
+                if entry["lead"] > 0 and elapsed >= cue_item.hold_time - entry["lead"]:
+                    # The next picture comes in over this one (#14): the layer is not cleared first.
+                    done_layers.append(l_idx)
+                    logger.info("[MAIN] Picture '%s' hands Layer %d to the next one (crossfade %.1fs)",
+                                cue_item.name, l_idx, entry["lead"])
+                    main_win.cue_ended(cue_item)
+                    main_win.trigger_auto_follow_from(cue_item)
+                    continue
                 if cue_item.hold_time > 0 and elapsed >= cue_item.hold_time:
                     done_layers.append(l_idx)
                     op_end = _eval_image_opacity(cue_item, cue_item.hold_time)
@@ -765,6 +775,28 @@ def main() -> int:
         return cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(
             main_win._cues, cue
         ) in (GroupMode.SEQUENCE.value, GroupMode.LOOP.value)
+
+    def _crossfade_lead(cue: Cue) -> float:
+        """Seconds before its end a picture hands its layer to the next picture (evaluation #14).
+
+        When the end of *cue* starts the next cue by itself (Auto-GO, a scene "one after
+        another") and that cue is a picture with a crossfade on the same layer, the next
+        picture starts this many seconds early, over the one still shown: a real crossfade
+        instead of a fade in from black after the layer was cleared.
+        """
+        if cue.media_type != MediaType.IMAGE or cue.hold_time <= 0 or not _follows_on_its_own(cue):
+            return 0.0
+        if float(getattr(cue, "post_delay", 0.0) or 0.0) > 0.02 or cue.cue_id in main_win._held_auto_go:
+            return 0.0
+        idx = ShowEngine.auto_follow_target(main_win._cues, cue, main_win._released_groups)
+        if idx < 0:
+            return 0.0
+        nxt = main_win._cues[idx]
+        seconds = float(getattr(nxt, "crossfade", 0.0) or 0.0)
+        if nxt.media_type != MediaType.IMAGE or seconds <= 0 or not getattr(nxt, "enabled", True) \
+                or float(getattr(nxt, "pre_delay", 0.0) or 0.0) > 0.02 or _base_layer(nxt) != _base_layer(cue):
+            return 0.0
+        return min(seconds, cue.hold_time / 2.0)
 
     def _enter_post_delay_or_finalize(cue: Cue, layer: int, expected_gen: int) -> None:
         if layer_fire_gen.get(layer) != expected_gen:

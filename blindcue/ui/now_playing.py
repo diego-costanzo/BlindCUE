@@ -129,7 +129,15 @@ class _Card(QFrame):
         self.lbl_layer = QLabel()
         self.lbl_layer.setStyleSheet("QLabel { color: #94a3b8; font-size: 11px; font-weight: bold; }")
         line1.addWidget(self.lbl_layer)
+        # Compact card (#15): with three or more cues on air the later cards keep one
+        # "Fade" in the title line and drop the row of buttons.
+        self.btn_fade_small = self._button("Sfuma", "Sfuma e ferma questa cue (non sposta il GO)")
+        self.btn_fade_small.clicked.connect(self._on_fade_clicked)
+        self.btn_fade_small.setVisible(False)
+        line1.addWidget(self.btn_fade_small)
         outer.addLayout(line1)
+        self._compact = False
+        self._rehearsal_on = False
 
         self.btn_fade = self._button("Sfuma", "Sfuma e ferma questa cue (non sposta il GO)")
         self.btn_fade.clicked.connect(self._on_fade_clicked)
@@ -151,7 +159,9 @@ class _Card(QFrame):
             self.lbl_remaining.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
             line2.addWidget(self.lbl_remaining)
             outer.addLayout(line2)
-            line3 = QHBoxLayout()
+            self.controls_row = QWidget()
+            line3 = QHBoxLayout(self.controls_row)
+            line3.setContentsMargins(0, 0, 0, 0)
             line3.setSpacing(6)
             self.btn_pause = self._button("❚❚", "Pausa / riprendi questa cue")
             self.btn_pause.clicked.connect(lambda: panel.pause_requested.emit(self.slot))
@@ -180,7 +190,7 @@ class _Card(QFrame):
             self.lbl_trim.setMinimumWidth(38)
             self.lbl_trim.setStyleSheet("QLabel { color: #cbd5e1; font-size: 11px; }")
             line3.addWidget(self.lbl_trim)
-            outer.addLayout(line3)
+            outer.addWidget(self.controls_row)
             # Rehearsal only: stop at once, jump near the end, keep the level.
             self.rehearsal_row = QWidget()
             line4 = QHBoxLayout(self.rehearsal_row)
@@ -250,12 +260,29 @@ class _Card(QFrame):
     def set_rehearsal(self, on: bool) -> None:
         """Rehearsal tools on the card; jumps need a long hold only in the show."""
         self.btn_edit.setVisible(on)
+        self._rehearsal_on = on
+        if on and self._compact:
+            self.set_compact(False)  # the rehearsal keeps all the tools
         if self.kind == TIMED:
             self.rehearsal_row.setVisible(on)
-            self.setFixedHeight(112 if on else 84)
+            self._apply_height()
             for btn in (self.btn_back, self.btn_fwd):
                 btn.set_hold_ms(200 if on else 1500)
         self._last = None  # redraw with the new tools
+
+    def set_compact(self, on: bool) -> None:
+        """#15: title line with "Fade" and the progress line only (never in the rehearsal)."""
+        on = bool(on) and self.kind == TIMED and not self._rehearsal_on
+        if on == self._compact:
+            return
+        self._compact = on
+        self.controls_row.setVisible(not on)
+        self.btn_fade_small.setVisible(on)
+        self._apply_height()
+
+    def _apply_height(self) -> None:
+        base = 58 if self._compact else 84
+        self.setFixedHeight(base + (28 if self._rehearsal_on else 0))
 
     def show_state(self, st: CardState) -> None:
         if st == self._last:
@@ -271,9 +298,10 @@ class _Card(QFrame):
             # A cue still waiting only offers to cancel its start; the other
             # buttons would act on the cue that plays on the same layer (H3).
             self._waiting = st.waiting
-            self.btn_fade.setText("Annulla partenza" if st.waiting else "Sfuma")
-            self.btn_fade.setToolTip("La cue non partirà" if st.waiting else
-                                     "Sfuma e ferma questa cue (non sposta il GO)")
+            for btn in (self.btn_fade, self.btn_fade_small):
+                btn.setText("Annulla partenza" if st.waiting else "Sfuma")
+                btn.setToolTip("La cue non partirà" if st.waiting else
+                               "Sfuma e ferma questa cue (non sposta il GO)")
         if self.kind != TIMED:
             self.setAccessibleName(" ".join(x for x in (st.title, st.layer, st.state) if x))
             return
@@ -448,6 +476,15 @@ class NowPlayingPanel(QFrame):
     def cards(self) -> dict[int, _Card]:
         return dict(self._cards)
 
+    def _cards_in_order(self) -> list[_Card]:
+        """The cards as they stand in the column, top first."""
+        out = []
+        for i in range(self._cards_layout.count()):
+            widget = self._cards_layout.itemAt(i).widget()
+            if isinstance(widget, _Card):
+                out.append(widget)
+        return out
+
     def set_cards(self, states: list[CardState]) -> None:
         """Show *states*; a known cue keeps its card and its place."""
         wanted = {s.cue_id: s for s in states}
@@ -464,4 +501,8 @@ class NowPlayingPanel(QFrame):
                 # New cards go after the ones already there (before the stretch).
                 self._cards_layout.insertWidget(self._cards_layout.count() - 1, card)
             card.show_state(st)
+        # #15: with three or more sounds / videos on air the later cards get compact (no scrolling).
+        timed = [c for c in self._cards_in_order() if c.kind == TIMED]
+        for i, card in enumerate(timed):
+            card.set_compact(len(timed) >= 3 and i > 0)
         self.lbl_empty.setVisible(not self._cards)

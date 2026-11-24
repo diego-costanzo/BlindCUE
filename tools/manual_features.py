@@ -82,6 +82,8 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "gentle_fade": ("blindcue/ui/main_window/_now_playing.py", "def fade_scene"),
     "drop_scene": ("blindcue/ui/main_window/_cue_manip.py", "_offer_scene"),
     "edit_window": ("blindcue/ui/edit_cue_dialog.py", "class EditCueDialog"),
+    "photo_xfade": ("blindcue/main.py", "def _crossfade_lead"),
+    "compact_cards": ("blindcue/ui/now_playing.py", "def set_compact"),
 }
 
 

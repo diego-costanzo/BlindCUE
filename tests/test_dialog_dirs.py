@@ -1,4 +1,4 @@
-"""Evaluation 2026-11-24: file dialogs open in Documents\\Teatr POZA / the last folder; "Add files…" takes many."""
+"""Evaluation 2026-11-24: file dialogs open in Documents\\BlindCue / the last folder; "Add files…" takes many."""
 
 from __future__ import annotations
 

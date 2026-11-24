@@ -235,3 +235,31 @@ def test_waiting_card_only_cancels_its_start(window):
     window.layer_cancel_start_requested.connect(lambda layer: asked.append(layer))
     card.btn_fade.click()
     assert asked == [1]
+
+
+def test_three_sounds_on_air_make_the_later_cards_compact():
+    """#15 (evaluation 2026-11-24): with 3+ sounds / videos the later cards keep only the name, Fade and the bar."""
+    from ui.now_playing import CardState, NowPlayingPanel
+
+    QApplication.instance() or QApplication([])
+    panel = NowPlayingPanel()
+    faded = []
+    panel.fade_requested.connect(faded.append)
+    states = [CardState(cue_id=900 + i, kind=TIMED, title=f"♪ {i}", slot=i + 1, remaining="-01:00", fraction=0.5)
+              for i in range(3)]
+    panel.set_cards(states[:2])
+    assert all(not c._compact and c.height() == 84 for c in panel.cards().values())
+    panel.set_cards(states)
+    first, second, third = (panel.cards()[900 + i] for i in range(3))
+    assert not first._compact and first.height() == 84
+    assert second._compact and third._compact and second.height() == third.height() == 58
+    assert not second.controls_row.isVisibleTo(second) and second.btn_fade_small.isVisibleTo(second)
+    second.btn_fade_small.click()
+    assert faded == [2]
+    panel.set_rehearsal(True)                       # the rehearsal keeps all the tools
+    panel.set_cards(states)
+    assert all(c.height() == 112 for c in panel.cards().values())
+    panel.set_rehearsal(False)
+    panel.set_cards(states[:1])
+    assert not panel.cards()[900]._compact
+    panel.deleteLater()

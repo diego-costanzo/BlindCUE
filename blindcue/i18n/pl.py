@@ -3772,4 +3772,28 @@ T: dict[str, str] = {
         'Co pokazuje projektor, gdy nic nie gra: czarny ekran, obraz lub logo, film w pętli',
     'Tappo nero (predefinito)':
         'Czarna zaślepka (domyślna)',
+    '📥 Importa':
+        '📥 Importuj',
+    '🖨 Esporta e stampa':
+        '🖨 Eksportuj i drukuj',
+    '🛟 Copie e file mancanti':
+        '🛟 Kopie i brakujące pliki',
+    '🔌 Dispositivi':
+        '🔌 Urządzenia',
+    '⚙ Impostazioni dello spettacolo':
+        '⚙ Ustawienia prowadzenia',
+    '⏳ Tempo':
+        '⏳ Czas',
+    '🤖 Assistente AI':
+        '🤖 Asystent AI',
+    '🔀 Dissolvenza incrociata per le selezionate…':
+        '🔀 Przenikanie dla zaznaczonych…',
+    'Dissolvenza incrociata':
+        'Przenikanie',
+    'Secondi di dissolvenza incrociata (0 = taglio):':
+        'Sekundy przenikania (0 = cięcie):',
+    "Dissolvenza incrociata: seleziona almeno un'immagine":
+        'Przenikanie: zaznacz co najmniej jeden obraz',
+    'Dissolvenza incrociata di {} s su {} immagini':
+        'Przenikanie {} s na {} obrazach',
 }

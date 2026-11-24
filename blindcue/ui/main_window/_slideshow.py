@@ -3,25 +3,35 @@
 Select several pictures and one sound, right-click → "Photos to this music":
 the sound starts together with a folded playlist scene of the pictures; each
 picture is shown for the time the music really plays (IN/OUT, tempo)
-divided by their number, with a short fade in and out (a picture that ends
-clears its layer before the next one starts, so a crossfade would be a hard
-cut). All pictures go to one layer, the music to another one. The scene
-stops after the last picture and GO goes on after it.
+divided by their number; each picture crossfades into the next one (the
+next one starts that much before the end of the previous one, evaluation
+#14), the first fades in and the last fades out. All pictures go to one
+layer, the music to another one. The scene stops after the last picture
+and GO goes on after it.
 """
 
 from __future__ import annotations
 
 from i18n import tr
+from PySide6.QtWidgets import QInputDialog
 
 from ui.main_window._common import *  # noqa: F403,F401,F405
 
 FADE_SEC = 0.5
+XFADE_SEC = 1.0
 
 
-def slideshow_holds(count: int, music_sec: float) -> float:
+def slideshow_holds(count: int, music_sec: float, xfade: float = 0.0) -> float:
     """Seconds each of *count* pictures is shown so that they fill *music_sec* (0.1 s steps,
-    as the inspector keeps them; at least a second)."""
-    return round(max(1.0, music_sec / max(1, count)), 1)
+    as the inspector keeps them; at least a second). With a crossfade the pictures overlap
+    by *xfade*, so each one is shown that much longer."""
+    count = max(1, count)
+    return round(max(1.0, (music_sec + (count - 1) * max(0.0, xfade)) / count), 1)
+
+
+def slideshow_crossfade(count: int, music_sec: float) -> float:
+    """The crossfade between the pictures: XFADE_SEC, never more than half of a picture's time."""
+    return round(min(XFADE_SEC, max(1.0, music_sec / max(1, count)) / 2.0), 1)
 
 
 def music_play_seconds(cue: Cue, file_sec: float) -> float | None:
@@ -36,6 +46,7 @@ def music_play_seconds(cue: Cue, file_sec: float) -> float | None:
 class _SlideshowMixin:
     def _slideshow_setup(self) -> None:
         self._cue_list.slideshow_requested.connect(self._make_slideshow)
+        self._cue_list.crossfade_selected_requested.connect(self._crossfade_selected)
 
     def _media_length(self, path: str) -> float | None:
         known = self._known_file_durations.get(path)
@@ -80,7 +91,8 @@ class _SlideshowMixin:
             return
         if self._undo.is_debounce_active():
             self._commit_undo_point()
-        hold = slideshow_holds(len(pictures), length)
+        xfade = slideshow_crossfade(len(pictures), length)
+        hold = slideshow_holds(len(pictures), length, xfade)
         at = rows[0]
         rest = [c for c in self._cues if c not in chosen]
         group = Cue(name=tr("Foto: {}").format(music.name), file_path="", media_type=MediaType.GROUP,
@@ -98,8 +110,10 @@ class _SlideshowMixin:
             pic.hold_time = hold
             pic.pre_delay = pic.post_delay = 0.0
             pic.follow_mode = FollowMode.MANUAL.value  # the scene moves on by itself
-            pic.fade_in = pic.fade_out = FADE_SEC
-            pic.crossfade = 0.0
+            first, last = pic is pictures[0], pic is pictures[-1]
+            pic.fade_in = FADE_SEC if first else 0.0       # with a crossfade the fade in stays 0
+            pic.fade_out = FADE_SEC if last else 0.0
+            pic.crossfade = 0.0 if first else xfade
         before = at  # nothing chosen lies above the first chosen row
         self._cues = rest[:before] + [music, group] + pictures + rest[before:]
         self._refresh_cue_list(keep_selection=False)
@@ -109,4 +123,35 @@ class _SlideshowMixin:
         self._auto_save()
         self._status_label.setText(tr("Foto con musica: {} immagini da {} s su '{}' ({} s)").format(
             len(pictures), f"{hold:.1f}", music.name, f"{length:.0f}"))
-        logger.info("[SLIDESHOW] %d pictures x %.2fs on '%s' (%.1fs)", len(pictures), hold, music.name, length)
+        logger.info("[SLIDESHOW] %d pictures x %.2fs on '%s' (%.1fs), crossfade %.1fs", len(pictures), hold,
+                    music.name, length, xfade)
+
+    def _crossfade_selected(self) -> None:
+        """Row menu → "Crossfade for the selected…": one crossfade time for all selected pictures (#14)."""
+        from engine.show_mode import EDIT_CUE
+
+        pictures = [self._cues[r] for r in sorted(self._selected_rows())
+                    if self._cues[r].media_type == MediaType.IMAGE]
+        if not pictures:
+            self._status_label.setText(tr("Dissolvenza incrociata: seleziona almeno un'immagine"))
+            return
+        if not self._change_allowed(EDIT_CUE):
+            return
+        seconds, ok = QInputDialog.getDouble(
+            self, tr("Dissolvenza incrociata"), tr("Secondi di dissolvenza incrociata (0 = taglio):"),
+            max(1.0, float(pictures[0].crossfade or 0.0)), 0.0, 10.0, 1)
+        if not ok:
+            return
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        for pic in pictures:
+            pic.crossfade = round(seconds, 1)
+            if seconds > 0:
+                pic.fade_in = 0.0   # the crossfade brings the picture in
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._last_selection_sig = None
+        self._sync_selection_state()
+        self._auto_save()
+        self._status_label.setText(tr("Dissolvenza incrociata di {} s su {} immagini").format(
+            f"{seconds:.1f}", len(pictures)))

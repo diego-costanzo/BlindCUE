@@ -3550,4 +3550,28 @@ T: dict[str, str] = {
         'What the projector shows when nothing plays: black, a picture or logo, a looping video',
     'Tappo nero (predefinito)':
         'Black cover (default)',
+    '📥 Importa':
+        '📥 Import',
+    '🖨 Esporta e stampa':
+        '🖨 Export and print',
+    '🛟 Copie e file mancanti':
+        '🛟 Backups and missing files',
+    '🔌 Dispositivi':
+        '🔌 Devices',
+    '⚙ Impostazioni dello spettacolo':
+        '⚙ Running settings',
+    '⏳ Tempo':
+        '⏳ Time',
+    '🤖 Assistente AI':
+        '🤖 AI assistant',
+    '🔀 Dissolvenza incrociata per le selezionate…':
+        '🔀 Crossfade for the selected…',
+    'Dissolvenza incrociata':
+        'Crossfade',
+    'Secondi di dissolvenza incrociata (0 = taglio):':
+        'Crossfade seconds (0 = cut):',
+    "Dissolvenza incrociata: seleziona almeno un'immagine":
+        'Crossfade: select at least one picture',
+    'Dissolvenza incrociata di {} s su {} immagini':
+        'Crossfade of {} s on {} pictures',
 }

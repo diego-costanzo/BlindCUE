@@ -80,6 +80,10 @@ def test_photos_to_music(window):
     from ui.main_window._slideshow import slideshow_holds
 
     assert slideshow_holds(3, 6.0) == 2.0 and slideshow_holds(10, 3.0) == 1.0     # never under a second
+    from ui.main_window._slideshow import slideshow_crossfade
+
+    assert slideshow_holds(3, 6.0, 1.0) == 2.7 and slideshow_crossfade(3, 6.0) == 1.0
+    assert slideshow_crossfade(4, 4.0) == 0.5                                      # half of a picture at most
     window._cues.insert(2, _cue(9, "AUDIO", file_path="/x/song.mp3", name="song"))
     window._known_file_durations["/x/song.mp3"] = 9.0
     window._refresh_cue_list(keep_selection=False)
@@ -89,8 +93,9 @@ def test_photos_to_music(window):
     song, group, a, b = window._cues[:4]
     assert song.name == "song" and song.follow_mode == "SIMULTANEOUS"
     assert group.media_type == MediaType.GROUP and group.playlist and group.group_mode == "SEQUENCE"
-    assert [c.parent_id for c in (a, b)] == [group.cue_id] * 2 and a.hold_time == b.hold_time == 4.5
-    assert b.crossfade == 0.0 and a.fade_in == b.fade_out == 0.5         # no crossfade: the layer is cleared first
+    assert [c.parent_id for c in (a, b)] == [group.cue_id] * 2 and a.hold_time == b.hold_time == 5.0  # (9+1)/2
+    assert (a.crossfade, b.crossfade) == (0.0, 1.0) and a.fade_in == b.fade_out == 0.5   # #14: crossfades
+    assert a.fade_out == b.fade_in == 0.0
     assert song.layer == 2 and a.layer == b.layer == 1                       # a picture never stops the music
     window._on_undo()
     assert [c.name for c in window._cues][:3] == ["p0", "p1", "song"]                 # one Ctrl+Z

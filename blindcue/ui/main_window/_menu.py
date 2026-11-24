@@ -36,19 +36,23 @@ class _MenuMixin:
         file_menu.addSeparator()
         file_menu.addAction(QAction("📁 Nuovo spettacolo da una cartella…", self,
                                     triggered=self._new_show_from_folder))  # 5.9
-        file_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
-        file_menu.addAction(QAction("🕘 Ripristina una copia di sicurezza…", self,
-                                    triggered=self._restore_backup))  # 5.11
-        file_menu.addAction(QAction("🔎 Cerca i file mancanti in una cartella…", self,
-                                    triggered=self._find_missing_files))  # 5.10
-        file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
-        file_menu.addAction(QAction("📥 Importa cue da un altro spettacolo…", self,
-                                    triggered=self._import_from_show))  # 5.3
-        file_menu.addAction(QAction("📄 Esporta la scaletta (CSV)…", self, triggered=self._export_list_csv))  # 5.1
-        file_menu.addAction(QAction("🖨 Stampa la scaletta per la regia…", self,
-                                    triggered=lambda: self._print_list("operator")))
-        file_menu.addAction(QAction("🖨 Stampa la scaletta per il suggeritore…", self,
-                                    triggered=lambda: self._print_list("prompter")))
+        # Rarely used items in submenus (evaluation 2026-11-24, #13): the menu fits on one screen.
+        import_menu = file_menu.addMenu("📥 Importa")
+        import_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
+        import_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
+        import_menu.addAction(QAction("📥 Importa cue da un altro spettacolo…", self,
+                                      triggered=self._import_from_show))  # 5.3
+        export_menu = file_menu.addMenu("🖨 Esporta e stampa")
+        export_menu.addAction(QAction("📄 Esporta la scaletta (CSV)…", self, triggered=self._export_list_csv))  # 5.1
+        export_menu.addAction(QAction("🖨 Stampa la scaletta per la regia…", self,
+                                      triggered=lambda: self._print_list("operator")))
+        export_menu.addAction(QAction("🖨 Stampa la scaletta per il suggeritore…", self,
+                                      triggered=lambda: self._print_list("prompter")))
+        rescue_menu = file_menu.addMenu("🛟 Copie e file mancanti")
+        rescue_menu.addAction(QAction("🕘 Ripristina una copia di sicurezza…", self,
+                                      triggered=self._restore_backup))  # 5.11
+        rescue_menu.addAction(QAction("🔎 Cerca i file mancanti in una cartella…", self,
+                                      triggered=self._find_missing_files))  # 5.10
         file_menu.addAction(QAction("ℹ Informazioni sullo spettacolo…", self, triggered=self._open_show_info))  # 5.6
         file_menu.addSeparator()
         file_menu.addAction(
@@ -103,13 +107,8 @@ class _MenuMixin:
         self._act_undo_go = QAction("↶ Annulla l'ultimo GO", self, triggered=self._on_undo_go)
         self._act_undo_go.setEnabled(False)
         show_menu.addAction(self._act_undo_go)
-        show_menu.addAction(QAction("⏬ Tempo del pulsante Sfuma…", self,
-                                    triggered=self._ask_fade_button_seconds))  # evaluation 2026-11-24
-        show_menu.addAction(QAction("⌨ Tasti e telecomando di presentazione…", self,
-                                    triggered=self._open_key_map))  # 5.7-5.8
         show_menu.addAction(QAction("◐ Prova", self, shortcut=QKeySequence("Shift+F5"),
                                     triggered=self._enter_rehearsal_from_key))
-        show_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
         self._act_end_show = QAction("Termina lo spettacolo…", self, shortcut=QKeySequence("Ctrl+Shift+F5"),
                                      triggered=self._on_end_show_requested)
         self._act_end_show.setEnabled(False)
@@ -120,43 +119,50 @@ class _MenuMixin:
         self._act_jam_mode = QAction("🎚 Modalità &Jam / Contest (Auto-Gain EBU R128)", self, checkable=True)
         self._act_jam_mode.setToolTip("Abilita il livellamento automatico EBU R128 (-16 LUFS) per contest, jam session e file non calibrati.")
         self._act_jam_mode.toggled.connect(self._set_jam_mode)
-        show_menu.addAction(self._act_jam_mode)
-        show_menu.addAction(
+        devices_menu = show_menu.addMenu("🔌 Dispositivi")
+        devices_menu.addAction(
             QAction("⚙️ &Dispositivi & Hardware (Audio / Video / Profilo)…", self, triggered=self.open_device_settings_dialog)
         )
-        show_menu.addAction(  # 3.1
+        devices_menu.addAction(  # 3.1
             QAction("🔊 Uscite audio (Palco / Sala / Spie)…", self, triggered=self.open_audio_outputs_dialog)
         )
-        show_menu.addAction(
+        devices_menu.addAction(
             QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
         )
-        show_menu.addSeparator()
+        settings_menu = show_menu.addMenu("⚙ Impostazioni dello spettacolo")
+        settings_menu.addAction(QAction("⏬ Tempo del pulsante Sfuma…", self,
+                                        triggered=self._ask_fade_button_seconds))  # evaluation 2026-11-24
+        settings_menu.addAction(QAction("⌨ Tasti e telecomando di presentazione…", self,
+                                        triggered=self._open_key_map))  # 5.7-5.8
+        settings_menu.addAction(QAction("PIN di uscita dallo spettacolo…", self, triggered=self._set_exit_pin))
+        settings_menu.addAction(self._act_jam_mode)
         # 2.3: versions of the show (named sets of cues that are off).
         self._versions_menu = show_menu.addMenu("🎭 Versioni dello spettacolo")
-        # 2.5: countdown (e.g. the interval)
-        show_menu.addAction(QAction("⏳ Conto alla rovescia…", self, triggered=lambda: self._ask_countdown()))
-        show_menu.addAction(QAction("🖥 Conto alla rovescia grande (quinte)", self,
+        # 2.5: countdown (e.g. the interval); 2.6: the time plan (cues at a time of day)
+        time_menu = show_menu.addMenu("⏳ Tempo")
+        time_menu.addAction(QAction("⏳ Conto alla rovescia…", self, triggered=lambda: self._ask_countdown()))
+        time_menu.addAction(QAction("🖥 Conto alla rovescia grande (quinte)", self,
                                     triggered=lambda: self._show_countdown_window()))
-        show_menu.addAction(QAction("⏹ Ferma il conto alla rovescia", self, triggered=lambda: self.stop_countdown()))
-        # 2.6: the time plan (cues at a time of day)
+        time_menu.addAction(QAction("⏹ Ferma il conto alla rovescia", self, triggered=lambda: self.stop_countdown()))
+        time_menu.addSeparator()
         self._act_clock_hold = QAction("❚❚ Sospendi il piano orario", self, checkable=True)
         self._act_clock_hold.toggled.connect(lambda on: self._toggle_clock_hold(on))
-        show_menu.addAction(self._act_clock_hold)
+        time_menu.addAction(self._act_clock_hold)
         self._act_clock_rehearsal = QAction("🕐 Piano orario anche nella prova", self, checkable=True)
         self._act_clock_rehearsal.setChecked(
             QSettings("BlindCue", "BlindCue").value("live/clock_in_rehearsal", False, type=bool))
         self._act_clock_rehearsal.toggled.connect(
             lambda on: QSettings("BlindCue", "BlindCue").setValue("live/clock_in_rehearsal", bool(on)))
-        show_menu.addAction(self._act_clock_rehearsal)
-        show_menu.addSeparator()
+        time_menu.addAction(self._act_clock_rehearsal)
         # Stage 1M, M2: an AI assistant (MCP) may change the open show - off by default.
         self._act_assistant = QAction("🤖 L'assistente AI può modificare lo spettacolo", self, checkable=True)
         self._act_assistant.setToolTip(
             "Un assistente AI su questo computer (Claude Desktop o un altro client MCP) può leggere lo "
             "spettacolo aperto e modificarlo nella preparazione. Ogni modifica si annulla con Ctrl+Z.")
         self._act_assistant.toggled.connect(self._on_assistant_toggled)
-        show_menu.addAction(self._act_assistant)
-        show_menu.addAction(QAction("🤖 Assistente AI…", self, triggered=self._open_assistant_dialog))
+        assistant_menu = show_menu.addMenu("🤖 Assistente AI")
+        assistant_menu.addAction(self._act_assistant)
+        assistant_menu.addAction(QAction("🤖 Assistente AI…", self, triggered=self._open_assistant_dialog))
 
         view_menu = mb.addMenu("&View")
         self._act_live_mode = QAction("🎭 Modalità &LIVE (Show Mode)", self, checkable=True)

@@ -95,12 +95,12 @@ Your original files are never changed.</li>
 <li>The program <b>autosaves</b> (also at every GO). After a crash it offers to restore the session. You choose where to go on: <b>Resume: next</b> (the default, also Enter and Esc), <b>Play the last one again</b> (e.g. background music) or <b>From the top</b>. If the crash happened during the show, the program goes straight back into the show. <b>Open without restoring</b> deletes nothing – the previous session is set aside as <code>autosave.discarded.json</code>.</li>
 <li><b>Edit → Undo / Redo</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) work for every change
 in the list and in the inspector.</li>
-<li><b>File → 📄 Export the cue list (CSV)…</b> – the list for a spreadsheet (Excel, LibreOffice). <b>File → 🖨 Print the cue list for the operator…</b> – only the cues started by GO, in big letters, with room for notes; <b>…for the prompter…</b> – script page, line, Q and name of every cue. The list opens in the web browser; print it with <kbd>Ctrl+P</kbd>. The page and the line are typed in the inspector (the <b>Script</b> field below the notes).</li>
+<li><b>File → 🖨 Export and print → 📄 Export the cue list (CSV)…</b> – the list for a spreadsheet (Excel, LibreOffice). <b>File → 🖨 Export and print → 🖨 Print the cue list for the operator…</b> – only the cues started by GO, in big letters, with room for notes; <b>…for the prompter…</b> – script page, line, Q and name of every cue. The list opens in the web browser; print it with <kbd>Ctrl+P</kbd>. The page and the line are typed in the inspector (the <b>Script</b> field below the notes).</li>
 <li><b>Edit → 🔢 Renumber the Q…</b> – new Q labels for the cues started by GO – the same as in the list for the operator: a scene counts as one GO, a step-by-step scene one per step; the cues that start by themselves (Simult., Auto-GO, Cascade) keep theirs. A label another cue already has is marked with ⚠. Prefix, first number and step – a step of 10 leaves room for cues added later (Q10, Q15, Q20). A "before → after" preview comes first; with several cues selected only they are numbered. One <kbd>Ctrl+Z</kbd> undoes it.</li>
-<li><b>File → 📥 Import cues from another show…</b> – pick a show file and tick the cues (a scene brings its cues); they come after the selection, with new inner numbers and their links kept (scene, relative start, action targets). The program says what does not come along (a link to a cue left in the other show, a missing file). One <kbd>Ctrl+Z</kbd> undoes it; the files go into the show's folder when it is saved as a portable show.</li>
-<li><b>Quick start</b> – <b>File → 📁 New show from a folder…</b> adds the folder's videos, sounds and pictures in name order (1, 2, 10) as separate cues or as one scene (sounds only: one playlist). <b>File → 📋 Import a cue list (CSV)…</b> turns a list written in Excel (columns as in the export: Q, Name, Type, File, Page, Line, Notes; semicolon or comma) into cues after the selection; a row without a file waits for its file (the "Before the show" page lists it as missing). In <b>Open recent</b> you can <b>📌 pin</b> the open show – it stays on top and never drops out.</li>
-<li><b>Missing files</b> – <b>File → 🔎 Find missing files in a folder…</b> (or the button on the "Before the show" page): point at a folder (a USB stick, the show's folder on another computer) and every missing file found there by its name goes back to its cue – all at once, one <kbd>Ctrl+Z</kbd>. Right click on a cue → <b>📂 Choose the file…</b> puts another file in (or the first one, e.g. for a cue from an imported list); the cue's settings stay.</li>
-<li><b>History of changes</b> – <b>Edit → 🕘 History of changes…</b> lists what <kbd>Ctrl+Z</kbd> can take back, in words (e.g. "Q7 'Bell': Fade In 2 → 0", "Added …"); <b>Undo back to here</b> takes back the chosen change and every later one (<kbd>Ctrl+Y</kbd> redoes them). Undo also works after a save. <b>File → 🕘 Restore a backup…</b> loads the cue list of one of the copies made at every save – as one change that <kbd>Ctrl+Z</kbd> takes back.</li>
+<li><b>File → 📥 Import → 📥 Import cues from another show…</b> – pick a show file and tick the cues (a scene brings its cues); they come after the selection, with new inner numbers and their links kept (scene, relative start, action targets). The program says what does not come along (a link to a cue left in the other show, a missing file). One <kbd>Ctrl+Z</kbd> undoes it; the files go into the show's folder when it is saved as a portable show.</li>
+<li><b>Quick start</b> – <b>File → 📁 New show from a folder…</b> adds the folder's videos, sounds and pictures in name order (1, 2, 10) as separate cues or as one scene (sounds only: one playlist). <b>File → 📥 Import → 📋 Import a cue list (CSV)…</b> turns a list written in Excel (columns as in the export: Q, Name, Type, File, Page, Line, Notes; semicolon or comma) into cues after the selection; a row without a file waits for its file (the "Before the show" page lists it as missing). In <b>Open recent</b> you can <b>📌 pin</b> the open show – it stays on top and never drops out.</li>
+<li><b>Missing files</b> – <b>File → 🛟 Backups and missing files → 🔎 Find missing files in a folder…</b> (or the button on the "Before the show" page): point at a folder (a USB stick, the show's folder on another computer) and every missing file found there by its name goes back to its cue – all at once, one <kbd>Ctrl+Z</kbd>. Right click on a cue → <b>📂 Choose the file…</b> puts another file in (or the first one, e.g. for a cue from an imported list); the cue's settings stay.</li>
+<li><b>History of changes</b> – <b>Edit → 🕘 History of changes…</b> lists what <kbd>Ctrl+Z</kbd> can take back, in words (e.g. "Q7 'Bell': Fade In 2 → 0", "Added …"); <b>Undo back to here</b> takes back the chosen change and every later one (<kbd>Ctrl+Y</kbd> redoes them). Undo also works after a save. <b>File → 🛟 Backups and missing files → 🕘 Restore a backup…</b> loads the cue list of one of the copies made at every save – as one change that <kbd>Ctrl+Z</kbd> takes back.</li>
 <li><b>Several files at once</b> – when you drop several files on the list and they are not only sounds (sounds get the playlist question), the program asks whether to make them <b>one scene</b> (one GO per item). The question never blocks the work; the answer is a step of its own for <kbd>Ctrl+Z</kbd>.</li>
 <li><b>File → ℹ Show info…</b> – the title (on the printed lists instead of the file name), the author and notes, saved with the show; below them the numbers: cues of each kind, how many GOs, effects, cues switched off, missing files.</li><li><b>Backups</b> – every save keeps the previous file in the <code>&lt;name&gt;_backups</code> folder next to the show (the newest 5, with the date and time in the name). To go back to one, copy it next to the show and open it.</li>
 </ul>
@@ -110,11 +110,11 @@ in the list and in the inspector.</li>
 <h2><a name="adding"></a>3. Adding video, audio, photos and captions</h2>
 <h3>Three ways to add a file</h3>
 <ol>
-<li>The button under the list <b>＋ Add files…</b>: videos, sounds and pictures, several at once too (in name order). The dialog opens in the folder used last; shows are saved in <b>Documents\Teatr POZA</b> at first.</li>
+<li>The button under the list <b>＋ Add files…</b>: videos, sounds and pictures, several at once too (in name order). The dialog opens in the folder used last; shows are saved in <b>Documents\BlindCue</b> at first.</li>
 <li>Drag files from your file manager onto <b>Quick Load</b> (bottom right corner) or
 straight onto the cue list: they go after the row you drop them on (below the last row: to the end),
 in the same order.</li>
-<li><b>Playlist</b> (e.g. music before the show and in the interval): drop several audio files on the list at once and answer <b>One playlist</b> – you get one folded row (a scene in <b>⤵ Sequential</b> mode) that plays the tracks one after another after a single GO. <b>File → 🎵 Import a playlist (.m3u)…</b> or dropping an <b>.m3u</b> file does the same with a list from another player (missing files and internet streams are left out, the status bar says how many). The scene can be switched to <b>🔁 Loop Scene</b> or <b>🎲 Random</b>.</li>
+<li><b>Playlist</b> (e.g. music before the show and in the interval): drop several audio files on the list at once and answer <b>One playlist</b> – you get one folded row (a scene in <b>⤵ Sequential</b> mode) that plays the tracks one after another after a single GO. <b>File → 📥 Import → 🎵 Import a playlist (.m3u)…</b> or dropping an <b>.m3u</b> file does the same with a list from another player (missing files and internet streams are left out, the status bar says how many). The scene can be switched to <b>🔁 Loop Scene</b> or <b>🎲 Random</b>.</li>
 <li>A new cue goes right after the selected one (nothing selected: to the end of the list).
 When the selected cue is tied to the next one (<b>Simultaneous</b>, <b>Auto-GO</b>) or is a group, the
 new cue goes after the end of that chain or group – the status bar says where. Move it with
@@ -242,7 +242,7 @@ and the current one is on the status bar ("Version: short · 12 cues off").</li>
 <li><b>At</b> (<b>3 · Timing</b> card): the cue starts by itself at that time during the
 <b>Show</b> (e.g. pre-show music at 5:50 pm, the bell before the end of the interval). GO skips it; more than a
 minute late it is skipped (it never starts later by surprise). The status bar shows the clock and the next such
-cue; <b>Show → ⏸ Hold the time plan</b> stops the plan and <b>🕐 Time plan in the rehearsal too</b> runs it in
+cue; <b>Show → ⏳ Time → ⏸ Hold the time plan</b> stops the plan and <b>🕐 Time plan in the rehearsal too</b> runs it in
 rehearsals. The show list marks it <b>🕐 17:50</b>.</li>
 <li><b>Marks</b>: <b>◆ Mark</b> above the waveform puts a mark at the playhead, and
 <kbd>Ctrl+K</kbd> where the selected cue is playing right now (e.g. tapping the chorus in a rehearsal). The marks
@@ -279,6 +279,7 @@ on that layer dissolves into the new one.</li>
 <p class="tip">💡 A slideshow with crossfades: several photos in a row on L1, each with
 <b>Crossfade 1–2 s</b>, <b>Image Time</b> e.g. 5 s and <b>After: Auto-GO</b> – the photos
 change smoothly by themselves.</p>
+<p class="tip">🔀 A picture that moves on to the next one by itself (<b>Then: Auto-GO</b> or a scene "one after another") hands over its layer the crossfade time early: the next picture comes in over the one still shown, with no black gap. One time for several pictures at once: select them, right-click → <b>🔀 Crossfade for the selected…</b> (it also sets <b>Fade In = 0</b>).</p>
 <p class="tip">🎵 <b>Sound crossfade</b>: the same field works for music. When a new song (or video) comes onto a layer where something plays and has a <b>Crossfade</b> of e.g. 3 s, the previous song is not cut: it fades over 3 s while the new one rises. <b>Pause all</b>, <b>Fade all</b> and <b>PANIC</b> also reach a song that is still fading.</p>
 
 <h3>Picture (the "Video · Photo" tab)</h3>
@@ -311,7 +312,7 @@ Easiest: click on the wave in the Waveform panel, then
 <b>IN at Playhead</b> (<kbd>I</kbd>) or <b>OUT at Playhead</b> (<kbd>O</kbd>).
 <b>Reset IN/OUT</b> brings back the whole file. Videos are trimmed the same way. The <b>✂</b> button next to IN/OUT puts them where the sound really starts and ends (it cuts the silence at the start and the end, e.g. of files from the internet; <kbd>Ctrl+Z</kbd> undoes it).</li>
 <li><b>Copy / paste the picture layout</b> (right-click a picture or a film): <b>📋 Copy the picture layout</b> keeps the position, size, crop, rotation, aspect ratio, mask and surface; <b>📌 Paste the layout onto the selected</b> gives it to every selected picture and film (one <kbd>Ctrl+Z</kbd>).</li>
-<li><b>🎞 Photos to this music</b> (a photo show): select several pictures and one sound, right-click → <b>🎞 Photos to this music</b>. The music starts together with a folded scene of the pictures; each picture is shown for the length of the music divided by their number with a short fade in and out (0.5 s); the length takes the music's IN/OUT and tempo into account, all pictures go to one layer and the music to another. After the last picture the scene stops and GO waits for the cue after it. One <kbd>Ctrl+Z</kbd> undoes it.</li>
+<li><b>🎞 Photos to this music</b> (a photo show): select several pictures and one sound, right-click → <b>🎞 Photos to this music</b>. The music starts together with a folded scene of the pictures; each picture is shown for the length of the music divided by their number and the pictures crossfade into each other (1 s; the first fades in and the last fades out in 0.5 s); the length takes the music's IN/OUT and tempo into account, all pictures go to one layer and the music to another. After the last picture the scene stops and GO waits for the cue after it. One <kbd>Ctrl+Z</kbd> undoes it.</li>
 <li><b>Loop cue</b> – tick it and choose the number of repeats or "forever"
 (e.g. background music during the interval).</li>
 <li><b>On start, fade the others</b> (<b>3 · Timing</b> card, outside the basic view) – when this cue starts, the other sounds and videos on air fade out over the given seconds. A change of music with one cue: the old music on the same layer fades out instead of being cut (meanwhile the new one plays on a free player). 0 = no.</li>
@@ -374,7 +375,7 @@ That is why new audio cues go to <b>L2</b> by default, photos and videos to <b>L
 <li>With only one monitor, the picture is shown in a small window
 <b>"Live Output [Simulated Monitor]"</b>. Click it and press <kbd>F11</kbd>
 to see it full screen; <kbd>F11</kbd> again goes back to the window.</li>
-<li>Choose the screen and mode in <b>Show → Devices &amp; Hardware</b>
+<li>Choose the screen and mode in <b>Show → 🔌 Devices → Devices &amp; Hardware</b>
 (or <b>Devices · Outputs</b> in the status bar) → <b>Live Output Screen</b>.
 With two projectors you can stretch one picture over both or run two
 independent outputs A and B.</li>
@@ -384,7 +385,7 @@ independent outputs A and B.</li>
 If they are missing – for example a projector with speakers is unplugged – the system default output
 plays and the status bar says so; when they are connected again the program goes back to them by itself.
 <b>"System default output"</b> means: remember nothing, play where the system points.</li>
-<li><b>Audio outputs</b> (<b>Show → 🔊 Audio outputs</b>): every sound and film plays on the <b>Stage</b>, the <b>Hall</b> or the <b>Foldback</b> (for the performers) – chosen in the inspector, card 1, <b>Output</b>; <b>Mute</b> is a film without its sound. In the outputs window you choose which speakers each output is on <b>this</b> computer, what plays <b>if they are missing</b> (Stage → default output, Hall → like the Stage, Foldback → silence: a private track never reaches the audience), a <b>trim</b> in dB, <b>▶ Test</b> for each output and <b>Test them all in turn</b>. The map can be exported and imported on another computer. During the show the window only shows the map. When a cue plays on a fallback, the status bar says so.</li>
+<li><b>Audio outputs</b> (<b>Show → 🔌 Devices → 🔊 Audio outputs</b>): every sound and film plays on the <b>Stage</b>, the <b>Hall</b> or the <b>Foldback</b> (for the performers) – chosen in the inspector, card 1, <b>Output</b>; <b>Mute</b> is a film without its sound. In the outputs window you choose which speakers each output is on <b>this</b> computer, what plays <b>if they are missing</b> (Stage → default output, Hall → like the Stage, Foldback → silence: a private track never reaches the audience), a <b>trim</b> in dB, <b>▶ Test</b> for each output and <b>Test them all in turn</b>. The map can be exported and imported on another computer. During the show the window only shows the map. When a cue plays on a fallback, the status bar says so.</li>
 <li><b>Tempo</b> (inspector, card 1): the playback speed of a sound or film, 50 to 200 % – e.g. music fitted to a choreography. <b>Keep the pitch</b> (on by default): faster or slower without changing the pitch of the notes. Starts "at a mark" and "before the end" count in real time, with the tempo.</li>
 <li>When <b>only the projector</b> is left (<kbd>Win+P</kbd> → <b>Second screen only</b>, or the laptop
 lid closed), the program shows the director window and the output preview window on it.</li>
@@ -424,7 +425,7 @@ the program shows what should stay on stage before that cue (a picture without a
 with the level and opacity set on the way); after you confirm, it stops what plays, brings that scene back and
 puts GO on the chosen cue. Music that simply plays to its end does not come back – its moment depends on the
 operator. Not in the Show.</p>
-<p><b>Exit PIN</b> (optional, <b>Show → Exit PIN of the show…</b>, in Preparation only):
+<p><b>Exit PIN</b> (optional, <b>Show → ⚙ Running settings → Exit PIN of the show…</b>, in Preparation only):
 4 digits kept on this computer, never in the show file. With a PIN, every way out of the show (holding a tab,
 <b>End the show…</b>) first asks for it in a field under the top bar – not in a window; the field goes away by itself
 after 10 s without typing. A wrong PIN only says so, with no lock-out; after the second one the program names the way
@@ -456,7 +457,7 @@ brings back a picture that GO replaced, resumes a sound or video it cut off from
 that cue – just give the GO again at the right moment. Action cues stay as they were. Hover over the button to
 see exactly what it will do. From the keyboard: <b>Show → Undo last GO</b> (on purpose without a shortcut).
 The next GO, PANIC, FADE ALL and a change of mode end the offer.</li>
-<li><b>Presenter remote and extra keys</b> – <b>Show → ⌨ Keys and presenter remote…</b>: GO, previous / next cue (selection only), Pause all, Fade all and Undo GO can get keys of this computer. <b>🎯 Remote wizard…</b> asks for the remote's buttons one by one (GO, previous, pause); <b>Presenter remote</b> fills the usual keys (PgDown = GO, PgUp = previous, B or full stop = pause). They work in the rehearsal and the show only, never while typing; a key of an effect of the show wins, and the program's keys stay (Space = GO, Esc twice = PANIC). PANIC is not offered on purpose. Do not use the remote's "slide show" button: it sends F5 or Esc.</li>
+<li><b>Presenter remote and extra keys</b> – <b>Show → ⚙ Running settings → ⌨ Keys and presenter remote…</b>: GO, previous / next cue (selection only), Pause all, Fade all and Undo GO can get keys of this computer. <b>🎯 Remote wizard…</b> asks for the remote's buttons one by one (GO, previous, pause); <b>Presenter remote</b> fills the usual keys (PgDown = GO, PgUp = previous, B or full stop = pause). They work in the rehearsal and the show only, never while typing; a key of an effect of the show wins, and the program's keys stay (Space = GO, Esc twice = PANIC). PANIC is not offered on purpose. Do not use the remote's "slide show" button: it sends F5 or Esc.</li>
 <li>The <b>GO</b> button says what it will do: <b>▶ GO: #3 'name'</b> – all set. It turns
 amber (never red) when something is different: <b>⌨</b> the keyboard is in another window (click GO),
 <b>⚠</b> the file is missing, <b>⏳</b> GO waits for an exclusive cue (<kbd>Ctrl+Space</kbd> forces it),
@@ -473,8 +474,8 @@ Double-clicking a row only makes it the next cue (start it with <kbd>Space</kbd>
 <li>On the right, the <b>Now playing</b> column: a card for every cue on air – name, layer,
 a state only when it is an exception (<b>PAUSED</b>, <b>LOOP ∞</b>, <b>starts in 0:03</b>), the time played and a big
 <b>time left</b> (with <b>⚠</b> 5 s before the end when the next GO waits for you), and buttons for that cue only:
-<b>⏸</b> pause, <b>Fade out</b>, <b>Release loop</b>. Pictures and captions take one line with <b>Fade out</b>.
-A new cue takes the first free place, so the cards never jump. The layer panel and its padlock stay in
+<b>❚❚</b> pause, <b>Fade out</b>, <b>Release loop</b>. Pictures and captions take one line with <b>Fade out</b>.
+A new cue takes the first free place, so the cards never jump. With three or more sounds and videos on air the later cards are lower: only the name with <b>Fade out</b> and the time bar – everything fits without scrolling. The layer panel and its padlock stay in
 Preparation; <b>Pause All</b> sits next to GO.</li>
 <li>A sound or video card also has <b>−10 s</b> / <b>+10 s</b> (in the show hold for 1.5 s, in the rehearsal a moment is enough, so a
 stray click never moves the music) and a <b>level of this cue</b> slider – your correction for now only (the mouse
@@ -485,10 +486,10 @@ the next cue waits for your GO (an actor is late, say) – <b>Pause All</b> woul
 top of the column, <b>Output preview</b> shows what the audience sees, small (up to 5 frames a second); <b>▾</b>
 folds it, and this computer remembers that.</li>
 <li>Notes of <a href="#actions">action cues</a> appear in a coloured strip at the top of the window; only you see them. During the show a plain note is a card in <b>Now playing</b> (with <b>OK</b>), so it takes no row of the list.</li>
-<li><b>Fade</b> on a card brings the cue down gently: over its own <b>Fade out</b>, or 3 s when it has none (change it in <b>Show → ⏬ Fade button time…</b>). While a scene plays, a <b>🎬 scene</b> card above its cues has <b>Fade the scene</b> (also a right click on the scene in the list): everything the scene plays or shows fades, and GO moves to the cue after the scene.</li>
+<li><b>Fade</b> on a card brings the cue down gently: over its own <b>Fade out</b>, or 3 s when it has none (change it in <b>Show → ⚙ Running settings → ⏬ Fade button time…</b>). While a scene plays, a <b>🎬 scene</b> card above its cues has <b>Fade the scene</b> (also a right click on the scene in the list): everything the scene plays or shows fades, and GO moves to the cue after the scene.</li>
 <li><b>Effects on demand</b> (a bell, thunder, applause): in the Inspector tick <b>🎵 Effect on demand</b> and type a <b>key</b> – a letter or a digit. Such a cue is outside the order: GO skips it, and the list shows a purple mark with its key (e.g. <b>⌨ B</b>). In the rehearsal and the show press the key or click the effect's tile at the top of the <b>Now playing</b> column: the effect plays on a free player, does not move GO and stops nothing. What the key does: <b>Start</b> (again = from the top), <b>Start / stop</b> or <b>Plays while the key is held</b>. Several cues on the same key start one after the other (steps). <b>↻ Repeat the last effect</b> (<kbd>Ctrl+R</kbd>) plays the last effect once more. The keys do nothing while you type in a text field. Effects have three free players (while output B is off); a fourth effect takes the place of the oldest.</li>
 <li>The <b>Show Stopwatch</b> (top) starts by itself on the first GO.</li>
-<li><b>Countdown</b> (e.g. the interval): <b>Show → ⏳ Countdown (interval)…</b> or the
+<li><b>Countdown</b> (e.g. the interval): <b>Show → ⏳ Time → ⏳ Countdown (interval)…</b> or the
 <b>⏳ Countdown</b> action cue (title and minutes; 0 minutes stops it). It shows on the status bar, and
 <b>🖥 Big countdown (backstage)</b> opens a big window you can move to a second screen. The last minute is amber
 and blinks.</li>
@@ -518,7 +519,7 @@ during the pause starts just the new cue (e.g. an announcement); what is paused 
 <!-- ================================================================== -->
 <h2><a name="extras"></a>12. Extras: phone remote, mapping, settings</h2>
 <h3>Phone remote (Wi-Fi)</h3>
-<p><b>Show → LAN Remote Control (Web &amp; OSC)</b> (<kbd>F8</kbd>) → <b>start the services</b>
+<p><b>Show → 🔌 Devices → LAN Remote Control (Web &amp; OSC)</b> (<kbd>F8</kbd>) → <b>start the services</b>
 and scan the QR code with your phone (phone and computer on the same Wi-Fi).
 The phone shows a big GO button, pause, blackout and PANIC.
 The second code (<b>Director Monitor</b>) gives a read-only view – e.g. for the director
@@ -537,7 +538,7 @@ round masks and cut-outs. Assign a cue to a surface in the Inspector
 following the script, add captions, scenes, notes for the operator, and check the
 whole show. You only check the result in the <b>Rehearsal</b> and run the show.</p>
 <ol>
-<li><b>Show → 🤖 AI assistant…</b> → <b>Add to Claude Desktop…</b>. The program makes the extension
+<li><b>Show → 🤖 AI assistant → 🤖 AI assistant…</b> → <b>Add to Claude Desktop…</b>. The program makes the extension
 file (in <i>Documents\BlindCue</i>) and opens it – confirm the installation in Claude Desktop and
 choose the folders the assistant may use (the shows folder and the media folder). For other MCP
 programs (Claude Code, Cursor…) use <b>Copy the settings for other programs</b>.</li>

@@ -96,12 +96,12 @@ I file originali non vengono mai modificati.</li>
 <li>Il programma fa un <b>salvataggio automatico</b> (anche a ogni GO). Dopo un crash propone di ripristinare la sessione. Scegli da dove continuare: <b>Riprendi: prossima</b> (predefinito, anche Invio ed Esc), <b>Ripeti l'ultima</b> (per esempio la musica di sottofondo) oppure <b>Dall'inizio</b>. Se il crash è avvenuto durante lo spettacolo, il programma torna subito nello spettacolo. <b>Apri senza ripristinare</b> non cancella nulla: la sessione precedente viene messa da parte come <code>autosave.discarded.json</code>.</li>
 <li><b>Modifica → Annulla / Ripeti</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) valgono per ogni
 modifica nella scaletta e nell'ispettore.</li>
-<li><b>File → 📄 Esporta la scaletta (CSV)…</b> – la scaletta per un foglio di calcolo (Excel, LibreOffice). <b>File → 🖨 Stampa la scaletta per la regia…</b> – solo le cue lanciate con GO, a caratteri grandi, con spazio per le note; <b>…per il suggeritore…</b> – pagina del copione, battuta, Q e nome di ogni cue. La scaletta si apre nel browser; si stampa con <kbd>Ctrl+P</kbd>. Pagina e battuta si scrivono nell'inspector (campo <b>Copione</b> sotto le note).</li>
+<li><b>File → 🖨 Esporta e stampa → 📄 Esporta la scaletta (CSV)…</b> – la scaletta per un foglio di calcolo (Excel, LibreOffice). <b>File → 🖨 Esporta e stampa → 🖨 Stampa la scaletta per la regia…</b> – solo le cue lanciate con GO, a caratteri grandi, con spazio per le note; <b>…per il suggeritore…</b> – pagina del copione, battuta, Q e nome di ogni cue. La scaletta si apre nel browser; si stampa con <kbd>Ctrl+P</kbd>. Pagina e battuta si scrivono nell'inspector (campo <b>Copione</b> sotto le note).</li>
 <li><b>Modifica → 🔢 Rinumera le Q…</b> – nuove etichette Q per le cue lanciate con GO – le stesse della lista per la regia: una scena conta come un GO, una scena Passo-Passo uno per passo; le cue che partono da sole (Simult., Auto-GO, Cascata) tengono le loro. Un'etichetta già usata da un'altra cue è segnata con ⚠. Prefisso, primo numero e passo – un passo di 10 lascia spazio per le cue aggiunte dopo (Q10, Q15, Q20). Prima un'anteprima "prima → dopo"; con più cue selezionate si numerano solo quelle. Un solo <kbd>Ctrl+Z</kbd> annulla.</li>
-<li><b>File → 📥 Importa cue da un altro spettacolo…</b> – scegli il file di uno spettacolo e spunta le cue (una scena porta le sue cue); arrivano dopo la selezione, con nuovi numeri interni e i loro legami (scena, partenza relativa, bersagli delle azioni). Il programma dice cosa non arriva (un legame con una cue rimasta nell'altro spettacolo, un file mancante). Un solo <kbd>Ctrl+Z</kbd> annulla; i file entrano nella cartella dello spettacolo al salvataggio portatile.</li>
-<li><b>Partenza rapida</b> – <b>File → 📁 Nuovo spettacolo da una cartella…</b> aggiunge video, suoni e immagini della cartella in ordine di nome (1, 2, 10) come cue separate o come una scena (solo suoni: una playlist). <b>File → 📋 Importa una scaletta (CSV)…</b> trasforma una lista scritta in Excel (colonne come nell'esportazione: Q, Nome, Tipo, File, Pagina, Battuta, Note; punto e virgola o virgola) in cue dopo la selezione; una riga senza file aspetta il suo file (la pagina "Prima dello spettacolo" la elenca tra i mancanti). In <b>Apri recenti</b> puoi <b>📌 fissare</b> lo spettacolo aperto – resta in cima e non esce dall'elenco.</li>
-<li><b>File mancanti</b> – <b>File → 🔎 Cerca i file mancanti in una cartella…</b> (o il pulsante nella pagina "Prima dello spettacolo"): indica una cartella (una chiavetta, la cartella dello spettacolo su un altro computer) e ogni file mancante trovato lì per nome torna alla sua cue – tutti insieme, un solo <kbd>Ctrl+Z</kbd>. Clic destro su una cue → <b>📂 Scegli il file…</b> mette un altro file (o il primo, ad es. per una cue di una scaletta importata); le impostazioni della cue restano.</li>
-<li><b>Storia delle modifiche</b> – <b>Modifica → 🕘 Storia delle modifiche…</b> elenca ciò che <kbd>Ctrl+Z</kbd> può annullare, a parole (ad es. "Q7 'Campanella': Fade In 2 → 0", "Aggiunta …"); <b>Annulla fino a qui</b> annulla la modifica scelta e tutte le successive (<kbd>Ctrl+Y</kbd> le ripete). L'annullamento funziona anche dopo un salvataggio. <b>File → 🕘 Ripristina una copia di sicurezza…</b> carica la scaletta di una delle copie fatte a ogni salvataggio – come una sola modifica che <kbd>Ctrl+Z</kbd> annulla.</li>
+<li><b>File → 📥 Importa → 📥 Importa cue da un altro spettacolo…</b> – scegli il file di uno spettacolo e spunta le cue (una scena porta le sue cue); arrivano dopo la selezione, con nuovi numeri interni e i loro legami (scena, partenza relativa, bersagli delle azioni). Il programma dice cosa non arriva (un legame con una cue rimasta nell'altro spettacolo, un file mancante). Un solo <kbd>Ctrl+Z</kbd> annulla; i file entrano nella cartella dello spettacolo al salvataggio portatile.</li>
+<li><b>Partenza rapida</b> – <b>File → 📁 Nuovo spettacolo da una cartella…</b> aggiunge video, suoni e immagini della cartella in ordine di nome (1, 2, 10) come cue separate o come una scena (solo suoni: una playlist). <b>File → 📥 Importa → 📋 Importa una scaletta (CSV)…</b> trasforma una lista scritta in Excel (colonne come nell'esportazione: Q, Nome, Tipo, File, Pagina, Battuta, Note; punto e virgola o virgola) in cue dopo la selezione; una riga senza file aspetta il suo file (la pagina "Prima dello spettacolo" la elenca tra i mancanti). In <b>Apri recenti</b> puoi <b>📌 fissare</b> lo spettacolo aperto – resta in cima e non esce dall'elenco.</li>
+<li><b>File mancanti</b> – <b>File → 🛟 Copie e file mancanti → 🔎 Cerca i file mancanti in una cartella…</b> (o il pulsante nella pagina "Prima dello spettacolo"): indica una cartella (una chiavetta, la cartella dello spettacolo su un altro computer) e ogni file mancante trovato lì per nome torna alla sua cue – tutti insieme, un solo <kbd>Ctrl+Z</kbd>. Clic destro su una cue → <b>📂 Scegli il file…</b> mette un altro file (o il primo, ad es. per una cue di una scaletta importata); le impostazioni della cue restano.</li>
+<li><b>Storia delle modifiche</b> – <b>Modifica → 🕘 Storia delle modifiche…</b> elenca ciò che <kbd>Ctrl+Z</kbd> può annullare, a parole (ad es. "Q7 'Campanella': Fade In 2 → 0", "Aggiunta …"); <b>Annulla fino a qui</b> annulla la modifica scelta e tutte le successive (<kbd>Ctrl+Y</kbd> le ripete). L'annullamento funziona anche dopo un salvataggio. <b>File → 🛟 Copie e file mancanti → 🕘 Ripristina una copia di sicurezza…</b> carica la scaletta di una delle copie fatte a ogni salvataggio – come una sola modifica che <kbd>Ctrl+Z</kbd> annulla.</li>
 <li><b>Più file insieme</b> – quando trascini sulla lista più file e non sono solo suoni (per i suoni c'è la domanda sulla playlist), il programma chiede se farne <b>una scena</b> (un GO per elemento). La domanda non blocca il lavoro; la risposta è un passo a sé per <kbd>Ctrl+Z</kbd>.</li>
 <li><b>File → ℹ Informazioni sullo spettacolo…</b> – il titolo (sulle stampe al posto del nome del file), l'autore e le note, salvati con lo spettacolo; sotto, i numeri: cue di ogni tipo, quanti GO, effetti, cue escluse, file mancanti.</li><li><b>Copie di sicurezza</b> – ogni salvataggio lascia il file precedente nella cartella <code>&lt;nome&gt;_backups</code> accanto allo spettacolo (le 5 più recenti, con data e ora nel nome). Per tornare a una copia, copiala accanto allo spettacolo e aprila.</li>
 </ul>
@@ -111,11 +111,11 @@ modifica nella scaletta e nell'ispettore.</li>
 <h2><a name="aggiungere"></a>3. Aggiungere video, audio, foto e didascalie</h2>
 <h3>Tre modi per aggiungere un file</h3>
 <ol>
-<li>Il pulsante sotto la scaletta <b>＋ Aggiungi file…</b>: video, suoni e immagini, anche più file insieme (in ordine di nome). La finestra si apre nell'ultima cartella usata; gli spettacoli si salvano all'inizio in <b>Documenti\Teatr POZA</b>.</li>
+<li>Il pulsante sotto la scaletta <b>＋ Aggiungi file…</b>: video, suoni e immagini, anche più file insieme (in ordine di nome). La finestra si apre nell'ultima cartella usata; gli spettacoli si salvano all'inizio in <b>Documenti\BlindCue</b>.</li>
 <li>Trascina i file dal gestore file nel riquadro <b>Caricamento Rapido</b> (in basso a destra) o
 direttamente sulla scaletta: vanno dopo la riga su cui li lasci (sotto l'ultima riga: in fondo), nello
 stesso ordine.</li>
-<li><b>Playlist</b> (per esempio la musica prima dello spettacolo e nell'intervallo): trascina sulla lista più file audio insieme e rispondi <b>Una playlist</b> – nasce una sola riga chiusa (una scena in modalità <b>⤵ Sequenziale</b>) che con un GO suona i brani uno dopo l'altro. <b>File → 🎵 Importa playlist (.m3u)…</b> o trascinare un file <b>.m3u</b> fa lo stesso con una lista di un altro lettore (file mancanti e stream internet sono saltati, la barra di stato dice quanti). La scena si può passare a <b>🔁 Loop Scena</b> o <b>🎲 Random</b>.</li>
+<li><b>Playlist</b> (per esempio la musica prima dello spettacolo e nell'intervallo): trascina sulla lista più file audio insieme e rispondi <b>Una playlist</b> – nasce una sola riga chiusa (una scena in modalità <b>⤵ Sequenziale</b>) che con un GO suona i brani uno dopo l'altro. <b>File → 📥 Importa → 🎵 Importa playlist (.m3u)…</b> o trascinare un file <b>.m3u</b> fa lo stesso con una lista di un altro lettore (file mancanti e stream internet sono saltati, la barra di stato dice quanti). La scena si può passare a <b>🔁 Loop Scena</b> o <b>🎲 Random</b>.</li>
 <li>La nuova cue va subito dopo quella selezionata (senza selezione: in fondo alla scaletta).
 Se la cue selezionata è legata alla successiva (<b>Simultanea</b>, <b>Auto-GO</b>) o è un gruppo, la
 nuova va dopo la fine di quella catena o di quel gruppo – la barra di stato dice dove. Spostala con
@@ -246,7 +246,7 @@ stato («Versione: ridotta · 12 cue escluse»).</li>
 <li><b>Alle ore</b> (scheda <b>3 · Tempi di incastro</b>): la cue parte da sola a quell'ora
 durante lo <b>Spettacolo</b> (per esempio la musica prima dello spettacolo alle 17:50, il campanello prima della fine
 dell'intervallo). Il GO la salta; con più di un minuto di ritardo viene saltata (non parte mai più tardi di
-sorpresa). La barra di stato mostra l'orologio e la prossima cue a orario; <b>Show → ⏸ Sospendi il piano orario</b>
+sorpresa). La barra di stato mostra l'orologio e la prossima cue a orario; <b>Show → ⏳ Tempo → ⏸ Sospendi il piano orario</b>
 ferma il piano e <b>🕐 Piano orario anche nella prova</b> lo attiva nelle prove. Nella scaletta ha il segno
 <b>🕐 17:50</b>.</li>
 <li><b>Segni</b>: <b>◆ Segno</b> sopra la forma d'onda mette un segno sulla testina, e
@@ -284,6 +284,7 @@ era su quel layer si fonde nella nuova.</li>
 <p class="tip">💡 Una sequenza di foto con crossfade: più foto di seguito su L1, ognuna con
 <b>Crossfade 1–2 s</b>, <b>Durata Img</b> per esempio 5 s e <b>Dopo: Auto-GO</b> – le foto
 cambiano da sole, in modo morbido.</p>
+<p class="tip">🔀 Un'immagine che passa da sola alla successiva (<b>Poi: Auto-GO</b> o una scena «in sequenza») cede il layer con l'anticipo del crossfade: l'immagine successiva entra su quella ancora visibile, senza nero in mezzo. Un solo tempo per più immagini insieme: selezionale, clic destro → <b>🔀 Dissolvenza incrociata per le selezionate…</b> (mette anche <b>Fade In = 0</b>).</p>
 <p class="tip">🎵 <b>Dissolvenza del suono</b>: lo stesso campo vale per la musica. Quando un nuovo brano (o video) entra su un layer dove qualcosa suona e ha un <b>Crossfade</b> di ad es. 3 s, il brano precedente non si interrompe: sfuma in 3 s mentre il nuovo sale. <b>Pausa tutto</b>, <b>Sfuma tutto</b> e <b>PANIC</b> raggiungono anche un brano che sta ancora sfumando.</p>
 
 <h3>Immagine (la scheda "Video · Foto")</h3>
@@ -316,7 +317,7 @@ Il modo più comodo: nel pannello Forma d'Onda fai clic su un punto dell'onda, p
 <b>IN Testina</b> (<kbd>I</kbd>) oppure <b>OUT Testina</b> (<kbd>O</kbd>).
 <b>Reset IN/OUT</b> ripristina il file intero. I video si tagliano allo stesso modo. Il pulsante <b>✂</b> accanto a IN/OUT li mette dove il suono comincia e finisce davvero (taglia il silenzio all'inizio e alla fine, per esempio nei file presi da internet; <kbd>Ctrl+Z</kbd> annulla).</li>
 <li><b>Copia / incolla il layout dell'immagine</b> (clic destro su un'immagine o un video): <b>📋 Copia il layout dell'immagine</b> ricorda posizione, dimensione, ritaglio, rotazione, proporzioni, maschera e superficie; <b>📌 Incolla il layout sulle selezionate</b> lo dà a tutte le immagini e i video selezionati (un solo <kbd>Ctrl+Z</kbd>).</li>
-<li><b>🎞 Foto con questa musica</b> (una proiezione di foto): seleziona alcune immagini e un audio, clic destro → <b>🎞 Foto con questa musica</b>. La musica parte insieme a una scena chiusa con le immagini; ogni immagine resta per la durata della musica divisa per il loro numero con una breve entrata e uscita (0,5 s); la durata tiene conto di IN/OUT e tempo della musica, tutte le immagini vanno su un layer e la musica su un altro. Dopo l'ultima immagine la scena si ferma e il GO aspetta la cue dopo. Un solo <kbd>Ctrl+Z</kbd> annulla.</li>
+<li><b>🎞 Foto con questa musica</b> (una proiezione di foto): seleziona alcune immagini e un audio, clic destro → <b>🎞 Foto con questa musica</b>. La musica parte insieme a una scena chiusa con le immagini; ogni immagine resta per la durata della musica divisa per il loro numero e le immagini si fondono l'una nell'altra (1 s; la prima entra e l'ultima esce in 0,5 s); la durata tiene conto di IN/OUT e tempo della musica, tutte le immagini vanno su un layer e la musica su un altro. Dopo l'ultima immagine la scena si ferma e il GO aspetta la cue dopo. Un solo <kbd>Ctrl+Z</kbd> annulla.</li>
 <li><b>Ripeti cue in loop</b> – spunta e scegli il numero di ripetizioni oppure "infinito"
 (per esempio la musica di sottofondo durante l'intervallo).</li>
 <li><b>All'avvio sfuma le altre</b> (scheda <b>3 · Tempi di incastro</b>, fuori dalla vista base) – quando questa cue parte, gli altri suoni e video in onda sfumano nei secondi indicati. Cambio di musica con una sola cue: la musica precedente sullo stesso layer sfuma invece di essere tagliata (intanto la nuova suona su un lettore libero). 0 = no.</li>
@@ -379,7 +380,7 @@ Per questo le nuove cue audio vanno di default su <b>L2</b>, foto e video su <b>
 <li>Con un solo monitor l'immagine compare in una piccola finestra
 <b>"Live Output [Monitor Simulato]"</b>. Fai clic sulla finestra e premi <kbd>F11</kbd>
 per vederla a schermo intero; <kbd>F11</kbd> di nuovo torna alla finestra.</li>
-<li>Schermo e modalità si scelgono in <b>Show → Dispositivi &amp; Hardware</b>
+<li>Schermo e modalità si scelgono in <b>Show → 🔌 Dispositivi → Dispositivi &amp; Hardware</b>
 (oppure <b>Dispositivi · Uscite</b> nella barra in basso) → <b>Schermo Live Output</b>.
 Con due proiettori puoi avere un'unica immagine distesa su entrambi oppure due
 uscite indipendenti A e B.</li>
@@ -389,7 +390,7 @@ uscite indipendenti A e B.</li>
 Se mancano – per esempio scollegando un proiettore con casse – suona l'uscita predefinita del sistema
 e la barra di stato lo segnala; quando vengono ricollegate il programma torna a usarle da solo.
 <b>"Predefinito di sistema, segue il sistema"</b> vuol dire: non ricordare nulla, suona dove indica il sistema.</li>
-<li><b>Uscite audio</b> (<b>Show → 🔊 Uscite audio</b>): ogni suono e video suona sull'uscita <b>Palco</b>, <b>Sala</b> o <b>Spie</b> (ascolto per gli attori) – si sceglie nell'inspector, scheda 1, <b>Uscita</b>; <b>Muto</b> è un video senza il suo audio. Nella finestra delle uscite si sceglie quale altoparlante è ogni uscita su <b>questo</b> computer, cosa suona <b>se manca</b> (Palco → uscita predefinita, Sala → come il Palco, Spie → silenzio: una traccia privata non arriva mai al pubblico), una <b>regolazione</b> in dB, <b>▶ Prova</b> per ogni uscita e <b>Prova tutte in ordine</b>. La mappa si può esportare e importare su un altro computer. Durante lo spettacolo la finestra mostra soltanto la mappa. Quando una cue suona su un'uscita di riserva, lo dice la barra di stato.</li>
+<li><b>Uscite audio</b> (<b>Show → 🔌 Dispositivi → 🔊 Uscite audio</b>): ogni suono e video suona sull'uscita <b>Palco</b>, <b>Sala</b> o <b>Spie</b> (ascolto per gli attori) – si sceglie nell'inspector, scheda 1, <b>Uscita</b>; <b>Muto</b> è un video senza il suo audio. Nella finestra delle uscite si sceglie quale altoparlante è ogni uscita su <b>questo</b> computer, cosa suona <b>se manca</b> (Palco → uscita predefinita, Sala → come il Palco, Spie → silenzio: una traccia privata non arriva mai al pubblico), una <b>regolazione</b> in dB, <b>▶ Prova</b> per ogni uscita e <b>Prova tutte in ordine</b>. La mappa si può esportare e importare su un altro computer. Durante lo spettacolo la finestra mostra soltanto la mappa. Quando una cue suona su un'uscita di riserva, lo dice la barra di stato.</li>
 <li><b>Tempo</b> (inspector, scheda 1): la velocità di riproduzione di un suono o di un video, dal 50 al 200 % – per esempio la musica adattata a una coreografia. <b>Mantieni l'intonazione</b> (attivo di default): più veloce o più lento senza cambiare l'altezza delle note. Le partenze "sul segno" e "prima della fine" contano in tempo reale, con il tempo.</li>
 <li>Quando resta <b>solo il proiettore</b> (<kbd>Win+P</kbd> → <b>Solo secondo schermo</b>, o il portatile
 chiuso), il programma vi mostra la finestra di regia e l'anteprima dell'uscita in finestra.</li>
@@ -432,7 +433,7 @@ il programma mostra cosa dovrebbe restare in scena prima di quella cue (un'immag
 loop, con il livello e l'opacità impostati lungo il percorso); dopo la conferma ferma ciò che suona, ricrea la
 scena e mette il GO sulla cue scelta. Una musica che suona fino alla fine non ritorna: il suo momento dipende
 dall'operatore. Non nello spettacolo.</p>
-<p><b>PIN di uscita</b> (facoltativo, <b>Show → PIN di uscita dallo spettacolo…</b>, solo in
+<p><b>PIN di uscita</b> (facoltativo, <b>Show → ⚙ Impostazioni dello spettacolo → PIN di uscita dallo spettacolo…</b>, solo in
 Preparazione): 4 cifre memorizzate su questo computer, mai nel file dello spettacolo. Con un PIN ogni uscita dallo
 spettacolo (tenere premuta una scheda, <b>Termina lo spettacolo…</b>) lo chiede prima in un campo sotto la barra in
 alto – non in una finestra; il campo sparisce da solo dopo 10 s senza digitare. Un PIN sbagliato lo dice soltanto, senza
@@ -467,7 +468,7 @@ suo ritardo e riporta il GO su quella cue – basta ridare il GO al momento gius
 sono. Passa sopra il pulsante per vedere esattamente cosa farà. Da tastiera: menu <b>Show → Annulla l'ultimo GO</b>
 (di proposito senza scorciatoia). Il GO successivo, PANIC, Dissolvenza totale e il cambio di modalità chiudono
 l'offerta.</li>
-<li><b>Telecomando di presentazione e tasti in più</b> – <b>Show → ⌨ Tasti e telecomando di presentazione…</b>: GO, cue precedente / successiva (solo selezione), Pausa tutto, Sfuma tutto e Annulla l'ultimo GO possono avere tasti di questo computer. <b>🎯 Procedura guidata del telecomando…</b> chiede i pulsanti uno per uno (GO, precedente, pausa); <b>Telecomando di presentazione</b> mette i tasti tipici (PgDown = GO, PgUp = precedente, B o punto = pausa). Valgono solo nella prova e nello spettacolo, mai mentre si scrive; il tasto di un effetto dello spettacolo ha la precedenza e i tasti del programma restano (Spazio = GO, Esc due volte = PANIC). Il PANIC non c'è apposta. Non usare il pulsante "presentazione" del telecomando: manda F5 o Esc.</li>
+<li><b>Telecomando di presentazione e tasti in più</b> – <b>Show → ⚙ Impostazioni dello spettacolo → ⌨ Tasti e telecomando di presentazione…</b>: GO, cue precedente / successiva (solo selezione), Pausa tutto, Sfuma tutto e Annulla l'ultimo GO possono avere tasti di questo computer. <b>🎯 Procedura guidata del telecomando…</b> chiede i pulsanti uno per uno (GO, precedente, pausa); <b>Telecomando di presentazione</b> mette i tasti tipici (PgDown = GO, PgUp = precedente, B o punto = pausa). Valgono solo nella prova e nello spettacolo, mai mentre si scrive; il tasto di un effetto dello spettacolo ha la precedenza e i tasti del programma restano (Spazio = GO, Esc due volte = PANIC). Il PANIC non c'è apposta. Non usare il pulsante "presentazione" del telecomando: manda F5 o Esc.</li>
 <li>Il pulsante <b>GO</b> dice che cosa farà: <b>▶ GO: #3 'nome'</b> – tutto pronto. Diventa
 ambra (mai rosso) quando qualcosa è diverso: <b>⌨</b> la tastiera è in un'altra finestra (clicca GO),
 <b>⚠</b> file mancante, <b>⏳</b> il GO aspetta una cue esclusiva (<kbd>Ctrl+Spazio</kbd> forza),
@@ -484,8 +485,8 @@ Un doppio clic su una riga la rende solo la prossima cue (la lanci con <kbd>Spaz
 <li>A destra la colonna <b>Ora in onda</b>: una scheda per ogni cue in onda – nome, layer,
 lo stato solo quando è un'eccezione (<b>PAUSA</b>, <b>LOOP ∞</b>, <b>parte tra 0:03</b>), il tempo trascorso e,
 grande, il <b>tempo rimasto</b> (con <b>⚠</b> 5 s prima della fine quando il prossimo GO aspetta te), e i pulsanti
-solo per quella cue: <b>⏸</b> pausa, <b>Sfuma</b>, <b>Rilascia loop</b>. Immagini e didascalie occupano una riga con
-<b>Sfuma</b>. Una nuova cue prende il primo posto libero, così le schede non saltano. Il pannello dei layer e il
+solo per quella cue: <b>❚❚</b> pausa, <b>Sfuma</b>, <b>Rilascia loop</b>. Immagini e didascalie occupano una riga con
+<b>Sfuma</b>. Una nuova cue prende il primo posto libero, così le schede non saltano. Con tre o più suoni e video in onda le schede successive sono più basse: solo il nome con <b>Sfuma</b> e la barra del tempo – tutto sta senza scorrere. Il pannello dei layer e il
 lucchetto restano in Preparazione; <b>Pausa tutto</b> sta accanto al GO.</li>
 <li>La scheda di un suono o di un video ha anche <b>−10 s</b> / <b>+10 s</b> (nello spettacolo tieni premuto 1,5 s, nella prova basta un attimo, così un clic per sbaglio non sposta la musica) e il cursore <b>livello di questa cue</b> – la tua
 correzione solo per adesso (la rotella funziona solo dopo un clic sul cursore, <kbd>Ctrl</kbd>+clic torna al livello
@@ -496,10 +497,10 @@ ritardo) – <b>Pausa tutto</b> fermerebbe anche la musica. In cima alla colonna
 ciò che vede il pubblico, in piccolo (fino a 5 fotogrammi al secondo); <b>▾</b> la chiude e questo computer se lo
 ricorda.</li>
 <li>Le note delle <a href="#azioni">cue azione</a> compaiono in una fascia colorata in cima alla finestra; le vedi solo tu. Durante lo spettacolo una nota semplice è una scheda in <b>Ora in onda</b> (con <b>OK</b>), così non toglie una riga alla lista.</li>
-<li><b>Sfuma</b> su una scheda abbassa la cue dolcemente: con il suo <b>Fade Out</b>, o in 3 s se non ne ha (si cambia in <b>Show → ⏬ Tempo del pulsante Sfuma…</b>). Mentre una scena suona, sopra le sue cue c'è la scheda <b>🎬 scena</b> con <b>Sfuma la scena</b> (anche clic destro sulla scena nella lista): sfuma tutto ciò che la scena suona o mostra e il GO passa alla cue dopo la scena.</li>
+<li><b>Sfuma</b> su una scheda abbassa la cue dolcemente: con il suo <b>Fade Out</b>, o in 3 s se non ne ha (si cambia in <b>Show → ⚙ Impostazioni dello spettacolo → ⏬ Tempo del pulsante Sfuma…</b>). Mentre una scena suona, sopra le sue cue c'è la scheda <b>🎬 scena</b> con <b>Sfuma la scena</b> (anche clic destro sulla scena nella lista): sfuma tutto ciò che la scena suona o mostra e il GO passa alla cue dopo la scena.</li>
 <li><b>Effetti a richiesta</b> (un campanello, un tuono, un applauso): nell'Inspector spunta <b>🎵 Effetto a richiesta</b> e scrivi un <b>tasto</b> – una lettera o una cifra. Questa cue è fuori dall'ordine: il GO la salta e nella lista ha un segno viola con il suo tasto (per esempio <b>⌨ B</b>). Nella prova e nello spettacolo premi il tasto o clicca la piastrella dell'effetto in cima alla colonna <b>Ora in onda</b>: l'effetto suona su un lettore libero, non sposta il GO e non ferma niente. Cosa fa il tasto: <b>Avvia</b> (di nuovo = da capo), <b>Avvia / ferma</b> oppure <b>Suona finché tieni premuto</b>. Più cue sullo stesso tasto partono una dopo l'altra (passi). <b>↻ Ripeti l'ultimo effetto</b> (<kbd>Ctrl+R</kbd>) suona l'ultimo effetto ancora una volta. I tasti non fanno niente mentre scrivi in un campo di testo. Gli effetti hanno tre lettori liberi (con l'uscita B spenta); un quarto effetto prende il posto del più vecchio.</li>
 <li>Il <b>Cronometro Spettacolo</b> (in alto) parte da solo al primo GO.</li>
-<li><b>Conto alla rovescia</b> (per esempio l'intervallo): <b>Show → ⏳ Conto alla rovescia…</b>
+<li><b>Conto alla rovescia</b> (per esempio l'intervallo): <b>Show → ⏳ Tempo → ⏳ Conto alla rovescia…</b>
 oppure la cue azione <b>⏳ Conto alla rovescia</b> (titolo e minuti; 0 minuti lo ferma). Compare sulla barra di
 stato e <b>🖥 Conto alla rovescia grande (quinte)</b> apre una finestra grande da spostare su un secondo schermo.
 L'ultimo minuto è ambra e lampeggia.</li>
@@ -530,7 +531,7 @@ durante la pausa avvia solo la nuova cue (es. un annuncio); ciò che è in pausa
 <!-- ================================================================== -->
 <h2><a name="extra"></a>12. Extra: telecomando dal telefono, mapping, impostazioni</h2>
 <h3>Telecomando dal telefono (Wi-Fi)</h3>
-<p><b>Show → Controllo Remoto LAN (Web &amp; OSC)</b> (<kbd>F8</kbd>) → <b>avvia i servizi</b>
+<p><b>Show → 🔌 Dispositivi → Controllo Remoto LAN (Web &amp; OSC)</b> (<kbd>F8</kbd>) → <b>avvia i servizi</b>
 e inquadra il codice QR con il telefono (telefono e computer sulla stessa rete Wi-Fi).
 Sul telefono compaiono un grande pulsante GO, pausa, blackout e PANIC.
 Il secondo codice (<b>Monitor Regista</b>) dà una vista di sola lettura – per esempio per il regista
@@ -549,7 +550,7 @@ maschere circolari e ritagli. Le cue si assegnano a una superficie nell'Ispettor
 seguendo il copione, aggiunge didascalie, scene, note e liste di controllo per l'operatore e
 controlla tutto lo spettacolo. Tu verifichi il risultato nella <b>Prova</b> e conduci lo spettacolo.</p>
 <ol>
-<li><b>Show → 🤖 Assistente AI…</b> → <b>Aggiungi a Claude Desktop…</b>. Il programma crea il file
+<li><b>Show → 🤖 Assistente AI → 🤖 Assistente AI…</b> → <b>Aggiungi a Claude Desktop…</b>. Il programma crea il file
 dell'estensione (in <i>Documenti\BlindCue</i>) e lo apre: conferma l'installazione in Claude Desktop
 e scegli le cartelle che l'assistente può usare (la cartella degli spettacoli e quella dei media).
 Per altri programmi MCP (Claude Code, Cursor…) usa <b>Copia le impostazioni per altri programmi</b>.</li>

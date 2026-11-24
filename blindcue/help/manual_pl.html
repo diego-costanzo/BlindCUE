@@ -95,12 +95,12 @@ Oryginalne pliki nigdy nie są zmieniane.</li>
 <li>Program robi <b>autozapis</b> (także przy każdym GO). Po awarii zaproponuje przywrócenie sesji. Wybierasz, skąd dalej: <b>Wznów: następny</b> (domyślnie, także Enter i Esc), <b>Jeszcze raz ostatni</b> (np. muzyka tła) albo <b>Od początku</b>. Jeśli awaria była w trakcie przedstawienia, program od razu wraca do przedstawienia. <b>Otwórz bez przywracania</b> niczego nie kasuje – poprzednia sesja zostaje odłożona jako plik <code>autosave.discarded.json</code>.</li>
 <li><b>Edycja → Cofnij / Ponów</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) działa dla
 wszystkich zmian na liście i w inspektorze.</li>
-<li><b>Plik → 📄 Eksportuj listę (CSV)…</b> – lista do arkusza (Excel, LibreOffice). <b>Plik → 🖨 Drukuj listę dla operatora…</b> – tylko pozycje uruchamiane GO, dużymi literami, z miejscem na notatki; <b>…dla suflera…</b> – strona scenariusza, kwestia, Q i nazwa każdej pozycji. Lista otwiera się w przeglądarce, drukujesz <kbd>Ctrl+P</kbd>. Stronę i kwestię wpisujesz w inspektorze (pole <b>Scenariusz</b> pod uwagami).</li>
+<li><b>Plik → 🖨 Eksportuj i drukuj → 📄 Eksportuj listę (CSV)…</b> – lista do arkusza (Excel, LibreOffice). <b>Plik → 🖨 Eksportuj i drukuj → 🖨 Drukuj listę dla operatora…</b> – tylko pozycje uruchamiane GO, dużymi literami, z miejscem na notatki; <b>…dla suflera…</b> – strona scenariusza, kwestia, Q i nazwa każdej pozycji. Lista otwiera się w przeglądarce, drukujesz <kbd>Ctrl+P</kbd>. Stronę i kwestię wpisujesz w inspektorze (pole <b>Scenariusz</b> pod uwagami).</li>
 <li><b>Edycja → 🔢 Przenumeruj Q…</b> – nowe etykiety Q dla pozycji uruchamianych GO – tych samych co na liście dla realizatora: scena liczy się jako jedno GO, scena krok po kroku – jedno na krok; pozycje, które startują same (Razem, Auto-GO, kaskada), zachowują swoje. Etykieta, którą ma już inna pozycja, jest oznaczona ⚠. Przedrostek, pierwszy numer i krok – krok 10 zostawia miejsce na późniejsze wstawki (Q10, Q15, Q20). Podgląd „przed → po” przed zatwierdzeniem; gdy zaznaczysz kilka pozycji, numerowane są tylko one. Jedno <kbd>Ctrl+Z</kbd> cofa.</li>
-<li><b>Plik → 📥 Importuj pozycje z innego przedstawienia…</b> – wybierasz plik przedstawienia i zaznaczasz pozycje (scena przynosi swoje pozycje); trafiają za zaznaczenie, z nowymi numerami wewnętrznymi, z zachowanymi powiązaniami (scena, start względny, cele akcji). Program mówi, czego nie przeniesie (powiązanie z pozycją pozostawioną w tamtym przedstawieniu, brakujący plik). Jedno <kbd>Ctrl+Z</kbd> cofa; pliki trafią do folderu przedstawienia przy zapisie przenośnym.</li>
-<li><b>Szybki start</b> – <b>Plik → 📁 Nowe przedstawienie z folderu…</b> dodaje filmy, dźwięki i obrazy z folderu w kolejności nazw (1, 2, 10) jako osobne pozycje albo jako jedną scenę (same dźwięki: jedną playlistę). <b>Plik → 📋 Importuj listę pozycji (CSV)…</b> zamienia listę napisaną w Excelu (kolumny jak w eksporcie: Q, Nazwa, Typ, Plik, Strona, Kwestia, Uwagi; średnik albo przecinek) w pozycje za zaznaczeniem; wiersz bez pliku czeka na plik (na stronie „Przed przedstawieniem” jest wśród brakujących). W <b>Otwórz ostatnie</b> możesz <b>📌 przypiąć</b> otwarte przedstawienie – zostaje na górze i nie wypada z listy.</li>
-<li><b>Brakujące pliki</b> – <b>Plik → 🔎 Szukaj brakujących plików w folderze…</b> (albo przycisk na stronie „Przed przedstawieniem”): wskazujesz folder (pendrive, folder przedstawienia na innym komputerze) i każdy brakujący plik znaleziony tam po nazwie wraca do swojej pozycji – wszystkie naraz, jedno <kbd>Ctrl+Z</kbd>. Prawy przycisk na pozycji → <b>📂 Wybierz plik…</b> podmienia plik (albo dołącza pierwszy, np. do pozycji z zaimportowanej listy); ustawienia pozycji zostają.</li>
-<li><b>Historia zmian</b> – <b>Edycja → 🕘 Historia zmian…</b> pokazuje po kolei, co <kbd>Ctrl+Z</kbd> może cofnąć, opisane słowami (np. „Q7 'Dzwonek': Fade In 2 → 0”, „Dodana …”); <b>Cofnij do tego miejsca</b> cofa wybraną zmianę i wszystkie późniejsze (<kbd>Ctrl+Y</kbd> je przywraca). Cofanie działa także po zapisie. <b>Plik → 🕘 Przywróć kopię zapasową…</b> wczytuje listę pozycji z jednej z kopii robionych przy każdym zapisie – jako jedną zmianę, którą <kbd>Ctrl+Z</kbd> cofa.</li>
+<li><b>Plik → 📥 Importuj → 📥 Importuj pozycje z innego przedstawienia…</b> – wybierasz plik przedstawienia i zaznaczasz pozycje (scena przynosi swoje pozycje); trafiają za zaznaczenie, z nowymi numerami wewnętrznymi, z zachowanymi powiązaniami (scena, start względny, cele akcji). Program mówi, czego nie przeniesie (powiązanie z pozycją pozostawioną w tamtym przedstawieniu, brakujący plik). Jedno <kbd>Ctrl+Z</kbd> cofa; pliki trafią do folderu przedstawienia przy zapisie przenośnym.</li>
+<li><b>Szybki start</b> – <b>Plik → 📁 Nowe przedstawienie z folderu…</b> dodaje filmy, dźwięki i obrazy z folderu w kolejności nazw (1, 2, 10) jako osobne pozycje albo jako jedną scenę (same dźwięki: jedną playlistę). <b>Plik → 📥 Importuj → 📋 Importuj listę pozycji (CSV)…</b> zamienia listę napisaną w Excelu (kolumny jak w eksporcie: Q, Nazwa, Typ, Plik, Strona, Kwestia, Uwagi; średnik albo przecinek) w pozycje za zaznaczeniem; wiersz bez pliku czeka na plik (na stronie „Przed przedstawieniem” jest wśród brakujących). W <b>Otwórz ostatnie</b> możesz <b>📌 przypiąć</b> otwarte przedstawienie – zostaje na górze i nie wypada z listy.</li>
+<li><b>Brakujące pliki</b> – <b>Plik → 🛟 Kopie i brakujące pliki → 🔎 Szukaj brakujących plików w folderze…</b> (albo przycisk na stronie „Przed przedstawieniem”): wskazujesz folder (pendrive, folder przedstawienia na innym komputerze) i każdy brakujący plik znaleziony tam po nazwie wraca do swojej pozycji – wszystkie naraz, jedno <kbd>Ctrl+Z</kbd>. Prawy przycisk na pozycji → <b>📂 Wybierz plik…</b> podmienia plik (albo dołącza pierwszy, np. do pozycji z zaimportowanej listy); ustawienia pozycji zostają.</li>
+<li><b>Historia zmian</b> – <b>Edycja → 🕘 Historia zmian…</b> pokazuje po kolei, co <kbd>Ctrl+Z</kbd> może cofnąć, opisane słowami (np. „Q7 'Dzwonek': Fade In 2 → 0”, „Dodana …”); <b>Cofnij do tego miejsca</b> cofa wybraną zmianę i wszystkie późniejsze (<kbd>Ctrl+Y</kbd> je przywraca). Cofanie działa także po zapisie. <b>Plik → 🛟 Kopie i brakujące pliki → 🕘 Przywróć kopię zapasową…</b> wczytuje listę pozycji z jednej z kopii robionych przy każdym zapisie – jako jedną zmianę, którą <kbd>Ctrl+Z</kbd> cofa.</li>
 <li><b>Kilka plików naraz</b> – gdy upuszczasz na listę kilka plików, a nie są to same dźwięki (dla nich jest pytanie o playlistę), program pyta, czy zrobić z nich <b>jedną scenę</b> (GO na każdy element). Pytanie nie blokuje pracy; odpowiedź to osobny krok <kbd>Ctrl+Z</kbd>.</li>
 <li><b>Plik → ℹ Informacje o przedstawieniu…</b> – tytuł (na wydrukach zamiast nazwy pliku), autor i notatki, zapisywane z przedstawieniem; pod spodem liczby: pozycje każdego rodzaju, ile GO, efekty, wyłączone, brakujące pliki.</li><li><b>Kopie zapasowe</b> – każdy zapis zostawia poprzednią wersję pliku w folderze <code>&lt;nazwa&gt;_backups</code> obok przedstawienia (5 ostatnich, z datą i godziną w nazwie). Żeby wrócić do kopii, skopiuj ją obok przedstawienia i otwórz.</li>
 </ul>
@@ -110,11 +110,11 @@ wszystkich zmian na liście i w inspektorze.</li>
 <h2><a name="dodawanie"></a>3. Dodawanie wideo, audio, zdjęć i napisów</h2>
 <h3>Trzy sposoby dodania pliku</h3>
 <ol>
-<li>Przycisk pod listą <b>＋ Dodaj pliki…</b>: filmy, dźwięki i obrazy, także kilka naraz (w kolejności nazw). Okno otwiera się w ostatnio używanym folderze; przedstawienia zapisują się domyślnie w <b>Dokumenty\Teatr POZA</b>.</li>
+<li>Przycisk pod listą <b>＋ Dodaj pliki…</b>: filmy, dźwięki i obrazy, także kilka naraz (w kolejności nazw). Okno otwiera się w ostatnio używanym folderze; przedstawienia zapisują się domyślnie w <b>Dokumenty\BlindCue</b>.</li>
 <li>Przeciągnij pliki z menedżera plików do pola <b>Szybkie dodawanie</b> (prawy dolny róg) albo
 wprost na listę cue: trafią za wiersz, na który je upuścisz (pod ostatnim wierszem – na koniec), w tej
 samej kolejności.</li>
-<li><b>Playlista</b> (np. muzyka przed spektaklem i w przerwie): upuść na listę kilka plików audio naraz i odpowiedz <b>Jedna playlista</b> – powstaje jeden zwinięty wiersz (scena w trybie <b>⤵ Po kolei</b>), który po jednym GO gra utwory po kolei. <b>Plik → 🎵 Importuj playlistę (.m3u)…</b> albo upuszczenie pliku <b>.m3u</b> robi to samo z listą z innego odtwarzacza (brakujące pliki i strumienie internetowe są pominięte, pasek stanu mówi ile). Tryb sceny można zmienić na <b>🔁 Zapętl scenę</b> albo <b>🎲 Losowo</b>.</li>
+<li><b>Playlista</b> (np. muzyka przed spektaklem i w przerwie): upuść na listę kilka plików audio naraz i odpowiedz <b>Jedna playlista</b> – powstaje jeden zwinięty wiersz (scena w trybie <b>⤵ Po kolei</b>), który po jednym GO gra utwory po kolei. <b>Plik → 📥 Importuj → 🎵 Importuj playlistę (.m3u)…</b> albo upuszczenie pliku <b>.m3u</b> robi to samo z listą z innego odtwarzacza (brakujące pliki i strumienie internetowe są pominięte, pasek stanu mówi ile). Tryb sceny można zmienić na <b>🔁 Zapętl scenę</b> albo <b>🎲 Losowo</b>.</li>
 <li>Nowy cue trafia zaraz za zaznaczony (bez zaznaczenia – na koniec listy). Gdy zaznaczony
 cue jest połączony z następnym (<b>Razem</b>, <b>Auto-GO</b>) albo jest grupą, nowy trafia za koniec
 tego łańcucha lub grupy – pasek stanu mówi gdzie. Przesuniesz go przyciskami <b>W górę / W dół</b>
@@ -236,13 +236,13 @@ wystartowały później same.</li>
 <li><b>Wersje przedstawienia</b> – prawy przycisk na cue → <b>⊘ Wyłącz / włącz w tej wersji</b>.
 Wyłączony cue nigdy nie gra: GO, łańcuchy, Auto-GO, grupy, starty względne i skoki go omijają; na liście ma
 znaczek <b>⊘</b>. Gdy coś na niego wskazuje (Auto-GO poprzedniego, skok, akcja, start względny), pasek stanu
-ostrzega. <b>Przedstawienie → 🎭 Wersje przedstawienia</b>: <b>Zapisz jako nową wersję…</b> (np. „skrócona”,
+ostrzega. <b>Sterowanie → 🎭 Wersje przedstawienia</b>: <b>Zapisz jako nową wersję…</b> (np. „skrócona”,
 „druga obsada”) i przełączanie między wersjami; <b>Pełne przedstawienie</b> to wszystko włączone. Wersje zapisują
 się z przedstawieniem, a bieżąca jest na pasku stanu („Wersja: skrócona · wyłączonych: 12”).</li>
 <li><b>O godzinie</b> (karta <b>3 · Czasy</b>): pozycja startuje sama o podanej godzinie w czasie
 <b>Przedstawienia</b> (np. muzyka przed spektaklem o 17:50, dzwonek przed końcem przerwy). GO ją pomija; ponad
 minutę spóźniona – zostaje pominięta (nigdy nie startuje niespodziewanie później). Pasek stanu pokazuje zegar i
-najbliższą taką pozycję; <b>Przedstawienie → ⏸ Wstrzymaj plan godzinowy</b> zatrzymuje plan, a <b>🕐 Plan godzinowy
+najbliższą taką pozycję; <b>Sterowanie → ⏳ Czas → ⏸ Wstrzymaj plan godzinowy</b> zatrzymuje plan, a <b>🕐 Plan godzinowy
 także w Próbie</b> włącza go na próbach. Na liście przedstawienia znaczek <b>🕐 17:50</b>.</li>
 <li><b>Znaczniki</b>: <b>◆ Znacznik</b> nad przebiegiem stawia znacznik na głowicy, a
 <kbd>Ctrl+K</kbd> – w miejscu, w którym wybrana pozycja właśnie gra (np. wystukując na próbie moment refrenu).
@@ -279,6 +279,7 @@ na tej warstwie, płynnie przejdzie w nowy.</li>
 <p class="tip">💡 Pokaz zdjęć z przenikaniem: kilka zdjęć po kolei na L1, każde z
 <b>Przenikanie 1–2 s</b>, <b>Czas obrazu</b> np. 5 s i <b>Potem: Auto-GO</b> – zdjęcia
 same będą się płynnie zmieniać.</p>
+<p class="tip">🔀 Zdjęcie, które samo przechodzi w następne (<b>Potem: Auto-GO</b> albo scena „po kolei”), oddaje warstwę o czas przenikania wcześniej: następne zdjęcie wchodzi na jeszcze widoczne, bez czarnej przerwy. Jeden czas dla kilku zdjęć naraz: zaznacz je, prawy przycisk → <b>🔀 Przenikanie dla zaznaczonych…</b> (ustawia też <b>Fade In = 0</b>).</p>
 <p class="tip">🎵 <b>Przenikanie dźwięku</b>: to samo pole działa dla muzyki. Gdy nowy utwór (albo film) wchodzi na warstwę, na której coś gra, i ma <b>Przenikanie</b> np. 3 s, poprzedni utwór nie urywa się, tylko cichnie przez 3 s, a nowy w tym czasie narasta. <b>Pauza wszystko</b>, <b>Wygaś wszystko</b> i <b>PANIC</b> obejmują też utwór, który jeszcze cichnie.</p>
 
 <h3>Obraz (karta „Wideo · zdjęcie”)</h3>
@@ -311,7 +312,7 @@ Najwygodniej: w panelu Przebieg kliknij w miejsce na fali, potem
 <b>IN na głowicy</b> (<kbd>I</kbd>) lub <b>OUT na głowicy</b> (<kbd>O</kbd>).
 <b>Reset IN/OUT</b> przywraca cały plik. Tak samo przycinasz film. Przycisk <b>✂</b> obok IN/OUT ustawia je tam, gdzie dźwięk naprawdę się zaczyna i kończy (ucina ciszę na początku i końcu, np. w plikach z internetu; <kbd>Ctrl+Z</kbd> cofa).</li>
 <li><b>Kopiuj / wklej układ obrazu</b> (prawy przycisk na zdjęciu lub filmie): <b>📋 Kopiuj układ obrazu</b> zapamiętuje położenie, rozmiar, kadr, obrót, proporcje, maskę i powierzchnię; <b>📌 Wklej układ na zaznaczone</b> nadaje je wszystkim zaznaczonym zdjęciom i filmom (jedno <kbd>Ctrl+Z</kbd>).</li>
-<li><b>🎞 Zdjęcia do tej muzyki</b> (pokaz zdjęć): zaznacz kilka zdjęć i jeden dźwięk, prawy przycisk → <b>🎞 Zdjęcia do tej muzyki</b>. Muzyka rusza razem ze zwiniętą sceną zdjęć; każde zdjęcie jest pokazywane przez długość muzyki podzieloną przez liczbę zdjęć z krótkim wejściem i wyjściem (0,5 s); długość liczy się z IN/OUT i tempa muzyki, a wszystkie zdjęcia trafiają na jedną warstwę, muzyka na inną. Po ostatnim zdjęciu scena staje, a GO czeka na pozycję za nią. Jedno <kbd>Ctrl+Z</kbd> cofa.</li>
+<li><b>🎞 Zdjęcia do tej muzyki</b> (pokaz zdjęć): zaznacz kilka zdjęć i jeden dźwięk, prawy przycisk → <b>🎞 Zdjęcia do tej muzyki</b>. Muzyka rusza razem ze zwiniętą sceną zdjęć; każde zdjęcie jest pokazywane przez długość muzyki podzieloną przez liczbę zdjęć a zdjęcia przenikają się (1 s; pierwsze wchodzi, ostatnie gaśnie w 0,5 s); długość liczy się z IN/OUT i tempa muzyki, a wszystkie zdjęcia trafiają na jedną warstwę, muzyka na inną. Po ostatnim zdjęciu scena staje, a GO czeka na pozycję za nią. Jedno <kbd>Ctrl+Z</kbd> cofa.</li>
 <li><b>Zapętl cue</b> – zaznacz i wybierz liczbę powtórzeń albo „bez końca”
 (np. muzyka w tle podczas przerwy).</li>
 <li><b>Przy starcie wycisza inne</b> (karta <b>3 · Czasy</b>, poza widokiem podstawowym) – gdy ta pozycja startuje, inne grające dźwięki i filmy wyciszają się przez podaną liczbę sekund. Zmiana muzyki jedną pozycją: stara muzyka na tej samej warstwie łagodnie cichnie, zamiast zostać ucięta (nowa gra w tym czasie na wolnym odtwarzaczu). 0 = nie.</li>
@@ -360,7 +361,7 @@ nakłada się na niego.</li>
 <li>Dotyczy to też dźwięku: muzyka i zdjęcie na tej samej warstwie wyłączają się nawzajem.
 Dlatego nowe cue audio trafiają domyślnie na <b>L2</b>, a zdjęcia i filmy na <b>L1</b>.</li>
 
-<li>Zaślepkę wybierzesz w <b>Przedstawienie → Zaślepka (gdy nic nie gra)</b> albo przyciskiem
+<li>Zaślepkę wybierzesz w <b>Sterowanie → Zaślepka (gdy nic nie gra)</b> albo przyciskiem
 <b>Zmień zaślepkę…</b>: <b>⬛ Czarny ekran</b> (domyślna), <b>🖼 Obraz lub logo…</b> (np. plakat przedstawienia), <b>🎞 Film w pętli (bez dźwięku)…</b> (np. kurtyna) albo <b>▦ Wzór testowy</b> do ustawiania projektora – ten pokazuje się tylko w Przygotowaniu, w Próbie i w Przedstawieniu jest wtedy czarny ekran. Wybór zapisuje się w przedstawieniu (film i obraz jadą też w paczce przenośnej). Film zaślepki staje, gdy coś go zasłania, i rusza, gdy znów go widać.</li>
 </ul>
 
@@ -375,7 +376,7 @@ Dlatego nowe cue audio trafiają domyślnie na <b>L2</b>, a zdjęcia i filmy na 
 <li>Gdy jest tylko jeden monitor, obraz pokazuje się w małym oknie
 <b>„wyjście Live [monitor symulowany]”</b>. Kliknij w nie i naciśnij <kbd>F11</kbd>,
 żeby zobaczyć je na pełnym ekranie; <kbd>F11</kbd> ponownie wraca do okna.</li>
-<li>Wybór ekranu i trybu: <b>Przedstawienie → Urządzenia i sprzęt</b>
+<li>Wybór ekranu i trybu: <b>Sterowanie → 🔌 Urządzenia → Urządzenia i sprzęt</b>
 (lub <b>Urządzenia · wyjścia</b> na dolnym pasku) → <b>Ekran wyjścia Live</b>.
 Przy dwóch projektorach możesz mieć jeden obraz rozciągnięty na oba albo dwa
 niezależne wyjścia A i B.</li>
@@ -385,7 +386,7 @@ niezależne wyjścia A i B.</li>
 Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście systemowe,
 a na pasku stanu pojawia się komunikat; po ponownym podłączeniu program sam do nich wraca.
 Pozycja <b>„Domyślne wyjście systemowe”</b> znaczy: nic nie zapamiętuj, graj tam, gdzie wskazuje system.</li>
-<li><b>Wyjścia dźwięku</b> (<b>Przedstawienie → 🔊 Wyjścia dźwięku</b>): każda pozycja dźwiękowa i film gra na wyjściu <b>Scena</b>, <b>Sala</b> albo <b>Odsłuch</b> (dla aktorów) – wybór w inspektorze, karta 1, <b>Wyjście</b>; <b>Wycisz</b> to film bez dźwięku. W oknie wyjść wybierasz, który głośnik jest którym wyjściem na <b>tym</b> komputerze, co ma grać, <b>gdy go brak</b> (Scena → wyjście domyślne, Sala → jak Scena, Odsłuch → cisza: prywatna ścieżka nigdy nie trafia do widowni), <b>korektę</b> w dB, <b>▶ Test</b> każdego wyjścia i <b>Testuj wszystkie po kolei</b>. Mapę można wyeksportować i zaimportować na innym komputerze. W czasie przedstawienia okno tylko pokazuje mapę. Gdy pozycja gra na zapasowym wyjściu, mówi o tym pasek stanu.</li>
+<li><b>Wyjścia dźwięku</b> (<b>Sterowanie → 🔌 Urządzenia → 🔊 Wyjścia dźwięku</b>): każda pozycja dźwiękowa i film gra na wyjściu <b>Scena</b>, <b>Sala</b> albo <b>Odsłuch</b> (dla aktorów) – wybór w inspektorze, karta 1, <b>Wyjście</b>; <b>Wycisz</b> to film bez dźwięku. W oknie wyjść wybierasz, który głośnik jest którym wyjściem na <b>tym</b> komputerze, co ma grać, <b>gdy go brak</b> (Scena → wyjście domyślne, Sala → jak Scena, Odsłuch → cisza: prywatna ścieżka nigdy nie trafia do widowni), <b>korektę</b> w dB, <b>▶ Test</b> każdego wyjścia i <b>Testuj wszystkie po kolei</b>. Mapę można wyeksportować i zaimportować na innym komputerze. W czasie przedstawienia okno tylko pokazuje mapę. Gdy pozycja gra na zapasowym wyjściu, mówi o tym pasek stanu.</li>
 <li><b>Tempo</b> (inspektor, karta 1): szybkość odtwarzania dźwięku lub filmu od 50 do 200 % – np. muzyka dopasowana do choreografii. <b>Zachowaj wysokość dźwięku</b> (domyślnie): szybciej albo wolniej bez zmiany wysokości nut. Starty „na znaczniku” i „przed końcem” liczą się w czasie rzeczywistym, z tempem.</li>
 <li>Gdy zostaje <b>tylko projektor</b> (<kbd>Win+P</kbd> → <b>Tylko drugi ekran</b> albo zamknięta klapa
 laptopa), program pokazuje na nim panel reżysera i podgląd wyjścia w oknie.</li>
@@ -426,7 +427,7 @@ program pokazuje, co powinno zostać na scenie przed tym cue (obraz bez czasu wy
 z poziomem i kryciem ustawionymi po drodze), po potwierdzeniu zatrzymuje to, co gra, przywraca tę scenę i ustawia
 GO na wybranym cue. Muzyka, która po prostu gra do końca, nie wraca – jej moment zależy od operatora.
 W Przedstawieniu niedostępne.</p>
-<p><b>PIN wyjścia</b> (opcja, <b>Sterowanie → PIN wyjścia z Przedstawienia…</b>, tylko
+<p><b>PIN wyjścia</b> (opcja, <b>Sterowanie → ⚙ Ustawienia prowadzenia → PIN wyjścia z Przedstawienia…</b>, tylko
 w Przygotowaniu): 4 cyfry zapamiętane na tym komputerze, nigdy w pliku pokazu. Z PIN-em każde wyjście z Przedstawienia
 (przytrzymanie zakładki, <b>Zakończ przedstawienie…</b>) najpierw prosi o niego w polu pod górnym paskiem – nie w oknie;
 pole znika samo po 10 s bez pisania. Zły PIN tylko to mówi, bez blokady; po drugim program podpowiada wyjście
@@ -458,7 +459,7 @@ w 1 s, obraz w 0,5 s), przywraca obraz, który ten GO zastąpił, wznawia przerw
 i ustawia GO z powrotem na ten cue – wystarczy dać GO jeszcze raz we właściwej chwili. Cue akcji zostają, jak
 były. Najedź na przycisk, a zobaczysz, co dokładnie zrobi. Z klawiatury: menu <b>Sterowanie → Cofnij ostatnie GO</b>
 (celowo bez skrótu). Następne GO, PANIC, WYGAŚ i zmiana trybu kończą tę możliwość.</li>
-<li><b>Pilot prezentera i dodatkowe klawisze</b> – <b>Sterowanie → ⌨ Klawisze i pilot prezentera…</b>: do GO, poprzedniej / następnej pozycji (tylko zaznaczenie), Wstrzymaj wszystko, Wygaś wszystko i Cofnij GO możesz dodać własne klawisze tego komputera. <b>🎯 Kreator pilota…</b> prosi po kolei o przyciski pilota (GO, poprzednia, pauza); <b>Pilot prezentera</b> wpisuje typowe klawisze (PgDown = GO, PgUp = poprzednia, B lub kropka = pauza). Działają tylko w Próbie i w Przedstawieniu, nie podczas pisania; klawisz efektu przedstawienia ma pierwszeństwo, a klawisze programu zostają (Spacja = GO, Esc dwa razy = PANIC). PANIC-u celowo nie ma na liście. Nie używaj przycisku „pokaz slajdów” pilota: wysyła F5 albo Esc.</li>
+<li><b>Pilot prezentera i dodatkowe klawisze</b> – <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⌨ Klawisze i pilot prezentera…</b>: do GO, poprzedniej / następnej pozycji (tylko zaznaczenie), Wstrzymaj wszystko, Wygaś wszystko i Cofnij GO możesz dodać własne klawisze tego komputera. <b>🎯 Kreator pilota…</b> prosi po kolei o przyciski pilota (GO, poprzednia, pauza); <b>Pilot prezentera</b> wpisuje typowe klawisze (PgDown = GO, PgUp = poprzednia, B lub kropka = pauza). Działają tylko w Próbie i w Przedstawieniu, nie podczas pisania; klawisz efektu przedstawienia ma pierwszeństwo, a klawisze programu zostają (Spacja = GO, Esc dwa razy = PANIC). PANIC-u celowo nie ma na liście. Nie używaj przycisku „pokaz slajdów” pilota: wysyła F5 albo Esc.</li>
 <li>Przycisk <b>GO</b> mówi, co zrobi: <b>▶ GO: #3 'nazwa'</b> – wszystko gotowe. Robi się
 bursztynowy (nigdy czerwony), gdy coś jest inaczej: <b>⌨</b> klawiatura jest w innym oknie (kliknij GO),
 <b>⚠</b> brak pliku, <b>⏳</b> GO czeka, bo gra cue wyłączny (<kbd>Ctrl+Spacja</kbd> wymusza),
@@ -475,8 +476,8 @@ Dwuklik na wierszu tylko ustawia go jako następny (odpalisz go <kbd>Spacją</kb
 <li>Po prawej kolumna <b>Teraz gra</b>: karta na każdy grający cue – nazwa, warstwa,
 stan tylko gdy jest wyjątkiem (<b>PAUZA</b>, <b>PĘTLA ∞</b>, <b>startuje za 0:03</b>), ile już grało i duże
 <b>zostało</b> (ze znakiem <b>⚠</b> na 5 s przed końcem, gdy następne GO czeka na Ciebie), oraz przyciski tylko dla
-tego cue: <b>⏸</b> pauza, <b>Wygaś</b>, <b>Zwolnij pętlę</b>. Obrazy i napisy zajmują jedną linię z <b>Wygaś</b>.
-Nowy cue dostaje pierwsze wolne miejsce, więc karty nie skaczą. Panel warstw i kłódka zostają
+tego cue: <b>❚❚</b> pauza, <b>Wygaś</b>, <b>Zwolnij pętlę</b>. Obrazy i napisy zajmują jedną linię z <b>Wygaś</b>.
+Nowy cue dostaje pierwsze wolne miejsce, więc karty nie skaczą. Gdy grają trzy albo więcej dźwięków i filmów, dalsze karty są niższe: tylko nazwa z <b>Wygaś</b> i pasek czasu – wszystko mieści się bez przewijania. Panel warstw i kłódka zostają
 w Przygotowaniu; <b>Pauza wszystko</b> stoi obok GO.</li>
 <li>Na karcie dźwięku i wideo są też <b>−10 s</b> / <b>+10 s</b> (na przedstawieniu przytrzymaj 1,5 s, w Próbie wystarczy chwila,
 żeby przypadkowe kliknięcie nie przesunęło muzyki) i suwak <b>poziomu tego cue</b> – Twoja korekta tylko na teraz
@@ -487,10 +488,10 @@ na Twoje GO (np. aktor się spóźnia) – <b>Pauza wszystko</b> zatrzymałaby t
 <b>Podgląd wyjścia</b> – to, co widzi widownia, w małym okienku (do 5 klatek na sekundę); <b>▾</b> zwija go,
 program pamięta to na tym komputerze.</li>
 <li>Notatki z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty. W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.</li>
-<li><b>Wygaś</b> na karcie ścisza pozycję łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej pozycjami jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do pozycji po scenie.</li>
+<li><b>Wygaś</b> na karcie ścisza pozycję łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej pozycjami jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do pozycji po scenie.</li>
 <li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w Inspektorze zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b> albo <b>Gra, dopóki trzymasz klawisz</b>. Kilka pozycji na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li>
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
-<li><b>Odliczanie</b> (np. przerwy): <b>Przedstawienie → ⏳ Odliczanie (przerwa)…</b> albo cue akcji
+<li><b>Odliczanie</b> (np. przerwy): <b>Sterowanie → ⏳ Czas → ⏳ Odliczanie (przerwa)…</b> albo cue akcji
 <b>⏳ Odliczanie</b> (tytuł i minuty; 0 minut zatrzymuje). Licznik jest na pasku stanu, a <b>🖥 Duże odliczanie
 (kulisy)</b> otwiera duże okno – można je przesunąć na drugi ekran. Ostatnia minuta jest bursztynowa i miga.</li>
 <li><b>Dziennik przebiegu</b>: czas każdego GO od pierwszego GO zapisuje się po wyjściu z przedstawienia w
@@ -518,7 +519,7 @@ pauzy uruchamia tylko nowy cue (np. komunikat); to, co wstrzymane, czeka na <b>W
 <!-- ================================================================== -->
 <h2><a name="dodatki"></a>12. Dodatki: pilot w telefonie, mapping, ustawienia</h2>
 <h3>Pilot w telefonie (sieć Wi-Fi)</h3>
-<p><b>Przedstawienie → Zdalne sterowanie LAN</b> (<kbd>F8</kbd>) → <b>uruchom usługi</b>
+<p><b>Sterowanie → 🔌 Urządzenia → Zdalne sterowanie LAN</b> (<kbd>F8</kbd>) → <b>uruchom usługi</b>
 i zeskanuj kod QR telefonem (telefon i komputer w tej samej sieci Wi-Fi).
 W telefonie pojawi się duży przycisk GO, pauza, wygaszenie i PANIC.
 Drugi kod (<b>Monitor reżysera</b>) daje podgląd bez możliwości klikania – np. dla reżysera
@@ -537,7 +538,7 @@ maski okrągłe i wycięcia. Cue przypisujesz do powierzchni w Inspektorze
 według scenariusza, dodać napisy, sceny, notatki dla operatora, a na koniec
 sprawdzić całość. Ty tylko sprawdzasz wynik w <b>Próbie</b> i prowadzisz przedstawienie.</p>
 <ol>
-<li><b>Przedstawienie → 🤖 Asystent AI…</b> → <b>Dodaj do Claude Desktop…</b>. Program tworzy plik
+<li><b>Sterowanie → 🤖 Asystent AI → 🤖 Asystent AI…</b> → <b>Dodaj do Claude Desktop…</b>. Program tworzy plik
 rozszerzenia (w <i>Dokumenty\BlindCue</i>) i otwiera go – w Claude Desktop potwierdź instalację
 i wskaż foldery, z których asystent może korzystać (folder przedstawień i folder z mediami).
 Dla innych programów MCP (Claude Code, Cursor…) użyj <b>Kopiuj ustawienia dla innych programów</b>.</li>

@@ -664,6 +664,7 @@ class CueSequenceTable(QTableWidget):
     layout_copy_requested = Signal()     # 4.4: copy the picture layout of the selected cue
     layout_paste_requested = Signal()    # 4.4: paste it onto the selected pictures / videos
     slideshow_requested = Signal()       # 4.3: the selected pictures to the selected music
+    crossfade_selected_requested = Signal()  # #14: one crossfade for the selected pictures
     file_choose_requested = Signal()     # 5.10: pick (another) file for the selected cue
     # Media files dropped on the list: (paths, row they were dropped on, -1 = below the last row)
     files_dropped = Signal(list, int)
@@ -865,6 +866,9 @@ class CueSequenceTable(QTableWidget):
         if len(rows) >= 3:
             act_show = menu.addAction("🎞 Foto con questa musica")
             act_show.triggered.connect(self.slideshow_requested)
+        if len(rows) >= 2:
+            act_xfade = menu.addAction("🔀 Dissolvenza incrociata per le selezionate…")
+            act_xfade.triggered.connect(self.crossfade_selected_requested)
         menu.addSeparator()
         act_from = menu.addAction("⏯ Prova da qui (prepara la scena)")
         act_from.triggered.connect(self.rehearse_from_requested)
