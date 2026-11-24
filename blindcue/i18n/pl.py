@@ -4018,4 +4018,6 @@ T: dict[str, str] = {
         '📋 Raport z ostatniego przedstawienia',
     'Nessun rapporto: si scrive alla fine dello spettacolo (non della prova)':
         'Brak raportu: zapisuje się po zakończeniu przedstawienia (nie próby)',
+    'Creato {}. In Claude Desktop: Impostazioni → Estensioni (o «App desktop» → Estensioni → Gestisci) → Impostazioni avanzate → «Installa estensione…» e scegli questo file, poi indica le cartelle. Se non funziona: «Copia le impostazioni per altri programmi» e in Claude Desktop Impostazioni → Sviluppatore → Modifica configurazione.':
+        'Utworzono {}. W Claude Desktop: Ustawienia (Settings) → Rozszerzenia (Extensions; albo „Aplikacja desktopowa” → Rozszerzenia → Zarządzaj) → Ustawienia zaawansowane (Advanced settings) → „Install Extension…” i wybierz ten plik, potem wskaż foldery. Jeśli to nie zadziała: „Kopiuj ustawienia dla innych programów” i w Claude Desktop Ustawienia → Developer → Edit Config.',
 }

@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 from i18n import tr
@@ -89,6 +92,18 @@ class AssistantDialog(QDialog):
             build_mcpb(target, APP_VERSION.split("-")[0], icon.read_bytes() if icon.is_file() else None)
         except OSError as exc:
             self.lbl_status.setText(tr("Impossibile creare il file: {}").format(exc))
+            return
+        if sys.platform == "win32":
+            # Claude Desktop for Windows has no file type for .mcpb: opening the file only made Windows ask
+            # which program to use (2026-11-24). The install starts in Claude: show the file, bring Claude up
+            # and say where to click.
+            subprocess.Popen(["explorer", "/select,", os.path.normpath(str(target))])  # noqa: S603,S607
+            QDesktopServices.openUrl(QUrl("claude://"))
+            self.lbl_status.setText(tr(
+                "Creato {}. In Claude Desktop: Impostazioni → Estensioni (o «App desktop» → Estensioni → Gestisci) "
+                "→ Impostazioni avanzate → «Installa estensione…» e scegli questo file, poi indica le cartelle. "
+                "Se non funziona: «Copia le impostazioni per altri programmi» e in Claude Desktop Impostazioni → "
+                "Sviluppatore → Modifica configurazione.").format(target))
             return
         opened = QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
         self.lbl_status.setText(

@@ -149,10 +149,16 @@ def test_dialog_makes_the_extension_and_mirrors_the_switch(setup, monkeypatch):
     opened: list = []
     monkeypatch.setattr(assistant_dialog, "_documents", lambda: home / "Documents")
     monkeypatch.setattr(assistant_dialog.QDesktopServices, "openUrl", staticmethod(lambda url: opened.append(url) or True))
+    shown: list = []
+    monkeypatch.setattr(assistant_dialog.subprocess, "Popen", lambda args, **k: shown.append(args))
+    monkeypatch.setattr(assistant_dialog.sys, "platform", "win32")
     dlg = assistant_dialog.AssistantDialog(win)
     dlg.btn_claude.click()
     made = home / "Documents" / "BlindCue" / "blindcue-show-assistant.mcpb"
-    assert made.is_file() and len(opened) == 1
+    assert made.is_file()
+    # Windows: Claude Desktop has no file type for .mcpb - the file is shown, Claude is brought up, steps said
+    assert shown and shown[0][:2] == ["explorer", "/select,"] and [u.scheme() for u in opened] == ["claude"]
+    assert "Install" in dlg.lbl_status.text() or "Installa" in dlg.lbl_status.text() or "Zainstaluj" in dlg.lbl_status.text()
     assert "manifest.json" in zipfile.ZipFile(made).namelist()
     dlg.chk_allow.setChecked(True)
     assert win._act_assistant.isChecked() and win._assistant_server is not None

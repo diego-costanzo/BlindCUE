@@ -3796,4 +3796,6 @@ T: dict[str, str] = {
         '📋 Report of the last show',
     'Nessun rapporto: si scrive alla fine dello spettacolo (non della prova)':
         'No report yet: it is written when a show ends (not a rehearsal)',
+    'Creato {}. In Claude Desktop: Impostazioni → Estensioni (o «App desktop» → Estensioni → Gestisci) → Impostazioni avanzate → «Installa estensione…» e scegli questo file, poi indica le cartelle. Se non funziona: «Copia le impostazioni per altri programmi» e in Claude Desktop Impostazioni → Sviluppatore → Modifica configurazione.':
+        'Created {}. In Claude Desktop: Settings → Extensions (or «Desktop app» → Extensions → Manage) → Advanced settings → «Install Extension…» and choose this file, then pick the folders. If that does not work: «Copy the settings for other programs» and in Claude Desktop Settings → Developer → Edit Config.',
 }
