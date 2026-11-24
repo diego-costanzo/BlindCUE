@@ -23,12 +23,14 @@ from PySide6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFrame,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QSlider,
     QVBoxLayout,
     QWidget,
@@ -100,13 +102,25 @@ class EditCueDialog(QDialog):
         self.setWindowTitle("Modifica cue")
         self.setAccessibleName("Modifica cue")
         self.setModal(True)
-        root = QVBoxLayout(self)
-        root.setSpacing(8)
+        outer = QVBoxLayout(self)
+        outer.setSpacing(8)
         self.lbl_title = QLabel()
         self.lbl_title.setTextFormat(Qt.TextFormat.PlainText)
         self.lbl_title.setStyleSheet("QLabel { font-size: 15px; font-weight: bold; }")
         self.lbl_title.setText(f"{self._icon()} {cue.name}")
-        root.addWidget(self.lbl_title)
+        outer.addWidget(self.lbl_title)
+        # The fields scroll; the title, the status and OK / Cancel always stay on screen
+        # (a video cue was taller than a 1080p laptop screen at 125 %).
+        self.body = QWidget()
+        root = QVBoxLayout(self.body)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(8)
+        self.scroll = QScrollArea()
+        self.scroll.setWidgetResizable(True)
+        self.scroll.setFrameShape(QFrame.Shape.NoFrame)
+        self.scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.scroll.setWidget(self.body)
+        outer.addWidget(self.scroll, stretch=1)
 
         root.addWidget(self._build_common())
         if self._kind == MediaType.GROUP:
@@ -124,15 +138,17 @@ class EditCueDialog(QDialog):
             hint.setWordWrap(True)
             root.addWidget(hint)
 
+        root.addStretch(1)
         self.lbl_status = QLabel("")
         self.lbl_status.setWordWrap(True)
         self.lbl_status.setStyleSheet("QLabel { color: #fbbf24; }")
-        root.addWidget(self.lbl_status)
+        outer.addWidget(self.lbl_status)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         self.buttons = buttons
-        root.addWidget(buttons)
+        outer.addWidget(buttons)
+        self._fit_to_screen()
 
         if self._kind in TIMED:
             self._start_player(audio_device)
@@ -146,6 +162,21 @@ class EditCueDialog(QDialog):
         self.ed_name.selectAll()
 
     # ── Building ──────────────────────────────────────────────────────
+
+    def _fit_to_screen(self) -> None:
+        """As tall as the fields need, never taller than the screen (they scroll then)."""
+        from PySide6.QtGui import QGuiApplication
+
+        screen = self.screen() or QGuiApplication.primaryScreen()
+        avail = screen.availableGeometry() if screen is not None else None
+        content = self.body.sizeHint()
+        chrome = self.lbl_title.sizeHint().height() + self.buttons.sizeHint().height() + 60
+        width = content.width() + self.scroll.verticalScrollBar().sizeHint().width() + 30
+        height = content.height() + chrome
+        if avail is not None:
+            width = min(width, int(avail.width() * 0.95))
+            height = min(height, int(avail.height() * 0.92))
+        self.resize(width, height)
 
     @staticmethod
     def _copy(value: Any) -> Any:
