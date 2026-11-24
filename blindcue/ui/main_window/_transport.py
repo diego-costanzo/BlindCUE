@@ -408,6 +408,10 @@ class _TransportMixin:
         first_cue = self._cues[start_idx]
         ref = format_cue_ref(start_idx, first_cue)
         next_idx = last_fired_idx + 1
+        if getattr(self._cues[last_fired_idx], "playlist", False):
+            from engine.show_engine import block_end
+
+            next_idx = block_end(self._cues, last_fired_idx) + 1  # 3.3/4.3: GO goes on after the playlist
         while next_idx < len(self._cues) and ShowEngine.outside_go_order(self._cues[next_idx]):
             next_idx += 1  # effects and relative starts are not in the GO order
         fired_cue = self._cues[last_fired_idx]

@@ -660,6 +660,9 @@ class CueSequenceTable(QTableWidget):
     edit_text_requested = Signal()
     enabled_toggle_requested = Signal()  # 2.3: cue on/off in this version of the show
     rehearse_from_requested = Signal()   # 2.4: rehearse from the selected cue
+    layout_copy_requested = Signal()     # 4.4: copy the picture layout of the selected cue
+    layout_paste_requested = Signal()    # 4.4: paste it onto the selected pictures / videos
+    slideshow_requested = Signal()       # 4.3: the selected pictures to the selected music
     # Media files dropped on the list: (paths, row they were dropped on, -1 = below the last row)
     files_dropped = Signal(list, int)
 
@@ -847,6 +850,14 @@ class CueSequenceTable(QTableWidget):
 
             menu.addSeparator()
 
+        act_copy = menu.addAction("📋 Copia il layout dell'immagine")
+        act_copy.triggered.connect(self.layout_copy_requested)
+        act_paste = menu.addAction("📌 Incolla il layout sulle selezionate")
+        act_paste.triggered.connect(self.layout_paste_requested)
+        if len(rows) >= 3:
+            act_show = menu.addAction("🎞 Foto con questa musica")
+            act_show.triggered.connect(self.slideshow_requested)
+        menu.addSeparator()
         act_from = menu.addAction("⏯ Prova da qui (prepara la scena)")
         act_from.triggered.connect(self.rehearse_from_requested)
         act_onoff = menu.addAction("⊘ Escludi / includi in questa versione")

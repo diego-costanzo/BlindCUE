@@ -51,8 +51,10 @@ from ui.main_window._versions import _VersionsMixin
 from ui.main_window._rehearse_from import _RehearseFromMixin
 from ui.main_window._countdown import _CountdownMixin
 from ui.main_window._clock_plan import _ClockPlanMixin
+from ui.main_window._layout_copy import _LayoutCopyMixin
 from ui.main_window._markers import _MarkersMixin
 from ui.main_window._search import _SearchMixin
+from ui.main_window._slideshow import _SlideshowMixin
 
 
 class MainWindow(
@@ -91,8 +93,10 @@ class MainWindow(
     _RehearseFromMixin,
     _CountdownMixin,
     _ClockPlanMixin,
+    _LayoutCopyMixin,
     _MarkersMixin,
     _SearchMixin,
+    _SlideshowMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -230,6 +234,8 @@ class MainWindow(
         self._clock_setup()  # cues at a time of day (stage 2, 2.6)
         self._markers_setup()  # markers in a file, start on a marker (stage 2, 2.7)
         self._search_setup()  # Ctrl+F (stage 2, 2.8)
+        self._layout_setup()  # copy / paste the picture layout (stage 4, 4.4)
+        self._slideshow_setup()  # photos to music (stage 4, 4.3)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()

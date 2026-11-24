@@ -607,6 +607,7 @@ def main() -> int:
             return
         now = time.monotonic()
         done_layers: list[int] = []
+        ticked = dict(live_image_envelopes)  # the entries of this tick (a picture that ends may start the next)
         for l_idx, entry in list(live_image_envelopes.items()):
             if "paused_at" in entry:
                 continue  # held by Pause All; a picture started by GO during the pause runs
@@ -658,7 +659,10 @@ def main() -> int:
                 done_layers.append(l_idx)
 
         for l_idx in done_layers:
-            live_image_envelopes.pop(l_idx, None)
+            if live_image_envelopes.get(l_idx) is ticked.get(l_idx):
+                # Only the entry that ended: the next picture an Auto-GO / a scene started on the same
+                # layer during this tick keeps its own (it used to be dropped and never ended).
+                live_image_envelopes.pop(l_idx, None)
         if not live_image_envelopes:
             live_img_timer.stop()
 

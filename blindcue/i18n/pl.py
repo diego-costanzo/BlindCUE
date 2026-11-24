@@ -3276,4 +3276,32 @@ T: dict[str, str] = {
         'Zachowaj wysokość dźwięku',
     "Più veloce o più lento senza cambiare l'altezza delle note.":
         'Szybciej albo wolniej bez zmiany wysokości dźwięków.',
+    "📋 Copia il layout dell'immagine":
+        '📋 Kopiuj układ obrazu',
+    '📌 Incolla il layout sulle selezionate':
+        '📌 Wklej układ na zaznaczone',
+    "Layout: scegli un'immagine o un video":
+        'Układ: wybierz zdjęcie albo film',
+    "Layout copiato da '{}'":
+        "Skopiowano układ z '{}'",
+    "Prima copia il layout di un'immagine o di un video":
+        'Najpierw skopiuj układ zdjęcia albo filmu',
+    'Layout incollato su {} cue':
+        'Wklejono układ na pozycje: {}',
+    '🎞 Foto con questa musica':
+        '🎞 Zdjęcia do tej muzyki',
+    'Foto con musica: seleziona almeno due immagini e un solo audio':
+        'Zdjęcia do muzyki: zaznacz co najmniej dwa zdjęcia i jeden dźwięk',
+    'Foto con musica: non dentro una scena':
+        'Zdjęcia do muzyki: nie wewnątrz sceny',
+    "Foto con musica: durata di '{}' sconosciuta":
+        "Zdjęcia do muzyki: nieznana długość '{}'",
+    'Foto: {}':
+        'Zdjęcia: {}',
+    "Foto con musica: {} immagini da {} s su '{}' ({} s)":
+        "Zdjęcia do muzyki: zdjęcia {} × {} s do '{}' ({} s)",
+    "Foto con musica: '{}' ha un loop o sezioni":
+        "Zdjęcia do muzyki: '{}' ma pętlę albo sekcje",
+    'Foto con musica: troppe immagini (almeno 1 s ciascuna)':
+        'Zdjęcia do muzyki: za dużo zdjęć (co najmniej 1 s na zdjęcie)',
 }

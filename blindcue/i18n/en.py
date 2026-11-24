@@ -3054,4 +3054,32 @@ T: dict[str, str] = {
         'Keep the pitch',
     "Più veloce o più lento senza cambiare l'altezza delle note.":
         'Faster or slower without changing the pitch of the notes.',
+    "📋 Copia il layout dell'immagine":
+        '📋 Copy the picture layout',
+    '📌 Incolla il layout sulle selezionate':
+        '📌 Paste the layout onto the selected',
+    "Layout: scegli un'immagine o un video":
+        'Layout: choose a picture or a video',
+    "Layout copiato da '{}'":
+        "Layout copied from '{}'",
+    "Prima copia il layout di un'immagine o di un video":
+        'First copy the layout of a picture or a video',
+    'Layout incollato su {} cue':
+        'Layout pasted onto {} cues',
+    '🎞 Foto con questa musica':
+        '🎞 Photos to this music',
+    'Foto con musica: seleziona almeno due immagini e un solo audio':
+        'Photos to music: select at least two pictures and one sound',
+    'Foto con musica: non dentro una scena':
+        'Photos to music: not inside a scene',
+    "Foto con musica: durata di '{}' sconosciuta":
+        "Photos to music: the length of '{}' is not known",
+    'Foto: {}':
+        'Photos: {}',
+    "Foto con musica: {} immagini da {} s su '{}' ({} s)":
+        "Photos to music: {} pictures of {} s to '{}' ({} s)",
+    "Foto con musica: '{}' ha un loop o sezioni":
+        "Photos to music: '{}' has a loop or sections",
+    'Foto con musica: troppe immagini (almeno 1 s ciascuna)':
+        'Photos to music: too many pictures (at least 1 s each)',
 }
