@@ -134,6 +134,7 @@ class _MenuMixin:
         devices_menu.addAction(
             QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
         )
+        self._add_output_window_actions(devices_menu)  # 4.4/4.5 (MultiPlay): identify, to the front, clear
         settings_menu = show_menu.addMenu("⚙ Impostazioni dello spettacolo")
         settings_menu.addAction(QAction("⏬ Tempo del pulsante Sfuma…", self,
                                         triggered=self._ask_fade_button_seconds))  # evaluation 2026-11-24
@@ -216,6 +217,7 @@ class _MenuMixin:
         self._act_earcons.setChecked(self._earcon_mgr.enabled)
         self._act_earcons.toggled.connect(self._set_earcons_enabled)
         view_menu.addAction(self._act_earcons)
+        self._add_thumbnail_action(view_menu)  # 4.4: thumbnails in the list (off with the Eco profile)
 
         view_menu.addSeparator()
         self._act_surface_mapping = QAction("📐 &Studio Superfici di Proiezione & Mapping…", self)

@@ -3830,4 +3830,50 @@ T: dict[str, str] = {
         'Hide the warnings',
     'Nessun avviso':
         'No warnings',
+    'ultimo fotogramma':
+        'last frame',
+    "Alla fine resta l'ultimo fotogramma":
+        'Keep the last frame at the end',
+    "Il video si ferma sull'ultimo fotogramma, che resta sullo schermo finché un'altra cue prende il suo layer o lo sfumi (Sfuma, Sfuma tutto, Blackout). Non con il loop infinito.":
+        'The video stops on its last frame, which stays on the screen until another cue takes its layer or you fade it (Fade, Fade All, Blackout). Not with an endless loop.',
+    'Dissolvenza':
+        'Dissolve',
+    'Scorrimento':
+        'Slide',
+    "Come entra l'immagine: in dissolvenza sopra la precedente, oppure scorrendo da destra mentre la precedente esce a sinistra.":
+        'How the picture comes in: dissolving over the previous one, or sliding in from the right while the previous one leaves to the left.',
+    "Tipo di passaggio dell'immagine":
+        'Kind of picture passage',
+    '⚠ Tempo sullo schermo troppo breve: almeno {} s (passaggi + 0,5 s)':
+        '⚠ Time on screen too short: at least {} s (passages + 0.5 s)',
+    '⚠ almeno {} s':
+        '⚠ at least {} s',
+    'immagine sullo schermo meno dei suoi passaggi + 0,5 s':
+        'picture on the screen shorter than its passages + 0.5 s',
+    '🔢 Identifica gli schermi':
+        '🔢 Identify the screens',
+    '🖥 Porta le uscite in primo piano':
+        '🖥 Bring the outputs to the front',
+    'Le finestre di uscita tornano sul loro schermo e sopra le altre finestre':
+        'The output windows go back to their screens, on top of the other windows',
+    '🧹 Pulisci le uscite':
+        '🧹 Clear the outputs',
+    'Immagini, video e ultimi fotogrammi sfumano dai proiettori; il suono continua':
+        'Pictures, videos and last frames fade from the projectors; the sound plays on',
+    'Uscite in primo piano: {}':
+        'Outputs in front: {}',
+    'Nessuna uscita aperta':
+        'No output window is open',
+    'Uscite pulite: immagini e video sfumano, il suono continua':
+        'Outputs cleared: pictures and videos fade, the sound plays on',
+    'Qualcosa è in onda: i numeri degli schermi non compaiono ora':
+        'Something is on air: the screen numbers are not shown now',
+    '🖼 Miniature nella lista':
+        '🖼 Thumbnails in the list',
+    'Una piccola immagine di foto e video nella lista; su un computer lento meglio spenta':
+        'A small picture of photos and videos in the list; better off on a slow computer',
+    'Miniature nella lista: accese':
+        'Thumbnails in the list: on',
+    'Miniature nella lista: spente':
+        'Thumbnails in the list: off',
 }

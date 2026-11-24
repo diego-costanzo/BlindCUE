@@ -59,6 +59,7 @@ ROLE_LIVE_WARN = Qt.ItemDataRole.UserRole + 31       # ends in a few seconds, ne
 ROLE_PLAYED = Qt.ItemDataRole.UserRole + 32          # started in this run of the show (✓, dimmed)
 ROLE_PAUSED = Qt.ItemDataRole.UserRole + 33          # on air but held by a pause (❚❚, not ●)
 ROLE_EFFECT_KEY = Qt.ItemDataRole.UserRole + 34      # effect on demand: "⌨ B" ("⌨" without a key), else ""
+ROLE_THUMB_PATH = Qt.ItemDataRole.UserRole + 60      # 4.4: picture / video file of the thumbnail, else ""
 
 
 def paint_live_progress(painter: QPainter, rect: QRect, fraction: float, warn: bool) -> None:
@@ -406,7 +407,23 @@ class CueTableDelegate(QStyledItemDelegate):
                 )
                 left_x += 18
 
-            badge_info = get_media_badge(media_type, is_mono)
+            thumb = None
+            thumb_path = str(index.data(ROLE_THUMB_PATH) or "")
+            source = getattr(opt.widget, "thumbnail_source", None)
+            if thumb_path and source is not None:
+                thumb = source(thumb_path, media_type)  # 4.4: None until it is made (or switched off)
+            badge_info = None if thumb is not None else get_media_badge(media_type, is_mono)
+            if thumb is not None:
+                box_h = max(12, rect.height())
+                box = QRect(left_x, rect.top() + (rect.height() - box_h) // 2, int(box_h * 16 / 9), box_h)
+                painter.setPen(Qt.PenStyle.NoPen)
+                painter.setBrush(QColor("#0b0d12"))
+                painter.drawRoundedRect(box, 2, 2)
+                fitted = thumb.scaled(box.size(), Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+                painter.drawPixmap(box.left() + (box.width() - fitted.width()) // 2,
+                                   box.top() + (box.height() - fitted.height()) // 2, fitted)
+                left_x += box.width() + 6
             if badge_info:
                 tag_txt, bg_clr, fg_clr, border_clr = badge_info
                 pill_w, pill_h = (32, 16) if is_group else (28, 16)

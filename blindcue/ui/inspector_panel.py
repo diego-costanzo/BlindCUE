@@ -1124,6 +1124,16 @@ class CueInspectorPanel(QGroupBox):
         )
         self.spin_crossfade.setAccessibleName("Crossfade")
         fade_grid.addWidget(self.spin_crossfade, 1, 1)
+        # 4.4 (MultiPlay): how two pictures cross - dissolve or slide in.
+        self.combo_crossfade_style = QComboBox()
+        self.combo_crossfade_style.addItem("Dissolvenza", "dissolve")
+        self.combo_crossfade_style.addItem("Scorrimento", "slide")
+        self.combo_crossfade_style.setToolTip(
+            "Come entra l'immagine: in dissolvenza sopra la precedente, oppure scorrendo da destra "
+            "mentre la precedente esce a sinistra.")
+        self.combo_crossfade_style.setAccessibleName("Tipo di passaggio dell'immagine")
+        self.combo_crossfade_style.currentIndexChanged.connect(lambda _i: self._emit_change("crossfade_style"))
+        fade_grid.addWidget(self.combo_crossfade_style, 1, 2, 1, 2)
         fade_grid.setColumnStretch(1, 1)
         fade_grid.setColumnStretch(3, 1)
         l2.addLayout(fade_grid)
@@ -1158,6 +1168,14 @@ class CueInspectorPanel(QGroupBox):
         self.btn_trim_silence.clicked.connect(self.silence_trim_requested.emit)
         io_row.addWidget(self.btn_trim_silence)
         l3.addLayout(io_row)
+        # 4.4: a video can stay on its last frame instead of leaving the layer empty.
+        self.chk_hold_last_frame = QCheckBox("Alla fine resta l'ultimo fotogramma")
+        self.chk_hold_last_frame.setToolTip(
+            "Il video si ferma sull'ultimo fotogramma, che resta sullo schermo finché un'altra cue "
+            "prende il suo layer o lo sfumi (Sfuma, Sfuma tutto, Blackout). Non con il loop infinito.")
+        self.chk_hold_last_frame.setAccessibleName("Alla fine resta l'ultimo fotogramma")
+        self.chk_hold_last_frame.toggled.connect(lambda _c: self._emit_change("hold_last_frame"))
+        l3.addWidget(self.chk_hold_last_frame)
         lay.addWidget(c3)
 
         # Card 4: Ripetizione Loop
@@ -1987,8 +2005,30 @@ class CueInspectorPanel(QGroupBox):
             if reload:
                 self._load_start_rel(cue)
 
+    def _refresh_hold_warning(self) -> None:
+        """4.4: a timed picture shown shorter than its passages + 0.5 s is never seen still."""
+        if getattr(self, "_current_media_type", None) != MediaType.IMAGE:
+            return
+        from engine.picture_timing import min_hold_seconds, too_short
+        from i18n import tr
+
+        args = (self.spin_fade_in.value(), self.spin_fade_out.value(), self.spin_crossfade.value())
+        if too_short(self.spin_hold_time.value(), *args):
+            least = f"{min_hold_seconds(*args):g}"
+            self.lbl_hold_hint.setText(tr("⚠ almeno {} s").format(least))
+            self.lbl_hold_hint.setToolTip(
+                tr("⚠ Tempo sullo schermo troppo breve: almeno {} s (passaggi + 0,5 s)").format(least))
+            self.lbl_hold_hint.setStyleSheet(
+                "color: #fbbf24; font-size: 10px; font-weight: bold; border: none; background: transparent;")
+        else:
+            self.lbl_hold_hint.setText(tr("0 s = Infinita in Live"))
+            self.lbl_hold_hint.setToolTip("")
+            self.lbl_hold_hint.setStyleSheet("color: #64748b; font-size: 10px; border: none; background: transparent;")
+
     def _emit_change(self, field_key: str) -> None:
         self._last_field = field_key
+        if field_key in ("hold_time", "fade_in", "fade_out", "crossfade"):
+            self._refresh_hold_warning()  # 4.4 (also while the fields are being loaded)
         if field_key in ("crop_l", "crop_r", "crop_t", "crop_b"):
             self._refresh_cached_norm_from_spins()
         if not self._updating:
@@ -2399,6 +2439,7 @@ class CueInspectorPanel(QGroupBox):
             self.btn_crop_pct, self.btn_crop_px,
             self.spin_crop_l, self.spin_crop_r, self.spin_crop_t, self.spin_crop_b,
             self.btn_crop_reset, self.spin_fade_in, self.spin_fade_out, self.spin_crossfade,
+            self.combo_crossfade_style, self.chk_hold_last_frame,
             self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
             self.btn_mask_edit, self.btn_mask_clear,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset, self.combo_audio_output,
@@ -2485,11 +2526,14 @@ class CueInspectorPanel(QGroupBox):
         self.card_loudness.setVisible(is_timed)
 
         self.spin_hold_time.setEnabled(media_type == MediaType.IMAGE)
+        self.combo_crossfade_style.setEnabled(is_visual)  # 4.4
+        self.chk_hold_last_frame.setEnabled(media_type == MediaType.VIDEO)
         self.combo_loop_mode.setEnabled(is_timed and self.chk_loop.isChecked())
         self.spin_loop_count.setEnabled(is_timed and self.chk_loop.isChecked())
 
         if media_type == MediaType.IMAGE:
             self.lbl_hold_hint.setText("0 s = Infinita in Live")
+            self._refresh_hold_warning()  # 4.4
             self.lbl_visual_guide.setText(
                 "Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9."
             )
@@ -2555,6 +2599,8 @@ class CueInspectorPanel(QGroupBox):
         # Sound too: a new song on the layer of another one crossfades instead of cutting it.
         self.lbl_crossfade.setVisible(True)
         self.spin_crossfade.setVisible(True)
+        self.combo_crossfade_style.setVisible(is_visual)  # 4.4: dissolve / slide, pictures only
+        self.chk_hold_last_frame.setVisible(media_type == MediaType.VIDEO)
         for card in (self._card_of(self.slider_volume), self._card_of(self.spin_in)):
             card.setVisible(not is_image)
         self.loop_card.setVisible(not is_image and not basic)
@@ -2673,6 +2719,15 @@ class CueInspectorPanel(QGroupBox):
         self.spin_fade_in.setValue(cue.fade_in)
         self.spin_fade_out.setValue(cue.fade_out)
         self.spin_crossfade.setValue(float(getattr(cue, "crossfade", 0.0)))
+        for w, set_value in (
+            (self.combo_crossfade_style, lambda: self.combo_crossfade_style.setCurrentIndex(
+                max(0, self.combo_crossfade_style.findData(getattr(cue, "crossfade_style", "dissolve"))))),
+            (self.chk_hold_last_frame, lambda: self.chk_hold_last_frame.setChecked(
+                bool(getattr(cue, "hold_last_frame", False)))),
+        ):  # 4.4
+            w.blockSignals(True)
+            set_value()
+            w.blockSignals(False)
         self.spin_hold_time.setValue(cue.hold_time)
         self.spin_pre_delay.setValue(getattr(cue, "pre_delay", 0.0))
         self.spin_post_delay.setValue(getattr(cue, "post_delay", 0.0))
@@ -2965,6 +3020,9 @@ class CueInspectorPanel(QGroupBox):
         cue.fade_in = self.spin_fade_in.value()
         cue.fade_out = self.spin_fade_out.value()
         cue.crossfade = self.spin_crossfade.value()
+        cue.crossfade_style = self.combo_crossfade_style.currentData() or "dissolve"
+        if cue.media_type == MediaType.VIDEO:
+            cue.hold_last_frame = self.chk_hold_last_frame.isChecked()
         cue.hold_time = self.spin_hold_time.value()
         cue.pre_delay = self.spin_pre_delay.value()
         cue.post_delay = self.spin_post_delay.value()
@@ -3099,6 +3157,11 @@ class CueInspectorPanel(QGroupBox):
                 cue.fade_out = self.spin_fade_out.value()
             elif field_key == "crossfade":
                 cue.crossfade = self.spin_crossfade.value()
+            elif field_key == "crossfade_style":
+                cue.crossfade_style = self.combo_crossfade_style.currentData() or "dissolve"
+            elif field_key == "hold_last_frame":
+                if cue.media_type == MediaType.VIDEO:
+                    cue.hold_last_frame = self.chk_hold_last_frame.isChecked()
             elif field_key == "hold_time":
                 cue.hold_time = self.spin_hold_time.value()
             elif field_key == "pre_delay":

@@ -49,7 +49,7 @@ PREVIEW_W, PREVIEW_H = 384, 216
 # Fields the window may hand back (sections and envelope points only when the waveform changed them).
 FIELDS = ("name", "q_label", "notes", "follow_mode", "group_mode", "in_point", "out_point", "volume", "loop",
           "fade_in", "fade_out", "fade_curve", "crossfade", "volume_points", "sections", "hold_time", "scale",
-          "position_x", "position_y", "text_spec")
+          "position_x", "position_y", "text_spec", "crossfade_style", "hold_last_frame")
 
 
 def _seconds_field(maximum: float, special: str = "") -> SmartDoubleSpinBox:
@@ -386,8 +386,24 @@ class EditCueDialog(QDialog):
             self.sp_hold.setAccessibleName("Tempo sullo schermo")
             self.sp_hold.setToolTip("Durata di permanenza in Live delle immagini statiche (0 = infinita)")
             self.sp_hold.setValue(self._vals["hold_time"])
-            self.sp_hold.valueChanged.connect(lambda v: self._set("hold_time", float(v)))
+            self.sp_hold.valueChanged.connect(lambda v: (self._set("hold_time", float(v)), self._check_timing()))
             grid.addWidget(self.sp_hold, row, 1)
+            row += 1
+            # 4.4: shorter than its transitions + 0.5 s, the picture is never seen still.
+            self.lbl_timing = QLabel("")
+            self.lbl_timing.setWordWrap(True)
+            self.lbl_timing.setStyleSheet("QLabel { color: #fbbf24; }")
+            self.lbl_timing.setVisible(False)
+            grid.addWidget(self.lbl_timing, row, 0, 1, 4)
+            row += 1
+        if self._kind == MediaType.VIDEO:
+            self.cb_hold_frame = QCheckBox("Alla fine resta l'ultimo fotogramma")
+            self.cb_hold_frame.setToolTip(
+                "Il video si ferma sull'ultimo fotogramma, che resta sullo schermo finché un'altra cue "
+                "prende il suo layer o lo sfumi (Sfuma, Sfuma tutto, Blackout). Non con il loop infinito.")
+            self.cb_hold_frame.setChecked(bool(self._vals["hold_last_frame"]))
+            self.cb_hold_frame.toggled.connect(lambda on: self._set("hold_last_frame", bool(on)))
+            grid.addWidget(self.cb_hold_frame, row, 0, 1, 4)
             row += 1
         grid.addWidget(QLabel("Dimensione"), row, 0)
         size = QHBoxLayout()
@@ -458,10 +474,37 @@ class EditCueDialog(QDialog):
         self.sp_crossfade.setToolTip("Dissolvenza incrociata: ciò che c'è ora sul layer di questo cue (immagine o suono) sfuma "
                                      "mentre questo cue entra, nel tempo indicato (0 = stacco netto).")
         self.sp_crossfade.setValue(self._vals["crossfade"])
-        self.sp_crossfade.valueChanged.connect(lambda v: self._set("crossfade", float(v)))
+        self.sp_crossfade.valueChanged.connect(lambda v: (self._set("crossfade", float(v)), self._check_timing()))
         row.addWidget(self.sp_crossfade)
+        if self._kind in PICTURE:
+            # 4.4 (MultiPlay): dissolve or slide in.
+            self.cb_xfade_style = QComboBox()
+            self.cb_xfade_style.addItem("Dissolvenza", "dissolve")
+            self.cb_xfade_style.addItem("Scorrimento", "slide")
+            self.cb_xfade_style.setAccessibleName("Tipo di passaggio dell'immagine")
+            self.cb_xfade_style.setToolTip(
+                "Come entra l'immagine: in dissolvenza sopra la precedente, oppure scorrendo da destra "
+                "mentre la precedente esce a sinistra.")
+            self.cb_xfade_style.setCurrentIndex(max(0, self.cb_xfade_style.findData(self._vals["crossfade_style"])))
+            self.cb_xfade_style.currentIndexChanged.connect(
+                lambda _i: self._set("crossfade_style", self.cb_xfade_style.currentData() or "dissolve"))
+            row.addWidget(self.cb_xfade_style)
         row.addStretch(1)
+        self._check_timing()  # the picture box (with its warning) is built before this one
         return box
+
+    def _check_timing(self) -> None:
+        """4.4: warn when a picture is shown shorter than its transitions + 0.5 s."""
+        label = getattr(self, "lbl_timing", None)
+        if label is None:
+            return
+        from engine.picture_timing import min_hold_seconds, too_short
+
+        args = (self._vals["fade_in"], self._vals["fade_out"], self._vals["crossfade"])
+        short = too_short(self._vals["hold_time"], *args)
+        label.setText(tr("⚠ Tempo sullo schermo troppo breve: almeno {} s (passaggi + 0,5 s)").format(
+            f"{min_hold_seconds(*args):g}") if short else "")
+        label.setVisible(short)
 
     # ── Values ────────────────────────────────────────────────────────
 
@@ -486,6 +529,7 @@ class EditCueDialog(QDialog):
 
     def _on_fade(self, field: str, value: float) -> None:
         self._set(field, value)
+        self._check_timing()
         if self._waveform is not None:
             self._waveform.set_fades(self._vals["fade_in"], self._vals["fade_out"], self._vals["fade_curve"])
         self._configure_player()

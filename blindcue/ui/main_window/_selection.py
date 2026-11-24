@@ -108,8 +108,8 @@ class _SelectionMixin:
 
     @Slot(object)
     def _on_preview_video_frame_for_mirror(self, _frame) -> None:
-        if not self._live_mirror_active:
-            return
+        if not self._live_mirror_active or self._live_mode:
+            return  # 4.4: in the rehearsal and the show the preview never reaches the projector
         cue = self._selected_cue()
         if cue is not None and cue.media_type == MediaType.VIDEO and cue.status != CueStatus.LIVE:
             self._push_cue_to_output(cue)
@@ -134,7 +134,9 @@ class _SelectionMixin:
                 mask_feather=cue.mask_feather,
             )
         elif cue.media_type == MediaType.VIDEO:
-            if cue.status == CueStatus.LIVE:
+            if self._push_held_frame(cue):
+                pass  # 4.4: a held last frame is a still now (its player is stopped)
+            elif cue.status == CueStatus.LIVE:
                 out.ensure_live_video_visible(
                     layer=cue.layer,
                     scale=cue.scale,
@@ -227,8 +229,8 @@ class _SelectionMixin:
 
     def _mirror_active_cue_to_live(self) -> None:
         cue = self._selected_cue()
-        if not cue or not self._live_mirror_active:
-            return
+        if not cue or not self._live_mirror_active or self._live_mode:
+            return  # 4.4: in the rehearsal and the show the selection never reaches the projector
         try:
             out = self._output_for_cue(cue)
             target = resolve_output_target(cue.output_target, self._dual_output_active)

@@ -458,6 +458,8 @@ class _RemoteMixin:
             )
             self._live_clocks.start(slot, cue.cue_id, timed, dur)
             self._run_live_clock()
+        if self.is_last_frame_held(cue):
+            self._show_last_frame_held(cue, slot)  # 4.4: also after Ctrl+Z: a still, no clock
 
     def update_live_layer_phase(self, layer: int, cue: Cue, phase: str, elapsed: float, total: float) -> None:
         """Forward the current automation phase of *layer* to every layer panel.

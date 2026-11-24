@@ -91,6 +91,12 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "start_page": ("blindcue/ui/start_page.py", None),
     "cheat_sheet": ("blindcue/engine/cheat_sheet.py", None),
     "run_report": ("blindcue/engine/run_report.py", None),
+    "hold_frame": ("blindcue/ui/held_frames.py", None),
+    "slide": ("blindcue/models/cue.py", "CROSSFADE_STYLES ="),
+    "picture_timing": ("blindcue/engine/picture_timing.py", None),
+    "thumbnails": ("blindcue/ui/thumbnails.py", None),
+    "output_windows": ("blindcue/ui/main_window/_picture_tools.py", "def clear_outputs"),
+    "preview_off_in_show": ("blindcue/ui/main_window/_picture_tools.py", "def _end_preview_on_projector"),
 }
 
 

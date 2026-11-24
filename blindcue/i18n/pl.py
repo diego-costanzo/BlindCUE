@@ -4060,4 +4060,50 @@ T: dict[str, str] = {
         'Brak ostrzeżeń',
     'Q':
         'Nr',
+    'ultimo fotogramma':
+        'ostatnia klatka',
+    "Alla fine resta l'ultimo fotogramma":
+        'Na końcu zostaje ostatnia klatka',
+    "Il video si ferma sull'ultimo fotogramma, che resta sullo schermo finché un'altra cue prende il suo layer o lo sfumi (Sfuma, Sfuma tutto, Blackout). Non con il loop infinito.":
+        'Wideo zatrzymuje się na ostatniej klatce, która zostaje na ekranie, dopóki inne cue nie zajmie jego warstwy albo jej nie wygasisz (Wygaś, Wygaś wszystko, Czarny ekran). Nie przy pętli bez końca.',
+    'Dissolvenza':
+        'Przenikanie',
+    'Scorrimento':
+        'Wsunięcie',
+    "Come entra l'immagine: in dissolvenza sopra la precedente, oppure scorrendo da destra mentre la precedente esce a sinistra.":
+        'Jak wchodzi obraz: przenika się z poprzednim albo wsuwa się z prawej, a poprzedni wysuwa się w lewo.',
+    "Tipo di passaggio dell'immagine":
+        'Rodzaj przejścia obrazu',
+    '⚠ Tempo sullo schermo troppo breve: almeno {} s (passaggi + 0,5 s)':
+        '⚠ Za krótko na ekranie: co najmniej {} s (przejścia + 0,5 s)',
+    '⚠ almeno {} s':
+        '⚠ co najmniej {} s',
+    'immagine sullo schermo meno dei suoi passaggi + 0,5 s':
+        'obraz jest na ekranie krócej niż jego przejścia + 0,5 s',
+    '🔢 Identifica gli schermi':
+        '🔢 Identyfikuj ekrany',
+    '🖥 Porta le uscite in primo piano':
+        '🖥 Wyjścia na wierzch',
+    'Le finestre di uscita tornano sul loro schermo e sopra le altre finestre':
+        'Okna wyjść wracają na swoje ekrany, nad inne okna',
+    '🧹 Pulisci le uscite':
+        '🧹 Wyczyść wyjścia',
+    'Immagini, video e ultimi fotogrammi sfumano dai proiettori; il suono continua':
+        'Obrazy, wideo i ostatnie klatki gasną z projektorów; dźwięk gra dalej',
+    'Uscite in primo piano: {}':
+        'Wyjścia na wierzchu: {}',
+    'Nessuna uscita aperta':
+        'Żadne okno wyjścia nie jest otwarte',
+    'Uscite pulite: immagini e video sfumano, il suono continua':
+        'Wyjścia wyczyszczone: obrazy i wideo gasną, dźwięk gra dalej',
+    'Qualcosa è in onda: i numeri degli schermi non compaiono ora':
+        'Coś jest na wizji: numery ekranów się teraz nie pokażą',
+    '🖼 Miniature nella lista':
+        '🖼 Miniatury na liście',
+    'Una piccola immagine di foto e video nella lista; su un computer lento meglio spenta':
+        'Mały obrazek zdjęć i filmów na liście; na wolnym komputerze lepiej wyłączyć',
+    'Miniature nella lista: accese':
+        'Miniatury na liście: włączone',
+    'Miniature nella lista: spente':
+        'Miniatury na liście: wyłączone',
 }

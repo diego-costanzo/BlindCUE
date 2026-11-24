@@ -60,12 +60,18 @@ class _UndoGoMixin:
         rec = self._undo_go
         return rec is not None and self._undo_auto_source in rec.ids
 
-    def note_replaced(self, cue: Cue, before: Cue | None, position: float | None = None) -> None:
-        """main.py: *cue* goes on the layer where *before* was on air (at *position*, for audio/video)."""
+    def note_replaced(self, cue: Cue, before: Cue | None, position: float | None = None,
+                      held: bool = False) -> None:
+        """main.py: *cue* goes on the layer where *before* was on air (at *position*, for audio/video).
+
+        *held*: *before* showed its held last frame (4.4) - Undo brings back that picture.
+        """
         rec = self._undo_go
         if rec is None or before is None or before.cue_id == cue.cue_id or cue.cue_id not in rec.ids:
             return
         rec.replaced.setdefault(cue.cue_id, before.cue_id)
+        if held:
+            rec.held.add(before.cue_id)
         if position is not None:
             rec.cut_at.setdefault(cue.cue_id, float(position))
 
@@ -93,7 +99,8 @@ class _UndoGoMixin:
         if self._undo_go is None:
             return []
         waiting = {cid for cid, tag in self._live_phase_tags.items() if str(tag).startswith("PRE")}
-        return undo_plan(self._cues, self._undo_go, waiting)
+        held_now = {c.cue_id for c in self._cues if self.is_last_frame_held(c)}  # 4.4
+        return undo_plan(self._cues, self._undo_go, waiting, held_now)
 
     def _undo_go_preview(self, steps: list[UndoStep]) -> str:
         """What one click will do, in words (tooltip and screen reader)."""
@@ -108,6 +115,9 @@ class _UndoGoMixin:
             parts.append(tr("tolgo {} dallo schermo").format(", ".join(lifts)))
         for back in refs(RESTORE, "restore_id"):
             parts.append(tr("l'immagine {} torna").format(back))
+        for s in steps:
+            if s.how == FADE and s.restore_id is not None:  # 4.4: a held last frame comes back
+                parts.append(tr("l'immagine {} torna").format(self._undo_ref(s.restore_id)))
         for cid in (s.cue_id for s in steps if s.how == CANCEL):
             parts.append(tr("{} non è ancora partita: la annullo").format(self._undo_ref(cid, False)))
         for cid in (s.cue_id for s in steps if s.how == ENDED):

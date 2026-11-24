@@ -15,6 +15,7 @@ from ui.main_window._common import (  # noqa: F401
 import time
 
 from engine.action_cues import describe_action
+from ui.cue_table import ROLE_THUMB_PATH
 
 
 class _EmergencyKeysInDialog(QObject):
@@ -193,6 +194,8 @@ class _CueTableMixin:
         item_name.setData(ROLE_CHILD_COUNT, child_count)
         item_name.setData(ROLE_IS_LAST_CHILD, is_last_child)
         item_name.setData(ROLE_TIMELINE_COMPOSED, bool(getattr(cue, "timeline_composed", False)))
+        item_name.setData(ROLE_THUMB_PATH, cue.file_path if cue.media_type in (MediaType.IMAGE, MediaType.VIDEO)
+                          else "")  # 4.4: thumbnail in the editing list
         live_frac, live_warn = self._live_fractions.get(cue.cue_id, (-1.0, False))
         item_name.setData(ROLE_LIVE_FRACTION, live_frac)
         item_name.setData(ROLE_LIVE_WARN, live_warn)
@@ -255,6 +258,7 @@ class _CueTableMixin:
             return
         if enabled:
             self._readiness_timer.stop()
+            self._end_preview_on_projector()  # 4.4: no preview survives into the show
         if enabled and self._go_target_index() == 0 and not self._show_running():
             self._played_ids.clear()  # a run from the top: nothing played yet
             self._goto_counts.clear()  # 2.2: jumps count again
@@ -475,6 +479,8 @@ class _CueTableMixin:
             self._on_output_mode_changed(getattr(mgr, "_output_mode", "single"))
             self._refresh_output_monitors()
             self._update_hardware_status_bar()
+            mgr.profile_changed.connect(lambda _p: self._apply_thumbnail_setting())  # 4.4: Eco = no thumbnails
+            self._apply_thumbnail_setting()
 
     @Slot()
     def _schedule_director_check(self) -> None:

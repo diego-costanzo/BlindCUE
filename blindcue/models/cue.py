@@ -160,6 +160,8 @@ def sanitize_mask_polygon(points: object) -> list[list[float]]:
 
 
 _VALID_FADE_CURVES = ("log", "scurve", "linear")
+# 4.4: how a crossfade between two pictures looks (Cue.crossfade_style).
+CROSSFADE_STYLES = ("dissolve", "slide")
 
 # ── Action cues ──────────────────────────────────────────────────────────
 # What an ACTION cue does; see ``sanitize_action_spec`` for the full schema.
@@ -581,6 +583,12 @@ class Cue:
     # Crossfade: seconds over which the previous picture on the same layer
     # dissolves into this cue. 0 = hard cut / normal Fade In behaviour.
     crossfade: float = 0.0
+    # 4.4 (MultiPlay): how the crossfade looks - "dissolve" (the old picture fades) or
+    # "slide" (the new picture slides in from the right and pushes the old one out).
+    crossfade_style: str = "dissolve"
+    # 4.4: a video stays on its last frame at its end (until another cue takes the
+    # layer, or the operator fades it) instead of leaving the layer empty.
+    hold_last_frame: bool = False
     # Action cue (media_type ACTION): what it does, see sanitize_action_spec().
     # Empty dict = ordinary media cue.
     action_spec: dict[str, Any] = field(default_factory=dict)
@@ -786,6 +794,8 @@ class Cue:
             "output_target": self.output_target,
             "text_spec": dict(self.text_spec),
             "crossfade": round(float(self.crossfade), 3),
+            "crossfade_style": self.crossfade_style if self.crossfade_style in CROSSFADE_STYLES else "dissolve",
+            "hold_last_frame": bool(self.hold_last_frame),
             # Fresh lists: undo snapshots must not share them with the live cue.
             "action_spec": (
                 sanitize_action_spec(self.action_spec)
@@ -906,6 +916,9 @@ class Cue:
             output_target=normalize_output_target(data.get("output_target", "A")),
             text_spec=dict(data.get("text_spec") or {}),
             crossfade=max(0.0, float(data.get("crossfade", 0.0) or 0.0)),
+            crossfade_style=(str(data.get("crossfade_style") or "dissolve")
+                             if str(data.get("crossfade_style") or "dissolve") in CROSSFADE_STYLES else "dissolve"),
+            hold_last_frame=bool(data.get("hold_last_frame", False)),
             action_spec=(
                 dict(data["action_spec"]) if isinstance(data.get("action_spec"), dict) else {}
             ),

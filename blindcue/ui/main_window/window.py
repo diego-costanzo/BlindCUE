@@ -69,6 +69,7 @@ from ui.main_window._practice_show import _PracticeShowMixin
 from ui.main_window._start_page import _StartPageMixin
 from ui.main_window._cheat_sheet import _CheatSheetMixin
 from ui.main_window._slideshow import _SlideshowMixin
+from ui.main_window._picture_tools import _PictureToolsMixin
 
 
 class MainWindow(
@@ -125,6 +126,7 @@ class MainWindow(
     _StartPageMixin,
     _CheatSheetMixin,
     _SlideshowMixin,
+    _PictureToolsMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -269,6 +271,7 @@ class MainWindow(
         self._search_setup()  # Ctrl+F (stage 2, 2.8)
         self._layout_setup()  # copy / paste the picture layout (stage 4, 4.4)
         self._slideshow_setup()  # photos to music (stage 4, 4.3)
+        self._apply_thumbnail_setting()  # thumbnails in the editing list (stage 4, 4.4)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._keymap_setup()  # extra keys and a presenter remote (stage 5, 5.7-5.8)
         self._relink_setup()  # choose a cue's file, find missing files (stage 5, 5.10)

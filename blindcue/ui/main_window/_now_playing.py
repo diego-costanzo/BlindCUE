@@ -213,6 +213,12 @@ class _NowPlayingMixin:
             title = f"{_ICONS.get(cue.media_type, '•')} {format_cue_ref(row, cue)} '{cue.name}'"
             borrowed = cue.cue_id in self._slot_override
             layer = f"B·L{cue.layer}" if slot > 3 and not borrowed else f"L{cue.layer}"
+            if self.is_last_frame_held(cue):
+                # 4.4: the video ended, its last frame stays: a still card, Fade takes it off.
+                held_state = (tr("attesa {}").format(fmt_clock(t.remaining or 0.0))
+                              if t is not None and t.phase == PHASE_POST else tr("ultimo fotogramma"))
+                cards.append(CardState(cue.cue_id, STILL, title, layer, held_state, slot=slot))
+                continue
             timed = cue.media_type in (MediaType.AUDIO, MediaType.VIDEO) or (
                 cue.media_type == MediaType.IMAGE and cue.hold_time > 0)
             loop = bool(cue.loop) or any(s.loops == 0 and not s.skip for s in cue.sections)

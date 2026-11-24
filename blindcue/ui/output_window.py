@@ -900,7 +900,7 @@ class OutputWindow(QWidget):
             self._apply_mask_effect_if_needed(container, surf, clip_path, geom.vis_w, geom.vis_h)
 
             container.setTransform(xf)
-            container.setPos(0.0, 0.0)
+            container.setPos(self._slide_shift_of(container), 0.0)
             return geom, xf
 
         else:
@@ -919,7 +919,7 @@ class OutputWindow(QWidget):
             self._apply_mask_effect_if_needed(container, surf, clip_path, geom.vis_w, geom.vis_h)
 
             container.setTransform(QTransform())
-            container.setPos(st_x + geom.vis_x, st_y + geom.vis_y)
+            container.setPos(st_x + geom.vis_x + self._slide_shift_of(container), st_y + geom.vis_y)
             return geom, QTransform()
 
     def clear_pixmap_layer(self, layer: int) -> None:
@@ -1139,6 +1139,42 @@ class OutputWindow(QWidget):
         except Exception as exc:
             logger.error("[OUTPUT] show_mirrored_frame() failed on layer %d: %s", layer, exc)
 
+    def hold_video_frame(self, layer: int, frame: QImage | None) -> bool:
+        """4.4: put *frame* (the last frame of the video on *layer*) in the video's place as a still.
+
+        Same layout (size, place, crop, rotation, surface) and the opacity the
+        video has now. The player can then be stopped: the layer keeps the
+        picture like any image, so fades, crossfades, Blackout and PANIC treat
+        it as one. False when there is no frame (the caller clears the layer).
+        """
+        target = layer if layer in self._video_containers else 1
+        if frame is None or frame.isNull():
+            return False
+        pix = QPixmap.fromImage(frame)
+        if pix.isNull():
+            return False
+        cfg = dict(self._video_layouts.get(target, {}))
+        if self._video_containers[target].isVisible():
+            opacity = self._active_video_item(target).opacity()
+        else:
+            opacity = float(cfg.get("opacity", 1.0))
+        self._stop_timer_entry(self._video_fade_timers, target)
+        self._apply_pixmap_to_layer(
+            target, pix,
+            opacity=opacity, crop=cfg.get("crop"), scale=cfg.get("scale", 1.0),
+            pos_x=cfg.get("pos_x", 0.0), pos_y=cfg.get("pos_y", 0.0),
+            aspect_ratio=cfg.get("aspect_ratio"), surface_id=cfg.get("surface_id"),
+            rotation=cfg.get("rotation", 0.0), reuse_item=True,
+        )
+        self.hide_video_widget(layer=target)  # also forgets the deck swap of a looping video
+        logger.info("[OUTPUT] Layer %d holds the last video frame (%dx%d)", target, pix.width(), pix.height())
+        return True
+
+    def layer_picture_opacity(self, layer: int) -> float:
+        """Opacity of the picture shown on *layer* (1.0 when there is none)."""
+        item = self._layer_pixmaps.get(layer if layer in self._image_containers else 1)
+        return float(item.opacity()) if item is not None else 1.0
+
     def ensure_live_video_visible(self, layer: int, scale: float = 1.0, crop: dict | None = None,
                                   pos_x: float = 0.0, pos_y: float = 0.0,
                                   opacity: float = 1.0, aspect_ratio: str | None = None,
@@ -1157,13 +1193,16 @@ class OutputWindow(QWidget):
         self._update_tappo_visibility()
 
     # ── Crossfade ─────────────────────────────────────────────────────
-    def begin_crossfade(self, layer: int, duration_sec: float) -> None:
+    def begin_crossfade(self, layer: int, duration_sec: float, style: str = "dissolve") -> None:
         """Freeze what *layer* shows now and dissolve it over whatever comes next.
 
         Call right before new content is placed on *layer*: the snapshot sits
         just above the layer (below higher layers) and fades from opaque to
         transparent over *duration_sec*, so the new picture appears through it.
         Works for image→image, video→image, image→video and video→video.
+
+        *style* "slide" (4.4, MultiPlay): the new content slides in from the
+        right and pushes the snapshot out to the left instead.
         """
         target = layer if layer in self._video_containers else 1
         self._end_crossfade(target)
@@ -1171,56 +1210,97 @@ class OutputWindow(QWidget):
             return
         vc = self._video_containers[target]
         ic = self._image_containers[target]
-        if not (vc.isVisible() or ic.isVisible()):
-            return
+        slide = style == "slide"
+        shown = vc.isVisible() or ic.isVisible()
+        if not shown and not slide:
+            return  # nothing to dissolve (a slide still brings the new picture in)
         rect = self._scene.sceneRect()
         w, h = int(rect.width()), int(rect.height())
         if w <= 0 or h <= 0:
             return
 
-        img = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
-        img.fill(Qt.GlobalColor.transparent)
-        hidden = []
-        for item in self._scene.items():
-            if item.parentItem() is None and item not in (vc, ic) and item.isVisible():
-                item.setVisible(False)
-                hidden.append(item)
-        painter = QPainter(img)
-        try:
-            painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
-            self._scene.render(painter, QRectF(0.0, 0.0, float(w), float(h)), rect)
-        finally:
-            painter.end()
-            for item in hidden:
-                item.setVisible(True)
+        ghost = None
+        if shown:
+            img = QImage(w, h, QImage.Format.Format_ARGB32_Premultiplied)
+            img.fill(Qt.GlobalColor.transparent)
+            hidden = []
+            for item in self._scene.items():
+                if item.parentItem() is None and item not in (vc, ic) and item.isVisible():
+                    item.setVisible(False)
+                    hidden.append(item)
+            painter = QPainter(img)
+            try:
+                painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+                self._scene.render(painter, QRectF(0.0, 0.0, float(w), float(h)), rect)
+            finally:
+                painter.end()
+                for item in hidden:
+                    item.setVisible(True)
 
-        ghost = self._scene.addPixmap(QPixmap.fromImage(img))
-        ghost.setPos(rect.topLeft())
-        ghost.setZValue(target * 10 + 5)
-        self._xfade_ghosts[target] = ghost
+            ghost = self._scene.addPixmap(QPixmap.fromImage(img))
+            ghost.setPos(rect.topLeft())
+            ghost.setZValue(target * 10 + 5)
+            self._xfade_ghosts[target] = ghost
 
         steps = max(1, int(duration_sec * 30))
         cur = 0
         timer = QTimer(self)
         self._xfade_timers[target] = timer
+        width = float(rect.width())
+        left = float(rect.left())
+        if slide:
+            self._set_slide_shift(target, width)  # what comes next starts off screen, right
 
         def _step() -> None:
             nonlocal cur
             cur += 1
-            ghost.setOpacity(max(0.0, 1.0 - cur / steps))
+            if slide:
+                eased = 1.0 - (1.0 - min(1.0, cur / steps)) ** 3  # ease-out: fast start, gentle stop
+                if ghost is not None:
+                    ghost.setPos(left - width * eased, rect.top())
+                self._set_slide_shift(target, width * (1.0 - eased))
+            elif ghost is not None:
+                ghost.setOpacity(max(0.0, 1.0 - cur / steps))
             if cur >= steps:
                 self._end_crossfade(target)
 
         timer.timeout.connect(_step)
         timer.start(int(1000 / 30))
-        logger.info("[OUTPUT] Crossfade on Layer %d over %.2fs", target, duration_sec)
+        logger.info("[OUTPUT] Crossfade (%s) on Layer %d over %.2fs", style, target, duration_sec)
 
     def _end_crossfade(self, layer: int) -> None:
-        """Stop and remove the crossfade snapshot on *layer* (if any)."""
+        """Stop and remove the crossfade snapshot on *layer* (if any); a slide ends in place."""
         self._stop_timer_entry(self._xfade_timers, layer)
         ghost = self._xfade_ghosts.pop(layer, None)
         if ghost is not None:
             self._scene.removeItem(ghost)
+        self._set_slide_shift(layer, 0.0)
+
+    def _slide_shift_of(self, container) -> float:
+        """Horizontal offset a running slide gives to *container* (0 when none)."""
+        shifts = getattr(self, "_slide_shifts", None)
+        if not shifts:
+            return 0.0
+        for layer, shift in shifts.items():
+            if container is self._video_containers.get(layer) or container is self._image_containers.get(layer):
+                return shift
+        return 0.0
+
+    def _set_slide_shift(self, layer: int, shift: float) -> None:
+        """Move both containers of *layer* by the slide offset (layouts made meanwhile keep it)."""
+        if not hasattr(self, "_slide_shifts"):
+            self._slide_shifts: dict[int, float] = {}
+        old = self._slide_shifts.get(layer, 0.0)
+        delta = float(shift) - old
+        if abs(delta) > 1e-6:
+            for containers in (self._video_containers, self._image_containers):
+                item = containers.get(layer)
+                if item is not None:
+                    item.moveBy(delta, 0.0)
+        if abs(shift) > 1e-6:
+            self._slide_shifts[layer] = float(shift)
+        else:
+            self._slide_shifts.pop(layer, None)
 
     def clear_layer(self, layer: int) -> None:
         """Remove any visual content (image or video) from *layer*."""

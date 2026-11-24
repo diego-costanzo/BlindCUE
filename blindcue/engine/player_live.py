@@ -15,6 +15,7 @@ from typing import Any
 from collections.abc import Callable, Sequence
 
 from PySide6.QtCore import QObject, Qt, QTimer, QUrl, Signal
+from PySide6.QtGui import QImage
 from PySide6.QtMultimedia import QAudioDevice, QAudioOutput, QMediaPlayer
 
 from engine.envelope import SectionSequencer, evaluate_cue_level, ramp_value
@@ -111,6 +112,10 @@ logger = logging.getLogger(__name__)
 # A released whole-file loop ends this many ms before the file end: the 20 ms
 # position poll must see the end before Qt wraps back to the start.
 _RELEASE_MARGIN_MS = 40
+# 4.4 "hold the last frame": the video is paused this many ms before its end.
+# At EndOfMedia the FFmpeg backend stops and CLEARS the picture, so the frame
+# to keep must be taken while the deck is still paused on it.
+HOLD_MARGIN_MS = 150
 
 
 def _pause_unless_at_end(player: QMediaPlayer) -> None:
@@ -195,6 +200,9 @@ class LivePlayer(QObject):
         # sequencer advances twice and silently eats one loop or one cut.
         self._boundary_armed: bool = True
         self._finished: bool = False
+        # 4.4: the video ends HOLD_MARGIN_MS before its end, paused on a frame
+        # that is still shown (see set_hold_last_frame).
+        self._hold_last_frame: bool = False
 
         self._driver_timer = QTimer(self)
         self._driver_timer.setInterval(20)  # 50 Hz precision poll + envelope
@@ -543,7 +551,53 @@ class LivePlayer(QObject):
             or (self._is_video_cue and self._opacity_points)
             or self._end_ms is not None
             or self._is_looping
+            or self._hold_last_frame
         )
+
+    # ── Hold the last frame (stage 4.4) ───────────────────────────────
+
+    def set_hold_last_frame(self, on: bool) -> None:
+        """At its end the cue pauses HOLD_MARGIN_MS early instead of running into EndOfMedia.
+
+        The frame it pauses on stays in the video output, so the caller can
+        take it (``current_frame_image``) and keep it on the layer. Call after
+        ``load()`` (which resets it), like ``set_loop()``.
+        """
+        self._hold_last_frame = bool(on)
+        self._ensure_driver_timer()
+
+    def holds_last_frame(self) -> bool:
+        return self._hold_last_frame
+
+    def _hold_end_ms(self) -> int | None:
+        """Where the cue ends (OUT point or file end, ms), None while the length is unknown."""
+        if self._end_ms is not None and self._end_ms > self._start_ms:
+            return self._end_ms
+        if self._duration_sec > 0:
+            return int(self._duration_sec * 1000)
+        return None
+
+    def _on_last_pass(self) -> bool:
+        """True when this pass is the last one (no loop, or the last of N loops)."""
+        if not self._is_looping:
+            return True
+        return self._loop_count > 0 and self._current_loop_iteration >= self._loop_count - 1
+
+    def current_frame_image(self) -> QImage | None:
+        """The frame the active deck shows now (None: no picture, e.g. after EndOfMedia)."""
+        try:
+            player, _ = self._deck_pair()
+            sink = player.videoSink()
+            if sink is None:
+                return None
+            frame = sink.videoFrame()
+            if not frame.isValid():
+                return None
+            image = frame.toImage()
+            return None if image.isNull() else image
+        except Exception:  # noqa: BLE001 - no frame: the caller clears the layer as before
+            logger.debug("[LIVE] current_frame_image() failed", exc_info=True)
+            return None
 
     def _ensure_driver_timer(self) -> None:
         player, _ = self._deck_pair()
@@ -671,7 +725,9 @@ class LivePlayer(QObject):
         if self._is_video_cue and self._opacity_cb is not None:
             looping_inf = self._is_looping and self._loop_count <= 0
             has_inf_section = any(s.loops == 0 and not s.skip for s in self._sections_cfg)
-            allow_fo = self._apply_fade_out_at_end and (not looping_inf) and (not has_inf_section)
+            # 4.4: a held last frame stays visible - its Fade Out is for the sound only.
+            allow_fo = (self._apply_fade_out_at_end and (not looping_inf) and (not has_inf_section)
+                        and not self._hold_last_frame)
             allow_fi = self._apply_fade_in and (self._current_loop_iteration == 0)
             op = evaluate_cue_level(
                 pos_sec,
@@ -720,6 +776,12 @@ class LivePlayer(QObject):
                     self._execute_jump_ms(int(round(target_sec * 1000)))
                     return
             return
+
+        if self._hold_last_frame and self._on_last_pass():
+            hold_end = self._hold_end_ms()
+            if hold_end is not None and pos_ms >= hold_end - HOLD_MARGIN_MS:
+                self._handle_cue_finished()  # paused on a frame that is still shown (4.4)
+                return
 
         if self._end_ms is not None and pos_ms >= self._end_ms - 18:
             if self._is_looping:
@@ -870,6 +932,7 @@ class LivePlayer(QObject):
             self._manual_fade_active = False
             self._boundary_armed = True
             self._finished = False
+            self._hold_last_frame = False  # 4.4: each cue says it again (set_hold_last_frame)
             self._driver_timer.stop()
             self._stop_fade_timer()
             self._reset_level_trim()
@@ -1106,6 +1169,7 @@ class LivePlayer(QObject):
             self._manual_fade_active = False
             self._boundary_armed = True
             self._finished = False
+            self._hold_last_frame = False
             self._driver_timer.stop()
             self._load_watchdog.stop()
             self._watchdog_trials = 0

@@ -47,7 +47,8 @@ class _TransportMixin:
     def _exclusive_blocker(self) -> Cue | None:
         """The live cue marked exclusive that refuses a manual GO, if any."""
         return next(
-            (c for c in self._cues if getattr(c, "exclusive", False) and c.status == CueStatus.LIVE),
+            (c for c in self._cues if getattr(c, "exclusive", False) and c.status == CueStatus.LIVE
+             and not self.is_last_frame_held(c)),  # 4.4: a held last frame has ended
             None,
         )
 
@@ -601,6 +602,8 @@ class _TransportMixin:
         tags = getattr(self, "_live_phase_tags", {}) or {}
 
         def running(c: Cue) -> bool:
+            if self.is_last_frame_held(c):
+                return False  # 4.4: it ended, only its last frame is on screen
             return c.status == CueStatus.LIVE or str(tags.get(c.cue_id, "")).startswith("PRE")
 
         if cue.media_type == MediaType.GROUP:

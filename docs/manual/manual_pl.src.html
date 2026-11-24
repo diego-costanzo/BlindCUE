@@ -131,6 +131,8 @@ warstwie albo użyjesz <b>Wygaś</b>. Czas wyświetlania ustawisz w ustawieniach
 <b>Cue · czasy → Czas obrazu</b> (np. 10 s; <code>0</code> = bez końca).
 Pokaz zdjęć zrobisz jako kilka cue ze zdjęciami po kolei z ustawionym <b>Auto-GO</b>
 (rozdział 4) albo jako <a href="#grupy">grupę</a>.</p>
+<!--IF:picture_timing--><p class="tip">⚠ Zdjęcie, którego <b>Czas obrazu</b> jest krótszy niż jego przejścia (Fade In albo przenikanie na początku, Fade Out na końcu) plus pół sekundy, nigdy nie stoi nieruchomo: widownia widzi tylko mignięcie. Inspektor mówi o tym obok czasu („⚠ co najmniej … s”), okno edycji cue pod czasem na ekranie, a strona „Przed przedstawieniem” na liście rzeczy do poprawienia.</p><!--/IF:picture_timing-->
+<!--IF:thumbnails--><p><b>Miniatury na liście</b>: na liście w Przygotowaniu zdjęcia i filmy mają mały obrazek zamiast napisu IMG / VID (filmy potrzebują FFmpeg). Na wolnym komputerze wyłączysz je w <b>Widok → 🖼 Miniatury na liście</b>; przy profilu sprzętu <b>Eco</b> są wyłączone, dopóki ich nie włączysz. W czasie przedstawienia nigdy się nie tworzą.</p><!--/IF:thumbnails-->
 <!--IF:text_cues-->
 <h3><a name="napisy"></a>Napisy (tekst na ekranie)</h3>
 <ol>
@@ -280,6 +282,7 @@ na tej warstwie, płynnie przejdzie w nowy.</li>
 <b>Przenikanie 1–2 s</b>, <b>Czas obrazu</b> np. 5 s i <b>Potem: Auto-GO</b> – zdjęcia
 same będą się płynnie zmieniać.</p>
 <!--IF:photo_xfade--><p class="tip">🔀 Zdjęcie, które samo przechodzi w następne (<b>Potem: Auto-GO</b> albo scena „po kolei”), oddaje warstwę o czas przenikania wcześniej: następne zdjęcie wchodzi na jeszcze widoczne, bez czarnej przerwy. Jeden czas dla kilku zdjęć naraz: zaznacz je, prawy przycisk → <b>🔀 Przenikanie dla zaznaczonych…</b> (ustawia też <b>Fade In = 0</b>).</p><!--/IF:photo_xfade-->
+<!--IF:slide--><p class="tip">➡ Obok pola <b>Przenikanie</b> zdjęcia albo wideo wybierz, jak wchodzi: <b>Przenikanie</b> (rozpływa się na poprzednim) albo <b>Wsunięcie</b> (wjeżdża z prawej i wypycha poprzedni w lewo) – w czasie przenikania. Wsunięcie działa też na pustej warstwie (wjeżdża na czarne tło).</p><!--/IF:slide-->
 <p class="tip">🎵 <b>Przenikanie dźwięku</b>: to samo pole działa dla muzyki. Gdy nowy utwór (albo film) wchodzi na warstwę, na której coś gra, i ma <b>Przenikanie</b> np. 3 s, poprzedni utwór nie urywa się, tylko cichnie przez 3 s, a nowy w tym czasie narasta. <b>Pauza wszystko</b>, <b>Wygaś wszystko</b> i <b>PANIC</b> obejmują też utwór, który jeszcze cichnie.</p>
 <!--/IF:crossfade-->
 <h3>Obraz (karta „Wideo · zdjęcie”)</h3>
@@ -295,7 +298,7 @@ same będą się płynnie zmieniać.</p>
 <li>Ramkę obrazu możesz też <b>przeciągać myszą w podglądzie</b>.</li>
 <li><b>Pokaż też na projektorze</b> (pod podglądem) – gdy włączony, zmiany położenia i przycięcia
 widać od razu na projektorze. Używaj przy ustawianiu obrazu na próbie;
-<b>na przedstawieniu wyłącz</b>.</li>
+<b>na przedstawieniu wyłącz</b>.<!--IF:preview_off_in_show--> Wejście w próbę albo w przedstawienie samo go wyłącza, a jego obraz znika z projektora (zostaje tylko to, co jest na wizji).<!--/IF:preview_off_in_show--></li>
 </ul>
 <h3>Krzywe w czasie (automatyzacja)</h3>
 <p>W panelu <b>Przebieg</b> wybierz <b>Głośność</b> lub <b>Krycie</b> i klikaj na linii,
@@ -313,6 +316,7 @@ Najwygodniej: w panelu Przebieg kliknij w miejsce na fali, potem
 <b>Reset IN/OUT</b> przywraca cały plik. Tak samo przycinasz film.<!--IF:silence_trim--> Przycisk <b>✂</b> obok IN/OUT ustawia je tam, gdzie dźwięk naprawdę się zaczyna i kończy (ucina ciszę na początku i końcu, np. w plikach z internetu; <kbd>Ctrl+Z</kbd> cofa).<!--/IF:silence_trim--></li>
 <!--IF:picture_layout--><li><b>Kopiuj / wklej układ obrazu</b> (prawy przycisk na zdjęciu lub filmie): <b>📋 Kopiuj układ obrazu</b> zapamiętuje położenie, rozmiar, kadr, obrót, proporcje, maskę i powierzchnię; <b>📌 Wklej układ na zaznaczone</b> nadaje je wszystkim zaznaczonym zdjęciom i filmom (jedno <kbd>Ctrl+Z</kbd>).</li><!--/IF:picture_layout-->
 <!--IF:slideshow--><li><b>🎞 Zdjęcia do tej muzyki</b> (pokaz zdjęć): zaznacz kilka zdjęć i jeden dźwięk, prawy przycisk → <b>🎞 Zdjęcia do tej muzyki</b>. Muzyka rusza razem ze zwiniętą sceną zdjęć; każde zdjęcie jest pokazywane przez długość muzyki podzieloną przez liczbę zdjęć a zdjęcia przenikają się (1 s; pierwsze wchodzi, ostatnie gaśnie w 0,5 s); długość liczy się z IN/OUT i tempa muzyki, a wszystkie zdjęcia trafiają na jedną warstwę, muzyka na inną. Po ostatnim zdjęciu scena staje, a GO czeka na cue za nią. Jedno <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:slideshow-->
+<!--IF:hold_frame--><li><b>Na końcu zostaje ostatnia klatka</b> (wideo, zakładka <b>Audio · przycięcia</b> pod IN / OUT, i w oknie edycji cue): wideo zatrzymuje się na ostatniej klatce zamiast zostawić pustą warstwę – np. kurtyna, która się zasuwa i zostaje zasunięta. Klatka zostaje jak zdjęcie, dopóki inny cue nie zajmie jej warstwy (ze swoim przenikaniem) albo dopóki jej nie zdejmiesz przyciskiem <b>Wygaś</b> na jej karcie, <b>Wygaś wszystko</b>, <b>Czarny ekran</b> albo <b>PANIC</b>. Cue jest skończony: jego Auto-GO i starty „po końcu” dzieją się na końcu wideo; karta <b>Teraz gra</b> mówi <b>ostatnia klatka</b>, bez zegara; nie blokuje GO (nawet gdy jest „wyłączny”), pauza nie puszcza go od nowa, a po zatrzymaniu GO nie wraca na niego. <b>Cofnij GO</b> przywraca klatkę, a nie wideo od początku. Nie działa przy pętli bez końca (nie ma końca).</li><!--/IF:hold_frame-->
 <li><b>Zapętl cue</b> – zaznacz i wybierz liczbę powtórzeń albo „bez końca”
 (np. muzyka w tle podczas przerwy).</li>
 <!--IF:fade_others--><li><b>Przy starcie wycisza inne</b> (karta <b>3 · Czasy</b>, poza widokiem podstawowym) – gdy ten cue startuje, inne grające dźwięki i filmy wyciszają się przez podaną liczbę sekund. Zmiana muzyki jednym cue: stara muzyka na tej samej warstwie łagodnie cichnie, zamiast zostać ucięta (nowa gra w tym czasie na wolnym odtwarzaczu). 0 = nie.</li><!--/IF:fade_others-->
@@ -382,6 +386,7 @@ Muzykę, która ma grać razem ze zdjęciami, ustaw na inną warstwę (np. <b>L2
 Przy dwóch projektorach możesz mieć jeden obraz rozciągnięty na oba albo dwa
 niezależne wyjścia A i B.</li>
 <!--IF:identify_screens--><li><b>🔢 Identyfikuj</b> obok listy ekranów pokazuje na 4 sekundy duży numer na każdym ekranie – ten sam co na liście – więc w nowej sali od razu widać, który ekran to projektor. Kliknięcie zamyka numer wcześniej. Gdy coś jest na wizji, numery się nie pokazują (widownia by je zobaczyła).</li><!--/IF:identify_screens-->
+<!--IF:output_windows--><li><b>Sterowanie → 🔌 Urządzenia</b> ma też <b>🔢 Identyfikuj ekrany</b>, <b>🖥 Wyjścia na wierzch</b> (okna wyjść wracają na swoje ekrany, nad inne okna – np. po komunikacie Windows) i <b>🧹 Wyczyść wyjścia</b>: obrazy, wideo i ostatnie klatki gasną z projektorów i zostaje zaślepka; dźwięki grają dalej. Zabiera też to, co podgląd zostawił na projektorze.</li><!--/IF:output_windows-->
 <li>Tam też wybierasz <b>wyjście audio</b> (głośniki sali) i ewentualnie słuchawki.</li><!--IF:speakers-->
 <li>Program <b>zapamiętuje wybrane głośniki na tym komputerze</b> (nie w pliku przedstawienia).
 Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście systemowe,

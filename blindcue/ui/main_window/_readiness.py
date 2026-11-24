@@ -194,6 +194,7 @@ class _ReadinessMixin:
             lc.JUMP_NOWHERE: tr("salta o chiama una cue che non c'è"),
             lc.EMPTY_SCENE: tr("scena senza nulla da suonare"),
             lc.NEVER_CALLED: tr("parte solo se chiamata, ma nessuna azione la chiama"),
+            lc.PICTURE_TOO_SHORT: tr("immagine sullo schermo meno dei suoi passaggi + 0,5 s"),
         }.get(kind, kind)
 
     def _readiness_view(self, check: Check) -> RowView:

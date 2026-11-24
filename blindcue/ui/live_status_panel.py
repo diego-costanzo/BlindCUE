@@ -93,7 +93,7 @@ class _LiveLayerBar(QWidget):
             self._is_live
             and self._media_type in (MediaType.AUDIO, MediaType.VIDEO)
             and self._end_sec > self._start_sec
-            and self._phase not in ("PRE", "POST")
+            and self._phase not in ("PRE", "POST", "HOLD")
         )
 
     def set_locked(self, locked: bool) -> None:
@@ -304,6 +304,18 @@ class _LiveLayerBar(QWidget):
         self._is_looping_inf = False
         self.update()
 
+    def set_held(self, cue: Cue) -> None:
+        """4.4: the video ended and its last frame stays: a still, no clock."""
+        self._is_live = True
+        self._cue_id = cue.cue_id
+        self._media_type = cue.media_type
+        self._title = cue.name
+        self._q_label = cue.q_label
+        self._phase = "HOLD"
+        self._is_paused = False
+        self._is_looping_inf = False
+        self.update()
+
     def set_paused(self, paused: bool) -> None:
         """Show or clear the PAUSED overlay on this layer bar."""
         if self._is_paused != paused:
@@ -339,6 +351,10 @@ class _LiveLayerBar(QWidget):
 
     def _progress_metrics(self) -> tuple[bool, float, str, str, float | None]:
         """Return (is_timed, progress_0_1, left_elapsed, right_countdown, remaining_sec)."""
+        if self._phase == "HOLD":
+            from i18n import tr
+
+            return False, 0.0, "", tr("ultimo fotogramma"), None  # 4.4: a still, no clock
         if self._phase in ("PRE", "POST"):
             span = max(0.01, self._end_sec)
             progress = min(1.0, max(0.0, self._pos_sec / span))
@@ -1011,6 +1027,16 @@ class LiveStatusPanel(QGroupBox):
         btn_back = self._jump_back_buttons.get(layer)
         if btn_back is not None:
             btn_back.setVisible(False)
+
+    def set_layer_held(self, layer: int, cue: Cue) -> None:
+        """4.4: *cue* ended and its last frame stays on *layer*: no clock, no play/pause, no seek."""
+        bar = self._layer_labels.get(layer)
+        if bar is not None:
+            bar.set_held(cue)
+        for buttons in (self._play_pause_buttons, self._jump_back_buttons):
+            btn = buttons.get(layer)
+            if btn is not None:
+                btn.setVisible(False)
 
     def set_layer_paused(self, layer: int, paused: bool) -> None:
         """Show the paused state on *layer*'s bar and flip its play/pause icon."""

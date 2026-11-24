@@ -40,6 +40,8 @@ class UndoRecord:
     ids: list[int] = field(default_factory=list)     # every cue it started, in order
     replaced: dict[int, int] = field(default_factory=dict)  # cue_id -> cue_id it pushed off its layer
     cut_at: dict[int, float] = field(default_factory=dict)  # cue_id -> where the sound/video it cut was
+    # 4.4: replaced cues that showed their held last frame (they come back as that picture).
+    held: set[int] = field(default_factory=set)
     paused_total: float = 0.0                        # seconds spent in Pause All
     paused_since: float | None = None
 
@@ -70,7 +72,7 @@ class UndoStep:
     cue_id: int
     how: str
     seconds: float = 0.0
-    restore_id: int | None = None   # RESTORE: the picture that comes back
+    restore_id: int | None = None   # RESTORE (and FADE over a held frame, 4.4): the picture that comes back
     cut_id: int | None = None       # audio/video this cue cut off
     resume_at: float | None = None  # where that audio/video comes back from (fades in over 1 s)
 
@@ -83,11 +85,13 @@ def _is_timed(cue: Cue | None) -> bool:
     return cue is not None and cue.media_type in (MediaType.AUDIO, MediaType.VIDEO)
 
 
-def undo_plan(cues: list[Cue], record: UndoRecord, waiting: set[int]) -> list[UndoStep]:
+def undo_plan(cues: list[Cue], record: UndoRecord, waiting: set[int],
+              held_now: set[int] | frozenset[int] = frozenset()) -> list[UndoStep]:
     """Steps for every cue *record* started, in the order they were started.
 
     *waiting* holds the ids of cues still counting down their Pre-Delay; a
-    cue is on air when its status is LIVE.
+    cue is on air when its status is LIVE. *held_now*: video cues that show
+    their held last frame now (4.4) - taken off like a picture.
     """
     by_id = {c.cue_id: c for c in cues}
     steps: list[UndoStep] = []
@@ -111,16 +115,19 @@ def undo_plan(cues: list[Cue], record: UndoRecord, waiting: set[int]) -> list[Un
         before = by_id.get(record.replaced.get(cue_id, -1))
         if before is not None and before.cue_id in record.ids:
             before = None  # pushed off by its own GO: nothing to bring back
-        cut = before.cue_id if _is_timed(before) else None
+        # 4.4: a held last frame it replaced comes back as that picture (never played again).
+        held_before = before is not None and before.cue_id in record.held
+        cut = before.cue_id if _is_timed(before) and not held_before else None
         # The sound or video this GO cut off comes back from where it was (step 11).
         resume = record.cut_at.get(cue_id) if cut is not None else None
-        if _is_picture(cue):
-            if _is_picture(before):
+        if _is_picture(cue) or cue_id in held_now:
+            if _is_picture(before) or held_before:
                 steps.append(UndoStep(cue_id, RESTORE, PICTURE_SECONDS, restore_id=before.cue_id))
             else:
                 steps.append(UndoStep(cue_id, LIFT, PICTURE_SECONDS, cut_id=cut, resume_at=resume))
         else:
-            steps.append(UndoStep(cue_id, FADE, FADE_SECONDS, cut_id=cut, resume_at=resume))
+            restore = before.cue_id if held_before else None
+            steps.append(UndoStep(cue_id, FADE, FADE_SECONDS, cut_id=cut, resume_at=resume, restore_id=restore))
     return steps
 
 

@@ -507,6 +507,11 @@ def main() -> int:
         lp.set_deck_switch_callback(lambda deck, w=win, l_idx=local: w.activate_video_deck(l_idx, deck))
         lp.set_opacity_callback(lambda op, w=win, l_idx=local: w.set_layer_opacity(l_idx, op))
 
+    # 4.4: videos that keep their last frame on the layer (ui/held_frames.py).
+    from ui.held_frames import HeldFrameController
+    held = HeldFrameController(window=main_win, players=live_players,
+                               out_window=_out_window, local_layer=_local_layer)
+
     # ── Connect GO signal to per-layer live engine & Timing Scheduler ─
     active_live_cues: dict[int, Cue] = {}
     known_file_durations: dict[str, float] = {}
@@ -531,11 +536,11 @@ def main() -> int:
         budget = 1 if dual else 3
         count_a = sum(
             1 for layer, cue in active_live_cues.items()
-            if layer <= 3 and cue.media_type == MediaType.VIDEO
+            if layer <= 3 and cue.media_type == MediaType.VIDEO and not held.holds(layer)
         )
         count_b = sum(
             1 for layer, cue in active_live_cues.items()
-            if layer > 3 and cue.media_type == MediaType.VIDEO
+            if layer > 3 and cue.media_type == MediaType.VIDEO and not held.holds(layer)
         )
         overloaded: list[str] = []
         if count_a > budget:
@@ -732,6 +737,13 @@ def main() -> int:
         if expected_gen is not None and layer_fire_gen.get(layer) != expected_gen:
             return
         cue = _resolve_current_cue(cue)
+        if held.ended(cue, layer):
+            # 4.4: it ended, its last frame stays on the layer (the cue stays on air).
+            main_win.set_live_section_index(cue.cue_id, -1)
+            main_win.cue_ended(cue)
+            if _follows_on_its_own(cue):
+                main_win.trigger_auto_follow_from(cue)
+            return
         lp = live_players.get(layer)
         if lp is not None:
             lp.stop()
@@ -806,7 +818,7 @@ def main() -> int:
         post_d = max(0.0, float(getattr(cue, "post_delay", 0.0)))
         if post_d > 0.02:
             lp = live_players.get(layer)
-            if lp is not None:
+            if lp is not None and not held.holds(layer, cue.cue_id):  # 4.4: a held frame is a still already
                 if cue.media_type == MediaType.VIDEO:
                     # Keep video widget paused on its final frame until post_delay expires
                     lp.pause()
@@ -833,8 +845,8 @@ def main() -> int:
         seconds = float(getattr(cue, "fade_others", 0.0) or 0.0)
         base = _base_layer(cue)
         for slot, other in list(active_live_cues.items()):
-            if slot == layer or other.cue_id == cue.cue_id or slot in fading_layers:
-                continue
+            if slot == layer or other.cue_id == cue.cue_id or slot in fading_layers or held.holds(slot):
+                continue  # 4.4: a held last frame is a picture, it is not "playing"
             same_go = now - slot_started_at.get(slot, 0.0) < 0.25
             if seconds > 0 and other.media_type in (MediaType.AUDIO, MediaType.VIDEO) and not same_go:
                 fade_secs = seconds
@@ -892,6 +904,16 @@ def main() -> int:
         """
         if layer_fire_gen.get(layer) != expected_gen:
             return
+        if restoring and start_at is None and held.restore(
+                cue, layer, seconds=float(getattr(cue, "crossfade", 0.0) or 0.0)):
+            # 4.4: Undo GO brings a held video back straight as its last frame.
+            fading_layers.discard(layer)
+            live_image_envelopes.pop(layer, None)
+            active_live_cues[layer] = cue
+            if cue.status != CueStatus.LIVE:
+                main_win.promote_cue_to_live(cue)
+            held.ended(cue, layer)
+            return
         lp = live_players.get(layer)
         # Undo GO brings back a picture this cue pushes off its layer, and a
         # sound or video from where it was cut off - taken now, when the cue
@@ -899,9 +921,12 @@ def main() -> int:
         # operator was already fading out.
         before = active_live_cues.get(layer)
         if before is not None and layer not in fading_layers and before.cue_id != cue.cue_id:
-            cut_pos = live_positions.get(layer) if before.media_type in (MediaType.AUDIO, MediaType.VIDEO) else None
-            main_win.note_replaced(cue, before, cut_pos)
+            was_held = held.holds(layer, before.cue_id)  # 4.4: a held frame comes back as a picture
+            cut_pos = live_positions.get(layer) if (
+                before.media_type in (MediaType.AUDIO, MediaType.VIDEO) and not was_held) else None
+            main_win.note_replaced(cue, before, cut_pos, held=was_held)
             main_win.rel_reference_gone([before.cue_id])  # its marker / "before the end" cues never come
+        held.release(layer)
         # A cue silenced on this layer while this one waited in Pre-Delay is
         # replaced now: this cue's own end must count again.
         fading_layers.discard(layer)
@@ -936,7 +961,8 @@ def main() -> int:
             # Crossfade: dissolve the picture currently on this layer
             # into the new cue instead of a hard cut.
             if getattr(cue, "crossfade", 0.0) > 0:
-                _out_window(layer).begin_crossfade(_local_layer(layer), float(cue.crossfade))
+                _out_window(layer).begin_crossfade(_local_layer(layer), float(cue.crossfade),
+                                                   getattr(cue, "crossfade_style", "dissolve"))
             # A layer dimmed by an action cue starts the new cue at full opacity.
             _out_window(layer).reset_layer_master_opacity(_local_layer(layer))
             # Crossfade of sound (evaluation 2026-11-24): the sound on this layer keeps
@@ -979,6 +1005,7 @@ def main() -> int:
                     if handed:
                         lp.extend_fade_in(xfade)
                     lp.set_loop(cue.loop, cue.loop_count)
+                    held.arm(cue, lp)  # 4.4: stops short of the end to keep its last frame
                     lp.play()
                     if start_at is not None:
                         lp.ramp_level(0.0, 0.0)
@@ -1161,7 +1188,8 @@ def main() -> int:
         """2.2: move what plays on *l_idx* (sound or video); False when nothing could move."""
         on_air = active_live_cues.get(l_idx)
         lp = live_players.get(l_idx)
-        if on_air is None or lp is None or on_air.media_type not in (MediaType.AUDIO, MediaType.VIDEO):
+        if on_air is None or lp is None or on_air.media_type not in (MediaType.AUDIO, MediaType.VIDEO) \
+                or held.holds(l_idx):  # 4.4: a held last frame has ended
             return False
         dur = live_durations.get(l_idx, 0.0)
         start = max(0.0, on_air.in_point)
@@ -1388,8 +1416,20 @@ def main() -> int:
                 on_air = active_live_cues.get(layer)
                 if on_air is None or on_air.cue_id != cue.cue_id:
                     continue  # something else took the layer since: leave it
-                back = by_id.get(step.restore_id) if step.how == undo_go.RESTORE else None
-                if back is not None:
+                back = by_id.get(step.restore_id) if step.restore_id is not None else None
+                if back is not None and step.how != undo_go.RESTORE:
+                    # 4.4: a sound / video took the layer of a held last frame: the frame comes back.
+                    scheduler.cancel_layer(layer)
+                    layer_fire_gen[layer] = layer_fire_gen.get(layer, 0) + 1
+                    fading_layers.discard(layer)
+                    if held.restore(back, layer, seconds=step.seconds):
+                        active_live_cues[layer] = back
+                        main_win.promote_cue_to_live(back)
+                        held.ended(back, layer)
+                    else:
+                        main_win.mark_layer_stopped(layer)
+                        _on_layer_clear_requested(layer, fade_override=step.seconds)
+                elif back is not None:
                     # The picture this cue replaced dissolves back in.
                     scheduler.cancel_layer(layer)
                     gen = layer_fire_gen.get(layer, 0) + 1
@@ -1481,6 +1521,8 @@ def main() -> int:
             c = active_live_cues.get(layer)
             gen = layer_fire_gen.get(layer, 0)
             if c and c.media_type in (MediaType.VIDEO, MediaType.AUDIO):
+                if c.media_type == MediaType.VIDEO:
+                    held.freeze(_resolve_current_cue(c), layer)  # 4.4: its last frame stays (when asked)
                 _enter_post_delay_or_finalize(c, layer, gen)
             else:
                 if layer in live_players:
@@ -1619,10 +1661,12 @@ def main() -> int:
         if test_player is not None and main_win._selected_cue() is cue and cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
             _apply_cue_automation(test_player, cue, hot=True)
         for l_idx, active_c in list(active_live_cues.items()):
-            if active_c.cue_id == cue.cue_id:
+            if active_c.cue_id == cue.cue_id and not held.holds(l_idx):  # 4.4: a held frame has ended
                 if cue.media_type in (MediaType.VIDEO, MediaType.AUDIO) and l_idx in live_players:
                     _route_audio(cue, live_players[l_idx], quiet=True)  # 3.1: its output changed
                     _apply_cue_automation(live_players[l_idx], cue, hot=True)
+                    if cue.media_type == MediaType.VIDEO:
+                        held.arm(cue, live_players[l_idx])  # 4.4: "keep the last frame" changed
                 elif cue.media_type == MediaType.IMAGE and l_idx not in live_image_envelopes:
                     _set_layer_opacity(l_idx, cue.opacity)
 
@@ -1712,7 +1756,10 @@ def main() -> int:
                     live_durations[l_idx] = 0.0
                     live_positions[l_idx] = 0.0
 
-            if cue and cue.media_type == MediaType.VIDEO:
+            if cue and held.holds(layer, cue.cue_id):
+                live_image_envelopes.pop(layer, None)
+                held.fade_out(layer, fade_time, callback=_clear_active_if_same)  # 4.4: like a picture
+            elif cue and cue.media_type == MediaType.VIDEO:
                 if lp is not None:
                     lp.fade_out(fade_time, stop_after=True)
                 _out_window(layer).fade_out_video(fade_time, callback=_clear_active_if_same, layer=_local_layer(layer))
@@ -1726,6 +1773,7 @@ def main() -> int:
                 _out_window(layer).fade_out_layer(_local_layer(layer), fade_time, callback=_clear_active_if_same)
             else:
                 live_image_envelopes.pop(layer, None)
+                held.release(layer)
                 _clear_layer(layer)
                 active_live_cues.pop(layer, None)
                 fading_layers.discard(layer)
@@ -1745,6 +1793,7 @@ def main() -> int:
             main_win.set_global_paused(False, silent=True)
             live_image_envelopes.clear()
             live_img_timer.stop()
+            held.clear_all()  # 4.4: the output fades the held frames with the pictures
             for l_idx in _ALL_RUNTIME_LAYERS:
                 layer_fire_gen[l_idx] = layer_fire_gen.get(l_idx, 0) + 1
                 live_durations[l_idx] = 0.0
@@ -1772,6 +1821,7 @@ def main() -> int:
             main_win.set_global_paused(False, silent=True)
             live_image_envelopes.clear()
             live_img_timer.stop()
+            held.clear_all()  # 4.4: the output cuts the held frames with everything else
             for l_idx in _ALL_RUNTIME_LAYERS:
                 layer_fire_gen[l_idx] = layer_fire_gen.get(l_idx, 0) + 1
                 live_durations[l_idx] = 0.0
@@ -1866,6 +1916,8 @@ def main() -> int:
         lp = live_players.get(layer)
         if live_cue is None or lp is None or live_cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
             return False
+        if held.holds(layer):
+            return False  # 4.4: a held last frame has ended - "resume" would play the video again
         st = _sleep_state(layer)
         if pause:
             if st is not None and st["falling"] and fade <= 0.02:
@@ -1925,6 +1977,8 @@ def main() -> int:
         lp = live_players.get(layer)
         if live_cue is None or lp is None or live_cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
             return
+        if held.holds(layer):
+            return  # 4.4: a held last frame is a still, nothing to seek
         dur = live_durations.get(layer, 0.0)
         if dur <= 0 and lp.duration_seconds() > 0:
             dur = lp.duration_seconds()
@@ -2169,6 +2223,7 @@ def main() -> int:
         stopped: list[str] = []
         for layer in (4, 5, 6):
             cue = active_live_cues.pop(layer, None)
+            held.release(layer)
             layer_fire_gen[layer] = layer_fire_gen.get(layer, 0) + 1
             live_durations[layer] = 0.0
             live_positions[layer] = 0.0

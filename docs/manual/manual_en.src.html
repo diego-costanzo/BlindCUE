@@ -131,6 +131,8 @@ same layer, or <b>Fade Out</b>. Set the display time in the Inspector:
 <b>Cue · Timing → Image Time</b> (e.g. 10 s; <code>0</code> = no limit).
 For a slideshow use several photo cues in a row with <b>Auto-GO</b>
 (chapter 4), or a <a href="#groups">group</a>.</p>
+<!--IF:picture_timing--><p class="tip">⚠ A photo whose <b>Image Time</b> is shorter than its passages (Fade In or crossfade at the start, Fade Out at the end) plus half a second is never still: the audience only sees a flicker. The Inspector says so next to the time («⚠ at least … s»), the «Edit cue» window under the time on screen, and the «Before the show» page in the list of things to fix.</p><!--/IF:picture_timing-->
+<!--IF:thumbnails--><p><b>Thumbnails in the list</b>: in the Preparation list photos and videos show a small picture instead of the IMG / VID label (videos need FFmpeg). On a slow computer turn them off in <b>View → 🖼 Thumbnails in the list</b>; with the <b>Eco</b> hardware profile they are off until you turn them on. They are never made during the show.</p><!--/IF:thumbnails-->
 <!--IF:text_cues-->
 <h3><a name="captions"></a>Captions (text on screen)</h3>
 <ol>
@@ -280,6 +282,7 @@ on that layer dissolves into the new one.</li>
 <b>Crossfade 1–2 s</b>, <b>Image Time</b> e.g. 5 s and <b>After: Auto-GO</b> – the photos
 change smoothly by themselves.</p>
 <!--IF:photo_xfade--><p class="tip">🔀 A picture that moves on to the next one by itself (<b>Then: Auto-GO</b> or a scene "one after another") hands over its layer the crossfade time early: the next picture comes in over the one still shown, with no black gap. One time for several pictures at once: select them, right-click → <b>🔀 Crossfade for the selected…</b> (it also sets <b>Fade In = 0</b>).</p><!--/IF:photo_xfade-->
+<!--IF:slide--><p class="tip">➡ Next to the <b>Crossfade</b> field of a picture or a video choose how it comes in: <b>Dissolve</b> (it melts over the previous one) or <b>Slide</b> (it comes in from the right and pushes the previous one out to the left) – in the crossfade time. A slide also works on an empty layer (it comes in over black).</p><!--/IF:slide-->
 <p class="tip">🎵 <b>Sound crossfade</b>: the same field works for music. When a new song (or video) comes onto a layer where something plays and has a <b>Crossfade</b> of e.g. 3 s, the previous song is not cut: it fades over 3 s while the new one rises. <b>Pause all</b>, <b>Fade all</b> and <b>PANIC</b> also reach a song that is still fading.</p>
 <!--/IF:crossfade-->
 <h3>Picture (the "Video · Photo" tab)</h3>
@@ -295,7 +298,7 @@ change smoothly by themselves.</p>
 <li>You can also <b>drag the picture frame with the mouse in the Pre-Viz preview</b>.</li>
 <li><b>MIRROR LIVE</b> (under the preview) – when on, position and crop changes show
 on the projector right away. Use it to line up the picture in rehearsal;
-<b>turn it off for the show</b>.</li>
+<b>turn it off for the show</b>.<!--IF:preview_off_in_show--> Going into the rehearsal or the show turns it off by itself and its picture leaves the projector (only what is on air stays).<!--/IF:preview_off_in_show--></li>
 </ul>
 <h3>Curves over time (automation)</h3>
 <p>In the <b>Waveform</b> panel choose <b>Volume</b> or <b>Opacity</b> and click on the line
@@ -313,6 +316,7 @@ Easiest: click on the wave in the Waveform panel, then
 <b>Reset IN/OUT</b> brings back the whole file. Videos are trimmed the same way.<!--IF:silence_trim--> The <b>✂</b> button next to IN/OUT puts them where the sound really starts and ends (it cuts the silence at the start and the end, e.g. of files from the internet; <kbd>Ctrl+Z</kbd> undoes it).<!--/IF:silence_trim--></li>
 <!--IF:picture_layout--><li><b>Copy / paste the picture layout</b> (right-click a picture or a film): <b>📋 Copy the picture layout</b> keeps the position, size, crop, rotation, aspect ratio, mask and surface; <b>📌 Paste the layout onto the selected</b> gives it to every selected picture and film (one <kbd>Ctrl+Z</kbd>).</li><!--/IF:picture_layout-->
 <!--IF:slideshow--><li><b>🎞 Photos to this music</b> (a photo show): select several pictures and one sound, right-click → <b>🎞 Photos to this music</b>. The music starts together with a folded scene of the pictures; each picture is shown for the length of the music divided by their number and the pictures crossfade into each other (1 s; the first fades in and the last fades out in 0.5 s); the length takes the music's IN/OUT and tempo into account, all pictures go to one layer and the music to another. After the last picture the scene stops and GO waits for the cue after it. One <kbd>Ctrl+Z</kbd> undoes it.</li><!--/IF:slideshow-->
+<!--IF:hold_frame--><li><b>Keep the last frame at the end</b> (video, <b>Audio · Trims</b> tab under IN / OUT, and in the «Edit cue» window): the video stops on its last frame instead of leaving the layer empty – e.g. a curtain that closes and stays closed. The frame stays like a picture until another cue takes its layer (with its crossfade), or until you take it off with <b>Fade</b> on its card, <b>Fade All</b>, <b>Blackout</b> or <b>PANIC</b>. The cue has ended: its Auto-GO and the "after the end" starts happen at the end of the video; its «Now playing» card says <b>last frame</b> with no clock; it never blocks a GO (even when "exclusive"), pause does not start it again and after a stop GO does not go back to it. <b>Undo GO</b> brings the frame back, not the video from the start. Not with an endless loop (there is no end).</li><!--/IF:hold_frame-->
 <li><b>Loop cue</b> – tick it and choose the number of repeats or "forever"
 (e.g. background music during the interval).</li>
 <!--IF:fade_others--><li><b>On start, fade the others</b> (<b>3 · Timing</b> card, outside the basic view) – when this cue starts, the other sounds and videos on air fade out over the given seconds. A change of music with one cue: the old music on the same layer fades out instead of being cut (meanwhile the new one plays on a free player). 0 = no.</li><!--/IF:fade_others-->
@@ -381,6 +385,7 @@ to see it full screen; <kbd>F11</kbd> again goes back to the window.<!--/IF:f11-
 With two projectors you can stretch one picture over both or run two
 independent outputs A and B.</li>
 <!--IF:identify_screens--><li><b>🔢 Identify</b> next to the list of screens shows a big number on every screen for 4 seconds – the same as in the list – so in a new room you see at once which screen is the projector. A click closes a number early. While something is on air the numbers are not shown (the audience would see them).</li><!--/IF:identify_screens-->
+<!--IF:output_windows--><li><b>Show → 🔌 Devices</b> also has <b>🔢 Identify the screens</b>, <b>🖥 Bring the outputs to the front</b> (the output windows go back to their screens, on top of the other windows – e.g. after a Windows message) and <b>🧹 Clear the outputs</b>: pictures, videos and last frames fade from the projectors and the placeholder stays; sounds play on. It also takes away anything a preview left on the projector.</li><!--/IF:output_windows-->
 <li>There you also choose the <b>audio output</b> (house speakers) and headphones.</li><!--IF:speakers-->
 <li>The program <b>remembers the chosen speakers on this computer</b> (not in the show file).
 If they are missing – for example a projector with speakers is unplugged – the system default output
