@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
@@ -40,10 +41,16 @@ _KEEP_CHOICE = "keep-remembered-audio"
 class DeviceSettingsDialog(QDialog):
     """Modal dialog for selecting Audio Master/PFL devices, Video Screen, and Hardware Profile."""
 
-    def __init__(self, device_mgr: DeviceManager, parent: QWidget | None = None) -> None:
-        """Build the hardware dialog (screens + audio) for the given device manager."""
+    def __init__(self, device_mgr: DeviceManager, parent: QWidget | None = None,
+                 busy: Callable[[], bool] | None = None) -> None:
+        """Build the hardware dialog (screens + audio) for the given device manager.
+
+        *busy*: True while something is on air (then the screen numbers are not shown).
+        """
         super().__init__(parent)
         self.device_mgr = device_mgr
+        self._busy = busy or (lambda: False)
+        self._screen_numbers: list[QWidget] = []
         self.setWindowTitle("Configurazione Hardware & Uscite di Regia")
         self.setMinimumWidth(560)
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose, True)
@@ -195,9 +202,16 @@ class DeviceSettingsDialog(QDialog):
         btn_refresh_screens.setCursor(Qt.CursorShape.PointingHandCursor)
         btn_refresh_screens.clicked.connect(self._populate_screens)
         self._btn_refresh_screens = btn_refresh_screens
+        btn_identify = QPushButton("🔢 Identifica")
+        btn_identify.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn_identify.setToolTip("Mostra per qualche secondo un grande numero su ogni schermo "
+                                "(lo stesso numero dell'elenco)")
+        btn_identify.clicked.connect(self._identify_screens)
+        self._btn_identify = btn_identify
         row_scr.addWidget(lbl_scr)
         row_scr.addWidget(self._combo_screen, 1)
         row_scr.addWidget(btn_refresh_screens)
+        row_scr.addWidget(btn_identify)
         l_video.addLayout(row_scr)
 
         row_mode = QHBoxLayout()
@@ -377,7 +391,7 @@ class DeviceSettingsDialog(QDialog):
         for i, s in enumerate(screens):
             geo = s.geometry()
             tag = " [Primario / Regia]" if s == primary else " [Esterno / Proiettore]"
-            label = f"{s.name()} — {geo.width()}x{geo.height()}{tag}"
+            label = f"{i + 1}. {s.name()} — {geo.width()}x{geo.height()}{tag}"  # 4.5: the number "Identify" shows
             self._combo_screen.addItem(label, s)
 
             if cur_target is not None and s == cur_target:
@@ -385,6 +399,18 @@ class DeviceSettingsDialog(QDialog):
 
         if screens:
             self._combo_screen.setCurrentIndex(sel_idx)
+
+    def _identify_screens(self) -> None:
+        """4.5: a big number on every screen for a few seconds (not while something is on air)."""
+        from ui.identify_screens import show_screen_numbers
+
+        if self._busy():
+            QMessageBox.information(
+                self, "Identifica gli schermi",
+                "Qualcosa è in onda: il numero coprirebbe il proiettore davanti al pubblico. "
+                "Riprova quando nulla è in onda.")
+            return
+        self._screen_numbers = show_screen_numbers(self.device_mgr.get_available_screens())
 
     def _on_profile_selection_changed(self) -> None:
         pref = self._combo_profile.currentData() or PROFILE_AUTO

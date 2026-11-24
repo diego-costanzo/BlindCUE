@@ -3396,4 +3396,18 @@ T: dict[str, str] = {
         "'{}': startuje tylko z akcji, której nie importujesz",
     '… e altre {}':
         '… i jeszcze {}',
+    '🔢 Identifica':
+        '🔢 Identyfikuj',
+    "Mostra per qualche secondo un grande numero su ogni schermo (lo stesso numero dell'elenco)":
+        'Pokazuje na kilka sekund duży numer na każdym ekranie (ten sam co na liście)',
+    'Identifica gli schermi':
+        'Identyfikacja ekranów',
+    'Qualcosa è in onda: il numero coprirebbe il proiettore davanti al pubblico. Riprova quando nulla è in onda.':
+        'Coś jest na wizji: numer zasłoniłby projektor przed widownią. Spróbuj, gdy nic nie będzie na wizji.',
+    'Regia':
+        'Reżyserka',
+    'Proiettore / esterno':
+        'Projektor / zewnętrzny',
+    'Schermo {}':
+        'Ekran {}',
 }

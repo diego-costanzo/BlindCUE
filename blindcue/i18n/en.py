@@ -3174,4 +3174,18 @@ T: dict[str, str] = {
         "'{}': only an action starts it, and that action was not imported",
     '… e altre {}':
         '… and {} more',
+    '🔢 Identifica':
+        '🔢 Identify',
+    "Mostra per qualche secondo un grande numero su ogni schermo (lo stesso numero dell'elenco)":
+        'Shows a big number on every screen for a few seconds (the same number as in the list)',
+    'Identifica gli schermi':
+        'Identify the screens',
+    'Qualcosa è in onda: il numero coprirebbe il proiettore davanti al pubblico. Riprova quando nulla è in onda.':
+        'Something is on air: the number would cover the projector in front of the audience. Try again when nothing is on air.',
+    'Regia':
+        'Director',
+    'Proiettore / esterno':
+        'Projector / external',
+    'Schermo {}':
+        'Screen {}',
 }

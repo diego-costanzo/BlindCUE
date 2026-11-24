@@ -581,7 +581,9 @@ class _CueTableMixin:
         if self._device_mgr is None:
             return
         from ui.device_settings_dialog import DeviceSettingsDialog
-        dlg = DeviceSettingsDialog(self._device_mgr, self)
+        dlg = DeviceSettingsDialog(
+            self._device_mgr, self,
+            busy=lambda: any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags))
         dlg.exec()
         self._update_hardware_status_bar()
 

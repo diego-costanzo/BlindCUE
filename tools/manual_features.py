@@ -73,6 +73,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "cue_export": ("blindcue/engine/cue_export.py", None),
     "renumber": ("blindcue/engine/renumber.py", None),
     "show_import": ("blindcue/engine/show_import.py", None),
+    "identify_screens": ("blindcue/ui/identify_screens.py", None),
 }
 
 
