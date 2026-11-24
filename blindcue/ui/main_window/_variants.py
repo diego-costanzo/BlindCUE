@@ -2,10 +2,11 @@
 
 One mechanism: a variant is a fixed set of visible panels of the editor page
 and the proportions of its splitters – the same widgets and data, switched
-without a restart. Kept on this computer (``ui/view_variant``), never in the
-show file; default Full. The Rehearsal and Show screen is one and the same in
-every variant. A rare switch hidden in a variant (Jam, remote, MIRROR LIVE)
-shows by itself while it is on.
+without a restart. Every start opens in Lite (GUI review 2026-11-24: a calm
+first screen for a teacher; whoever needs more switches, for this session
+only), never in the show file. The Rehearsal and Show screen is one and the
+same in every variant. A rare switch hidden in a variant (Jam, remote, MIRROR
+LIVE) shows by itself while it is on.
 """
 
 from __future__ import annotations
@@ -16,15 +17,14 @@ from PySide6.QtWidgets import QMenu, QPushButton
 from ui.main_window._common import *  # noqa: F403,F401,F405
 
 LITE, MEDIUM, FULL = "lite", "medium", "full"
-VARIANT_KEY = "ui/view_variant"
+START_VARIANT = LITE
 _NAMES = {LITE: "Semplice", MEDIUM: "Esteso", FULL: "Completo"}
 
 
 class _VariantsMixin:
     def _variants_setup(self) -> None:
-        """Menu View → Window layout, the "Layout: … ▾" button; apply the saved variant."""
-        value = str(QSettings("BlindCue", "BlindCue").value(VARIANT_KEY, FULL) or FULL)
-        self._variant = value if value in _NAMES else FULL
+        """Menu View → Window layout, the "Layout: … ▾" button; every start in Lite."""
+        self._variant = START_VARIANT
         menu = QMenu(tr("▦ Layout della finestra"), self)
         self._variant_menu = menu
         group = QActionGroup(self)
@@ -89,7 +89,6 @@ class _VariantsMixin:
         self._update_variant_status_bar()
         self._apply_top_splitter_ratios()
         if not initial:
-            QSettings("BlindCue", "BlindCue").setValue(VARIANT_KEY, variant)
             self._cue_list.setFocus()
             if self._live_mode:
                 self._status_label.setText(tr("Il layout {} si vede tornando in preparazione").format(name))
@@ -99,8 +98,8 @@ class _VariantsMixin:
 
     def _update_variant_status_bar(self) -> None:
         """Rare switches: hidden in Lite and Medium, but always shown while they are on."""
-        full = self._variant == FULL
-        self._lbl_hw_info.setVisible(full)
+        # In the Rehearsal and the Show only what is switched on (GUI review 2026-11-24).
+        full = self._variant == FULL and not getattr(self, "_live_mode", False)
         self._btn_lock_layout.setVisible(full)
         jam_on = bool(getattr(self, "_jam_mode_active", False))
         remote_on = bool(self._remote_mgr and (self._remote_mgr.is_web_active() or self._remote_mgr.is_osc_active())) \

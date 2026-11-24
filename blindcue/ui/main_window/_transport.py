@@ -243,6 +243,11 @@ class _TransportMixin:
             self._status_label.setText("🔇 Tutto silenziato (volume generale) — Ctrl+M per riattivare")
         else:
             self._status_label.setText(f"Volume generale {int(round(self._master_level * 100))} %")
+        if hasattr(self, "_alarm_bar"):
+            # Muted, the next GO is silent: the warning stays in sight (GUI review 2026-11-24).
+            self._alarm_bar.set_alarm(
+                "mute", tr("🔇 Tutto silenziato (volume generale) — Ctrl+M per riattivare")
+                if self._master_muted else "")
         if mute_changed:
             self.announce(self._status_label.text(), assertive=True)
 

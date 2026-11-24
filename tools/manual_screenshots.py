@@ -94,6 +94,8 @@ def run(app) -> None:
 def _run(app) -> None:
     mw = next(w for w in app.topLevelWidgets()
               if isinstance(w, QtWidgets.QMainWindow) and hasattr(w, "_cue_list"))
+    mw.apply_view_variant("full")          # every start opens in Lite; the manual shows every panel
+    mw.setWindowState(QtCore.Qt.WindowState.WindowNoState)   # a small screen opens it maximised
     mw.show()
     mw.resize(1880, 1000)
     mw.move(OFF_SCREEN)

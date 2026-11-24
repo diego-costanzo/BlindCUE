@@ -607,6 +607,17 @@ class _CueTableMixin:
         missing (the Windows default plays) or connected again."""
         if text:
             self._status_label.setText(text)
+        if hasattr(self, "_alarm_bar"):
+            self._alarm_bar.set_alarm("speakers", text)  # stays until the speakers are back
+
+    def _on_alarm_changed(self, text: str) -> None:
+        """A new warning on the alarm bar: said aloud, and a chime in the show."""
+        if not text:
+            return
+        self.announce(text, assertive=True)
+        earcons = getattr(self, "_earcon_mgr", None)
+        if self._live_mode and earcons is not None and hasattr(earcons, "play_alert"):
+            earcons.play_alert()
 
     def _update_hardware_status_bar(self, *args: Any) -> None:
         """Refresh the hardware and device brief in the status bar."""

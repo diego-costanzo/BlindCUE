@@ -116,7 +116,9 @@ class PreviewControlPanel(QGroupBox):
             }
         """
 
-        self.btn_play = QPushButton("▶  Play")
+        # "Stop" under the preview stopped only the preview while the GO plays to the room: the
+        # buttons say so (GUI review 2026-11-24).
+        self.btn_play = QPushButton("▶  Anteprima")
         self.btn_play.setToolTip("Riproduci anteprima / Pre-viz")
         self.btn_play.setStyleSheet(btn_style_base + """
             QPushButton:hover {
@@ -138,7 +140,7 @@ class PreviewControlPanel(QGroupBox):
             QPushButton:pressed { background-color: #1c222e; }
         """)
 
-        self.btn_stop = QPushButton("⏹  Stop")
+        self.btn_stop = QPushButton("⏹  Ferma anteprima")
         self.btn_stop.setToolTip("Arresta anteprima e riavvolgi")
         self.btn_stop.setStyleSheet(btn_style_base + """
             QPushButton:hover {

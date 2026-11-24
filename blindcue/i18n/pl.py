@@ -122,15 +122,15 @@ T: dict[str, str] = {
     'Nessun comando ricevuto':
         'Nie odebrano żadnego polecenia',
     '⏹ Blocco':
-        '⏹ Stop',
+        '⏹ Czeka na GO',
     '⏹ Blocco (Default): esegue solo la cue selezionata (Pre+Durata+Post) e attende GO manuale.':
-        '⏹ Stop (domyślnie): odtwarza tylko zaznaczony cue (Pre+Czas+Post) i czeka na ręczne GO.',
+        '⏹ Czeka na GO (domyślnie): gra tylko ten cue (opóźnienie startu, czas, czekanie po końcu) i czeka na ręczne GO.',
     '⤵ Auto-GO':
-        '⤵ Auto-GO',
+        '⤵ Sam po końcu',
     '⤵ GO Automatico: al termine di Pre-Delay + Durata + Post-Delay avvia automaticamente la cue successiva.':
-        '⤵ Automatyczne GO: po Pre-Delay + Czas + Post-Delay następny cue startuje sam.',
+        '⤵ Sam po końcu (Auto-GO): po opóźnieniu startu, czasie i czekaniu po końcu następny cue startuje sam.',
     '⇉ Simult.':
-        '⇉ Razem',
+        '⇉ Z następnym',
     '⇉ Simultanea: al GO avvia subito insieme la cue successiva (che rispetta comunque il proprio Pre-Delay).':
         '⇉ Razem z następnym: przy GO od razu startuje też następny cue (z zachowaniem jego Pre-Delay).',
     'SCALETTA CUE (Sequence List)':
@@ -214,7 +214,7 @@ T: dict[str, str] = {
     'Numero progressivo di posizione in scaletta (doppio click = GO)':
         'Numer pozycji na liście (dwuklik = GO)',
     'Richiamo copione Q (doppio click per modificare)':
-        'Oznaczenie Q ze scenariusza (dwuklik, aby edytować)',
+        'Numer ze scenariusza (Q); dwuklik, aby edytować',
     'Nome personalizzato scena / file (doppio click per rinominare; Ctrl/Shift+Click per selezione multipla)':
         'Własna nazwa sceny / pliku (dwuklik, aby zmienić; Ctrl/Shift+klik = zaznaczanie wielu)',
     '🎨 Colore Scena / Gruppo':
@@ -464,7 +464,7 @@ T: dict[str, str] = {
     'Attende GO manuale (default)':
         'Czeka na ręczne GO (domyślnie)',
     'Avvia la successiva dopo Pre+Durata+Post':
-        'Uruchamia następny po Pre+Czas+Post',
+        'Uruchamia następny po opóźnieniu, czasie i czekaniu po końcu',
     'Avvia insieme la successiva sul GO':
         'Uruchamia następny razem przy GO',
     '⇉ Simultaneo':
@@ -488,11 +488,11 @@ T: dict[str, str] = {
     'Cicla continuamente tutti gli elementi interni finché non viene dato lo stop.':
         'Odtwarza w kółko wszystkie elementy, aż do zatrzymania.',
     'ISPETTORE CUE (Nessuna cue selezionata)':
-        'INSPEKTOR CUE (nie wybrano cue)',
+        'USTAWIENIA CUE (nie wybrano cue)',
     'Cursore orizzontale da {} a {}.':
         'Suwak poziomy od {} do {}.',
     'Pannello Ispettore Cue - Schede':
-        'Panel Inspektora cue - karty',
+        'Panel ustawień cue – karty',
     'Schede proprietà: Info e Tempi, Video e Foto, Audio e Tagli, Gruppo.':
         'Karty właściwości: info i czasy, wideo i zdjęcia, audio i przycięcia, grupa.',
     '1 · IDENTITÀ IN COPIONE & COLORE GRUPPO':
@@ -540,13 +540,13 @@ T: dict[str, str] = {
     'Ritardo di partenza dopo il GO per incastrare la cue con altri layer':
         'Opóźnienie startu po GO, aby zgrać cue z innymi warstwami',
     'Ritardo di Partenza Pre-Delay':
-        'Opóźnienie startu (Pre-Delay)',
+        'Opóźnienie startu',
     "Secondi di ritardo dopo il GO prima dell'avvio della cue.":
         'Sekundy opóźnienia po GO przed startem cue.',
     'Attesa extra dopo la fine del media prima di uscire o passare alla successiva':
         'Dodatkowe czekanie po końcu mediów przed przejściem do następnego',
     'Attesa Finale Post-Delay':
-        'Czekanie końcowe (Post-Delay)',
+        'Czekanie po końcu',
     'Secondi di attesa dopo il termine del media.':
         'Sekundy czekania po zakończeniu mediów.',
     'Durata di permanenza in Live delle immagini statiche (0 = infinita)':
@@ -562,7 +562,7 @@ T: dict[str, str] = {
     '🎯 Cue · Tempi':
         '🎯 Cue · czasy',
     "Suggerimento: puoi anche trascinare il riquadro o gli 8 bordi direttamente sull'Anteprima Pre-Viz 16:9.":
-        'Wskazówka: ramkę i jej 8 krawędzi możesz też przeciągać bezpośrednio w podglądzie Pre-Viz 16:9.',
+        'Wskazówka: ramkę i jej 8 krawędzi możesz też przeciągać bezpośrednio w podglądzie 16:9.',
     '1 · POSIZIONAMENTO, ZOOM & TRASPARENZA':
         '1 · POZYCJA, ZOOM I PRZEZROCZYSTOŚĆ',
     'Superficie:':
@@ -778,7 +778,7 @@ T: dict[str, str] = {
     'Pre-Delay:':
         'Opóźnienie:',
     'Post-Delay:':
-        'Czekaj po:',
+        'Czekanie po:',
     'Durata Img:':
         'Czas obrazu:',
     'Pos X:':
@@ -818,21 +818,21 @@ T: dict[str, str] = {
     'Maschera: {} punti':
         'Maska: {} punktów',
     "ISPETTORE CUE — {} [{}] '{}'":
-        "INSPEKTOR CUE — {} [{}] '{}'",
+        'USTAWIENIA CUE — {} [{}] „{}”',
     'Seleziona una cue':
         'Wybierz cue',
     '0 s = Infinita in Live':
         '0 s = bez końca na Live',
     "Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9.":
-        'Wybrano obraz: przeciągnij ramkę lub jej 8 krawędzi w podglądzie Pre-Viz 16:9.',
+        'Wybrano obraz: przeciągnij ramkę lub jej 8 krawędzi w podglądzie 16:9.',
     'Nota: Cue Immagine — Fade In/Out e inviluppo Opacità attivi. Volume, Tagli e Loop valgono per Audio/Video.':
         'Uwaga: cue z obrazem — działają Fade In/Out i obwiednia krycia. Głośność, przycięcia i pętla dotyczą audio/wideo.',
     'ISPETTORE CUE — Selezione Mista ({} cue)':
-        'INSPEKTOR CUE — mieszane zaznaczenie ({} cue)',
+        'USTAWIENIA CUE — mieszane zaznaczenie ({} cue)',
     '⚠ Selezione mista ({}): seleziona solo file dello stesso tipo per modifiche comuni.':
         '⚠ Mieszane zaznaczenie ({}): zaznacz pliki jednego typu, aby edytować je razem.',
     'ISPETTORE CUE — {} {} (Modifica Multipla)':
-        'INSPEKTOR CUE — {} {} (edycja wielu)',
+        'USTAWIENIA CUE — {} {} (edycja wielu)',
     'Layer misti (clicca L1/L2/L3 per uniformare)':
         'Różne warstwy (kliknij L1/L2/L3, aby ujednolicić)',
     '⚡ MODIFICA MULTIPLA: {} file {} selezionati • {}.\nOgni parametro modificato verrà applicato a tutti gli elementi selezionati.':
@@ -856,7 +856,7 @@ T: dict[str, str] = {
     'Usa IN / OUT del video':
         'Użyj IN / OUT filmu',
     "Video selezionato: trascina posizione/crop sull'Anteprima Pre-Viz e attiva MIRROR LIVE per calibrare sul proiettore.":
-        'Wybrano wideo: przeciągnij pozycję/przycięcie w podglądzie Pre-Viz i włącz MIRROR LIVE, aby skalibrować na projektorze.',
+        'Wybrano wideo: przeciągnij położenie/przycięcie w podglądzie i włącz „Pokaż też na projektorze”, aby ustawić obraz na projektorze.',
     'Regola Volume traccia video, Fade In/Out, punti IN/OUT e Loop (o Sezioni nella Timeline).':
         'Ustaw głośność ścieżki wideo, Fade In/Out, punkty IN/OUT i pętlę (lub sekcje na osi czasu).',
     '📁 Questa cue appartiene a una Scena / Gruppo':
@@ -966,11 +966,11 @@ T: dict[str, str] = {
     'USCITA B — secondo proiettore indipendente':
         'WYJŚCIE B — drugi, niezależny projektor',
     '⏹ Master Blackout (Tappo) — [ Ctrl+B ]':
-        '⏹ Wygaszenie główne (zaślepka) — [ Ctrl+B ]',
+        '⏹ Czarny ekran (zaślepka) — Ctrl+B',
     "Arresta tutto l'output e mostra Layer 0 (Tappo) — Scorciatoia di sicurezza: Ctrl+B":
         'Zatrzymuje cały obraz i pokazuje warstwę 0 (zaślepkę) — skrót bezpieczeństwa: Ctrl+B',
     'Master Blackout':
-        'Wygaszenie główne',
+        'Czarny ekran',
     "Arresta immediatamente l'output di tutti i layer e torna allo sfondo tappo. Scorciatoia: Ctrl+B.":
         'Natychmiast zatrzymuje obraz na wszystkich warstwach i wraca do zaślepki. Skrót: Ctrl+B.',
     'Tappo (L0): Logo BlindCue (Predefinito)':
@@ -1204,7 +1204,7 @@ T: dict[str, str] = {
     '&GO (Next Cue)':
         '&GO (następny cue)',
     '&Blackout':
-        '&Wygaszenie (blackout)',
+        '&Czarny ekran',
     'Imposta Immagine di &Tappo (Layer 0)…':
         'Ustaw obraz &zaślepki (warstwa 0)…',
     '&Ripristina Tappo Predefinito':
@@ -1274,13 +1274,13 @@ T: dict[str, str] = {
     '{} Cue ({} scene)':
         '{} cue ({} scen)',
     'PROGETTAZIONE: LIVE MIRROR ATTIVO (Modifiche visibili sullo schermo esterno)':
-        'PROJEKTOWANIE: LIVE MIRROR WŁ. (zmiany widać na ekranie zewnętrznym)',
+        'PROJEKTOWANIE: podgląd pokazywany też na projektorze (zmiany widać na ekranie zewnętrznym)',
     'LIVE MIRROR DISATTIVATO — Anteprima isolata (Pronto per lo spettacolo)':
-        'LIVE MIRROR WYŁ. — odizolowany podgląd (gotowe do przedstawienia)',
+        'Podgląd tylko dla Ciebie — projektor go nie pokazuje (gotowe do przedstawienia)',
     'Selezione mista: {} cue':
         'Mieszane zaznaczenie: {} cue',
     'BLACKOUT — Output ripristinato a Layer 0 (Tappo)':
-        'WYGASZENIE — obraz wrócił do warstwy 0 (zaślepka)',
+        'CZARNY EKRAN — obraz wrócił do warstwy 0 (zaślepka)',
     '🚨 PANIC (0ms) — STOP TOTALE ESEGUITO':
         '🚨 PANIC (0 ms) — WSZYSTKO ZATRZYMANE',
     'Scaletta vuota — Aggiungi prima dei file multimediali':
@@ -1318,7 +1318,7 @@ T: dict[str, str] = {
     'Bordo sfumato':
         'Miękka krawędź',
     'Ammorbidisce il contorno della maschera: 0 = taglio netto.\nLa sfumatura è proporzionata al frame, quindi identica sul proiettore e in Pre-Viz.':
-        'Zmiękcza krawędź maski: 0 = ostre cięcie.\nZmiękczenie jest proporcjonalne do kadru, więc wygląda tak samo na projektorze i w Pre-Viz.',
+        'Zmiękcza krawędź maski: 0 = ostre cięcie.\nZmiękczenie jest proporcjonalne do kadru, więc wygląda tak samo na projektorze i w podglądzie.',
     'Applica':
         'Zastosuj',
     '{} punti':
@@ -1346,17 +1346,17 @@ T: dict[str, str] = {
     '🔲 SAGOMA INTERNA':
         '🔲 KSZTAŁT WEWNĘTRZNY',
     '🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)':
-        '🎵 ODTWARZANIE AUDIO W PODGLĄDZIE (PRE-VIZ)',
+        '🎵 ODTWARZANIE AUDIO W PODGLĄDZIE',
     'Pre-ascolto attivo in cuffia • Monitor sala mutato':
         'Odsłuch w słuchawkach aktywny • nagłośnienie sali wyciszone',
     "Premi ▶ Play sotto l'anteprima per pre-ascoltare in cuffia":
         'Naciśnij ▶ Odtwórz pod podglądem, aby odsłuchać w słuchawkach',
     '🎬 VIDEO CARICATO IN PRE-VIZ — PREMI PLAY':
-        '🎬 WIDEO WCZYTANE DO PRE-VIZ — NACIŚNIJ ODTWÓRZ',
+        '🎬 WIDEO WCZYTANE DO PODGLĄDU — NACIŚNIJ ODTWÓRZ',
     'ANTEPRIMA PRE-VIZ (Sandbox)':
-        'PODGLĄD PRE-VIZ (piaskownica)',
+        'PODGLĄD – widzisz tylko Ty',
     'Riproduci anteprima / Pre-viz':
-        'Odtwórz podgląd / Pre-viz',
+        'Odtwórz podgląd',
     "Metti in pausa l'anteprima":
         'Wstrzymaj podgląd',
     '⏹  Stop':
@@ -1366,11 +1366,11 @@ T: dict[str, str] = {
     "Se attivo (default), l'anteprima è muta. Clicca per ascoltare l'audio su richiesta.":
         'Gdy włączone (domyślnie), podgląd jest wyciszony. Kliknij, aby odsłuchać dźwięk.',
     '🔗 MIRROR LIVE: OFF':
-        '🔗 MIRROR LIVE: WYŁ.',
+        '🔗 Pokaż też na projektorze: WYŁ.',
     "Modalità Progettazione: se ATTIVO, le modifiche a Crop, Scala e Posizione vengono proiettate in tempo reale sullo schermo LIVE per calibrare il videoproiettore/schermo.\nIn Spettacolo dal vivo: lasciare DISATTIVATO per isolare completamente l'anteprima.":
         'Tryb projektowania: gdy WŁĄCZONY, zmiany przycięcia, skali i pozycji są od razu wyświetlane na ekranie LIVE, aby skalibrować projektor/ekran.\nPodczas przedstawienia: zostaw WYŁĄCZONY, aby podgląd był całkowicie odizolowany.',
     '🔴 MIRROR: ON':
-        '🔴 MIRROR: WŁ.',
+        '🔴 Pokaż też na projektorze: WŁ.',
     '🔒 MUTE: ON':
         '🔒 ODSŁUCH: WYŁ.',
     '🔊 CUFFIA: ON':
@@ -1957,7 +1957,7 @@ T: dict[str, str] = {
     'Dissolvenza totale in {} s':
         'Wygaszanie wszystkiego w {} s',
     '🔉 DISSOLVI [⇧ESC]':
-        '🔉 WYGAŚ [⇧ESC]',
+        '🔉 WYGAŚ WSZYSTKO · Shift+Esc',
     '⚠  TASTIERA NON SUL PANNELLO REGIA — SPAZIO ed ESC non arrivano a BlindCue. Clicca qui per riprenderla.':
         '⚠  KLAWIATURA NIE JEST NA PANELU REŻYSERA — SPACJA i ESC nie trafiają do BlindCue. Kliknij tutaj, aby ją odzyskać.',
     '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
@@ -2259,7 +2259,7 @@ T: dict[str, str] = {
     '+ {} insieme':
         '+ {} razem',
     '· manuale (GO)':
-        '· ręcznie (GO)',
+        '· czeka na GO',
     '· parte da sola tra {}':
         '· rusza sam za {}',
     '· parte da sola dopo {}':
@@ -2519,7 +2519,7 @@ T: dict[str, str] = {
     'Poi':
         'Potem',
     'Manuale (GO)':
-        'Ręcznie (GO)',
+        'Czeka na GO',
     'Insieme alla successiva':
         'Razem z następnym',
     'Rivedi':
@@ -2733,7 +2733,7 @@ T: dict[str, str] = {
     'no':
         'nie',
     'Quando questa cue parte, gli altri suoni e video in onda sfumano in questi secondi (cambio di musica con una sola cue). Una musica sullo stesso layer sfuma invece di essere tagliata. 0 = no.':
-        'Gdy ta pozycja startuje, inne grające dźwięki i filmy wyciszają się przez tyle sekund (zmiana muzyki jedną pozycją). Muzyka na tej samej warstwie wycisza się, zamiast zostać ucięta. 0 = nie.',
+        'Gdy ten cue startuje, inne grające dźwięki i filmy wyciszają się przez tyle sekund (zmiana muzyki jednym cue). Muzyka na tej samej warstwie wycisza się, zamiast zostać ucięta. 0 = nie.',
     "all'avvio sfuma le altre in {} s":
         'przy starcie wycisza inne w {} s',
     "🎵 Effetto a richiesta (fuori dall'ordine del GO)":
@@ -2743,7 +2743,7 @@ T: dict[str, str] = {
     'Tasto:':
         'Klawisz:',
     "Una lettera o una cifra; nella prova e nello spettacolo fa partire l'effetto. Più cue sullo stesso tasto partono una dopo l'altra (passi).":
-        'Litera albo cyfra; w próbie i przedstawieniu uruchamia efekt. Kilka pozycji na tym samym klawiszu startuje po kolei (kroki).',
+        'Litera albo cyfra; w próbie i przedstawieniu uruchamia efekt. Kilka cue na tym samym klawiszu startuje po kolei (kroki).',
     "Tasto dell'effetto":
         'Klawisz efektu',
     'Avvia (di nuovo = da capo)':
@@ -2787,7 +2787,7 @@ T: dict[str, str] = {
     '(nuovo spettacolo non salvato)':
         '(nowe, niezapisane przedstawienie)',
     'aggiunta la cue':
-        'dodał pozycję',
+        'dodał cue',
     'aggiunta la didascalia':
         'dodał napis',
     "aggiunta l'azione":
@@ -2795,11 +2795,11 @@ T: dict[str, str] = {
     'aggiunta la scena':
         'dodał scenę',
     'modificata la cue':
-        'zmienił pozycję',
+        'zmienił cue',
     'spostata la cue':
-        'przesunął pozycję',
+        'przesunął cue',
     'eliminate le cue':
-        'usunął pozycje',
+        'usunął cue',
     '🤖 Assistente AI…':
         '🤖 Asystent AI…',
     'Assistente AI (MCP)':
@@ -2841,33 +2841,33 @@ T: dict[str, str] = {
     'prima della fine di':
         'przed końcem',
     'Partenza della cue':
-        'Start pozycji',
+        'Start cue',
     "Con il GO: come sempre. Le altre scelte fanno partire questa cue da sola rispetto a un'altra (il GO la salta): N s dopo il suo avvio, N s dopo la sua fine, o N s prima della sua fine.":
-        'Z GO: jak zawsze. Pozostałe opcje uruchamiają tę pozycję samą, względem innej (GO ją pomija): N s po jej starcie, N s po jej końcu albo N s przed jej końcem.',
+        'Z GO: jak zawsze. Pozostałe opcje uruchamiają ten cue samodzielnie, względem innego (GO go pomija): N s po jego starcie, N s po jego końcu albo N s przed jego końcem.',
     'Cue di riferimento':
-        'Pozycja odniesienia',
+        'Cue odniesienia',
     'Secondi rispetto alla cue di riferimento':
-        'Sekundy względem pozycji odniesienia',
+        'Sekundy względem cue odniesienia',
     "Non possibile: quella cue parte già da questa (si avvierebbero a vicenda all'infinito).":
-        'Nie można: tamta pozycja już startuje od tej (uruchamiałyby się nawzajem bez końca).',
+        'Nie można: tamten cue już startuje od tego (uruchamiałyby się nawzajem bez końca).',
     "parte da sola rispetto a un'altra cue":
-        'startuje sama względem innej pozycji',
+        'startuje sam względem innego cue',
     'Partenze relative fermate: le cue si avviano a vicenda in un ciclo':
-        'Zatrzymano starty względne: pozycje uruchamiają się nawzajem w kółko',
+        'Zatrzymano starty względne: cue uruchamiają się nawzajem w kółko',
     '↪ Salta a una cue':
-        '↪ Skok do pozycji',
+        '↪ Skok do cue',
     '📞 Chiama una cue':
-        '📞 Wywołaj pozycję',
+        '📞 Wywołaj cue',
     '⏩ Sposta la riproduzione':
         '⏩ Przewiń odtwarzanie',
     'Salto: avvia la cue scelta (il GO prosegue da lì) oppure la mette soltanto come prossimo GO. «Al massimo» limita le ripetizioni (per esempio una scena ripetuta due volte).':
-        'Skok: uruchamia wybraną pozycję (GO idzie dalej od niej) albo tylko ustawia ją jako następne GO. „Najwyżej” ogranicza powtórzenia (np. scena powtórzona dwa razy).',
+        'Skok: uruchamia wybrany cue (GO idzie dalej od niego) albo tylko ustawia go jako następne GO. „Najwyżej” ogranicza powtórzenia (np. scena powtórzona dwa razy).',
     "Avvia la cue scelta senza spostare il GO, come un effetto. Le cue «solo su chiamata» sono fuori dall'ordine del GO.":
-        'Uruchamia wybraną pozycję bez przesuwania GO, jak efekt. Pozycje „tylko na wywołanie” są poza kolejnością GO.',
+        'Uruchamia wybrany cue bez przesuwania GO, jak efekt. Cue „tylko na wywołanie” są poza kolejnością GO.',
     'Sposta la riproduzione delle cue scelte che stanno suonando: a una posizione del file, avanti o indietro di N secondi, oppure a N secondi dalla fine.':
-        'Przesuwa odtwarzanie wybranych, grających pozycji: do miejsca w pliku, o N sekund do przodu lub do tyłu albo na N sekund przed końcem.',
+        'Przesuwa odtwarzanie wybranych, grających cue: do miejsca w pliku, o N sekund do przodu lub do tyłu albo na N sekund przed końcem.',
     'Cue del salto o della chiamata':
-        'Pozycja skoku lub wywołania',
+        'Cue skoku lub wywołania',
     'Come:':
         'Jak:',
     'Avviala subito':
@@ -2905,13 +2905,13 @@ T: dict[str, str] = {
     'Sposta di {} s: {}':
         'Przesuń o {} s: {}',
     'Salta a una cue':
-        'Skok do pozycji',
+        'Skok do cue',
     'Chiama una cue':
-        'Wywołaj pozycję',
+        'Wywołaj cue',
     'Sposta la riproduzione':
         'Przewiń odtwarzanie',
     "Salto o chiamata senza una cue valida: '{}'":
-        'Skok lub wywołanie bez poprawnej pozycji: „{}”',
+        'Skok lub wywołanie bez poprawnego cue: „{}”',
     "Salto '{}' già fatto {} volte: il GO prosegue":
         'Skok „{}” wykonany już {} razy: GO idzie dalej',
     'Chiamata: {}':
@@ -2923,7 +2923,7 @@ T: dict[str, str] = {
     "📞 Solo su chiamata (fuori dall'ordine del GO)":
         '📞 Tylko na wywołanie (poza kolejnością GO)',
     "La avvia soltanto un'azione «Chiama una cue» (o un salto); il GO la salta.":
-        'Uruchamia ją tylko akcja „Wywołaj pozycję” (albo skok); GO ją pomija.',
+        'Uruchamia go tylko akcja „Wywołaj cue” (albo skok); GO go pomija.',
     'Chiamata o salto da: {}':
         'Wywoływana lub skok z: {}',
     'solo su chiamata':
@@ -2931,7 +2931,7 @@ T: dict[str, str] = {
     '⊘ ESCLUSA':
         '⊘ WYŁĄCZONA',
     'Cue esclusa in questa versione: non parte':
-        'Pozycja wyłączona w tej wersji: nie startuje',
+        'Cue wyłączony w tej wersji: nie startuje',
     '⊘ Escludi / includi in questa versione':
         '⊘ Wyłącz / włącz w tej wersji',
     '🎭 Versioni dello spettacolo':
@@ -2967,9 +2967,9 @@ T: dict[str, str] = {
     'Prova da {}.':
         'Próba od {}.',
     'Prima di questa cue restano in onda:':
-        'Przed tą pozycją zostają na scenie:',
+        'Przed tym cue zostają na scenie:',
     'Prima di questa cue non resta niente in onda.':
-        'Przed tą pozycją nic nie zostaje na scenie.',
+        'Przed tym cue nic nie zostaje na scenie.',
     'Ora suona qualcosa: verrà fermato.':
         'Teraz coś gra: zostanie zatrzymane.',
     'Prova da qui':
@@ -3023,31 +3023,31 @@ T: dict[str, str] = {
     'Alle ore:':
         'O godzinie:',
     "2.6: la cue parte da sola a quest'ora durante lo spettacolo (il GO la salta). Più di un minuto in ritardo: saltata. Vuoto = con il GO.":
-        'Pozycja startuje sama o tej godzinie w czasie przedstawienia (GO ją pomija). Ponad minutę spóźniona: pominięta. Puste = z GO.',
+        'Cue startuje sam o tej godzinie w czasie przedstawienia (GO go pomija). Ponad minutę spóźniony: pominięty. Puste = z GO.',
     'Ora di partenza della cue':
-        'Godzina startu pozycji',
+        'Godzina startu cue',
     'parte alle {}':
         'startuje o {}',
     'al segno di':
         'na znaczniku',
     'Segno della cue di riferimento':
-        'Znacznik pozycji odniesienia',
+        'Znacznik cue odniesienia',
     'Segni:':
         'Znaczniki:',
     'Segni della cue':
-        'Znaczniki pozycji',
+        'Znaczniki cue',
     'Elimina il segno scelto (non se una cue parte da lì)':
-        'Usuń wybrany znacznik (nie, gdy jakaś pozycja od niego startuje)',
+        'Usuń wybrany znacznik (nie, gdy jakiś cue od niego startuje)',
     "Quella cue non ha segni: mettine uno sulla sua forma d'onda (◆ Segno).":
-        'Ta pozycja nie ma znaczników: dodaj go na jej przebiegu (◆ Znacznik).',
+        'Ten cue nie ma znaczników: dodaj znacznik na jego przebiegu (◆ Znacznik).',
     '◆ Segno':
         '◆ Znacznik',
     'Mette un segno sulla testina (Ctrl+K: anche sulla cue in onda, per esempio battendo a tempo in prova). Una cue può partire «al segno».':
-        'Stawia znacznik na głowicy (Ctrl+K: także na grającej pozycji, np. wystukując rytm na próbie). Inna pozycja może startować „na znaczniku”.',
+        'Stawia znacznik na głowicy (Ctrl+K: także na grającym cue, np. wystukując rytm na próbie). Inny cue może startować „na znaczniku”.',
     'Segno: scegli una cue audio o video':
-        'Znacznik: wybierz pozycję audio lub wideo',
+        'Znacznik: wybierz cue audio lub wideo',
     'Segno: nessuna posizione (fai partire la cue o sposta la testina)':
-        'Znacznik: brak pozycji (uruchom pozycję albo przesuń głowicę)',
+        'Znacznik: brak miejsca w pliku (uruchom cue albo przesuń głowicę)',
     'Segno ◆{} a {} s':
         'Znacznik ◆{} w {} s',
     'Il segno ◆{} è usato da {}: non si può eliminare':
@@ -3057,15 +3057,15 @@ T: dict[str, str] = {
     'Cerca nella scaletta':
         'Szukaj na liście',
     'Cerca una cue':
-        'Szukaj pozycji',
+        'Szukaj cue',
     'Nome, Q, note o file:':
         'Nazwa, Q, uwagi albo plik:',
     'Trovate {} cue su {}':
-        'Znaleziono {} z {} pozycji',
+        'Znaleziono {} z {} cue',
     "Nessuna cue trovata: '{}'":
         'Nie znaleziono: „{}”',
     "'{}' ha sezioni: le cue che partono sui suoi segni non partono":
-        "'{}' ma sekcje: pozycje startujące na jego znacznikach nie wystartują",
+        "'{}' ma sekcje: cue startujące na jego znacznikach nie wystartują",
     'segni':
         'znaczniki',
     '⌛ Attendi, poi la successiva':
@@ -3075,11 +3075,11 @@ T: dict[str, str] = {
     '⏱ Cronometro':
         '⏱ Stoper',
     "Un'attesa visibile nella scaletta: dopo i secondi indicati parte la cue successiva, senza GO. Pausa generale la trattiene, PANIC la annulla.":
-        'Oczekiwanie widoczne na liście: po podanych sekundach startuje następna pozycja, bez GO. Pauza wszystkiego je wstrzymuje, PANIC kasuje.',
+        'Oczekiwanie widoczne na liście: po podanych sekundach startuje następny cue, bez GO. Pauza wszystkiego je wstrzymuje, PANIC kasuje.',
     'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano.':
-        'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej.',
+        'Wstrzymuje wybrane grające cue (dźwięk i wideo); pozostałe grają dalej.',
     'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate.':
-        'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły.',
+        'Wznawia wybrane wstrzymane cue od miejsca, w którym stanęły.',
     'Cronometro sulla barra di stato (per esempio la durata di un atto): avvia, ferma (si riprende da lì) o azzera. PANIC non lo tocca.':
         'Stoper na pasku stanu (np. czas trwania aktu): start, stop (wznawia od tego miejsca) albo zerowanie. PANIC go nie rusza.',
     'Avvia':
@@ -3111,7 +3111,7 @@ T: dict[str, str] = {
     'Riprendi':
         'Wznów',
     'Partenza relativa persa (cue di riferimento eliminata): {} ora parte con il GO':
-        'Start względny utracony (pozycja odniesienia usunięta): {} startuje teraz z GO',
+        'Start względny utracony (cue odniesienia usunięty): {} startuje teraz z GO',
     'Palco':
         'Scena',
     'Sala':
@@ -3127,13 +3127,13 @@ T: dict[str, str] = {
     'Uscita:':
         'Wyjście:',
     'Dove suona questa cue. Quale altoparlante è Palco, Sala o Spie su questo computer si sceglie in Dispositivi → Uscite audio. Muto: un video senza il suo audio.':
-        'Gdzie gra ta pozycja. Który głośnik jest Sceną, Salą albo Odsłuchem na tym komputerze, wybiera się w Przedstawienie → Wyjścia dźwięku. Wycisz: film bez dźwięku.',
+        'Gdzie gra ten cue. Który głośnik jest Sceną, Salą albo Odsłuchem na tym komputerze, wybiera się w Przedstawienie → Wyjścia dźwięku. Wycisz: film bez dźwięku.',
     'Uscita audio della cue':
-        'Wyjście dźwięku pozycji',
+        'Wyjście dźwięku cue',
     'Uscite audio di questo computer':
         'Wyjścia dźwięku tego komputera',
     "Ogni cue suona su un'uscita: Palco, Sala o Spie (ascolto per gli attori). Qui si sceglie quale altoparlante è ognuna su questo computer; lo spettacolo non cambia su un altro computer.":
-        'Każda pozycja gra na jednym wyjściu: Scena, Sala albo Odsłuch (dla aktorów). Tu wybierasz, który głośnik jest którym wyjściem na tym komputerze; przedstawienie na innym komputerze się nie zmienia.',
+        'Każdy cue gra na jednym wyjściu: Scena, Sala albo Odsłuch (dla aktorów). Tu wybierasz, który głośnik jest którym wyjściem na tym komputerze; przedstawienie na innym komputerze się nie zmienia.',
     'Uscita':
         'Wyjście',
     'Se manca':
@@ -3197,7 +3197,7 @@ T: dict[str, str] = {
     'Una playlist':
         'Jedna playlista',
     'Cue separate':
-        'Osobne pozycje',
+        'Osobne cue',
     'Playlist non leggibile: {}':
         'Nie można odczytać playlisty: {}',
     "Playlist '{}': {} brani":
@@ -3225,9 +3225,9 @@ T: dict[str, str] = {
     'Risveglia in {} s: {}':
         'Obudź w {} s: {}',
     'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. Con una durata la musica si addormenta: sfuma e poi si ferma.':
-        'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej. Z czasem trwania muzyka się usypia: cichnie, potem staje.',
+        'Wstrzymuje wybrane grające cue (dźwięk i wideo); pozostałe grają dalej. Z czasem trwania muzyka się usypia: cichnie, potem staje.',
     'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una durata la musica si risveglia: entra piano fino al livello di prima.':
-        'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły. Z czasem trwania muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
+        'Wznawia wybrane wstrzymane cue od miejsca, w którym stanęły. Z czasem trwania muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
     "Taglia il silenzio all'inizio e alla fine: IN e OUT dove il suono comincia e finisce davvero (sotto -40 dB rispetto al picco).":
         'Utnij ciszę na początku i końcu: IN i OUT tam, gdzie dźwięk naprawdę się zaczyna i kończy (poniżej -40 dB względem szczytu).',
     "Taglia il silenzio all'inizio e alla fine":
@@ -3237,7 +3237,7 @@ T: dict[str, str] = {
     'Silenzio tagliato (sotto {} dB): IN {} s, OUT {}':
         'Cisza ucięta (poniżej {} dB): IN {} s, OUT {}',
     'Una playlist non può stare dentro una scena: aggiunte cue separate':
-        'Playlista nie może być wewnątrz sceny: dodano osobne pozycje',
+        'Playlista nie może być wewnątrz sceny: dodano osobne cue',
     'Dissolvenza:':
         'Przejście:',
     'subito':
@@ -3245,15 +3245,15 @@ T: dict[str, str] = {
     '0 = subito; più secondi = la musica si addormenta / si risveglia piano':
         '0 = od razu; więcej sekund = muzyka usypia się / budzi powoli',
     'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. Con una dissolvenza la musica si addormenta: sfuma e poi si ferma.':
-        'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej. Z przejściem muzyka się usypia: cichnie, potem staje.',
+        'Wstrzymuje wybrane grające cue (dźwięk i wideo); pozostałe grają dalej. Z przejściem muzyka się usypia: cichnie, potem staje.',
     'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una dissolvenza la musica si risveglia: entra piano fino al livello di prima.':
-        'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły. Z przejściem muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
+        'Wznawia wybrane wstrzymane cue od miejsca, w którym stanęły. Z przejściem muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
     'Tempo:':
         'Tempo:',
     'Velocità di riproduzione: 100 % = come registrato (per adattare la musica a una coreografia).':
         'Szybkość odtwarzania: 100 % = jak nagrano (np. dopasowanie muzyki do choreografii).',
     'Tempo della cue in percento':
-        'Tempo pozycji w procentach',
+        'Tempo cue w procentach',
     "Mantieni l'intonazione":
         'Zachowaj wysokość dźwięku',
     "Più veloce o più lento senza cambiare l'altezza delle note.":
@@ -3269,7 +3269,7 @@ T: dict[str, str] = {
     "Prima copia il layout di un'immagine o di un video":
         'Najpierw skopiuj układ zdjęcia albo filmu',
     'Layout incollato su {} cue':
-        'Wklejono układ na pozycje: {}',
+        'Wklejono układ na cue: {}',
     '🎞 Foto con questa musica':
         '🎞 Zdjęcia do tej muzyki',
     'Foto con musica: seleziona almeno due immagini e un solo audio':
@@ -3295,7 +3295,7 @@ T: dict[str, str] = {
     'Battuta su cui parte…':
         'Kwestia, na której wchodzi…',
     'Battuta su cui parte la cue':
-        'Kwestia, na której wchodzi pozycja',
+        'Kwestia, na której wchodzi cue',
     '📄 Esporta la scaletta (CSV)…':
         '📄 Eksportuj listę (CSV)…',
     '🖨 Stampa la scaletta per la regia…':
@@ -3331,9 +3331,9 @@ T: dict[str, str] = {
     '🔢 Rinumera le Q…':
         '🔢 Przenumeruj Q…',
     'Le cue selezionate lanciate con GO ({})':
-        'Zaznaczone pozycje uruchamiane GO ({})',
+        'Zaznaczone cue uruchamiane GO ({})',
     'Tutte le cue lanciate con GO ({})':
-        'Wszystkie pozycje uruchamiane GO ({})',
+        'Wszystkie cue uruchamiane GO ({})',
     'Prefisso:':
         'Przedrostek:',
     'Primo numero:':
@@ -3341,7 +3341,7 @@ T: dict[str, str] = {
     'Passo:':
         'Krok:',
     'Passo 10 lascia spazio per le cue aggiunte dopo (Q10, Q15, Q20)':
-        'Krok 10 zostawia miejsce na pozycje dodane później (Q10, Q15, Q20)',
+        'Krok 10 zostawia miejsce na cue dodane później (Q10, Q15, Q20)',
     'Prima':
         'Przed',
     'Dopo':
@@ -3349,25 +3349,25 @@ T: dict[str, str] = {
     'Q rinumerate: {}':
         'Przenumerowane Q: {}',
     '📥 Importa cue da un altro spettacolo…':
-        '📥 Importuj pozycje z innego przedstawienia…',
+        '📥 Importuj cue z innego przedstawienia…',
     'Importa cue da un altro spettacolo':
-        'Import pozycji z innego przedstawienia',
+        'Import cue z innego przedstawienia',
     'Spunta le cue da importare (una scena porta le sue cue):':
-        'Zaznacz pozycje do importu (scena przynosi swoje pozycje):',
+        'Zaznacz cue do importu (scena przynosi swoje cue):',
     "'{}': partenza relativa a una cue non importata – parte con il GO":
-        "'{}': start względem pozycji, której nie importujesz – startuje z GO",
+        "'{}': start względem cue, którego nie importujesz – startuje z GO",
     "'{}': {} cue bersaglio non importate":
-        "'{}': pozycje docelowe bez importu: {}",
+        "'{}': docelowe cue bez importu: {}",
     "'{}': file non trovato":
         "'{}': nie znaleziono pliku",
     "Importate {} cue da '{}'":
-        "Zaimportowane pozycje: {} z '{}'",
+        "Zaimportowane cue: {} z '{}'",
     'Esclusa':
         'Wyłączona',
     '⚠ Già usate da altre cue: {} – due cue avrebbero la stessa Q':
-        '⚠ Już używane przez inne pozycje: {} – dwie pozycje miałyby to samo Q',
+        '⚠ Już używane przez inne cue: {} – dwa cue miałyby ten sam numer',
     "'{}': legata a una cue non importata (Simult. / Auto-GO) – ora parte con il GO":
-        "'{}': powiązana z pozycją, której nie importujesz (Razem / Auto-GO) – teraz startuje z GO",
+        "'{}': powiązany z cue, którego nie importujesz (Razem / Auto-GO) – teraz startuje z GO",
     "'{}': era esclusa in quello spettacolo – qui è inclusa":
         "'{}': była wyłączona w tamtym przedstawieniu – tu jest włączona",
     "'{}': il suo tasto è già usato da un effetto di questo spettacolo":
@@ -3393,11 +3393,11 @@ T: dict[str, str] = {
     'Schermo {}':
         'Ekran {}',
     "parte dopo una cue che non c'è più":
-        'startuje po pozycji, której już nie ma',
+        'startuje po cue, którego już nie ma',
     'le sue cue bersaglio non ci sono più: non fa nulla':
-        'jej pozycji docelowych już nie ma: nic nie zrobi',
+        'jej docelowych cue już nie ma: nic nie zrobi',
     "salta o chiama una cue che non c'è":
-        'skacze do pozycji albo wywołuje pozycję, której nie ma',
+        'skacze do cue albo wywołuje cue, którego nie ma',
     'scena senza nulla da suonare':
         'scena bez niczego do zagrania',
     'parte solo se chiamata, ma nessuna azione la chiama':
@@ -3405,7 +3405,7 @@ T: dict[str, str] = {
     'Da sistemare nella lista ({}): {}':
         'Do poprawienia na liście ({}): {}',
     "Cue a un'ora del giorno: {} – l'orologio del computer segna {}. È giusto?":
-        'Pozycje o wyznaczonej godzinie: {} – zegar komputera pokazuje {}. Czy to dobra godzina?',
+        'Cue o wyznaczonej godzinie: {} – zegar komputera pokazuje {}. Czy to dobra godzina?',
     'Poco spazio libero sul disco dello spettacolo: {} MB – il salvataggio può non riuscire':
         'Mało miejsca na dysku przedstawienia: {} MB – zapis może się nie udać',
     'ℹ Informazioni sullo spettacolo…':
@@ -3419,7 +3419,7 @@ T: dict[str, str] = {
     'Note:':
         'Notatki:',
     'Cue: {} · GO: {} · video {} · audio {} · immagini {} · testi {} · scene {} · azioni {} · effetti {} · escluse {} · file mancanti {}':
-        'Pozycje: {} · GO: {} · wideo {} · dźwięk {} · obrazy {} · napisy {} · sceny {} · akcje {} · efekty {} · wyłączone {} · brakujące pliki {}',
+        'Cue: {} · GO: {} · wideo {} · dźwięk {} · obrazy {} · napisy {} · sceny {} · akcje {} · efekty {} · wyłączone {} · brakujące pliki {}',
     'Informazioni sullo spettacolo salvate con lo spettacolo':
         'Informacje zostaną zapisane razem z przedstawieniem',
     '⌨ Tasti e telecomando di presentazione…':
@@ -3459,9 +3459,9 @@ T: dict[str, str] = {
     'Tasti aggiuntivi salvati per questo computer':
         'Dodatkowe klawisze zapisane na tym komputerze',
     'Cue precedente (solo selezione)':
-        'Poprzednia pozycja (tylko zaznaczenie)',
+        'Poprzedni cue (tylko zaznaczenie)',
     'Cue successiva (solo selezione)':
-        'Następna pozycja (tylko zaznaczenie)',
+        'Następny cue (tylko zaznaczenie)',
     'Pausa tutto / riprendi':
         'Wstrzymaj wszystko / wznów',
     'Sfuma tutto':
@@ -3479,7 +3479,7 @@ T: dict[str, str] = {
     '📁 Nuovo spettacolo da una cartella…':
         '📁 Nowe przedstawienie z folderu…',
     '📋 Importa una scaletta (CSV)…':
-        '📋 Importuj listę pozycji (CSV)…',
+        '📋 Importuj listę cue (CSV)…',
     'Nuovo spettacolo da una cartella':
         'Nowe przedstawienie z folderu',
     'Nella cartella non ci sono video, suoni o immagini.':
@@ -3491,9 +3491,9 @@ T: dict[str, str] = {
     "Nuovo spettacolo: {} file da '{}'":
         "Nowe przedstawienie: plików {} z '{}'",
     'Importa una scaletta (CSV)':
-        'Import listy pozycji (CSV)',
+        'Import listy cue (CSV)',
     'Il file non è una scaletta: serve una prima riga con i nomi delle colonne (almeno Nome o File).':
-        'To nie jest lista pozycji: pierwszy wiersz musi zawierać nazwy kolumn (co najmniej Nazwa albo Plik).',
+        'To nie jest lista cue: pierwszy wiersz musi zawierać nazwy kolumn (co najmniej Nazwa albo Plik).',
     'Nessuna riga da importare':
         'Brak wierszy do importu',
     "Importate {} righe da '{}'":
@@ -3521,7 +3521,7 @@ T: dict[str, str] = {
     'Tutti i file sono al loro posto':
         'Wszystkie pliki są na miejscu',
     'Cue senza file: {} – clic destro → Scegli il file…':
-        'Pozycje bez pliku: {} – prawy przycisk → Wybierz plik…',
+        'Cue bez pliku: {} – prawy przycisk → Wybierz plik…',
     'Nessuno dei {} file mancanti è in questa cartella.':
         'Żadnego z brakujących plików ({}) nie ma w tym folderze.',
     'File ritrovati: {} di {}':
@@ -3529,7 +3529,7 @@ T: dict[str, str] = {
     'Nomi trovati più volte (usato il primo): {}':
         'Nazwy znalezione kilka razy (użyty pierwszy): {}',
     'Scegli una cue video, audio o immagine':
-        'Wybierz pozycję z filmem, dźwiękiem albo obrazem',
+        'Wybierz cue z filmem, dźwiękiem albo obrazem',
     "Scegli il file per '{}'":
         "Wybierz plik dla '{}'",
     'Formato non supportato: {}':
@@ -3551,23 +3551,23 @@ T: dict[str, str] = {
     'Annullate {} modifiche (Ctrl+Y le ripete)':
         'Cofnięte zmiany: {} (Ctrl+Y je przywraca)',
     'Aggiunte {} cue ({}…)':
-        'Dodane pozycje: {} ({}…)',
+        'Dodane cue: {} ({}…)',
     'Aggiunta {}':
         'Dodana {}',
     'Eliminate {} cue ({}…)':
-        'Usunięte pozycje: {} ({}…)',
+        'Usunięte cue: {} ({}…)',
     'Eliminata {}':
         'Usunięta {}',
     'Cue sostituite ({}…)':
-        'Pozycje zamienione ({}…)',
+        'Zamienione cue ({}…)',
     'Ordine cambiato ({}…)':
         'Zmieniona kolejność ({}…)',
     '{}: {} campi ({})':
         '{}: zmienione pola: {} ({})',
     '{} cue cambiate: {}':
-        'Zmienione pozycje: {} – {}',
+        'Zmienione cue: {} – {}',
     '{} cue cambiate':
-        'Zmienione pozycje: {}',
+        'Zmienione cue: {}',
     'Nessuna differenza nella lista':
         'Bez zmian na liście',
     'Ripristina una copia di sicurezza':
@@ -3577,7 +3577,7 @@ T: dict[str, str] = {
     'Ancora nessuna copia: il programma ne fa una a ogni salvataggio.':
         'Jeszcze nie ma kopii: program robi ją przy każdym zapisie.',
     "La scaletta com'era al salvataggio delle:":
-        'Lista pozycji z zapisu z dnia i godziny:',
+        'Lista cue z zapisu z dnia i godziny:',
     'Scaletta ripristinata dalla copia delle {} (Ctrl+Z torna indietro)':
         'Lista przywrócona z kopii z {} (Ctrl+Z cofa)',
     'layer':
@@ -3649,7 +3649,7 @@ T: dict[str, str] = {
     'Tempo del pulsante Sfuma':
         'Czas przycisku Wygaś',
     'Secondi di «Sfuma» su una scheda o una scena (vale il Fade Out della cue, se ne ha uno):':
-        'Ile sekund trwa «Wygaś» na karcie lub scenie (liczy się wygaszanie pozycji, jeśli je ma):',
+        'Ile sekund trwa «Wygaś» na karcie lub scenie (liczy się wygaszanie cue, jeśli je ma):',
     '«Sfuma» dura ora {} s':
         '«Wygaś» trwa teraz {} s',
     '⏬ Tempo del pulsante Sfuma…':
@@ -3657,7 +3657,7 @@ T: dict[str, str] = {
     "Scena '{}' in dissolvenza":
         "Scena '{}' wygasa",
     "Dissolvenza incrociata: ciò che c'è ora sul layer di questo cue (immagine o suono) sfuma mentre questo cue entra, nel tempo indicato (0 = stacco netto).":
-        'Przenikanie: to, co jest teraz na warstwie tej pozycji (obraz albo dźwięk), gaśnie, gdy ta pozycja wchodzi, w podanym czasie (0 = cięcie).',
+        'Przenikanie: to, co jest teraz na warstwie tego cue (obraz albo dźwięk), gaśnie, gdy ten cue wchodzi, w podanym czasie (0 = cięcie).',
     '＋ Aggiungi file…':
         '＋ Dodaj pliki…',
     'Video, suoni e immagini – anche più file insieme (o trascinali sulla lista)':
@@ -3673,9 +3673,9 @@ T: dict[str, str] = {
     'Video, suoni e immagini':
         'Filmy, dźwięki i obrazy',
     'Modifica cue':
-        'Edytuj pozycję',
+        'Edytuj cue',
     'Dati della cue':
-        'Pozycja',
+        'Cue',
     "Che cosa fa l'azione si sceglie nel pannello a destra (scheda «⚡ Azione»).":
         'Co robi akcja, wybierasz w panelu po prawej (karta „⚡ Akcja”).',
     'Come suona la scena':
@@ -3683,7 +3683,7 @@ T: dict[str, str] = {
     "Il file non c'è":
         'Brak pliku',
     "Il file non c'è: scegline un altro con il menu della cue.":
-        'Brak pliku: wybierz inny w menu pozycji (prawy przycisk).',
+        'Brak pliku: wybierz inny w menu cue (prawy przycisk).',
     'Suono':
         'Dźwięk',
     'Film':
@@ -3725,15 +3725,15 @@ T: dict[str, str] = {
     "La fine deve stare dopo l'inizio":
         'Koniec musi być po początku',
     'Scegli prima una cue nella lista':
-        'Najpierw wybierz pozycję na liście',
+        'Najpierw wybierz cue na liście',
     "'{}' modificata":
         'Zmieniono „{}”',
     '✏ Modifica…':
         '✏ Edytuj…',
     'Modifica la cue scelta: inizio e fine, volume, passaggi (anche doppio clic o Invio)':
-        'Edytuj wybraną pozycję: początek i koniec, głośność, przejścia (także dwuklik albo Enter)',
+        'Edytuj wybrany cue: początek i koniec, głośność, przejścia (także dwuklik albo Enter)',
     'Modifica la cue':
-        'Edytuj pozycję',
+        'Edytuj cue',
     'Tappo (quando non va niente)':
         'Zaślepka (gdy nic nie gra)',
     '⬛ Nero':
@@ -3875,7 +3875,7 @@ T: dict[str, str] = {
     'Benvenuto':
         'Witaj',
     'Questo è lo spettacolo di prova. Premi la barra spaziatrice (GO) per passare alla cue successiva. Le note come questa le vedi solo tu, mai il pubblico.':
-        'To jest pokaz ćwiczebny. Naciśnij spację (GO), żeby przejść do następnej pozycji. Notatki takie jak ta widzisz tylko Ty, nigdy widownia.',
+        'To jest pokaz ćwiczebny. Naciśnij spację (GO), żeby przejść do następnego cue. Notatki takie jak ta widzisz tylko Ty, nigdy widownia.',
     "Musica d'apertura":
         'Muzyka na otwarcie',
     'Sfondo: il bosco':
@@ -3941,7 +3941,7 @@ T: dict[str, str] = {
     'Spazio':
         'Spacja',
     'GO – la cue successiva':
-        'GO – następna pozycja',
+        'GO – następny cue',
     'Esc due volte (entro 0,6 s)':
         'Esc dwa razy (w ciągu 0,6 s)',
     'PANIC – ferma subito tutto':
@@ -3953,11 +3953,11 @@ T: dict[str, str] = {
     'Blackout: il tappo sul proiettore':
         'Wygaszenie główne: zaślepka na projektorze',
     'Scegli la prossima cue':
-        'Wybierz następną pozycję',
+        'Wybierz następny cue',
     'Ctrl+Spazio':
         'Ctrl+Spacja',
     'GO forzato (anche se una cue esclusiva sta suonando)':
-        'GO wymuszone (także gdy gra pozycja wyłączna)',
+        'GO wymuszone (także gdy gra cue wyłączny)',
     'Maiusc+F5':
         'Shift+F5',
     'Prova':
@@ -4013,7 +4013,7 @@ T: dict[str, str] = {
     'Che cosa è successo':
         'Co się działo',
     'Cue con GO mai partite':
-        'Pozycje z GO, które nie zagrały',
+        'Cue z GO, które nie zagrały',
     "📋 Rapporto dell'ultimo spettacolo":
         '📋 Raport z ostatniego przedstawienia',
     'Nessun rapporto: si scrive alla fine dello spettacolo (non della prova)':
@@ -4024,4 +4024,40 @@ T: dict[str, str] = {
         'Asystent AI (np. Claude Desktop) może przygotować przedstawienie za Ciebie: ułoży listę cue z folderu plików, doda napisy, sceny i notatki dla operatora. Znajduje pliki na wszystkich dyskach tego komputera (także na pendrivie; foldery można zawęzić w Claude), niczego nie odtwarza, nie kasuje mediów i nigdy nie zmienia trwającego przedstawienia. Do dostawcy AI trafiają nazwy cue, uwagi i nazwy plików, nie zawartość plików.',
     "Impostazioni copiate: l'assistente può usare tutti i dischi di questo computer (anche una chiavetta USB). Incollale nella configurazione del client MCP.":
         'Skopiowano ustawienia: asystent może korzystać ze wszystkich dysków tego komputera (także z pendrive’a). Wklej je do konfiguracji programu MCP.',
+    'STANDBY':
+        'NASTĘPNY',
+    'LIVE':
+        'GRA',
+    'Auto-GO al termine':
+        'Sam po końcu (Auto-GO)',
+    'N. (Q)':
+        'Nr (Q)',
+    'Numero della cue nel copione (Q), per esempio 12 o 12a':
+        'Numer cue ze scenariusza (Q), np. 12 albo 12a',
+    '▦ Nascondi la mira':
+        '▦ Ukryj wzór',
+    '▦ Mostra la mira sul proiettore':
+        '▦ Pokaż wzór na projektorze',
+    '▶  Anteprima':
+        '▶  Podgląd',
+    '⏹  Ferma anteprima':
+        '⏹  Stop podglądu',
+    'Ora in onda – si sente in sala':
+        'Teraz gra – słychać na sali',
+    'ORA IN ONDA – si sente in sala':
+        'TERAZ GRA – słychać na sali',
+    '🔍 Mostra il pezzo':
+        '🔍 Pokaż wycinek',
+    '↔ Tutto il file':
+        '↔ Cały plik',
+    "Ingrandisce la forma d'onda tra l'inizio e la fine scelti; di nuovo: tutto il file":
+        'Powiększa przebieg między wybranym początkiem a końcem; drugi raz: cały plik',
+    'Nascondi questi avvisi (tornano se cambiano)':
+        'Ukryj te ostrzeżenia (wrócą, jeśli się zmienią)',
+    'Nascondi gli avvisi':
+        'Ukryj ostrzeżenia',
+    'Nessun avviso':
+        'Brak ostrzeżeń',
+    'Q':
+        'Nr',
 }

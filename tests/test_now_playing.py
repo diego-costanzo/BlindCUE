@@ -248,17 +248,17 @@ def test_three_sounds_on_air_make_the_later_cards_compact():
     states = [CardState(cue_id=900 + i, kind=TIMED, title=f"♪ {i}", slot=i + 1, remaining="-01:00", fraction=0.5)
               for i in range(3)]
     panel.set_cards(states[:2])
-    assert all(not c._compact and c.height() == 84 for c in panel.cards().values())
+    assert all(not c._compact and c.height() == 94 for c in panel.cards().values())   # 26 px time (GUI review)
     panel.set_cards(states)
     first, second, third = (panel.cards()[900 + i] for i in range(3))
-    assert not first._compact and first.height() == 84
+    assert not first._compact and first.height() == 94
     assert second._compact and third._compact and second.height() == third.height() == 58
     assert not second.controls_row.isVisibleTo(second) and second.btn_fade_small.isVisibleTo(second)
     second.btn_fade_small.click()
     assert faded == [2]
     panel.set_rehearsal(True)                       # the rehearsal keeps all the tools
     panel.set_cards(states)
-    assert all(c.height() == 112 for c in panel.cards().values())
+    assert all(c.height() == 122 for c in panel.cards().values())
     panel.set_rehearsal(False)
     panel.set_cards(states[:1])
     assert not panel.cards()[900]._compact

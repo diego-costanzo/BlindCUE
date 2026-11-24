@@ -221,7 +221,10 @@ class _ReadinessMixin:
                            [(tr("Uscite audio…"), "outputs")])
         if check.key == SCREEN:
             if check.state == OK:
-                return RowView(SCREEN, OK, tr("Immagine: {}").format(v["name"]))
+                # "Found" is not "seen": wrong HDMI input, lens cap, focus (GUI review 2026-11-24).
+                pattern = (tr("▦ Nascondi la mira") if self._readiness_pattern_on()
+                           else tr("▦ Mostra la mira sul proiettore"))
+                return RowView(SCREEN, OK, tr("Immagine: {}").format(v["name"]), [(pattern, "pattern")])
             text = (tr("L'immagine va sullo schermo del portatile: proiettore non trovato. "
                        "Se gli schermi sono duplicati, premi Win+P → Estendi.")
                     if v.get("single") else
@@ -345,7 +348,8 @@ class _ReadinessMixin:
         rows = self._readiness_rows()
         shown = page_rows(rows, full=self._readiness_full_due or self._readiness_review)
         signature = tuple((c.key, c.state, tuple(sorted(c.values.items(), key=str)) if c.values else ())
-                          for c in shown) + (self._readiness_tone_asked, self._readiness_review)
+                          for c in shown) + (self._readiness_tone_asked, self._readiness_review,
+                                             self._readiness_pattern_on())
         signature = tuple(str(x) for x in signature)
         if not rebuild and signature == self._readiness_signature:
             return
@@ -394,6 +398,8 @@ class _ReadinessMixin:
         """A start button: into the show from *row*, without asking again."""
         self._readiness_timer.stop()
         self._readiness_full_due = False
+        if self._readiness_pattern_on():
+            self._toggle_calibration_guides(False)  # never in front of the audience
         self._readiness_entered_with_problems = bool(problems(self._readiness_rows()))
         if 0 <= row < len(self._cues):
             self._cue_list.setCurrentRow(row)
@@ -449,6 +455,9 @@ class _ReadinessMixin:
             self._readiness_refresh()
         elif action == "screens":
             self._show_screen_numbers()
+        elif action == "pattern":
+            self._toggle_calibration_guides(not self._readiness_pattern_on())
+            self._readiness_refresh()
         elif action == "show_missing":
             row = next((i for i, c in enumerate(self._cues)
                         if c.media_type.has_file and not os.path.isfile(c.file_path or "")), -1)
@@ -502,6 +511,10 @@ class _ReadinessMixin:
         self._readiness_tone_asked = True
         logger.info("[READY] Test tone played")
         self._readiness_refresh()
+
+    def _readiness_pattern_on(self) -> bool:
+        output = getattr(self, "_output", None)
+        return bool(output is not None and output.is_calibration_guides_visible())
 
     def _show_screen_numbers(self) -> None:
         """A big number and the name on every screen (4.5, the same as Devices → Identify)."""

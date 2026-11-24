@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from i18n import tr
 from models.cue import Cue
 from ui.theme import CLR_ACCENT, CLR_TEXT, CUE_COLOR_PALETTE, get_active_theme
 
@@ -432,9 +433,10 @@ class CueTableDelegate(QStyledItemDelegate):
             tag_font.setBold(True)
 
             if status_txt:
+                shown_status = tr(status_txt)   # painted text bypasses the translated setters
                 painter.setFont(tag_font)
                 fm_tag = painter.fontMetrics()
-                sw = fm_tag.horizontalAdvance(status_txt) + 10
+                sw = fm_tag.horizontalAdvance(shown_status) + 10
                 sh = 16
                 sy = rect.top() + (rect.height() - sh) // 2
                 s_rect = QRect(right_x - sw, sy, sw, sh)
@@ -455,7 +457,7 @@ class CueTableDelegate(QStyledItemDelegate):
                 painter.setBrush(s_bg)
                 painter.drawRoundedRect(s_rect, 3, 3)
                 painter.setPen(s_fg)
-                painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, status_txt)
+                painter.drawText(s_rect, Qt.AlignmentFlag.AlignCenter, shown_status)
                 right_x -= sw + 4
 
             conflict_reason = str(index.data(ROLE_LAYER_CONFLICT) or "")

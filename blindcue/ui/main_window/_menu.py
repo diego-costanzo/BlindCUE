@@ -333,6 +333,13 @@ class _MenuMixin:
         self._note_banner.dismissed.connect(self._on_note_dismissed)
         central_layout.addWidget(self._design_control_bar_widget())
         central_layout.addWidget(self._note_banner)
+        # Speakers unplugged, all muted, an overloaded projector: never only on the status bar
+        # (GUI review 2026-11-24).
+        from ui.alarm_bar import AlarmBar
+
+        self._alarm_bar = AlarmBar()
+        self._alarm_bar.changed.connect(self._on_alarm_changed)
+        central_layout.addWidget(self._alarm_bar)
         central_layout.addWidget(self._central_stack, stretch=1)
         self.setCentralWidget(central)
 
@@ -396,6 +403,12 @@ class _MenuMixin:
         self._preview_monitor.video_resolution_detected.connect(self._on_video_resolution_detected)
         self._preview_monitor.video_frame_changed.connect(self._on_preview_video_frame_for_mirror)
         center_layout.addWidget(self._preview_panel, stretch=1)
+
+        # What plays to the room, above the GO, in every layout (GUI review 2026-11-24).
+        from ui.now_playing import NowPlayingStrip
+
+        self._prep_now_playing = NowPlayingStrip()
+        center_layout.addWidget(self._prep_now_playing, stretch=0)
 
         # The text names the cue the GO fires (see _update_go_button_text).
         self._btn_go = ElidedButton("GO (Next Cue) — [ SPAZIO ]")
@@ -602,9 +615,11 @@ class _MenuMixin:
 
     def _build_status_bar(self) -> None:
         sb = QStatusBar()
-        self._lbl_hw_info = QLabel(detect_hardware_brief())
+        # CPU / RAM / GPU is in Help → Hardware info; on the status bar it was noise next to the
+        # messages that matter (GUI review 2026-11-24). Kept, hidden, for the code that updates it.
+        self._lbl_hw_info = QLabel(detect_hardware_brief(), self)
         self._lbl_hw_info.setStyleSheet("color: #00bcd4; font-size: 11px; padding-left: 6px;")
-        sb.addWidget(self._lbl_hw_info)
+        self._lbl_hw_info.hide()
 
         self._lbl_perf_hint = QLabel("")
         self._lbl_perf_hint.setStyleSheet(
@@ -699,7 +714,10 @@ class _MenuMixin:
         hint = (text or "").strip()
         # Called once per second by the live-load guard: skip the work when
         # nothing changed, so an idle show pays no repaint cost.
-        if self._lbl_perf_hint.text() == hint and self._lbl_perf_hint.isHidden() == (not hint):
+        if self._lbl_perf_hint.text() == hint:
             return
         self._lbl_perf_hint.setText(hint)
-        self._lbl_perf_hint.setVisible(bool(hint))
+        # On the alarm bar, not the 11 px status bar (GUI review 2026-11-24).
+        self._lbl_perf_hint.setVisible(False)
+        if hasattr(self, "_alarm_bar"):
+            self._alarm_bar.set_alarm("load", hint)

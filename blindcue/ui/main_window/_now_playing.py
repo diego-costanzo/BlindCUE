@@ -34,6 +34,16 @@ class _NowPlayingMixin:
         panel.hold_longer.connect(lambda: self._status_label.setText(
             tr("Tieni premuto per saltare di 10 s (1,5 s nello spettacolo)")))
         panel.trim_requested.connect(self._on_card_trim)
+        strip = getattr(self, "_prep_now_playing", None)
+        if strip is not None:
+            # Preparation: the same requests as the show's cards (GUI review 2026-11-24).
+            strip.pause_requested.connect(self.layer_play_pause_requested.emit)
+            strip.fade_requested.connect(self._on_card_fade)
+            strip.scene_fade_requested.connect(self.fade_scene)
+            strip.cancel_start_requested.connect(self._on_card_cancel_start)
+            strip.release_requested.connect(self.release_loop_requested.emit)
+            strip.seek_requested.connect(self._on_card_seek)
+            strip.trim_requested.connect(self._on_card_trim)
         self._live_show_panel.hold_auto_go_requested.connect(self._on_hold_auto_go)
         # Output preview: up to 5 frames a second, only while the show page is up.
         shown = str(QSettings("BlindCue", "BlindCue").value("live/output_preview", True)).lower()             not in ("false", "0")
@@ -249,8 +259,13 @@ class _NowPlayingMixin:
 
     def _refresh_now_playing(self) -> None:
         panel = getattr(self, "_live_show_panel", None)
+        strip = getattr(self, "_prep_now_playing", None)
+        cards = None
+        if strip is not None:
+            cards = self._now_playing_cards()
+            strip.set_cards([] if self._live_mode else cards)
         if panel is not None and hasattr(panel, "now_playing"):
-            panel.now_playing.set_cards(self._now_playing_cards())
+            panel.now_playing.set_cards(cards if cards is not None else self._now_playing_cards())
             paused_all = getattr(self, "_is_global_paused", False)
             panel.set_paused_cues({c.cue_id for c in self._cues if c.status == CueStatus.LIVE and (
                 paused_all or self._runtime_slot(c) in self._paused_slots)})

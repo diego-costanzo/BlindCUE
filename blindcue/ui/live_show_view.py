@@ -1170,7 +1170,7 @@ class LiveShowPanel(QWidget):
         sb_layout.setSpacing(10)
 
         self.lbl_standby_pill = QLabel("▶ STANDBY")
-        self.lbl_standby_pill.setFixedHeight(26)
+        self.lbl_standby_pill.setFixedHeight(32)
         sb_layout.addWidget(self.lbl_standby_pill)
 
         sb_lines = QVBoxLayout()
@@ -1181,7 +1181,7 @@ class LiveShowPanel(QWidget):
         self.lbl_standby_banner.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Preferred)
         self.lbl_standby_banner.setTextFormat(Qt.TextFormat.PlainText)
         self.lbl_standby_banner.setStyleSheet(
-            "QLabel { color: #f8fafc; font-size: 13px; font-weight: bold; border: none; background: transparent; }"
+            "QLabel { color: #f8fafc; font-size: 18px; font-weight: bold; border: none; background: transparent; }"
         )
         sb_lines.addWidget(self.lbl_standby_banner)
         self.lbl_standby_note = QLabel("")
@@ -1338,7 +1338,8 @@ class LiveShowPanel(QWidget):
 
     def _apply_go_style(self) -> None:
         active_t = get_active_theme()
-        base = "border-radius: 6px; font-size: 17px; font-weight: bold; padding: 6px 12px;"
+        # 26 px: read at a glance from 65 cm in the dark (GUI review 2026-11-24; was 17 px).
+        base = "border-radius: 6px; font-size: 26px; font-weight: bold; padding: 6px 12px;"
         if active_t.is_monochrome:
             border = "dashed" if self._go_warn else "solid"
             self.btn_go.setStyleSheet(
@@ -2199,6 +2200,8 @@ class LiveShowPanel(QWidget):
                 self.live_table.setRowHidden(r, hidden)
 
             self.live_table.setColumnHidden(1, not any((c.q_label or "").strip() for c in cues))
+            # An empty notes column only took width from the cue names (GUI review 2026-11-24).
+            self.live_table.setColumnHidden(3, not any((c.notes or "").strip() for c in cues))
             if 0 <= standby_row < len(cues):
                 self.live_table.selectRow(standby_row)
                 if standby_row != self._centred_row:

@@ -53,7 +53,9 @@ group <code>GRP</code>, action <code>ACT</code>; captions have a 📝 icon. Unde
 <b>＋ Add files… / + Text / + Group / + Action</b>,
 <b>Up / Down</b> to move and <b>Delete</b>.</li>
 <li><b>Pre-Viz preview (middle)</b> – a private preview just for you. The audience never sees it.
-<b>Play / Pause / Stop</b> check the selected cue.</li>
+<b>▶ Preview / Pause / ⏹ Stop the preview</b> check the selected cue (the preview only). While something plays
+to the room, <b>ON AIR – heard in the room</b> shows above the GO with the cues' cards and their <b>Fade</b>,
+in every layout.</li>
 <li><b>The big green GO button</b> – fires the next cue (same as <kbd>Space</kbd>).</li>
 <li><b>Cue inspector (right column)</b> – all settings of the selected cue, on the tabs
 <b>Cue · Timing</b>, <b>Video · Photo</b>, <b>Audio · Trims</b>.</li>
@@ -62,8 +64,10 @@ the volume curve and sections.</li>
 <li><b>Live Output Status (bottom middle)</b> – what is playing on layers 1–3, with the
 <b>Fade Out</b> and <b>Master Blackout</b> buttons.</li>
 <li><b>Quick Load (bottom right)</b> – drag files here from your file manager.</li>
-<li><b>Status bar</b> – hardware profile, <b>Devices · Outputs</b>, panel lock,
-Jam mode, remote control and program messages.</li>
+<li><b>Status bar</b> – <b>Devices · Outputs</b>, panel lock, Jam mode, remote control and program messages
+(CPU, RAM and graphics are in <b>Help → Hardware &amp; Acceleration Info</b>; in the Rehearsal and the Show only what is on).</li>
+<li><b>Warning bar</b> (amber, above the page) – speakers unplugged, everything muted, projector overloaded:
+it stays until the cause is gone; <b>✕</b> hides the warnings of now.</li>
 </ul>
 <p class="tip">💡 Change the program language in <b>View → 🌐 Lingua / Language / Język</b>
 (applied after a restart). This manual opens in the program language.</p>
@@ -74,8 +78,9 @@ or <b>View → Window layout</b>) changes only the Preparation; the Rehearsal an
 <b>Lite</b> – a wide list, the preview, GO and the basic cue settings (name, notes, level, fade in and out, start
 and end, where on the screen, then); the rest is under <b>▾ More settings</b>, and when a cue has something hidden
 that changes its playback, the inspector says so in the line <b>This cue also has: …</b>. <b>Medium</b> – plus
-every tab and the waveform below. <b>Full</b> – everything, also the layers and quick add (the default).
-<b>↺ Restore layout</b> goes back to the default widths. This computer remembers the choice, not the show file.
+every tab and the waveform below. <b>Full</b> – everything, also the layers and quick add.
+<b>↺ Restore layout</b> goes back to the default widths. Every start opens in <b>Lite</b>; another layout lasts
+for this session (neither the computer nor the show file remembers it).
 Fields that do nothing for a type of cue (the crop for a sound, say) are hidden, not greyed out; <kbd>Enter</kbd>
 presses the focused button, <kbd>Tab</kbd> leaves the list.</p>
 <h2><a name="new"></a>2. New show and saving</h2>
@@ -200,11 +205,11 @@ and change them all at once.</p>
 <p><img src="img/en/04_inspector_video_cue.png" width="520" height="646"></p>
 <p><b>The “Edit cue” window</b> – the simplest way, in every view layout: <b>double-click</b> a cue (not on the number column), <kbd>Enter</kbd> on the list or the <b>✏ Edit…</b> button under the list. One window holds what matters for that cue:</p>
 <ul>
-<li><b>sound and video</b> – the waveform with a start and an end to drag, <b>▶ Listen</b> (in the headphones, if chosen), <b>⇤ Start here</b> / <b>End here ⇥</b> where it is playing now, <b>✂</b> cut the silence, <b>↺ Whole file</b>, volume, loop;</li>
+<li><b>sound and video</b> – the waveform with a start and an end to drag, <b>▶ Listen</b> (in the headphones, if chosen), <b>⇤ Start here</b> / <b>End here ⇥</b> where it is playing now, <b>✂</b> cut the silence, <b>↺ Whole file</b>, <b>🔍 Show the piece</b> (zooms the waveform between start and end), volume, loop;</li>
 <li><b>picture and video</b> – size and position (<b>⌖ Centre</b>), for a picture its time on screen;</li>
 <li><b>caption</b> – <b>✏ Change the text…</b>;</li>
 <li><b>scene</b> – how it plays (all at once, in sequence, step by step…);</li>
-<li>for all: name, Q, notes, “Then” and the transitions – fade in, fade out, crossfade.</li>
+<li>for all: name, No. (Q) – the number in the script, notes, “Then” and the transitions – fade in, fade out, crossfade.</li>
 </ul>
 <p><b>OK</b> saves everything as one step (<kbd>Ctrl+Z</kbd> undoes all of it), <b>Cancel</b> changes nothing. <kbd>F2</kbd> still renames a cue right in the list. During the Show the window does not open – cues do not change then.</p>
 
@@ -405,7 +410,9 @@ or <kbd>Ctrl+L</kbd>. The screen becomes simple and large – only what you need
 <p>On the first entry (and after the screens, the speakers or the show changed) the page
 <b>Before the show</b> comes first – in place of the list, not as a window, so PANIC and FADE ALL work. Each row says
 <b>✓ YES</b>, <b>✗ NO</b> or <b>– NOT CHECKED</b> and has a fix button: the picture on the projector
-(<b>Show screen numbers</b>, <b>Choose the screen…</b>), the master volume (<b>Back to 100 %</b>), the speakers
+(<b>Show screen numbers</b>, <b>Choose the screen…</b>; when the projector is there,
+<b>▦ Show the test pattern on the projector</b> – a grid to check focus and the right input, off by itself
+when the show starts), the master volume (<b>Back to 100 %</b>), the speakers
 (<b>▶ Test tone</b> – a one-second sound through the show's speakers, then answer <b>Yes, heard</b> / <b>Not heard</b>),
 missing files (<b>Show in the list</b>) and the laptop charger (checked by itself every 2 s). The page ends with the start buttons (<b>▶ Start</b> or
 <b>From the top / From the selected cue / Resume</b>) and <b>Stay in Preparation</b>. When everything is YES,

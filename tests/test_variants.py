@@ -67,8 +67,22 @@ def window(qt_app, tmp_path):
         _pump()
 
 
-def test_full_is_the_default_and_shows_everything(window):
-    assert window._variant == "full"
+def test_every_start_is_lite_and_full_shows_everything(window):
+    assert window._variant == "lite"                         # every start (GUI review 2026-11-24)
+    QSettings("BlindCue", "BlindCue").setValue("ui/view_variant", "full")   # an old saved choice: ignored
+    from ui.main_window import MainWindow
+    from ui.output_window import OutputWindow
+
+    output = OutputWindow()
+    second = MainWindow(output)
+    try:
+        assert second._variant == "lite"
+    finally:
+        second._force_closing = True
+        output.force_close()
+        second.close()
+    window.apply_view_variant("full")
+    _pump(0.05)
     assert window._bottom_splitter.isVisibleTo(window) and window._live_status.isVisibleTo(window)
     assert window._drop_group.isVisibleTo(window) and window._cue_list_panel.link_box.isVisibleTo(window)
     assert not window._inspector.btn_more.isVisibleTo(window)
@@ -76,13 +90,15 @@ def test_full_is_the_default_and_shows_everything(window):
 
 
 def test_lite_hides_the_bottom_row_and_widens_the_list(window):
+    window.apply_view_variant("full")
+    _pump(0.05)
     full_list = window._top_splitter.sizes()[0]
     window.apply_view_variant("lite")
     _pump(0.05)
     assert not window._bottom_splitter.isVisibleTo(window)
     assert not window._cue_list_panel.link_box.isVisibleTo(window)
     assert window._top_splitter.sizes()[0] > full_list
-    assert QSettings("BlindCue", "BlindCue").value("ui/view_variant") == "lite"
+    assert QSettings("BlindCue", "BlindCue").value("ui/view_variant") is None   # not remembered
     assert window._cue_list.hasFocus() or not window.isActiveWindow()
 
 
@@ -106,6 +122,7 @@ def test_basic_inspector_and_more_settings(window):
 
 
 def test_fields_that_do_nothing_for_the_type_are_hidden(window):
+    window.apply_view_variant("full")                        # every start is Lite: the full inspector here
     insp = window._inspector
     window._cue_list.setCurrentRow(0)                        # audio
     _pump(0.05)

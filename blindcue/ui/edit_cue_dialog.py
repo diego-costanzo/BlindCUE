@@ -201,9 +201,12 @@ class EditCueDialog(QDialog):
         self.ed_name.setAccessibleName("Nome")
         self.ed_name.textChanged.connect(lambda t: self._set("name", t.strip() or self._orig["name"]))
         grid.addWidget(self.ed_name, 0, 1)
-        grid.addWidget(QLabel("Q"), 0, 2)
+        lbl_q = QLabel("N. (Q)")
+        grid.addWidget(lbl_q, 0, 2)
         self.ed_q = QLineEdit(self._vals["q_label"] or "")
-        self.ed_q.setAccessibleName("Q")
+        self.ed_q.setAccessibleName("N. (Q)")
+        self.ed_q.setToolTip("Numero della cue nel copione (Q), per esempio 12 o 12a")
+        lbl_q.setToolTip(self.ed_q.toolTip())
         self.ed_q.setMaximumWidth(70)
         self.ed_q.textChanged.connect(lambda t: self._set("q_label", t.strip()))
         grid.addWidget(self.ed_q, 0, 3)
@@ -313,6 +316,12 @@ class EditCueDialog(QDialog):
         self.lbl_pos = QLabel("0:00.0")
         self.lbl_pos.setMinimumWidth(110)
         transport.addWidget(self.lbl_pos)
+        # A short piece of a long file: the IN and OUT labels overlapped (GUI review 2026-11-24).
+        self.btn_clip_view = QPushButton("🔍 Mostra il pezzo")
+        self.btn_clip_view.setCheckable(True)
+        self.btn_clip_view.setToolTip("Ingrandisce la forma d'onda tra l'inizio e la fine scelti; di nuovo: tutto il file")
+        self.btn_clip_view.toggled.connect(self._show_clip)
+        transport.addWidget(self.btn_clip_view)
         transport.addStretch(1)
         self.btn_in_here = QPushButton("⇤ Inizio qui")
         self.btn_in_here.setToolTip("L'inizio va dove si trova ora la riproduzione")
@@ -633,6 +642,24 @@ class EditCueDialog(QDialog):
         if self._waveform is None:
             return None
         return self._waveform.playhead_seconds()
+
+    def _show_clip(self, on: bool) -> None:
+        """🔍: the waveform between IN and OUT with a margin; off: the whole file."""
+        wf = self._waveform
+        if wf is None:
+            return
+        duration = wf.duration_seconds() or float(self._duration or 0.0)
+        if not on or duration <= 0:
+            wf.set_zoom(1.0)
+            self.btn_clip_view.setText("🔍 Mostra il pezzo")
+            return
+        start = float(self._vals["in_point"] or 0.0)
+        end = float(self._vals["out_point"] or 0.0) or duration
+        margin = max(0.25, (end - start) * 0.1)
+        span = max(0.5, end - start + 2 * margin)
+        wf.set_zoom(duration / span)
+        wf.set_view_start(max(0.0, start - margin))
+        self.btn_clip_view.setText("↔ Tutto il file")
 
     def _in_here(self) -> None:
         sec = self._playhead()

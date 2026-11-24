@@ -18,7 +18,7 @@ Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
 <li><a href="#ekran">Ekran programu – co gdzie jest</a></li>
 <li><a href="#nowe">Nowe przedstawienie i zapisywanie</a></li>
 <li><a href="#dodawanie">Dodawanie wideo, audio<!--IF:text_cues-->, zdjęć i napisów<!--/IF:text_cues--><!--IFNOT:text_cues--> i zdjęć<!--/IFNOT:text_cues--></a></li>
-<li><a href="#cue">Ustawianie cue (Inspektor)</a></li>
+<li><a href="#cue">Ustawienia cue</a></li>
 <li><a href="#przejscia">Przejścia<!--IF:crossfade-->, przenikanie<!--/IF:crossfade-->, efekty i obraz</a></li>
 <li><a href="#dzwiek">Dźwięk: głośność, przycięcie, pętla, wyrównanie</a></li>
 <li><a href="#grupy">Grupy i sceny</a></li>
@@ -40,18 +40,23 @@ Ta instrukcja prowadzi od pustego programu do gotowego przedstawienia.</p>
 grupa <code>GRP</code><!--IF:action_cues-->, akcja <code>ACT</code><!--/IF:action_cues--><!--IF:text_cues-->; napisy mają ikonę 📝<!--/IF:text_cues-->. Pod listą są przyciski
 <b>＋ Dodaj pliki… / <!--IF:text_cues-->+ Tekst / <!--/IF:text_cues-->+ Grupa<!--IF:action_cues--> / + Akcja<!--/IF:action_cues--></b>,
 przesuwanie <b>W górę / W dół</b> i <b>Usuń</b>.</li>
-<li><b>Podgląd Pre-Viz (środek)</b> – prywatny podgląd tylko dla Ciebie. Widownia go nie widzi.
-Przyciski <b>Odtwórz / Pauza / Stop</b> sprawdzają zaznaczony cue.</li>
+<li><b>Podgląd – widzisz tylko Ty (środek)</b> – prywatny podgląd. Widownia go nie widzi.
+Przyciski <b>▶ Podgląd / Pauza / ⏹ Stop podglądu</b> sprawdzają zaznaczony cue (tylko w podglądzie). Gdy coś
+gra na sali, nad GO pojawia się <b>TERAZ GRA – słychać na sali</b> z kartami cue i ich przyciskiem <b>Wygaś</b>,
+w każdym układzie.</li>
 <li><b>Duży zielony przycisk GO</b> – odpala następny cue (to samo co <kbd>Spacja</kbd>).</li>
-<li><b>Inspektor cue (prawa kolumna)</b> – wszystkie ustawienia zaznaczonego cue, w kartach
+<li><b>Ustawienia cue (prawa kolumna)</b> – wszystkie ustawienia zaznaczonego cue, w kartach
 <b>Cue · czasy</b>, <b>Wideo · zdjęcie</b>, <b>Audio · przycięcia</b>.</li>
 <li><b>Przebieg i automatyzacja (dół, lewo)</b> – fala dźwięku z punktami IN/OUT,
 krzywą głośności i podziałem na sekcje.</li>
 <li><b>Stan wyjścia Live (dół, środek)</b> – co teraz gra na warstwach 1–3, przyciski
-<b>Wygaś</b> i <b>Wygaszenie główne</b>.</li>
+<b>Wygaś</b> i <b>Czarny ekran</b>.</li>
 <li><b>Szybkie dodawanie (dół, prawo)</b> – przeciągnij tu pliki z menedżera plików.</li>
-<li><b>Pasek na dole</b> – profil sprzętu, <b>Urządzenia · wyjścia</b>, blokada paneli,
-tryb Jam, pilot zdalny i komunikaty programu.</li>
+<li><b>Pasek na dole</b> – <b>Urządzenia · wyjścia</b>, blokada paneli, tryb Jam, pilot zdalny i komunikaty
+programu (procesor, pamięć i karta graficzna są w <b>Pomoc → Informacje o sprzęcie i akceleracji</b>; w Próbie i
+Przedstawieniu widać tylko to, co jest włączone).</li>
+<li><b>Pasek ostrzeżeń</b> (pomarańczowy, nad stroną) – odłączone głośniki, wszystko wyciszone, przeciążony
+projektor: zostaje, dopóki przyczyna nie zniknie; <b>✕</b> chowa obecne ostrzeżenia.</li>
 </ul>
 <p class="tip">💡 Język programu zmienisz w menu <b>Widok → 🌐 Lingua / Language / Język</b>
 (działa po ponownym uruchomieniu). Ta instrukcja otwiera się w języku programu.</p>
@@ -61,10 +66,10 @@ tryb Jam, pilot zdalny i komunikaty programu.</li>
 <b>Widok → Układ okna</b>) zmienia tylko Przygotowanie; ekran Próby i Przedstawienia jest zawsze ten sam.
 <b>Prosty</b> – szeroka lista, podgląd, GO i podstawowe ustawienia cue (nazwa, uwagi, głośność, pojawianie i
 wygaszanie, początek i koniec, gdzie na ekranie, potem); reszta jest pod <b>▾ Więcej ustawień</b>, a gdy cue ma
-coś ukrytego, co zmienia odtwarzanie, inspektor pisze to w linii <b>Ten cue ma też: …</b>. <b>Rozszerzony</b> –
+coś ukrytego, co zmienia odtwarzanie, panel ustawień pisze to w linii <b>Ten cue ma też: …</b>. <b>Rozszerzony</b> –
 do tego wszystkie karty i przebieg dźwięku pod spodem. <b>Pełny</b> – wszystko, także warstwy i szybkie
-dodawanie (domyślny). <b>↺ Przywróć układ</b> wraca do domyślnych szerokości. Wybór zapamiętuje ten komputer,
-nie plik pokazu. Pola, które dla danego typu cue nic nie robią (np. kadr dla dźwięku), są ukryte, a nie
+dodawanie. <b>↺ Przywróć układ</b> wraca do domyślnych szerokości. Każde uruchomienie zaczyna się w układzie
+<b>Prostym</b>; inny układ obowiązuje do zamknięcia programu (nie zapamiętuje go ani komputer, ani plik pokazu). Pola, które dla danego typu cue nic nie robią (np. kadr dla dźwięku), są ukryte, a nie
 wyszarzone; <kbd>Enter</kbd> naciska przycisk z fokusem, <kbd>Tab</kbd> wychodzi z listy.</p><!--/IF:view_variants-->
 <h2><a name="nowe"></a>2. Nowe przedstawienie i zapisywanie</h2>
 <ul>
@@ -83,18 +88,18 @@ Oryginalne pliki nigdy nie są zmieniane.</li>
 <!--IF:file_association--><li><b>Dwuklik na pliku .blindcue</b> w Eksploratorze otwiera przedstawienie. Gdy program już działa, plik trafia do niego (z pytaniem o zapis zmian); w Próbie i Przedstawieniu program nie podmieni prowadzonego przedstawienia.</li><!--/IF:file_association-->
 <li>Program robi <b>autozapis</b> (także przy każdym GO). Po awarii zaproponuje przywrócenie sesji.<!--IF:recovery_choice--> Wybierasz, skąd dalej: <b>Wznów: następny</b> (domyślnie, także Enter i Esc), <b>Jeszcze raz ostatni</b> (np. muzyka tła) albo <b>Od początku</b>. Jeśli awaria była w trakcie przedstawienia, program od razu wraca do przedstawienia. <b>Otwórz bez przywracania</b> niczego nie kasuje – poprzednia sesja zostaje odłożona jako plik <code>autosave.discarded.json</code>.<!--/IF:recovery_choice--></li>
 <li><b>Edycja → Cofnij / Ponów</b> (<kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd>) działa dla
-wszystkich zmian na liście i w inspektorze.</li>
-<!--IF:cue_export--><li><b>Plik → 🖨 Eksportuj i drukuj → 📄 Eksportuj listę (CSV)…</b> – lista do arkusza (Excel, LibreOffice). <b>Plik → 🖨 Eksportuj i drukuj → 🖨 Drukuj listę dla operatora…</b> – tylko pozycje uruchamiane GO, dużymi literami, z miejscem na notatki; <b>…dla suflera…</b> – strona scenariusza, kwestia, Q i nazwa każdej pozycji. Lista otwiera się w przeglądarce, drukujesz <kbd>Ctrl+P</kbd>. Stronę i kwestię wpisujesz w inspektorze (pole <b>Scenariusz</b> pod uwagami).</li><!--/IF:cue_export-->
-<!--IF:renumber--><li><b>Edycja → 🔢 Przenumeruj Q…</b> – nowe etykiety Q dla pozycji uruchamianych GO – tych samych co na liście dla realizatora: scena liczy się jako jedno GO, scena krok po kroku – jedno na krok; pozycje, które startują same (Razem, Auto-GO, kaskada), zachowują swoje. Etykieta, którą ma już inna pozycja, jest oznaczona ⚠. Przedrostek, pierwszy numer i krok – krok 10 zostawia miejsce na późniejsze wstawki (Q10, Q15, Q20). Podgląd „przed → po” przed zatwierdzeniem; gdy zaznaczysz kilka pozycji, numerowane są tylko one. Jedno <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:renumber-->
-<!--IF:show_import--><li><b>Plik → 📥 Importuj → 📥 Importuj pozycje z innego przedstawienia…</b> – wybierasz plik przedstawienia i zaznaczasz pozycje (scena przynosi swoje pozycje); trafiają za zaznaczenie, z nowymi numerami wewnętrznymi, z zachowanymi powiązaniami (scena, start względny, cele akcji). Program mówi, czego nie przeniesie (powiązanie z pozycją pozostawioną w tamtym przedstawieniu, brakujący plik). Jedno <kbd>Ctrl+Z</kbd> cofa; pliki trafią do folderu przedstawienia przy zapisie przenośnym.</li><!--/IF:show_import-->
+wszystkich zmian na liście i w ustawieniach cue.</li>
+<!--IF:cue_export--><li><b>Plik → 🖨 Eksportuj i drukuj → 📄 Eksportuj listę (CSV)…</b> – lista do arkusza (Excel, LibreOffice). <b>Plik → 🖨 Eksportuj i drukuj → 🖨 Drukuj listę dla operatora…</b> – tylko cue uruchamiane GO, dużymi literami, z miejscem na notatki; <b>…dla suflera…</b> – strona scenariusza, kwestia, Q i nazwa każdego cue. Lista otwiera się w przeglądarce, drukujesz <kbd>Ctrl+P</kbd>. Stronę i kwestię wpisujesz w inspektorze (pole <b>Scenariusz</b> pod uwagami).</li><!--/IF:cue_export-->
+<!--IF:renumber--><li><b>Edycja → 🔢 Przenumeruj Q…</b> – nowe etykiety Q dla cue uruchamianych GO – tych samych co na liście dla realizatora: scena liczy się jako jedno GO, scena krok po kroku – jedno na krok; cue, które startują same (Razem, Auto-GO, kaskada), zachowują swoje. Etykieta, którą ma już inny cue, jest oznaczona ⚠. Przedrostek, pierwszy numer i krok – krok 10 zostawia miejsce na późniejsze wstawki (Q10, Q15, Q20). Podgląd „przed → po” przed zatwierdzeniem; gdy zaznaczysz kilka cue, numerowane są tylko one. Jedno <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:renumber-->
+<!--IF:show_import--><li><b>Plik → 📥 Importuj → 📥 Importuj cue z innego przedstawienia…</b> – wybierasz plik przedstawienia i zaznaczasz cue (scena przynosi swoje cue); trafiają za zaznaczenie, z nowymi numerami wewnętrznymi, z zachowanymi powiązaniami (scena, start względny, cele akcji). Program mówi, czego nie przeniesie (powiązanie z cue pozostawionym w tamtym przedstawieniu, brakujący plik). Jedno <kbd>Ctrl+Z</kbd> cofa; pliki trafią do folderu przedstawienia przy zapisie przenośnym.</li><!--/IF:show_import-->
 <!--IF:start_page--><li><b>Ekran startowy</b> – gdy program startuje bez przedstawienia, pyta „Co chcesz zrobić?”: nowe przedstawienie, z folderu z plikami, pokaz ćwiczebny, otwórz albo jedno z ostatnich; obok <b>Pierwsze kroki</b> (głośniki, projektor, pliki, GO) z przyciskami. Wyłączysz go polem „Pokazuj ten ekran przy starcie”; wraca przez <b>Plik → 🏠 Ekran startowy</b>.</li><!--/IF:start_page-->
 <!--IF:practice_show--><li><b>Plik → 🎓 Pokaz ćwiczebny</b> (także w menu Pomoc) – krótki gotowy pokaz na wbudowanych plikach: notatka dla Ciebie, muzyka z tłem, napis, dzwonek pod klawiszem D, film z przenikaniem, scena krok po kroku, burza przenikająca muzykę, wygaszenie i napis „Koniec”. Zapisuje się w <b>Dokumenty\BlindCue\Pokaz ćwiczebny</b>; możesz go zmieniać i ćwiczyć w Próbie bez własnych plików.</li><!--/IF:practice_show-->
-<!--IF:quick_start--><li><b>Szybki start</b> – <b>Plik → 📁 Nowe przedstawienie z folderu…</b> dodaje filmy, dźwięki i obrazy z folderu w kolejności nazw (1, 2, 10) jako osobne pozycje albo jako jedną scenę (same dźwięki: jedną playlistę). <b>Plik → 📥 Importuj → 📋 Importuj listę pozycji (CSV)…</b> zamienia listę napisaną w Excelu (kolumny jak w eksporcie: Q, Nazwa, Typ, Plik, Strona, Kwestia, Uwagi; średnik albo przecinek) w pozycje za zaznaczeniem; wiersz bez pliku czeka na plik (na stronie „Przed przedstawieniem” jest wśród brakujących). W <b>Otwórz ostatnie</b> możesz <b>📌 przypiąć</b> otwarte przedstawienie – zostaje na górze i nie wypada z listy.</li><!--/IF:quick_start-->
-<!--IF:external_tools--><li><b>Plik w innym programie</b> – prawy przycisk na pozycji → <b>🛠 Plik</b>: <b>Pokaż w folderze</b>, <b>Otwórz w domyślnym programie</b> albo w ulubionym programie (np. edytor dźwięku lub zdjęć; <b>➕ Dodaj program…</b> zapamiętuje go na tym komputerze). Gdy wrócisz do programu, a plik się zmienił, przebieg i długość odświeżą się same.</li><!--/IF:external_tools-->
-<!--IF:relink--><li><b>Brakujące pliki</b> – <b>Plik → 🛟 Kopie i brakujące pliki → 🔎 Szukaj brakujących plików w folderze…</b> (albo przycisk na stronie „Przed przedstawieniem”): wskazujesz folder (pendrive, folder przedstawienia na innym komputerze) i każdy brakujący plik znaleziony tam po nazwie wraca do swojej pozycji – wszystkie naraz, jedno <kbd>Ctrl+Z</kbd>. Prawy przycisk na pozycji → <b>📂 Wybierz plik…</b> podmienia plik (albo dołącza pierwszy, np. do pozycji z zaimportowanej listy); ustawienia pozycji zostają.</li><!--/IF:relink-->
-<!--IF:history--><li><b>Historia zmian</b> – <b>Edycja → 🕘 Historia zmian…</b> pokazuje po kolei, co <kbd>Ctrl+Z</kbd> może cofnąć, opisane słowami (np. „Q7 'Dzwonek': Fade In 2 → 0”, „Dodana …”); <b>Cofnij do tego miejsca</b> cofa wybraną zmianę i wszystkie późniejsze (<kbd>Ctrl+Y</kbd> je przywraca). Cofanie działa także po zapisie. <b>Plik → 🛟 Kopie i brakujące pliki → 🕘 Przywróć kopię zapasową…</b> wczytuje listę pozycji z jednej z kopii robionych przy każdym zapisie – jako jedną zmianę, którą <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:history-->
+<!--IF:quick_start--><li><b>Szybki start</b> – <b>Plik → 📁 Nowe przedstawienie z folderu…</b> dodaje filmy, dźwięki i obrazy z folderu w kolejności nazw (1, 2, 10) jako osobne cue albo jako jedną scenę (same dźwięki: jedną playlistę). <b>Plik → 📥 Importuj → 📋 Importuj listę cue (CSV)…</b> zamienia listę napisaną w Excelu (kolumny jak w eksporcie: Q, Nazwa, Typ, Plik, Strona, Kwestia, Uwagi; średnik albo przecinek) w cue za zaznaczeniem; wiersz bez pliku czeka na plik (na stronie „Przed przedstawieniem” jest wśród brakujących). W <b>Otwórz ostatnie</b> możesz <b>📌 przypiąć</b> otwarte przedstawienie – zostaje na górze i nie wypada z listy.</li><!--/IF:quick_start-->
+<!--IF:external_tools--><li><b>Plik w innym programie</b> – prawy przycisk na cue → <b>🛠 Plik</b>: <b>Pokaż w folderze</b>, <b>Otwórz w domyślnym programie</b> albo w ulubionym programie (np. edytor dźwięku lub zdjęć; <b>➕ Dodaj program…</b> zapamiętuje go na tym komputerze). Gdy wrócisz do programu, a plik się zmienił, przebieg i długość odświeżą się same.</li><!--/IF:external_tools-->
+<!--IF:relink--><li><b>Brakujące pliki</b> – <b>Plik → 🛟 Kopie i brakujące pliki → 🔎 Szukaj brakujących plików w folderze…</b> (albo przycisk na stronie „Przed przedstawieniem”): wskazujesz folder (pendrive, folder przedstawienia na innym komputerze) i każdy brakujący plik znaleziony tam po nazwie wraca do swojego cue – wszystkie naraz, jedno <kbd>Ctrl+Z</kbd>. Prawy przycisk na cue → <b>📂 Wybierz plik…</b> podmienia plik (albo dołącza pierwszy, np. do cue z zaimportowanej listy); ustawienia cue zostają.</li><!--/IF:relink-->
+<!--IF:history--><li><b>Historia zmian</b> – <b>Edycja → 🕘 Historia zmian…</b> pokazuje po kolei, co <kbd>Ctrl+Z</kbd> może cofnąć, opisane słowami (np. „Q7 'Dzwonek': Fade In 2 → 0”, „Dodana …”); <b>Cofnij do tego miejsca</b> cofa wybraną zmianę i wszystkie późniejsze (<kbd>Ctrl+Y</kbd> je przywraca). Cofanie działa także po zapisie. <b>Plik → 🛟 Kopie i brakujące pliki → 🕘 Przywróć kopię zapasową…</b> wczytuje listę cue z jednej z kopii robionych przy każdym zapisie – jako jedną zmianę, którą <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:history-->
 <!--IF:drop_scene--><li><b>Kilka plików naraz</b> – gdy upuszczasz na listę kilka plików, a nie są to same dźwięki (dla nich jest pytanie o playlistę), program pyta, czy zrobić z nich <b>jedną scenę</b> (GO na każdy element). Pytanie nie blokuje pracy; odpowiedź to osobny krok <kbd>Ctrl+Z</kbd>.</li><!--/IF:drop_scene-->
-<!--IF:preshow--><li><b>Plik → ℹ Informacje o przedstawieniu…</b> – tytuł (na wydrukach zamiast nazwy pliku), autor i notatki, zapisywane z przedstawieniem; pod spodem liczby: pozycje każdego rodzaju, ile GO, efekty, wyłączone, brakujące pliki.</li><li><b>Kopie zapasowe</b> – każdy zapis zostawia poprzednią wersję pliku w folderze <code>&lt;nazwa&gt;_backups</code> obok przedstawienia (5 ostatnich, z datą i godziną w nazwie). Żeby wrócić do kopii, skopiuj ją obok przedstawienia i otwórz.</li><!--/IF:preshow-->
+<!--IF:preshow--><li><b>Plik → ℹ Informacje o przedstawieniu…</b> – tytuł (na wydrukach zamiast nazwy pliku), autor i notatki, zapisywane z przedstawieniem; pod spodem liczby: cue każdego rodzaju, ile GO, efekty, wyłączone, brakujące pliki.</li><li><b>Kopie zapasowe</b> – każdy zapis zostawia poprzednią wersję pliku w folderze <code>&lt;nazwa&gt;_backups</code> obok przedstawienia (5 ostatnich, z datą i godziną w nazwie). Żeby wrócić do kopii, skopiuj ją obok przedstawienia i otwórz.</li><!--/IF:preshow-->
 </ul>
 <p><img src="img/pl/02_menu_file.png" width="260"></p>
 
@@ -122,7 +127,7 @@ tego łańcucha lub grupy – pasek stanu mówi gdzie. Przesuniesz go przyciskam
 
 <h3>Zdjęcia</h3>
 <p>Zdjęcie domyślnie zostaje na ekranie <b>bez końca</b>, aż odpalisz kolejny cue na tej samej
-warstwie albo użyjesz <b>Wygaś</b>. Czas wyświetlania ustawisz w Inspektorze:
+warstwie albo użyjesz <b>Wygaś</b>. Czas wyświetlania ustawisz w ustawieniach cue:
 <b>Cue · czasy → Czas obrazu</b> (np. 10 s; <code>0</code> = bez końca).
 Pokaz zdjęć zrobisz jako kilka cue ze zdjęciami po kolei z ustawionym <b>Auto-GO</b>
 (rozdział 4) albo jako <a href="#grupy">grupę</a>.</p>
@@ -139,14 +144,14 @@ i znikanie (Fade In / Out 0,5 s).</li>
 <li><b>Zmiana treści:</b> prawy klik na cue z napisem → <b>✏ Edytuj napis…</b>.</li>
 </ol>
 <p><img src="img/pl/13_caption_dialog.png" width="420"> <img src="img/pl/14_caption_on_screen.png" width="480"></p>
-<p>Napis działa jak zdjęcie: w Inspektorze zmienisz jego położenie, skalę, krycie,
+<p>Napis działa jak zdjęcie: w ustawieniach cue zmienisz jego położenie, skalę, krycie,
 czas wyświetlania (<b>Czas obrazu</b>, 0 = do wygaszenia), przejścia i przenikanie.
 Napis jest zapisany w pliku przedstawienia – na innym komputerze odtworzy się sam.</p>
 
 <h3>Napis równocześnie z muzyką (albo z filmem)</h3>
 <ol>
 <li>Na liście ustaw kolejno: <b>cue z muzyką</b>, a zaraz pod nim <b>cue z napisem</b>.</li>
-<li>Zaznacz <b>cue z muzyką</b> i w Inspektorze wybierz <b>Potem: Razem</b>.
+<li>Zaznacz <b>cue z muzyką</b> i w ustawieniach cue wybierz <b>Potem: Razem z następnym</b>.
 Jedno <kbd>Spacja</kbd> uruchomi muzykę i od razu pokaże napis.</li>
 <li>W cue z napisem ustaw <b>Czas obrazu</b>, np. na długość piosenki – napis sam zniknie
 (z Fade Out). Albo zostaw 0 i wygaś go przyciskiem <b>Wygaś</b> przy warstwie 3.</li>
@@ -160,20 +165,20 @@ na cue z filmem. Możesz też zaznaczyć oba cue i zgrupować je (<kbd>Ctrl+G</k
 <h3><a name="akcje"></a>Cue akcji – zatrzymaj, wygaś, poziom, krycie, notatka</h3>
 <p>Cue akcji nie ma pliku: działa na <b>inne</b> cue albo pokazuje notatkę dla Ciebie.
 Dodasz go przyciskiem <b>+ Akcja</b> (rodzaj wybierasz z menu). Na liście ma znaczek
-<code>ACT</code>, a jego ustawienia są w Inspektorze w karcie <b>⚡ Akcja</b>. Jak każdy cue
-odpalasz go GO; może mieć Pre-Delay, Auto-GO i należeć do grupy.</p>
+<code>ACT</code>, a jego ustawienia są w panelu ustawień cue, w karcie <b>⚡ Akcja</b>. Jak każdy cue
+odpalasz go GO; może mieć opóźnienie startu, Auto-GO i należeć do grupy.</p>
 <table class="k">
-<tr><td><b>🔉 Wygaś i zatrzymaj</b></td><td>ścisza dźwięk i wygasza obraz w podanym czasie, potem zatrzymuje. Zatrzymane cue nie uruchamiają swojego Post-Delay ani Auto-GO. Np. koniec muzyki tła jako zwykły punkt listy.</td></tr>
-<tr><td><b>⏹ Zatrzymaj od razu</b></td><td>ucina od razu, także cue, które czekają na koniec Pre-Delay.</td></tr>
-<tr><td><b>🔁 Zwolnij pętlę</b></td><td>zapętlony cue (pętla albo sekcja „w kółko”) kończy bieżące okrążenie i idzie dalej: do następnej sekcji albo do końca, z Post-Delay i Auto-GO.<!--IF:release_scene--> Grupa <b>Zapętl scenę</b> dokończy bieżący obieg i się zatrzyma (nie zacznie od nowa i nie uruchomi następnej sceny).<!--/IF:release_scene--></td></tr>
+<tr><td><b>🔉 Wygaś i zatrzymaj</b></td><td>ścisza dźwięk i wygasza obraz w podanym czasie, potem zatrzymuje. Zatrzymane cue nie uruchamiają swojego czekania po końcu ani Auto-GO. Np. koniec muzyki tła jako zwykły punkt listy.</td></tr>
+<tr><td><b>⏹ Zatrzymaj od razu</b></td><td>ucina od razu, także cue, które czekają na koniec opóźnienia startu.</td></tr>
+<tr><td><b>🔁 Zwolnij pętlę</b></td><td>zapętlony cue (pętla albo sekcja „w kółko”) kończy bieżące okrążenie i idzie dalej: do następnej sekcji albo do końca, z czekaniem po końcu i Auto-GO.<!--IF:release_scene--> Grupa <b>Zapętl scenę</b> dokończy bieżący obieg i się zatrzyma (nie zacznie od nowa i nie uruchomi następnej sceny).<!--/IF:release_scene--></td></tr>
 <tr><td><b>🎚 Zmiana poziomu</b></td><td>zmienia głośność tego, co gra, bez zatrzymywania: <b>bezwzględnie</b> (tak, jakby Głośność cue miała podaną wartość) albo <b>względnie</b> (np. −10 dB), w podanym czasie i z wybraną krzywą. Muzyka pod dialog: jedna akcja −10 dB, później druga +10 dB.</td></tr>
 <tr><td><b>🌓 Krycie warstwy</b></td><td>przyciemnia całą warstwę (obrazy i wideo), np. tło do 30 % na czas sceny. Następny cue na tej warstwie zaczyna z pełnym kryciem.</td></tr>
 <tr><td><b>📝 Notatka dla operatora</b></td><td>tekst w kolorowym pasku u góry okna programu – nigdy na projektorze. Nie blokuje GO; znika przy następnym GO albo po kliknięciu ✕.</td></tr>
-<!--IF:jump_actions--><tr><td><b>↪ Skok do pozycji</b></td><td>uruchamia wybrany cue (dalej GO idzie od niego) albo – <b>Tylko jako następne GO</b> – jedynie ustawia go jako następny. <b>Najwyżej N×</b> ogranicza powtórzenia: np. scena grana dwa razy, potem GO idzie dalej. Licznik zeruje się, gdy przedstawienie zaczyna się od początku.</td></tr>
-<tr><td><b>📞 Wywołaj pozycję</b></td><td>uruchamia wybrany cue bez przesuwania GO (jak efekt). Cue z zaznaczonym <b>📞 Tylko na wywołanie</b> (karta 3 · Czasy) jest poza kolejnością GO; w Inspektorze widać, skąd jest wywoływany.</td></tr>
+<!--IF:jump_actions--><tr><td><b>↪ Skok do cue</b></td><td>uruchamia wybrany cue (dalej GO idzie od niego) albo – <b>Tylko jako następne GO</b> – jedynie ustawia go jako następny. <b>Najwyżej N×</b> ogranicza powtórzenia: np. scena grana dwa razy, potem GO idzie dalej. Licznik zeruje się, gdy przedstawienie zaczyna się od początku.</td></tr>
+<tr><td><b>📞 Wywołaj cue</b></td><td>uruchamia wybrany cue bez przesuwania GO (jak efekt). Cue z zaznaczonym <b>📞 Tylko na wywołanie</b> (karta 3 · Czasy) jest poza kolejnością GO; w ustawieniach cue widać, skąd jest wywoływany.</td></tr>
 <tr><td><b>⏩ Przewiń odtwarzanie</b></td><td>przesuwa grający dźwięk lub film: <b>do miejsca</b> w pliku, <b>o N s</b> do przodu lub do tyłu, albo <b>na N s przed końcem</b> (np. pominięcie zwrotki na próbie).</td></tr><!--/IF:jump_actions-->
-<!--IF:new_actions--><tr><td><b>⌛ Czekaj, potem następna</b></td><td>oczekiwanie widoczne na liście: po podanych sekundach sama startuje następna pozycja (zamiast ukrytego Pre-Delay). Pauza wszystkiego je wstrzymuje, PANIC kasuje.</td></tr>
-<tr><td><b>⏸ Pauza</b> / <b>▶ Wznów</b></td><td>wstrzymuje wybrane grające dźwięki i filmy albo pozwala im grać dalej od miejsca, w którym stanęły; pozostałe grają bez zmian. Pozycje startujące na znaczniku lub przed końcem wstrzymanej czekają razem z nią. Z <b>przejściem</b> (pole <b>Przejście</b>) muzyka się <b>usypia</b> (cichnie, potem staje – np. na przerwę) i <b>budzi</b> (wchodzi powoli do poprzedniego poziomu).</td></tr>
+<!--IF:new_actions--><tr><td><b>⌛ Czekaj, potem następna</b></td><td>oczekiwanie widoczne na liście: po podanych sekundach sam startuje następny cue (zamiast ukrytego opóźnienia startu). Pauza wszystkiego je wstrzymuje, PANIC kasuje.</td></tr>
+<tr><td><b>⏸ Pauza</b> / <b>▶ Wznów</b></td><td>wstrzymuje wybrane grające dźwięki i filmy albo pozwala im grać dalej od miejsca, w którym stanęły; pozostałe grają bez zmian. Cue startujące na znaczniku lub przed końcem wstrzymanej czekają razem z nią. Z <b>przejściem</b> (pole <b>Przejście</b>) muzyka się <b>usypia</b> (cichnie, potem staje – np. na przerwę) i <b>budzi</b> (wchodzi powoli do poprzedniego poziomu).</td></tr>
 <tr><td><b>⏱ Stoper</b></td><td>stoper na pasku stanu (np. czas trwania aktu): <b>Start</b>, <b>Stop</b> (następny start liczy dalej) albo <b>Zeruj</b>. PANIC go nie rusza.</td></tr><!--/IF:new_actions-->
 </table>
 <p><b>Na co działa</b> (pole <b>Na co</b>): <b>Wszystko, co gra</b>, <b>Jedna warstwa</b> (L1–L3)
@@ -184,20 +189,20 @@ muzyka (tryb <b>Razem</b>), ustaw akcję na liście <b>przed</b> nią albo wska�
 <!--/IF:action_cues-->
 
 <!-- ================================================================== -->
-<h2><a name="cue"></a>4. Ustawianie cue (Inspektor)</h2>
-<p>Kliknij cue na liście – Inspektor po prawej pokaże jego ustawienia.
+<h2><a name="cue"></a>4. Ustawienia cue</h2>
+<p>Kliknij cue na liście – po prawej zobaczysz jego ustawienia.
 Możesz też zaznaczyć <b>kilka cue tego samego typu</b> (<kbd>Ctrl</kbd>/<kbd>Shift</kbd>+klik)
 i zmienić je wszystkie naraz.</p>
 <p><img src="img/pl/04_inspector_video_cue.png" width="520"></p>
-<!--IF:edit_window--><p><b>Okno „Edytuj pozycję”</b> – najprostsza droga, w każdym układzie widoku: <b>dwuklik</b> na pozycji (poza kolumną z numerem), <kbd>Enter</kbd> na liście albo przycisk <b>✏ Edytuj…</b> pod listą. W jednym oknie jest to, co najważniejsze dla danej pozycji:</p>
+<!--IF:edit_window--><p><b>Okno „Edytuj cue”</b> – najprostsza droga, w każdym układzie widoku: <b>dwuklik</b> na cue (poza kolumną z numerem), <kbd>Enter</kbd> na liście albo przycisk <b>✏ Edytuj…</b> pod listą. W jednym oknie jest to, co najważniejsze dla danego cue:</p>
 <ul>
-<li><b>dźwięk i film</b> – przebieg dźwięku z początkiem i końcem do przeciągnięcia, <b>▶ Odsłuchaj</b> (w słuchawkach, jeśli są wybrane), <b>⇤ Początek tutaj</b> / <b>Koniec tutaj ⇥</b> w miejscu, które właśnie gra, <b>✂</b> utnij ciszę, <b>↺ Cały plik</b>, głośność, pętla;</li>
+<li><b>dźwięk i film</b> – przebieg dźwięku z początkiem i końcem do przeciągnięcia, <b>▶ Odsłuchaj</b> (w słuchawkach, jeśli są wybrane), <b>⇤ Początek tutaj</b> / <b>Koniec tutaj ⇥</b> w miejscu, które właśnie gra, <b>✂</b> utnij ciszę, <b>↺ Cały plik</b>, <b>🔍 Pokaż wycinek</b> (powiększa przebieg między początkiem a końcem), głośność, pętla;</li>
 <li><b>zdjęcie i film</b> – wielkość i położenie (<b>⌖ Środek</b>), dla zdjęcia czas na ekranie;</li>
 <li><b>napis</b> – <b>✏ Zmień tekst…</b>;</li>
 <li><b>scena</b> – jak ma grać (wszystko naraz, po kolei, krok po kroku…);</li>
-<li>u wszystkich: nazwa, Q, uwagi, „Potem” oraz przejścia – pojawianie, wygaszanie, przenikanie.</li>
+<li>u wszystkich: nazwa, Nr (Q) – numer ze scenariusza, uwagi, „Potem” oraz przejścia – pojawianie, wygaszanie, przenikanie.</li>
 </ul>
-<p><b>OK</b> zapisuje wszystko jako jeden krok (<kbd>Ctrl+Z</kbd> cofa całość), <b>Anuluj</b> niczego nie zmienia. Nazwę na samej liście zmienisz też klawiszem <kbd>F2</kbd>. W Przedstawieniu okno się nie otwiera – pozycje się wtedy nie zmieniają.</p><!--/IF:edit_window-->
+<p><b>OK</b> zapisuje wszystko jako jeden krok (<kbd>Ctrl+Z</kbd> cofa całość), <b>Anuluj</b> niczego nie zmienia. Nazwę na samej liście zmienisz też klawiszem <kbd>F2</kbd>. W Przedstawieniu okno się nie otwiera – cue się wtedy nie zmieniają.</p><!--/IF:edit_window-->
 
 <h3>Karta „Cue · czasy”</h3>
 <ul>
@@ -208,8 +213,8 @@ i zmienić je wszystkie naraz.</p>
 Widać ją w trybie LIVE.</li>
 <li><b>Kolor</b> – pokoloruj sceny/akty, żeby lista była czytelna.</li>
 <li><b>Warstwa wyjścia L1 / L2 / L3</b> – patrz <a href="#warstwy">rozdział 8</a>.</li>
-<li><b>Pre-Delay</b> – ile sekund odczekać po GO, zanim cue ruszy.</li>
-<li><b>Post-Delay</b> – ile sekund odczekać po końcu cue (ważne przy Auto-GO).</li>
+<li><b>Opóźnienie startu</b> – ile sekund odczekać po GO, zanim cue ruszy.</li>
+<li><b>Czekanie po końcu</b> – ile sekund odczekać po końcu cue (ważne przy Auto-GO).</li>
 <li><b>Czas obrazu</b> – jak długo widać zdjęcie (0 = bez końca).</li>
 <li><b>Potem</b> – co się dzieje po tym cue:
 <ul>
@@ -234,14 +239,14 @@ znaczek <b>⊘</b>. Gdy coś na niego wskazuje (Auto-GO poprzedniego, skok, akcj
 ostrzega. <b>Sterowanie → 🎭 Wersje przedstawienia</b>: <b>Zapisz jako nową wersję…</b> (np. „skrócona”,
 „druga obsada”) i przełączanie między wersjami; <b>Pełne przedstawienie</b> to wszystko włączone. Wersje zapisują
 się z przedstawieniem, a bieżąca jest na pasku stanu („Wersja: skrócona · wyłączonych: 12”).</li><!--/IF:versions-->
-<!--IF:clock_plan--><li><b>O godzinie</b> (karta <b>3 · Czasy</b>): pozycja startuje sama o podanej godzinie w czasie
+<!--IF:clock_plan--><li><b>O godzinie</b> (karta <b>3 · Czasy</b>): cue startuje sam o podanej godzinie w czasie
 <b>Przedstawienia</b> (np. muzyka przed spektaklem o 17:50, dzwonek przed końcem przerwy). GO ją pomija; ponad
 minutę spóźniona – zostaje pominięta (nigdy nie startuje niespodziewanie później). Pasek stanu pokazuje zegar i
-najbliższą taką pozycję; <b>Sterowanie → ⏳ Czas → ⏸ Wstrzymaj plan godzinowy</b> zatrzymuje plan, a <b>🕐 Plan godzinowy
+najbliższy taki cue; <b>Sterowanie → ⏳ Czas → ⏸ Wstrzymaj plan godzinowy</b> zatrzymuje plan, a <b>🕐 Plan godzinowy
 także w Próbie</b> włącza go na próbach. Na liście przedstawienia znaczek <b>🕐 17:50</b>.</li><!--/IF:clock_plan-->
 <!--IF:markers--><li><b>Znaczniki</b>: <b>◆ Znacznik</b> nad przebiegiem stawia znacznik na głowicy, a
-<kbd>Ctrl+K</kbd> – w miejscu, w którym wybrana pozycja właśnie gra (np. wystukując na próbie moment refrenu).
-Lista znaczników jest w karcie <b>3 · Czasy</b>. Inna pozycja może startować <b>na znaczniku</b> (Start → na znaczniku,
+<kbd>Ctrl+K</kbd> – w miejscu, w którym wybrany cue właśnie gra (np. wystukując na próbie moment refrenu).
+Lista znaczników jest w karcie <b>3 · Czasy</b>. Inny cue może startować <b>na znaczniku</b> (Start → na znaczniku,
 np. napis dokładnie na słowie piosenki), także po przewinięciu. Znacznika, od którego coś startuje, nie da się
 usunąć.</li><!--/IF:markers-->
 <!--IF:time_text--><li><b>Wpisywanie czasu</b>: każde pole w sekundach (IN/OUT, wejście, wyjście, przenikanie, opóźnienia, start względny) przyjmuje <b>83.5</b>, <b>83,5</b>, <b>1:23.5</b>, <b>1:02:03</b>, <b>2.1.7</b> (kropki zamiast dwukropków – wygodne na klawiaturze numerycznej), <b>1m23s</b>, <b>2m</b> albo <b>45s</b> – po zatwierdzeniu pole pokaże sekundy.</li><!--/IF:time_text-->
@@ -287,8 +292,8 @@ same będą się płynnie zmieniać.</p>
 <li><b>Obrót</b> – o dowolny kąt lub o 90°.</li>
 <li><b>Narysuj maskę…</b> (tylko zdjęcia) – wytnij dowolny kształt, klikając punkty;
 <b>Miękka krawędź</b> rozmywa brzegi.</li>
-<li>Ramkę obrazu możesz też <b>przeciągać myszą w podglądzie Pre-Viz</b>.</li>
-<li><b>MIRROR LIVE</b> (pod podglądem) – gdy włączony, zmiany położenia i przycięcia
+<li>Ramkę obrazu możesz też <b>przeciągać myszą w podglądzie</b>.</li>
+<li><b>Pokaż też na projektorze</b> (pod podglądem) – gdy włączony, zmiany położenia i przycięcia
 widać od razu na projektorze. Używaj przy ustawianiu obrazu na próbie;
 <b>na przedstawieniu wyłącz</b>.</li>
 </ul>
@@ -307,10 +312,10 @@ Najwygodniej: w panelu Przebieg kliknij w miejsce na fali, potem
 <b>IN na głowicy</b> (<kbd>I</kbd>) lub <b>OUT na głowicy</b> (<kbd>O</kbd>).
 <b>Reset IN/OUT</b> przywraca cały plik. Tak samo przycinasz film.<!--IF:silence_trim--> Przycisk <b>✂</b> obok IN/OUT ustawia je tam, gdzie dźwięk naprawdę się zaczyna i kończy (ucina ciszę na początku i końcu, np. w plikach z internetu; <kbd>Ctrl+Z</kbd> cofa).<!--/IF:silence_trim--></li>
 <!--IF:picture_layout--><li><b>Kopiuj / wklej układ obrazu</b> (prawy przycisk na zdjęciu lub filmie): <b>📋 Kopiuj układ obrazu</b> zapamiętuje położenie, rozmiar, kadr, obrót, proporcje, maskę i powierzchnię; <b>📌 Wklej układ na zaznaczone</b> nadaje je wszystkim zaznaczonym zdjęciom i filmom (jedno <kbd>Ctrl+Z</kbd>).</li><!--/IF:picture_layout-->
-<!--IF:slideshow--><li><b>🎞 Zdjęcia do tej muzyki</b> (pokaz zdjęć): zaznacz kilka zdjęć i jeden dźwięk, prawy przycisk → <b>🎞 Zdjęcia do tej muzyki</b>. Muzyka rusza razem ze zwiniętą sceną zdjęć; każde zdjęcie jest pokazywane przez długość muzyki podzieloną przez liczbę zdjęć a zdjęcia przenikają się (1 s; pierwsze wchodzi, ostatnie gaśnie w 0,5 s); długość liczy się z IN/OUT i tempa muzyki, a wszystkie zdjęcia trafiają na jedną warstwę, muzyka na inną. Po ostatnim zdjęciu scena staje, a GO czeka na pozycję za nią. Jedno <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:slideshow-->
+<!--IF:slideshow--><li><b>🎞 Zdjęcia do tej muzyki</b> (pokaz zdjęć): zaznacz kilka zdjęć i jeden dźwięk, prawy przycisk → <b>🎞 Zdjęcia do tej muzyki</b>. Muzyka rusza razem ze zwiniętą sceną zdjęć; każde zdjęcie jest pokazywane przez długość muzyki podzieloną przez liczbę zdjęć a zdjęcia przenikają się (1 s; pierwsze wchodzi, ostatnie gaśnie w 0,5 s); długość liczy się z IN/OUT i tempa muzyki, a wszystkie zdjęcia trafiają na jedną warstwę, muzyka na inną. Po ostatnim zdjęciu scena staje, a GO czeka na cue za nią. Jedno <kbd>Ctrl+Z</kbd> cofa.</li><!--/IF:slideshow-->
 <li><b>Zapętl cue</b> – zaznacz i wybierz liczbę powtórzeń albo „bez końca”
 (np. muzyka w tle podczas przerwy).</li>
-<!--IF:fade_others--><li><b>Przy starcie wycisza inne</b> (karta <b>3 · Czasy</b>, poza widokiem podstawowym) – gdy ta pozycja startuje, inne grające dźwięki i filmy wyciszają się przez podaną liczbę sekund. Zmiana muzyki jedną pozycją: stara muzyka na tej samej warstwie łagodnie cichnie, zamiast zostać ucięta (nowa gra w tym czasie na wolnym odtwarzaczu). 0 = nie.</li><!--/IF:fade_others-->
+<!--IF:fade_others--><li><b>Przy starcie wycisza inne</b> (karta <b>3 · Czasy</b>, poza widokiem podstawowym) – gdy ten cue startuje, inne grające dźwięki i filmy wyciszają się przez podaną liczbę sekund. Zmiana muzyki jednym cue: stara muzyka na tej samej warstwie łagodnie cichnie, zamiast zostać ucięta (nowa gra w tym czasie na wolnym odtwarzaczu). 0 = nie.</li><!--/IF:fade_others-->
 <li><b>Podziel</b> – dzieli plik na sekcje A, B, C… (np. zwrotka / refren). Każdą sekcję
 można powtarzać; <b>Wyjdź z pętli</b> przechodzi do następnej.</li>
 <li><b>Wyrównanie głośności (EBU R128)</b>: <b>Zbadaj</b> mierzy głośność utworu, a
@@ -329,7 +334,7 @@ dla słuchawek; wtedy przycisk Odtwórz w podglądzie gra tylko w słuchawkach.<
 <ul>
 <li>Zaznacz kilka cue i naciśnij <b>+ Grupa</b> (<kbd>Ctrl+G</kbd>).
 Rozgrupowanie: <kbd>Ctrl+Shift+G</kbd>.</li>
-<li>Zaznacz grupę – w Inspektorze wybierzesz, co robi GO:
+<li>Zaznacz grupę – w ustawieniach cue wybierzesz, co robi GO:
 <ul>
 <li><b>Wszystko naraz</b> – wszystkie elementy startują jednocześnie.</li>
 <li><b>Po kolei</b> – jedno GO odpala całą sekwencję jedną po drugiej.</li>
@@ -382,8 +387,8 @@ niezależne wyjścia A i B.</li>
 Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście systemowe,
 a na pasku stanu pojawia się komunikat; po ponownym podłączeniu program sam do nich wraca.
 Pozycja <b>„Domyślne wyjście systemowe”</b> znaczy: nic nie zapamiętuj, graj tam, gdzie wskazuje system.</li><!--/IF:speakers-->
-<!--IF:audio_outputs--><li><b>Wyjścia dźwięku</b> (<b>Sterowanie → 🔌 Urządzenia → 🔊 Wyjścia dźwięku</b>): każda pozycja dźwiękowa i film gra na wyjściu <b>Scena</b>, <b>Sala</b> albo <b>Odsłuch</b> (dla aktorów) – wybór w inspektorze, karta 1, <b>Wyjście</b>; <b>Wycisz</b> to film bez dźwięku. W oknie wyjść wybierasz, który głośnik jest którym wyjściem na <b>tym</b> komputerze, co ma grać, <b>gdy go brak</b> (Scena → wyjście domyślne, Sala → jak Scena, Odsłuch → cisza: prywatna ścieżka nigdy nie trafia do widowni), <b>korektę</b> w dB, <b>▶ Test</b> każdego wyjścia i <b>Testuj wszystkie po kolei</b>. Mapę można wyeksportować i zaimportować na innym komputerze. W czasie przedstawienia okno tylko pokazuje mapę. Gdy pozycja gra na zapasowym wyjściu, mówi o tym pasek stanu.</li><!--/IF:audio_outputs-->
-<!--IF:tempo--><li><b>Tempo</b> (inspektor, karta 1): szybkość odtwarzania dźwięku lub filmu od 50 do 200 % – np. muzyka dopasowana do choreografii. <b>Zachowaj wysokość dźwięku</b> (domyślnie): szybciej albo wolniej bez zmiany wysokości nut. Starty „na znaczniku” i „przed końcem” liczą się w czasie rzeczywistym, z tempem.</li><!--/IF:tempo--><!--IF:projector_only-->
+<!--IF:audio_outputs--><li><b>Wyjścia dźwięku</b> (<b>Sterowanie → 🔌 Urządzenia → 🔊 Wyjścia dźwięku</b>): każdy cue dźwiękowy i film gra na wyjściu <b>Scena</b>, <b>Sala</b> albo <b>Odsłuch</b> (dla aktorów) – wybór w inspektorze, karta 1, <b>Wyjście</b>; <b>Wycisz</b> to film bez dźwięku. W oknie wyjść wybierasz, który głośnik jest którym wyjściem na <b>tym</b> komputerze, co ma grać, <b>gdy go brak</b> (Scena → wyjście domyślne, Sala → jak Scena, Odsłuch → cisza: prywatna ścieżka nigdy nie trafia do widowni), <b>korektę</b> w dB, <b>▶ Test</b> każdego wyjścia i <b>Testuj wszystkie po kolei</b>. Mapę można wyeksportować i zaimportować na innym komputerze. W czasie przedstawienia okno tylko pokazuje mapę. Gdy cue gra na zapasowym wyjściu, mówi o tym pasek stanu.</li><!--/IF:audio_outputs-->
+<!--IF:tempo--><li><b>Tempo</b> (ustawienia cue, karta 1): szybkość odtwarzania dźwięku lub filmu od 50 do 200 % – np. muzyka dopasowana do choreografii. <b>Zachowaj wysokość dźwięku</b> (domyślnie): szybciej albo wolniej bez zmiany wysokości nut. Starty „na znaczniku” i „przed końcem” liczą się w czasie rzeczywistym, z tempem.</li><!--/IF:tempo--><!--IF:projector_only-->
 <li>Gdy zostaje <b>tylko projektor</b> (<kbd>Win+P</kbd> → <b>Tylko drugi ekran</b> albo zamknięta klapa
 laptopa), program pokazuje na nim panel reżysera i podgląd wyjścia w oknie.</li><!--/IF:projector_only-->
 <li><b>Widok → Pokaż linie pomocnicze na projektorze</b> (<kbd>Shift+F7</kbd>) –
@@ -399,14 +404,16 @@ albo <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> Ekran robi się prosty i duży – t
 <!--IF:readiness--><p>Przy pierwszym wejściu (i po zmianie ekranów, głośników albo pokazu) najpierw pojawia się strona
 <b>Przed przedstawieniem</b> – w miejscu listy, nie jako okno, więc PANIC i WYGAŚ działają. Każdy wiersz mówi
 <b>✓ TAK</b>, <b>✗ NIE</b> albo <b>– NIE SPRAWDZONO</b> i ma przycisk naprawy: obraz na projektorze
-(<b>Pokaż numery ekranów</b>, <b>Wybierz ekran…</b>), głośność główna (<b>Przywróć 100 %</b>), głośnik
+(<b>Pokaż numery ekranów</b>, <b>Wybierz ekran…</b>; gdy projektor jest znaleziony –
+<b>▦ Pokaż wzór na projektorze</b>: siatka do sprawdzenia ostrości i właściwego wejścia, znika sama przy
+starcie), głośność główna (<b>Przywróć 100 %</b>), głośnik
 (<b>▶ Ton próbny</b> – sekundowy dźwięk przez głośniki pokazu, potem odpowiedz <b>Tak, słychać</b> / <b>Nie słychać</b>),
 brakujące pliki (<b>Pokaż na liście</b>) i zasilacz laptopa (sprawdza sam co 2 s). Strona kończy się przyciskami startu (<b>▶ Zacznij</b> albo
 <b>Od początku / Od zaznaczonego / Wznów</b>) i <b>Zostań w Przygotowaniu</b>. Gdy wszystko jest na TAK, <kbd>Enter</kbd>
 i <kbd>Spacja</kbd> zaczynają; gdy coś jest nie tak, sprawdzają ponownie – zacząć mimo to możesz klawiszem
 <kbd>Tab</kbd> do przycisku startu albo myszą. Kolejne wejścia pokazują tylko to, co jest nie tak (albo nic).
 Jeśli wszedłeś z problemami, u góry ekranu przedstawienia jest <b>⚠ 2</b> – kliknięcie pokazuje stronę jeszcze raz.</p><!--/IF:readiness-->
-<!--IF:preshow--><p>Strona pokazuje też, gdy trzeba: <b>Do poprawienia na liście</b> (pozycja startuje po pozycji, której już nie ma; akcja, której cele zniknęły; skok donikąd; pusta scena; pozycja „tylko wywołanie”, której nic nie wywołuje – <b>Pokaż na liście</b>), <b>godzinę z zegara komputera</b>, gdy pokaz ma pozycje o wyznaczonej godzinie, <b>mało miejsca na dysku</b> (poniżej 500 MB) oraz <b>wersję przedstawienia</b> z liczbą wyłączonych pozycji.</p><!--/IF:preshow-->
+<!--IF:preshow--><p>Strona pokazuje też, gdy trzeba: <b>Do poprawienia na liście</b> (cue startuje po cue, którego już nie ma; akcja, której cele zniknęły; skok donikąd; pusta scena; cue „tylko wywołanie”, którego nic nie wywołuje – <b>Pokaż na liście</b>), <b>godzinę z zegara komputera</b>, gdy pokaz ma cue o wyznaczonej godzinie, <b>mało miejsca na dysku</b> (poniżej 500 MB) oraz <b>wersję przedstawienia</b> z liczbą wyłączonych cue.</p><!--/IF:preshow-->
 <!--IF:rehearsal--><p><b>Próba</b> (zakładka <b>◐ Próba</b> albo <kbd>Shift+F5</kbd>) to ekran przedstawienia
 z drobnymi poprawkami: lista, GO, karty <b>Teraz gra</b> działają jak na przedstawieniu, a przy nazwanym cue jest
 <b>✎</b> – na pasku <b>✓ OSTATNIO</b>, na pasku <b>▶ NASTĘPNY</b> i na kartach. <b>✎</b> otwiera w prawej kolumnie
@@ -433,7 +440,7 @@ ani Cofnij GO. Chroni przed przypadkiem i ciekawskim uczniem, nie przed kimś zd
 <!--IF:show_list--><p><b>Lista na przedstawieniu.</b> Cue, które ruszają same z poprzednim (Auto-GO, „razem”),
 są zwinięte pod nim – przy nazwie widać <b>⤵+2</b>; kliknięcie w jego numer je rozwija i zwija. Następny cue zawsze
 przewija się na środek listy. <kbd>Ctrl+→</kbd> / <kbd>Ctrl+←</kbd> na liście to następny / poprzedni obraz (jak
-slajdy w prezentacji) – to zwykłe GO, więc działa też Cofnij GO. Cue z zaznaczonym w inspektorze <b>✋ Czeka na OK</b>
+slajdy w prezentacji) – to zwykłe GO, więc działa też Cofnij GO. Cue z zaznaczonym w ustawieniach cue <b>✋ Czeka na OK</b>
 po GO tylko się przygotowuje: na pasku NASTĘPNY pojawia się <b>✋ OK</b>, a rusza po OK – <kbd>Enter</kbd> na liście,
 przycisk <b>✋ OK</b> albo GO z pilota w telefonie (np. w ręku reżysera). Samo GO go nie odpali; czekanie przepada,
 gdy ruszy inny cue. Pod suwakiem głośności głównej cienki pasek pokazuje, jak głośno gra teraz pokaz
@@ -441,7 +448,7 @@ gdy ruszy inny cue. Pod suwakiem głośności głównej cienki pasek pokazuje, j
 <p><img src="img/pl/08_live_after_go.png" width="760"></p>
 <ol>
 <li>Zaznacz pierwszy cue – dostaje znaczek <b>▶ NASTĘPNY</b> (gotowy do odpalenia).
-<!--IFNOT:last_started-->Na dole widać <b>NASTĘPNY W STANDBY</b> z nazwą i uwagami.<!--/IFNOT:last_started--><!--IF:last_started-->Na dole są dwa pasy. <b>✓ OSTATNIO</b> – co uruchomiło ostatnie GO (z „+ 2 razem”, gdy ruszyło kilka naraz), ile czasu temu i jego uwaga; przez 15 s po GO pas świeci na zielono. <b>▶ NASTĘPNY</b> – co zrobi kolejne GO i jak ruszy: <b>ręcznie (GO)</b> albo <b>rusza sam za 0:03</b> (Auto-GO poprzedniego), a w drugiej linii jego uwaga – na czerwono, gdy są w niej słowa jak UWAGA, CZEKAJ, STOP.<!--/IF:last_started--><!--IF:live_start--> Jeśli przy wejściu
+<!--IFNOT:last_started-->Na dole widać <b>NASTĘPNY</b> z nazwą i uwagami.<!--/IFNOT:last_started--><!--IF:last_started-->Na dole są dwa pasy. <b>✓ OSTATNIO</b> – co uruchomiło ostatnie GO (z „+ 2 razem”, gdy ruszyło kilka naraz), ile czasu temu i jego uwaga; przez 15 s po GO pas świeci na zielono. <b>▶ NASTĘPNY</b> – co zrobi kolejne GO i jak ruszy: <b>ręcznie (GO)</b> albo <b>rusza sam za 0:03</b> (Auto-GO poprzedniego), a w drugiej linii jego uwaga – na czerwono, gdy są w niej słowa jak UWAGA, CZEKAJ, STOP.<!--/IF:last_started--><!--IF:live_start--> Jeśli przy wejściu
 w LIVE zaznaczony jest cue ze środka listy (np. właśnie poprawiany), program zapyta, skąd zacząć:
 <b>Od początku</b>, <b>Od zaznaczonego</b>, a po powrocie z projektu także <b>Wznów od</b> – miejsce,
 w którym przerwano LIVE. Gdy wracasz bez zmian, nie pyta.<!--/IF:live_start--></li>
@@ -456,13 +463,13 @@ w 1 s, obraz w 0,5 s), przywraca obraz, który ten GO zastąpił, wznawia przerw
 i ustawia GO z powrotem na ten cue – wystarczy dać GO jeszcze raz we właściwej chwili. Cue akcji zostają, jak
 były. Najedź na przycisk, a zobaczysz, co dokładnie zrobi. Z klawiatury: menu <b>Sterowanie → Cofnij ostatnie GO</b>
 (celowo bez skrótu). Następne GO, PANIC, WYGAŚ i zmiana trybu kończą tę możliwość.</li><!--/IF:undo_go-->
-<!--IF:key_map--><li><b>Pilot prezentera i dodatkowe klawisze</b> – <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⌨ Klawisze i pilot prezentera…</b>: do GO, poprzedniej / następnej pozycji (tylko zaznaczenie), Wstrzymaj wszystko, Wygaś wszystko i Cofnij GO możesz dodać własne klawisze tego komputera. <b>🎯 Kreator pilota…</b> prosi po kolei o przyciski pilota (GO, poprzednia, pauza); <b>Pilot prezentera</b> wpisuje typowe klawisze (PgDown = GO, PgUp = poprzednia, B lub kropka = pauza). Działają tylko w Próbie i w Przedstawieniu, nie podczas pisania; klawisz efektu przedstawienia ma pierwszeństwo, a klawisze programu zostają (Spacja = GO, Esc dwa razy = PANIC). PANIC-u celowo nie ma na liście. Nie używaj przycisku „pokaz slajdów” pilota: wysyła F5 albo Esc.</li><!--/IF:key_map-->
+<!--IF:key_map--><li><b>Pilot prezentera i dodatkowe klawisze</b> – <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⌨ Klawisze i pilot prezentera…</b>: do GO, poprzedniego / następnego cue (tylko zaznaczenie), Wstrzymaj wszystko, Wygaś wszystko i Cofnij GO możesz dodać własne klawisze tego komputera. <b>🎯 Kreator pilota…</b> prosi po kolei o przyciski pilota (GO, poprzednia, pauza); <b>Pilot prezentera</b> wpisuje typowe klawisze (PgDown = GO, PgUp = poprzednia, B lub kropka = pauza). Działają tylko w Próbie i w Przedstawieniu, nie podczas pisania; klawisz efektu przedstawienia ma pierwszeństwo, a klawisze programu zostają (Spacja = GO, Esc dwa razy = PANIC). PANIC-u celowo nie ma na liście. Nie używaj przycisku „pokaz slajdów” pilota: wysyła F5 albo Esc.</li><!--/IF:key_map-->
 <!--IF:go_states--><li>Przycisk <b>GO</b> mówi, co zrobi: <b>▶ GO: #3 'nazwa'</b> – wszystko gotowe. Robi się
 bursztynowy (nigdy czerwony), gdy coś jest inaczej: <b>⌨</b> klawiatura jest w innym oknie (kliknij GO),
 <b>⚠</b> brak pliku, <b>⏳</b> GO czeka, bo gra cue wyłączny (<kbd>Ctrl+Spacja</kbd> wymusza),
 <b>↻</b> ten cue już gra i zacznie od nowa.</li><!--/IF:go_states-->
 <!--IF:live_times--><li>W kolumnie <b>Czasy</b> grający cue pokazuje, ile mu zostało (np. <b>-00:45</b>),
-z paskiem postępu; w czasie Pre-/Post-Delay – odliczanie z ⏳ / ⏱. Na 5 s przed końcem robi się
+z paskiem postępu; w czasie opóźnienia startu lub czekania po końcu – odliczanie z ⏳ / ⏱. Na 5 s przed końcem robi się
 bursztynowy, jeśli następne GO należy do Ciebie (cue nie ma Auto-GO). Zagrane cue mają <b>✓</b>
 i przygaszoną nazwę; znaczki znikają, gdy zaczynasz od początku.</li><!--/IF:live_times-->
 <!--IF:urgent_words--><li>Uwagi ze słowami <b>UWAGA</b>, <b>CZEKAJ</b>, <b>STOP</b>, <b>CIEMNO</b>, <b>ALARM</b>
@@ -486,8 +493,8 @@ na Twoje GO (np. aktor się spóźnia) – <b>Pauza wszystko</b> zatrzymałaby t
 <b>Podgląd wyjścia</b> – to, co widzi widownia, w małym okienku (do 5 klatek na sekundę); <b>▾</b> zwija go,
 program pamięta to na tym komputerze.</li><!--/IF:now_playing-->
 <!--IF:action_cues--><li>Notatki z <a href="#akcje">cue akcji</a> pojawiają się w kolorowym pasku u góry okna; widzisz je tylko Ty.<!--IF:now_playing--> W przedstawieniu zwykła notatka jest kartą w kolumnie <b>Teraz gra</b> (z przyciskiem <b>OK</b>), więc nie zabiera wiersza listy.<!--/IF:now_playing--></li><!--/IF:action_cues-->
-<!--IF:gentle_fade--><li><b>Wygaś</b> na karcie ścisza pozycję łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej pozycjami jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do pozycji po scenie.</li><!--/IF:gentle_fade-->
-<!--IF:effects--><li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w Inspektorze zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b> albo <b>Gra, dopóki trzymasz klawisz</b>. Kilka pozycji na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li><!--/IF:effects-->
+<!--IF:gentle_fade--><li><b>Wygaś</b> na karcie ścisza cue łagodnie: przez jej własne <b>Wygaszanie</b>, a gdy go nie ma – przez 3 s (zmienisz to w <b>Sterowanie → ⚙ Ustawienia prowadzenia → ⏬ Czas przycisku Wygaś…</b>). Gdy gra scena, nad jej cue jest karta <b>🎬 scena</b> z przyciskiem <b>Wygaś scenę</b> (też prawy przycisk na scenie w liście): gaśnie wszystko, co scena gra albo pokazuje, a GO przechodzi do cue po scenie.</li><!--/IF:gentle_fade-->
+<!--IF:effects--><li><b>Efekty na żądanie</b> (dzwonek, grzmot, oklaski): w ustawieniach cue zaznacz <b>🎵 Efekt na żądanie</b> i wpisz <b>klawisz</b> – literę albo cyfrę. Taki cue jest poza kolejnością: GO go pomija, a na liście ma fioletowy znaczek z klawiszem (np. <b>⌨ B</b>). W Próbie i w przedstawieniu naciśnij klawisz albo kliknij kafelek efektu na górze kolumny <b>Teraz gra</b>: efekt gra na wolnym odtwarzaczu, nie przesuwa GO i niczego nie zatrzymuje. Sposób działania klawisza: <b>Start</b> (ponownie = od początku), <b>Start / stop</b> albo <b>Gra, dopóki trzymasz klawisz</b>. Kilka cue na tym samym klawiszu startuje po kolei (kroki). <b>↻ Powtórz ostatni efekt</b> (<kbd>Ctrl+R</kbd>) gra ostatni efekt jeszcze raz. Klawisze nie działają, gdy piszesz w polu tekstowym. Efekty mają trzy wolne odtwarzacze (gdy wyjście B jest wyłączone); czwarty efekt zajmuje miejsce najstarszego.</li><!--/IF:effects-->
 <li><b>Stoper przedstawienia</b> (u góry) startuje sam przy pierwszym GO.</li>
 <!--IF:countdown--><li><b>Odliczanie</b> (np. przerwy): <b>Sterowanie → ⏳ Czas → ⏳ Odliczanie (przerwa)…</b> albo cue akcji
 <b>⏳ Odliczanie</b> (tytuł i minuty; 0 minut zatrzymuje). Licznik jest na pasku stanu, a <b>🖥 Duże odliczanie
@@ -508,7 +515,7 @@ przedstawieniu pasek <b>NASTĘPNY</b> podpowiada, kiedy ten cue padł poprzednio
 kliknięcie wznawia od tego samego miejsca – np. gdy aktor czeka na brawa.<!--IF:pause_go--> GO w czasie
 pauzy uruchamia tylko nowy cue (np. komunikat); to, co wstrzymane, czeka na <b>WZNÓW WSZYSTKO</b>.<!--/IF:pause_go--></td></tr>
 <!--IF:master_volume--><tr><td><b>Głośność główna</b> i <b>Wycisz</b> <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> <kbd>Ctrl+M</kbd></td><td>u góry okna w każdym trybie: ścisza lub podgłaśnia wszystko, co gra i co zagra (podgląd w słuchawkach zostaje bez zmian). Przy każdym starcie programu wraca do 100 %, więc wczorajsze ściszenie nie zaskoczy dziś. Przydaje się, gdy przypięte głośniki nie reagują na klawisze głośności laptopa.</td></tr><!--/IF:master_volume--><tr><td><b>Wygaś</b> (przy warstwie)</td><td>łagodnie kończy tylko jedną warstwę.</td></tr>
-<tr><td><b>Wygaszenie główne</b> <kbd>Ctrl+B</kbd></td><td>płynnie wygasza wszystko i pokazuje zaślepkę.</td></tr>
+<tr><td><b>Czarny ekran</b> <kbd>Ctrl+B</kbd></td><td>płynnie wygasza wszystko i pokazuje zaślepkę.</td></tr>
 <!--IF:fade_all--><tr><td><b>WYGAŚ</b> <kbd>Shift+Esc</kbd></td><td>dźwięk i obraz na wszystkich warstwach łagodnie wygasają razem (1 s) i się zatrzymują – spokojniejsza wersja PANIC. Po WYGAŚ i po PANIC następne GO wraca do cue, który uruchomiono ręcznie i który został zatrzymany – za wcześnie dane GO można po prostu powtórzyć (muzyka tła grająca od początku aktu nie przejmuje GO).</td></tr><!--/IF:fade_all-->
 <tr><td><b>PANIC</b> <kbd>Esc</kbd> dwa razy w ciągu 0,6 s<!--IFNOT:esc_everywhere--> (w trybie LIVE)<!--/IFNOT:esc_everywhere--><!--IF:esc_everywhere--> (także w projekcie, gdy coś gra; Esc w polu tekstowym tylko z niego wychodzi)<!--/IF:esc_everywhere--></td><td>natychmiast ucina wszystko (0 ms) – ostateczność.</td></tr>
 <!--IFNOT:now_playing--><tr><td><b>Blokada warstw</b></td><td>w trybie LIVE sterowanie warstwami jest zablokowane;
@@ -554,7 +561,7 @@ i nie sięga do folderów sieciowych, chyba że je wskażesz. Do dostawcy AI tra
 
 <h3>Inne</h3>
 <ul>
-<!--IF:run_report--><li><b>Raport z przedstawienia</b> – po zakończeniu przedstawienia (nie próby) program zapisuje obok dziennika przebiegu stronę z raportem: początek, koniec i czas trwania, ile było GO ręcznie i automatycznie, efektów, pauz, wygaszeń, PANIC (na czerwono), cofniętych GO, przebieg minuta po minucie i pozycje z GO, które nie zagrały. <b>Plik → 🖨 Eksportuj i drukuj → 📋 Raport z ostatniego przedstawienia</b>.</li><!--/IF:run_report-->
+<!--IF:run_report--><li><b>Raport z przedstawienia</b> – po zakończeniu przedstawienia (nie próby) program zapisuje obok dziennika przebiegu stronę z raportem: początek, koniec i czas trwania, ile było GO ręcznie i automatycznie, efektów, pauz, wygaszeń, PANIC (na czerwono), cofniętych GO, przebieg minuta po minucie i cue z GO, które nie zagrały. <b>Plik → 🖨 Eksportuj i drukuj → 📋 Raport z ostatniego przedstawienia</b>.</li><!--/IF:run_report-->
 <!--IF:cheat_sheet--><li><b>Pomoc → 🖨 Ściągawka do druku</b> – jedna kartka A4 do położenia obok laptopa: klawisze przedstawienia, efekty tego przedstawienia z ich klawiszami, dodatkowe klawisze tego komputera (pilot) i co zrobić, gdy coś nie działa. Otwiera się w przeglądarce; drukujesz Ctrl+P.</li><!--/IF:cheat_sheet-->
 <!--IF:settings_transfer--><li><b>Plik → 💻 Ustawienia tego komputera</b> – <b>Zapisz do pliku…</b> zabiera głośniki i wyjścia, ekrany, dodatkowe klawisze, wygląd i opcje prowadzenia; na innym laptopie <b>Wczytaj z pliku…</b> (w Przygotowaniu) pokaże, co się zmieni. PIN wyjścia zostaje na swoim komputerze. Część ustawień działa po ponownym uruchomieniu.</li><!--/IF:settings_transfer-->
 <li><b>Widok → Motyw interfejsu</b> – kolorystyka programu (też wersja czarno-biała).</li>
@@ -571,15 +578,15 @@ i nie sięga do folderów sieciowych, chyba że je wskażesz. Do dostawcy AI tra
 <!--IFNOT:mode_tabs--><tr><td><kbd>F5</kbd></td><td>tryb LIVE / powrót do projektu</td></tr><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><tr><td><kbd>F5</kbd> / <kbd>Ctrl+L</kbd></td><td>wejście w przedstawienie (tylko wejście)</td></tr><tr><td><kbd>Ctrl+Shift+F5</kbd></td><td>zakończ przedstawienie (z pytaniem)</td></tr><tr><td><kbd>Ctrl+P</kbd></td><td>pauza / wznów wszystko</td></tr><!--/IF:mode_tabs-->
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (w trybie LIVE)<!--/IFNOT:esc_everywhere-->: dwa razy w ciągu 0,6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>wygaś wszystko (1 s)</td></tr><!--/IF:fade_all-->
-<!--IF:search--><tr><td><kbd>Ctrl+F</kbd></td><td>szukaj pozycji: w Przygotowaniu filtr listy (nazwa, Q, uwagi, plik; Enter – pierwszy wynik, Esc – zamknij), w Próbie i Przedstawieniu tylko ustawia następne GO</td></tr><!--/IF:search-->
-<!--IF:markers--><tr><td><kbd>Ctrl+K</kbd></td><td>znacznik w miejscu, w którym gra wybrana pozycja (Próba) albo na głowicy</td></tr><!--/IF:markers-->
+<!--IF:search--><tr><td><kbd>Ctrl+F</kbd></td><td>szukaj cue: w Przygotowaniu filtr listy (nazwa, Q, uwagi, plik; Enter – pierwszy wynik, Esc – zamknij), w Próbie i Przedstawieniu tylko ustawia następne GO</td></tr><!--/IF:search-->
+<!--IF:markers--><tr><td><kbd>Ctrl+K</kbd></td><td>znacznik w miejscu, w którym gra wybrany cue (Próba) albo na głowicy</td></tr><!--/IF:markers-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Spacja</kbd></td><td>GO wymuszone – także gdy trwa cue wyłączny</td></tr><!--/IF:exclusive-->
 <!--IF:effects--><tr><td><kbd>A</kbd>–<kbd>Z</kbd>, <kbd>0</kbd>–<kbd>9</kbd></td><td>efekty na żądanie (w Próbie i przedstawieniu, klawisz ustawiony w cue)</td></tr><tr><td><kbd>Ctrl+R</kbd></td><td>powtórz ostatni efekt</td></tr><!--/IF:effects-->
-<tr><td><kbd>Ctrl+B</kbd></td><td>wygaszenie główne (zaślepka)</td></tr>
+<tr><td><kbd>Ctrl+B</kbd></td><td>czarny ekran (zaślepka)</td></tr>
 <tr><td><kbd>Ctrl+G</kbd> / <kbd>Ctrl+Shift+G</kbd></td><td>grupuj / rozgrupuj</td></tr>
 <tr><td><kbd>Alt+↑</kbd> <kbd>Alt+↓</kbd></td><td>przesuń cue</td></tr>
 <tr><td><kbd>Del</kbd></td><td>usuń cue</td></tr>
-<!--IF:edit_window--><tr><td><kbd>Enter</kbd> / dwuklik</td><td>okno „Edytuj pozycję” (lista w Przygotowaniu)</td></tr><!--/IF:edit_window-->
+<!--IF:edit_window--><tr><td><kbd>Enter</kbd> / dwuklik</td><td>okno „Edytuj cue” (lista w Przygotowaniu)</td></tr><!--/IF:edit_window-->
 <tr><td><kbd>I</kbd> / <kbd>O</kbd></td><td>punkt IN / OUT na głowicy</td></tr>
 <tr><td><kbd>Ctrl+Z</kbd> / <kbd>Ctrl+Y</kbd></td><td>cofnij / ponów</td></tr>
 <tr><td><kbd>Ctrl+S</kbd></td><td>zapisz</td></tr>
@@ -599,7 +606,7 @@ ostatniego cue.</li>
 na projektorze, a działa płynnie.</li>
 <li>Zapisz przedstawienie z <b>kopiowaniem plików</b> i miej kopię na pendrivie.</li>
 <li>Wpisz w <b>Uwagi</b>, po jakiej kwestii odpalić dany cue.</li>
-<li>Wyłącz <b>MIRROR LIVE</b>, zamknij inne programy, wyłącz powiadomienia i usypianie
+<li>Wyłącz <b>Pokaż też na projektorze</b>, zamknij inne programy, wyłącz powiadomienia i usypianie
 ekranu w systemie.</li>
 <li>Ustaw zaślepkę (plakat lub czerń), żeby przed startem widownia nie widziała pulpitu.</li>
 </ul>

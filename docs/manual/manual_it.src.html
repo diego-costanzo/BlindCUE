@@ -41,7 +41,9 @@ gruppo <code>GRP</code><!--IF:action_cues-->, azione <code>ACT</code><!--/IF:act
 <b>＋ Aggiungi file… / <!--IF:text_cues-->+ Testo / <!--/IF:text_cues-->+ Gruppo<!--IF:action_cues--> / + Azione<!--/IF:action_cues--></b>,
 <b>Su / Giù</b> per spostare ed <b>Elimina</b>.</li>
 <li><b>Anteprima Pre-Viz (al centro)</b> – un'anteprima privata solo per te. Il pubblico non la vede.
-<b>Play / Pausa / Stop</b> provano la cue selezionata.</li>
+<b>▶ Anteprima / Pausa / ⏹ Ferma anteprima</b> provano la cue selezionata (solo l'anteprima). Quando qualcosa suona
+in sala, sopra il GO compare <b>ORA IN ONDA – si sente in sala</b> con le schede delle cue e il loro <b>Sfuma</b>,
+in ogni layout.</li>
 <li><b>Il grande pulsante verde GO</b> – lancia la cue successiva (come <kbd>Spazio</kbd>).</li>
 <li><b>Ispettore cue (colonna destra)</b> – tutte le impostazioni della cue selezionata, nelle schede
 <b>Cue · Tempi</b>, <b>Video · Foto</b>, <b>Audio · Tagli</b>.</li>
@@ -50,8 +52,11 @@ la curva del volume e le sezioni.</li>
 <li><b>Live Output Status (in basso al centro)</b> – cosa sta andando sui layer 1–3, con i pulsanti
 <b>Fade Out</b> e <b>Master Blackout</b>.</li>
 <li><b>Caricamento Rapido (in basso a destra)</b> – trascina qui i file dal gestore file.</li>
-<li><b>Barra in basso</b> – profilo hardware, <b>Dispositivi · Uscite</b>, blocco pannelli,
-modalità Jam, telecomando e messaggi del programma.</li>
+<li><b>Barra in basso</b> – <b>Dispositivi · Uscite</b>, blocco pannelli, modalità Jam, telecomando e messaggi
+del programma (CPU, RAM e scheda video sono in <b>Help → Info Hardware &amp; Accelerazione</b>; nella prova e nello spettacolo
+si vede solo ciò che è acceso).</li>
+<li><b>Barra degli avvisi</b> (arancione, sopra la pagina) – casse scollegate, tutto silenziato, proiettore
+sovraccarico: resta finché la causa non sparisce; <b>✕</b> nasconde gli avvisi di adesso.</li>
 </ul>
 <p class="tip">💡 La lingua del programma si cambia in <b>View → 🌐 Lingua / Language / Język</b>
 (vale dal riavvio successivo). Questo manuale si apre nella lingua del programma.</p>
@@ -63,8 +68,8 @@ Spettacolo è sempre la stessa. <b>Semplice</b> – lista larga, anteprima, GO e
 note, volume, entrata e sfumatura, inizio e fine, dove sullo schermo, poi); il resto è sotto <b>▾ Più impostazioni</b>,
 e quando una cue ha qualcosa di nascosto che cambia la riproduzione, l'ispettore lo dice nella riga <b>Questa cue ha
 anche: …</b>. <b>Esteso</b> – in più tutte le schede e la forma d'onda sotto. <b>Completo</b> – tutto, anche i layer e
-il caricamento rapido (predefinito). <b>↺ Ripristina layout</b> torna alle larghezze predefinite. La scelta la ricorda
-questo computer, non il file dello spettacolo. I campi che per un tipo di cue non fanno nulla (il ritaglio per un
+il caricamento rapido. <b>↺ Ripristina layout</b> torna alle larghezze predefinite. Ogni avvio comincia in
+<b>Semplice</b>; un altro layout vale per questa sessione (non lo ricorda né il computer né il file). I campi che per un tipo di cue non fanno nulla (il ritaglio per un
 suono, per esempio) sono nascosti, non grigi; <kbd>Invio</kbd> preme il pulsante con il fuoco, <kbd>Tab</kbd> esce
 dalla lista.</p><!--/IF:view_variants-->
 <h2><a name="nuovo"></a>2. Nuovo spettacolo e salvataggio</h2>
@@ -194,11 +199,11 @@ e modificarle tutte insieme.</p>
 <p><img src="img/it/04_inspector_video_cue.png" width="520"></p>
 <!--IF:edit_window--><p><b>La finestra «Modifica cue»</b> – la via più semplice, in ogni vista: <b>doppio clic</b> su una cue (non sulla colonna del numero), <kbd>Invio</kbd> sulla scaletta o il pulsante <b>✏ Modifica…</b> sotto la scaletta. In una sola finestra c'è l'essenziale della cue:</p>
 <ul>
-<li><b>suono e video</b> – la forma d'onda con inizio e fine da trascinare, <b>▶ Ascolta</b> (in cuffia, se è scelta), <b>⇤ Inizio qui</b> / <b>Fine qui ⇥</b> nel punto che sta suonando, <b>✂</b> taglia il silenzio, <b>↺ Tutto il file</b>, volume, loop;</li>
+<li><b>suono e video</b> – la forma d'onda con inizio e fine da trascinare, <b>▶ Ascolta</b> (in cuffia, se è scelta), <b>⇤ Inizio qui</b> / <b>Fine qui ⇥</b> nel punto che sta suonando, <b>✂</b> taglia il silenzio, <b>↺ Tutto il file</b>, <b>🔍 Mostra il pezzo</b> (ingrandisce la forma d'onda tra inizio e fine), volume, loop;</li>
 <li><b>immagine e video</b> – dimensione e posizione (<b>⌖ Centro</b>), per un'immagine il tempo sullo schermo;</li>
 <li><b>testo</b> – <b>✏ Cambia il testo…</b>;</li>
 <li><b>scena</b> – come suona (tutto insieme, in sequenza, passo-passo…);</li>
-<li>per tutte: nome, Q, note, «Poi» e i passaggi – fade in, fade out, crossfade.</li>
+<li>per tutte: nome, N. (Q) – il numero nel copione, note, «Poi» e i passaggi – fade in, fade out, crossfade.</li>
 </ul>
 <p><b>OK</b> salva tutto in un solo passo (<kbd>Ctrl+Z</kbd> lo annulla tutto), <b>Annulla</b> non cambia niente. <kbd>F2</kbd> rinomina ancora la cue direttamente nella scaletta. Durante lo spettacolo la finestra non si apre: le cue allora non cambiano.</p><!--/IF:edit_window-->
 
@@ -403,7 +408,9 @@ o <kbd>Ctrl+L</kbd>.<!--/IF:mode_tabs--> Lo schermo diventa semplice e grande �
 <!--IF:readiness--><p>Al primo ingresso (e dopo un cambio di schermi, casse o spettacolo) compare prima la pagina
 <b>Prima dello spettacolo</b> – al posto della lista, non come finestra, quindi PANIC e Dissolvenza totale funzionano.
 Ogni riga dice <b>✓ SÌ</b>, <b>✗ NO</b> o <b>– NON VERIFICATO</b> e ha un pulsante per sistemare: l'immagine sul
-proiettore (<b>Mostra i numeri degli schermi</b>, <b>Scegli lo schermo…</b>), il volume generale (<b>Riporta a 100 %</b>),
+proiettore (<b>Mostra i numeri degli schermi</b>, <b>Scegli lo schermo…</b>; quando il proiettore c'è,
+<b>▦ Mostra la mira sul proiettore</b> – una griglia per controllare fuoco e ingresso giusto, si spegne da sola
+con l'inizio), il volume generale (<b>Riporta a 100 %</b>),
 le casse (<b>▶ Tono di prova</b> – un secondo di suono dalle casse dello spettacolo, poi rispondi <b>Sì, si sente</b> /
 <b>Non si sente</b>), i file mancanti (<b>Mostra nella lista</b>) e l'alimentatore del portatile (controllato da solo ogni
 2 s). La pagina finisce con i pulsanti di

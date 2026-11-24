@@ -35,6 +35,7 @@ TIMED = "timed"    # audio / video / picture with a hold time: full card
 STILL = "still"    # picture, caption without an end: one line
 NOTE = "note"      # operator note: one line with OK
 SCENE = "scene"    # a scene with something on air: one line with "Fade the scene"
+_FULL_HEIGHT = 94  # a full card: room for the 26 px remaining time (was 84 with 18 px)
 
 _BTN = ("QPushButton { background-color: #1e293b; color: #f8fafc; border: 1px solid #475569; "
         "border-radius: 4px; font-size: 12px; font-weight: bold; padding: 0px 8px; } "
@@ -144,7 +145,7 @@ class _Card(QFrame):
         self._panel_ref = panel
         self._waiting = False
         if kind == TIMED:
-            self.setFixedHeight(84)
+            self.setFixedHeight(_FULL_HEIGHT)
             line2 = QHBoxLayout()
             self.lbl_elapsed = QLabel()
             self.lbl_elapsed.setStyleSheet("QLabel { color: #94a3b8; font-size: 12px; }")
@@ -281,8 +282,13 @@ class _Card(QFrame):
         self._apply_height()
 
     def _apply_height(self) -> None:
-        base = 58 if self._compact else 84
+        base = 58 if self._compact else _FULL_HEIGHT
         self.setFixedHeight(base + (28 if self._rehearsal_on else 0))
+        self._last = None  # the time font follows the compact state: paint it again
+
+    def _remaining_px(self) -> int:
+        """26 px on a full card, read at a glance in the dark (GUI review 2026-11-24); 18 px compact."""
+        return 18 if self._compact else 26
 
     def show_state(self, st: CardState) -> None:
         if st == self._last:
@@ -309,7 +315,8 @@ class _Card(QFrame):
         # The ends-soon warning is a sign as well as a colour (W35, W36).
         colour = "#fbbf24" if st.warn else "#f8fafc"
         self.lbl_remaining.setText(("⚠ " if st.warn else "") + st.remaining)
-        self.lbl_remaining.setStyleSheet(f"QLabel {{ color: {colour}; font-size: 18px; font-weight: bold; }}")
+        self.lbl_remaining.setStyleSheet(
+            f"QLabel {{ color: {colour}; font-size: {self._remaining_px()}px; font-weight: bold; }}")
         self.bar.setVisible(st.fraction >= 0)
         if st.fraction >= 0:
             self.bar.setValue(int(st.fraction * 1000))
@@ -506,3 +513,33 @@ class NowPlayingPanel(QFrame):
         for i, card in enumerate(timed):
             card.set_compact(len(timed) >= 3 and i > 0)
         self.lbl_empty.setVisible(not self._cards)
+
+
+class NowPlayingStrip(NowPlayingPanel):
+    """Preparation: the same cards, compact, above the GO; hidden while nothing plays.
+
+    The GO in Preparation plays to the room, and the button under the preview stops only the preview:
+    without this strip the Lite layout had no way to fade one sound (GUI review 2026-11-24).
+    """
+
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setMinimumWidth(0)
+        self.setMaximumWidth(16777215)
+        self.setAccessibleName("Ora in onda – si sente in sala")
+        for widget in (self.btn_preview, self.lbl_preview, self.effects_box, self.lbl_empty):
+            widget.setVisible(False)
+        self.lbl_header.setText("ORA IN ONDA – si sente in sala")
+        self.setVisible(False)
+
+    def set_preview(self, pixmap) -> None:  # no output preview here
+        return
+
+    def set_cards(self, states: list[CardState]) -> None:
+        super().set_cards([s for s in states if s.kind != NOTE])
+        for card in self._cards.values():
+            card.set_compact(True)
+        self.lbl_empty.setVisible(False)
+        shown = self._cards_in_order()[:3]   # more than three scroll inside
+        self.setFixedHeight(sum(c.height() + 4 for c in shown) + 40 if shown else 0)
+        self.setVisible(bool(shown))

@@ -3802,4 +3802,32 @@ T: dict[str, str] = {
         'An AI assistant (for example Claude Desktop) can prepare the show for you: it builds the cue list from a folder of files and adds captions, scenes and notes for the operator. It finds files on every drive of this computer (also a USB stick; the folders can be limited in Claude), plays nothing, deletes no media and never changes a show that is running. AI providers receive the cue names, the notes and the file names, not the contents of the files.',
     "Impostazioni copiate: l'assistente può usare tutti i dischi di questo computer (anche una chiavetta USB). Incollale nella configurazione del client MCP.":
         "Settings copied: the assistant may use every drive of this computer (also a USB stick). Paste them into the MCP client's configuration.",
+    'N. (Q)':
+        'No. (Q)',
+    'Numero della cue nel copione (Q), per esempio 12 o 12a':
+        'Cue number in the script (Q), e.g. 12 or 12a',
+    '▦ Nascondi la mira':
+        '▦ Hide the test pattern',
+    '▦ Mostra la mira sul proiettore':
+        '▦ Show the test pattern on the projector',
+    '▶  Anteprima':
+        '▶  Preview',
+    '⏹  Ferma anteprima':
+        '⏹  Stop the preview',
+    'Ora in onda – si sente in sala':
+        'On air – heard in the room',
+    'ORA IN ONDA – si sente in sala':
+        'ON AIR – heard in the room',
+    '🔍 Mostra il pezzo':
+        '🔍 Show the piece',
+    '↔ Tutto il file':
+        '↔ Whole file',
+    "Ingrandisce la forma d'onda tra l'inizio e la fine scelti; di nuovo: tutto il file":
+        'Zooms the waveform between the chosen start and end; again: the whole file',
+    'Nascondi questi avvisi (tornano se cambiano)':
+        'Hide these warnings (they come back if they change)',
+    'Nascondi gli avvisi':
+        'Hide the warnings',
+    'Nessun avviso':
+        'No warnings',
 }

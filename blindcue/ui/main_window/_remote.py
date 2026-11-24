@@ -848,6 +848,9 @@ class _RemoteMixin:
         finally:
             self._cue_list.blockSignals(False)
             self._updating_cue_list = False
+        # An empty script number column only cut the names short (GUI review 2026-11-24); the number
+        # is still set in the cue settings and the Edit window.
+        self._cue_list.setColumnHidden(1, not any((c.q_label or "").strip() for c in self._cues))
         search = getattr(self, "_search_edit", None)
         if search is not None and not search.isHidden() and search.text().strip():
             self._search_apply(search.text())  # 2.8: the list stays filtered while the search is open
