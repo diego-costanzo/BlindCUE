@@ -21,12 +21,20 @@ from ui.main_window._common import *  # noqa: F403,F401,F405
 
 def export_headers() -> dict[str, str]:
     return {"number": "#", "q": "Q", "name": tr("Nome"), "type": tr("Tipo"), "layer": tr("Layer"),
-            "follow": tr("Poi"), "pre": "Pre", "post": "Post", "page": tr("Pagina"), "line": tr("Battuta"),
-            "notes": tr("Note"), "off": tr("Esclusa"), "file": tr("File")}
+            "follow": tr("Poi"), "pre": tr("Pre-Delay"), "post": tr("Post-Delay"), "page": tr("Pagina"),
+            "line": tr("Battuta"), "notes": tr("Note"), "off": tr("Esclusa"), "file": tr("File")}
 
 
 def follow_names() -> dict[str, str]:
-    return {"SIMULTANEOUS": tr("⇉ Simult.")}
+    return {"MANUAL": tr("Manuale (GO)"), "AUTO_FOLLOW": tr("Auto-GO al termine"),
+            "SIMULTANEOUS": tr("Insieme alla successiva")}
+
+
+def _type_names(data: list[dict]) -> list[dict]:
+    """The kind of each cue in the UI language (the rows carry the internal name: VIDEO, AUDIO…)."""
+    for row in data:
+        row["type"] = tr(row["type"])
+    return data
 
 
 class _ExportMixin:
@@ -41,12 +49,12 @@ class _ExportMixin:
         from engine.cue_export import rows, to_csv
 
         start = str(Path(self._current_project_path).with_suffix(".csv")) if getattr(
-            self, "_current_project_path", None) else "scaletta.csv"
+            self, "_current_project_path", None) else tr("scaletta") + ".csv"
         path, _ = QFileDialog.getSaveFileName(self, tr("Esporta la scaletta"), start, "CSV (*.csv)")
         if not path:
             return
         try:
-            to_csv(rows(self._cues, follow_names()), path, export_headers())
+            to_csv(_type_names(rows(self._cues, follow_names())), path, export_headers())
         except OSError as exc:
             QMessageBox.warning(self, tr("Esporta la scaletta"), str(exc))
             return

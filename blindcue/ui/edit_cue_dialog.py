@@ -239,7 +239,8 @@ class EditCueDialog(QDialog):
         self.cb_group_mode.setAccessibleName("Come suona la scena")
         for key, label, desc, *_ in _GROUP_MODE_SPECS:
             self.cb_group_mode.addItem(label, key)
-            self.cb_group_mode.setItemData(self.cb_group_mode.count() - 1, desc, Qt.ItemDataRole.ToolTipRole)
+            # setItemData is not wrapped by the i18n layer: translate the tooltip here.
+            self.cb_group_mode.setItemData(self.cb_group_mode.count() - 1, tr(desc), Qt.ItemDataRole.ToolTipRole)
         self.cb_group_mode.setCurrentIndex(max(0, self.cb_group_mode.findData(self._vals["group_mode"])))
         self.lbl_group_desc = QLabel()
         self.lbl_group_desc.setWordWrap(True)

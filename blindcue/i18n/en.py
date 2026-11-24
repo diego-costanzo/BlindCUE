@@ -4106,4 +4106,80 @@ T: dict[str, str] = {
         "The mixer's sound reserve in milliseconds",
     '(vale dal prossimo avvio del programma)':
         '(from the next start of the program)',
+    'Audio Preview: {}':
+        'Preview sound: {}',
+    'Conto alla rovescia {}:{}: {}':
+        'Countdown {}:{}: {}',
+    'Avviso Pre-Viz: {}':
+        'Preview warning: {}',
+    'Layer 0 (Tappo video)':
+        'Layer 0 (placeholder video)',
+    'Curva Fade impostata: {}':
+        'Fade curve: {}',
+    'Sezione {}: {}':
+        'Section {}: {}',
+    'Modalità Gruppo impostata a: {}':
+        'Scene mode: {}',
+    'Errore ottimizzazione dinamica: {}':
+        'Dynamics optimisation failed: {}',
+    "Analisi Loudness non riuscita per '{}': {}":
+        "Loudness analysis of '{}' failed: {}",
+    '{}. {}{}  (non trovato)':
+        '{}. {}{}  (not found)',
+    'Salvato con successo: {}':
+        'Saved: {}',
+    '… e altri {}':
+        '… and {} more',
+    'Selezione: {} {}':
+        'Selected: {} {}',
+    "Proiettore '{}' non disponibile per l'uscita {}":
+        "Projector '{}' is not available for output {}",
+    'Auto-GO al termine':
+        'Auto-GO at the end',
+    'Pausa tutto':
+        'Pause all',
+    'Regolazione {}':
+        'Slider: {}',
+    'Ripristina {}':
+        'Reset {}',
+    '📱 Client Web connessi: {}':
+        '📱 Connected phones: {}',
+    'Superficie {}':
+        'Surface {}',
+    '🖥 {}×{} px (Span)':
+        '🖥 {}×{} px (span)',
+    '{}: {}×{} px (Feather {}px)':
+        '{}: {}×{} px (feather {}px)',
+    'Azzera punti {}':
+        'Clear the {} points',
+    '16:9 Live':
+        '16:9 as on the projector',
+    'netto':
+        'sharp edge',
+    'scaletta':
+        'cue-list',
+    'FOTO':
+        'PIC',
+    'Simultaneo':
+        'Simultaneous',
+    'Sequenziale':
+        'Sequential',
+    'Passo-Passo':
+        'Step-by-step',
+    'Loop Scena':
+        'Loop scene',
+    '[SCENA]':
+        '[SCENE]',
+    "Esegui cue in Standby: {} '{}'":
+        "Start the next cue: {} '{}'",
+    '⚠ {}':
+        '⚠ {}',
+    '⚠️ {}':
+        '⚠️ {}',
+    '{}: {}×{} px':
+        '{}: {}×{} px',
+    '📡 Remoto: OFF':
+        '📡 Remote: OFF',
+    'PRE-VIZ':
+        'PREVIEW',
 }

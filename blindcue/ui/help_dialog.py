@@ -51,7 +51,9 @@ class HelpDialog(QDialog):
         if self._file.is_file():
             self.browser.setSource(QUrl.fromLocalFile(str(self._file)))
         else:
-            self.browser.setHtml(f"<p>Manuale non trovato: {self._file}</p>")
+            # setHtml is not wrapped by the i18n layer: translate the sentence here.
+            from i18n import tr
+            self.browser.setHtml(f"<p>{tr('Manuale non trovato: {}').format(self._file)}</p>")
 
         btn_home = QPushButton("⌂ Indice", self)
         btn_home.clicked.connect(self.browser.home)

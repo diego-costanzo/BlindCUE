@@ -359,7 +359,9 @@ class _LiveLayerBar(QWidget):
             span = max(0.01, self._end_sec)
             progress = min(1.0, max(0.0, self._pos_sec / span))
             remaining = max(0.0, span - self._pos_sec)
-            prefix = "⏳ PRE" if self._phase == "PRE" else "⏱ POST"
+            # Translated before measuring: the painter would translate it, but too late for the width.
+            from i18n import tr
+            prefix = tr("⏳ PRE") if self._phase == "PRE" else tr("⏱ POST")
             left_str = f"{prefix} {_fmt_mmss(self._pos_sec)}"
             right_str = f"-{_fmt_mmss(remaining)}"
             return True, progress, left_str, right_str, remaining

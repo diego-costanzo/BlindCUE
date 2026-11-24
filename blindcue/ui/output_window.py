@@ -325,7 +325,9 @@ class SurfaceCalibrationOverlayItem(QGraphicsItem):
                     mask_tag = " · 🔲 Buco"
                 elif s.mask_type == MaskType.IMAGE.value:
                     mask_tag = " · 🖼 PNG"
-                badge_text = f"{s.name}{mask_tag} [{sw_px}×{sh_px} px]"
+                # Pieces translated on their own (glued, they match no dictionary entry).
+                from i18n import tr
+                badge_text = f"{tr(s.name)}{tr(mask_tag)} [{sw_px}×{sh_px} px]"
                 painter.setFont(font_label)
                 bw = max(180, int(painter.fontMetrics().horizontalAdvance(badge_text) + 24))
                 bh = 28

@@ -48,7 +48,7 @@ T: dict[str, str] = {
     '{} video su uscita B':
         '{} wideo na wyjściu B',
     'ATTENZIONE: Errore Live L{} ({})':
-        'UWAGA: błąd Live L{} ({})',
+        'UWAGA: błąd odtwarzania L{} ({})',
     '⚠ Carico video elevato: ':
         '⚠ Duże obciążenie wideo: ',
     'Uscita B disattivata: interrotti ':
@@ -132,7 +132,7 @@ T: dict[str, str] = {
     '⇉ Simult.':
         '⇉ Z następnym',
     '⇉ Simultanea: al GO avvia subito insieme la cue successiva (che rispetta comunque il proprio Pre-Delay).':
-        '⇉ Razem z następnym: przy GO od razu startuje też następny cue (z zachowaniem jego Pre-Delay).',
+        '⇉ Razem z następnym: przy GO od razu startuje też następny cue (z zachowaniem jego opóźnienia startu).',
     'SCALETTA CUE (Sequence List)':
         'LISTA CUE (kolejność)',
     '0 Cue':
@@ -140,11 +140,11 @@ T: dict[str, str] = {
     'Standby: Nessuna':
         'Następny: brak',
     '🎭 VAI IN LIVE':
-        '🎭 PRZEJDŹ DO LIVE',
+        '🎭 PRZEDSTAWIENIE',
     'Apri la modalità semplificata LIVE (Show Mode) centrata su Scaletta, GO, PAUSA TUTTO e PANIC [F5 / Ctrl+L]':
-        'Otwórz uproszczony tryb LIVE (Show Mode): lista cue, GO, PAUZA WSZYSTKO i PANIC [F5 / Ctrl+L]',
+        'Przejdź do przedstawienia (uproszczony widok): lista cue, GO, WSTRZYMAJ WSZYSTKO i PANIC [F5 / Ctrl+L]',
     'Modalità LIVE Show':
-        'Tryb LIVE (przedstawienie)',
+        'Przedstawienie',
     'Passa alla schermata di regia semplificata per il live.':
         'Przełącz na uproszczony ekran prowadzenia przedstawienia.',
     'Scaletta delle Cue':
@@ -212,7 +212,7 @@ T: dict[str, str] = {
     '🔁 LOOP':
         '🔁 PĘTLA',
     'Numero progressivo di posizione in scaletta (doppio click = GO)':
-        'Numer pozycji na liście (dwuklik = GO)',
+        'Numer cue na liście (dwuklik = GO)',
     'Richiamo copione Q (doppio click per modificare)':
         'Numer ze scenariusza (Q); dwuklik, aby edytować',
     'Nome personalizzato scena / file (doppio click per rinominare; Ctrl/Shift+Click per selezione multipla)':
@@ -262,11 +262,11 @@ T: dict[str, str] = {
     '🎧 Pre-Ascolto / Monitor (Cuffia Tecnico / PFL):':
         '🎧 Odsłuch / monitor (słuchawki operatora / PFL):',
     "💡 <i>Suggerimento:</i> Assegna la Cuffia per ascoltare in anteprima i brani nell'Ispettore o nella Scaletta senza che il pubblico in sala senta nulla. Se usi una sola scheda, entrambi usano l'uscita predefinita.":
-        '💡 <i>Wskazówka:</i> Przypisz słuchawki, aby odsłuchiwać utwory w Inspektorze lub na liście cue bez słyszenia ich przez publiczność. Przy jednej karcie dźwiękowej oba używają wyjścia domyślnego.',
+        '💡 <i>Wskazówka:</i> Przypisz słuchawki, aby odsłuchiwać utwory w ustawieniach cue lub na liście bez słyszenia ich przez publiczność. Przy jednej karcie dźwiękowej oba używają wyjścia domyślnego.',
     '🖥️ Uscita Video Live (Proiettore / Display Esterno)':
-        '🖥️ Wyjście wideo Live (projektor / ekran zewnętrzny)',
+        '🖥️ Wyjście wideo (projektor / ekran zewnętrzny)',
     'Schermo Live Output:':
-        'Ekran wyjścia Live:',
+        'Ekran projektora:',
     '🔄 Rileva':
         '🔄 Wykryj',
     'Modalità Uscita:':
@@ -284,7 +284,7 @@ T: dict[str, str] = {
     '✓ Applica e Salva':
         '✓ Zastosuj i zapisz',
     "Due uscite separate e indipendenti: ogni proiettore ha i propri 3 layer. Assegna ogni cue all'uscita A o B nell'Ispettore.":
-        'Dwa oddzielne, niezależne wyjścia: każdy projektor ma własne 3 warstwy. Przypisz każdy cue do wyjścia A lub B w Inspektorze.',
+        'Dwa oddzielne, niezależne wyjścia: każdy projektor ma własne 3 warstwy. Przypisz każdy cue do wyjścia A lub B w ustawieniach cue.',
     "I proiettori esterni saranno uniti in un'unica tela continua.":
         'Zewnętrzne projektory zostaną połączone w jedną ciągłą powierzchnię.',
     'Nessun dispositivo rilevato (Default)':
@@ -408,7 +408,7 @@ T: dict[str, str] = {
     '{} | 🖥️ CPU: {}C | 💾 RAM: {}GB | 🎮 GPU: {} ({})':
         '{} | 🖥️ CPU: {}C | 💾 RAM: {}GB | 🎮 GPU: {} ({})',
     "<h3>Architettura Hardware & Prestazioni BlindCue</h3><p><b>Profilo Attivo:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Processore (CPU):</b> {}<br/>• Core / Thread rilevati: <b>{} core</b></p><p><b>Memoria RAM di Sistema:</b><br/>• Totale: <b>{} GB</b> ({} MB)<br/>• Disponibile: <b>{} GB</b> ({} MB)</p><p><b>Scheda Video (GPU):</b> {}<br/>• Accelerazione Hardware: <b>{}</b><br/>• Schermi Rilevati: <b>{}</b><br/>• Piattaforma: <b>{} ({})</b></p><hr/><h4>Ottimizzazioni per la Massima Stabilità Live:</h4><ul><li><b>GPU Offloading:</b> Compositing Layer 0..3 su GPU tramite Wayland EGL/OpenGL. Zero carico di ridisegno pixel sulla CPU.</li><li><b>Decodifica Video Hardware:</b> QtMultimedia e FFmpeg interrogano automaticamente VA-API / NVDEC per frame zero-copy.</li><li><b>Protezione GC Live:</b> In modalità LIVE il Garbage Collector di Python viene posticipato per prevenire micro-lag durante le Cue.</li><li><b>Isolamento Threading:</b> Worker asincroni limitati per garantire latenza istantanea su UI e Audio.</li></ul><p style='color: #00e676;'><b>Risultato:</b> Stabilità assoluta garantita sia su portatili da 4GB di RAM che su workstation multi-core.</p>":
-        "<h3>Sprzęt i wydajność BlindCue</h3><p><b>Aktywny profil:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Procesor (CPU):</b> {}<br/>• Wykryte rdzenie / wątki: <b>{}</b></p><p><b>Pamięć RAM:</b><br/>• Razem: <b>{} GB</b> ({} MB)<br/>• Dostępne: <b>{} GB</b> ({} MB)</p><p><b>Karta graficzna (GPU):</b> {}<br/>• Akceleracja sprzętowa: <b>{}</b><br/>• Wykryte ekrany: <b>{}</b><br/>• Platforma: <b>{} ({})</b></p><hr/><h4>Optymalizacje dla stabilności na żywo:</h4><ul><li><b>Odciążenie GPU:</b> składanie warstw 0..3 na karcie graficznej (EGL/OpenGL). Procesor nie przerysowuje pikseli.</li><li><b>Sprzętowe dekodowanie wideo:</b> QtMultimedia i FFmpeg same korzystają z VA-API / NVDEC.</li><li><b>Ochrona GC na żywo:</b> w trybie LIVE odśmiecanie pamięci Pythona jest odkładane, by uniknąć mikroprzycięć podczas cue.</li><li><b>Izolacja wątków:</b> ograniczona liczba wątków w tle, aby interfejs i dźwięk reagowały natychmiast.</li></ul><p style='color: #00e676;'><b>Efekt:</b> stabilna praca zarówno na laptopach z 4 GB RAM, jak i na wielordzeniowych stacjach.</p>",
+        "<h3>Sprzęt i wydajność BlindCue</h3><p><b>Aktywny profil:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Procesor (CPU):</b> {}<br/>• Wykryte rdzenie / wątki: <b>{}</b></p><p><b>Pamięć RAM:</b><br/>• Razem: <b>{} GB</b> ({} MB)<br/>• Dostępne: <b>{} GB</b> ({} MB)</p><p><b>Karta graficzna (GPU):</b> {}<br/>• Akceleracja sprzętowa: <b>{}</b><br/>• Wykryte ekrany: <b>{}</b><br/>• Platforma: <b>{} ({})</b></p><hr/><h4>Optymalizacje dla stabilności na żywo:</h4><ul><li><b>Odciążenie GPU:</b> składanie warstw 0..3 na karcie graficznej (EGL/OpenGL). Procesor nie przerysowuje pikseli.</li><li><b>Sprzętowe dekodowanie wideo:</b> QtMultimedia i FFmpeg same korzystają z VA-API / NVDEC.</li><li><b>Ochrona GC na żywo:</b> w przedstawieniu odśmiecanie pamięci Pythona jest odkładane, by uniknąć mikroprzycięć podczas cue.</li><li><b>Izolacja wątków:</b> ograniczona liczba wątków w tle, aby interfejs i dźwięk reagowały natychmiast.</li></ul><p style='color: #00e676;'><b>Efekt:</b> stabilna praca zarówno na laptopach z 4 GB RAM, jak i na wielordzeniowych stacjach.</p>",
     'Scelta manuale operatore':
         'Ręczny wybór operatora',
     '🍃 ECO':
@@ -474,7 +474,7 @@ T: dict[str, str] = {
     '⤵ Sequenziale':
         '⤵ Po kolei',
     'Cascata: un solo GO lancia tutta la sequenza interna rispettando i ritardi Pre/Durata/Post.':
-        'Kaskada: jedno GO uruchamia całą sekwencję z zachowaniem opóźnień Pre/Czas/Post.',
+        'Kaskada: jedno GO uruchamia całą sekwencję z zachowaniem opóźnień startu, czasów trwania i czekania po końcu.',
     '⏹ Passo-Passo':
         '⏹ Krok po kroku',
     "Capitolo teatrale: ogni pressione manuale di GO avanza di un elemento all'interno della scena.":
@@ -534,9 +534,9 @@ T: dict[str, str] = {
     'Proiettore:':
         'Projektor:',
     '3 · TEMPI DI INCASTRO (PRE · DURATA · POST)':
-        '3 · CZASY (PRE · CZAS TRWANIA · POST)',
+        '3 · CZASY (OPÓŹNIENIE · CZAS TRWANIA · CZEKANIE)',
     'GO  ▶  [⏳ Pre]  ▶  [▶ Media / Durata]  ▶  [⏱ Post]':
-        'GO  ▶  [⏳ Pre]  ▶  [▶ Media / Czas]  ▶  [⏱ Post]',
+        'GO  ▶  [⏳ Opóźnienie]  ▶  [▶ Media / Czas]  ▶  [⏱ Czekanie]',
     'Ritardo di partenza dopo il GO per incastrare la cue con altri layer':
         'Opóźnienie startu po GO, aby zgrać cue z innymi warstwami',
     'Ritardo di Partenza Pre-Delay':
@@ -550,7 +550,7 @@ T: dict[str, str] = {
     'Secondi di attesa dopo il termine del media.':
         'Sekundy czekania po zakończeniu mediów.',
     'Durata di permanenza in Live delle immagini statiche (0 = infinita)':
-        'Jak długo zdjęcia zostają na ekranie Live (0 = bez końca)',
+        'Jak długo zdjęcia zostają na projektorze (0 = bez końca)',
     'Durata Immagine Hold Time':
         'Czas wyświetlania obrazu',
     'Durata in secondi per le immagini statiche (0 = infinita).':
@@ -598,7 +598,7 @@ T: dict[str, str] = {
     'Formato:':
         'Format:',
     'Forza le proporzioni del riquadro in Anteprima e Live':
-        'Wymusza proporcje kadru w podglądzie i na Live',
+        'Wymusza proporcje kadru w podglądzie i na projektorze',
     '2 · RITAGLIO BORDI (CROP)':
         '2 · PRZYCIĘCIE KRAWĘDZI (CROP)',
     'Scegli % oppure pixel reali della sorgente per tagliare i bordi.':
@@ -646,7 +646,7 @@ T: dict[str, str] = {
     '🖼 Video · Foto':
         '🖼 Wideo · zdjęcie',
     "Suggerimento: Dissolvenze (Fade In/Out) attive anche sulle Immagini; inviluppi avanzati e Sezioni A/B/C nella Forma d'Onda.":
-        'Wskazówka: przejścia (Fade In/Out) działają też dla obrazów; zaawansowane obwiednie i sekcje A/B/C są w widoku przebiegu.',
+        'Wskazówka: pojawianie i wygaszanie działają też dla obrazów; zaawansowane obwiednie i sekcje A/B/C są w widoku przebiegu.',
     '1 · VOLUME PRINCIPALE (AUDIO / VIDEO)':
         '1 · GŁOŚNOŚĆ GŁÓWNA (AUDIO / WIDEO)',
     "Livello base del media; puoi disegnare variazioni nel tempo direttamente sulla Forma d'Onda.":
@@ -654,15 +654,15 @@ T: dict[str, str] = {
     'Ripristina volume al 100%':
         'Przywróć głośność 100%',
     '2 · DISSOLVENZE (FADE IN / OUT)':
-        '2 · PRZEJŚCIA (FADE IN / OUT)',
+        '2 · POJAWIANIE I WYGASZANIE',
     "Applicate dolcemente all'ingresso e all'uscita su Audio, Video e Immagini a durata.":
         'Łagodnie stosowane na początku i końcu audio, wideo i obrazów z czasem.',
     'Dissolvenza in Entrata Fade-In':
-        'Pojawianie (Fade-In)',
+        'Pojawianie',
     'Durata in secondi della dissolvenza in ingresso da nero o silenzio.':
         'Czas w sekundach pojawiania się z czerni lub ciszy.',
     'Dissolvenza in Uscita Fade-Out':
-        'Wygaszanie (Fade-Out)',
+        'Wygaszanie',
     'Durata in secondi della dissolvenza in chiusura a nero o silenzio.':
         'Czas w sekundach wygaszania do czerni lub ciszy.',
     '3 · TAGLIO TEMPORALE (PUNTI IN / OUT)':
@@ -708,7 +708,7 @@ T: dict[str, str] = {
     '1 · IDENTITÀ SCENA / GRUPPO & COLORE':
         '1 · OZNACZENIE SCENY / GRUPY I KOLOR',
     'I gruppi organizzano più media in una singola riga collassabile in Scaletta e Live.':
-        'Grupy łączą kilka mediów w jeden zwijany wiersz na liście cue i w trybie Live.',
+        'Grupy łączą kilka mediów w jeden zwijany wiersz na liście cue i w przedstawieniu.',
     'es. G-1, Atto 1, Scena A...':
         'np. G-1, Akt 1, Scena A...',
     'Sigla di copione del gruppo: resta legata al gruppo se riordini la scaletta':
@@ -718,11 +718,11 @@ T: dict[str, str] = {
     'Note di regia o indicazioni palco per il gruppo...':
         'Uwagi reżyserskie lub wskazówki sceniczne dla grupy...',
     'Pre-Wait:':
-        'Pre-Wait:',
+        'Opóźnienie startu:',
     'Attesa prima di avviare il gruppo alla pressione del GO.':
         'Czekanie przed startem grupy po naciśnięciu GO.',
     'Post-Wait:':
-        'Post-Wait:',
+        'Czekanie po końcu:',
     "Attesa al termine dell'esecuzione prima di passare alla cue successiva.":
         'Czekanie po zakończeniu przed przejściem do następnego cue.',
     '2 · COMPORTAMENTO AL GO (MODALITÀ SCENA)':
@@ -822,11 +822,11 @@ T: dict[str, str] = {
     'Seleziona una cue':
         'Wybierz cue',
     '0 s = Infinita in Live':
-        '0 s = bez końca na Live',
+        '0 s = bez końca na projektorze',
     "Immagine selezionata: trascina il riquadro o gli 8 bordi nell'Anteprima Pre-Viz 16:9.":
         'Wybrano obraz: przeciągnij ramkę lub jej 8 krawędzi w podglądzie 16:9.',
     'Nota: Cue Immagine — Fade In/Out e inviluppo Opacità attivi. Volume, Tagli e Loop valgono per Audio/Video.':
-        'Uwaga: cue z obrazem — działają Fade In/Out i obwiednia krycia. Głośność, przycięcia i pętla dotyczą audio/wideo.',
+        'Uwaga: cue z obrazem — działają pojawianie, wygaszanie i obwiednia krycia. Głośność, przycięcia i pętla dotyczą audio/wideo.',
     'ISPETTORE CUE — Selezione Mista ({} cue)':
         'USTAWIENIA CUE — mieszane zaznaczenie ({} cue)',
     '⚠ Selezione mista ({}): seleziona solo file dello stesso tipo per modifiche comuni.':
@@ -858,7 +858,7 @@ T: dict[str, str] = {
     "Video selezionato: trascina posizione/crop sull'Anteprima Pre-Viz e attiva MIRROR LIVE per calibrare sul proiettore.":
         'Wybrano wideo: przeciągnij położenie/przycięcie w podglądzie i włącz „Pokaż też na projektorze”, aby ustawić obraz na projektorze.',
     'Regola Volume traccia video, Fade In/Out, punti IN/OUT e Loop (o Sezioni nella Timeline).':
-        'Ustaw głośność ścieżki wideo, Fade In/Out, punkty IN/OUT i pętlę (lub sekcje na osi czasu).',
+        'Ustaw głośność ścieżki wideo, pojawianie, wygaszanie, punkty IN/OUT i pętlę (lub sekcje na osi czasu).',
     '📁 Questa cue appartiene a una Scena / Gruppo':
         '📁 Ten cue należy do sceny / grupy',
     'BUIO TOTALE':
@@ -866,17 +866,17 @@ T: dict[str, str] = {
     'STOP IMMEDIATO':
         'NATYCHMIASTOWY STOP',
     'Scaletta Regia LIVE Show':
-        'Lista cue do prowadzenia LIVE',
+        'Lista cue przedstawienia',
     '▶ Fai partire subito questa Cue (GO Forzato)':
         '▶ Uruchom ten cue teraz (wymuszone GO)',
     '🎯 Imposta come Prossima Cue (Standby)':
-        '🎯 Ustaw jako następny cue (standby)',
+        '🎯 Ustaw jako następny cue',
     '← 🛠 Torna a Progetto  [F5]':
         '← 🛠 Wróć do projektu  [F5]',
     'Torna alla vista Progetto per modificare file, crop, fade o tempi (senza interrompere il Live)':
-        'Wróć do widoku projektu, aby edytować pliki, przycięcia, przejścia lub czasy (bez przerywania Live)',
+        'Wróć do widoku projektu, aby edytować pliki, przycięcia, przejścia lub czasy (bez przerywania przedstawienia)',
     '● MODALITÀ LIVE (SHOW MODE)':
-        '● TRYB LIVE (PRZEDSTAWIENIE)',
+        '● PRZEDSTAWIENIE',
     "Azzera Cronometro Spettacolo e riarma l'avvio automatico al prossimo 1° GO":
         'Wyzeruj stoper przedstawienia i uzbrój automatyczny start przy pierwszym GO',
     '▶ STANDBY':
@@ -890,9 +890,9 @@ T: dict[str, str] = {
     'Blocco di Sicurezza Layer':
         'Blokada bezpieczeństwa warstw',
     'Protezione controlli layer Live. Tieni premuto 1,2 secondi per sbloccare, tocca per ribloccare.':
-        'Ochrona sterowania warstwami Live. Przytrzymaj 1,2 s, aby odblokować; dotknij, aby zablokować.',
+        'Ochrona sterowania warstwami na żywo. Przytrzymaj 1,2 s, aby odblokować; dotknij, aby zablokować.',
     'Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) per ripartire poi dallo stesso istante':
-        'Zamraża wszystkie warstwy LIVE (audio, wideo, Pre-Delay, Post-Delay i obrazy z czasem), by potem ruszyć od tego samego momentu',
+        'Zatrzymuje wszystko, co gra (dźwięk, wideo, opóźnienie startu, czekanie po końcu i zdjęcia z czasem), by potem ruszyć od tego samego momentu',
     'Pausa o Riprendi Tutto':
         'Pauza lub wznowienie wszystkiego',
     'Congela o riprende tutti i layer multimediali attivi.':
@@ -900,9 +900,9 @@ T: dict[str, str] = {
     '▶   GO  —  PROSSIMA CUE':
         '▶   GO  —  NASTĘPNY CUE',
     'GO - Avvia Cue in Standby':
-        'GO - uruchom cue w standby',
+        'GO – uruchom następny cue',
     'Manda in esecuzione la cue pronta in standby. Tasto di scelta rapida: Spazio.':
-        'Uruchamia cue gotowy w standby. Skrót klawiszowy: Spacja.',
+        'Uruchamia następny cue. Skrót klawiszowy: Spacja.',
     'Media / Cue':
         'Media / cue',
     'Tempi · Sequenza':
@@ -924,7 +924,7 @@ T: dict[str, str] = {
     'Cronometro Spettacolo in corso (avvio auto al 1° GO o manuale) — Clicca per PAUSA (non ferma i media)':
         'Stoper przedstawienia działa (start przy pierwszym GO lub ręcznie) — kliknij, aby ZATRZYMAĆ (media grają dalej)',
     "Esegui cue in Standby: {} '{}'\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]":
-        "Uruchom cue w standby: {} '{}'\nGłówny skrót klawiszowy: [ SPACJA ]",
+        "Uruchom następny cue: {} '{}'\nGłówny skrót klawiszowy: [ SPACJA ]",
     'Esegui prossima cue\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]':
         'Uruchom następny cue\nGłówny skrót klawiszowy: [ SPACJA ]',
     'Cronometro Spettacolo in PAUSA — Clicca per RIPRENDERE o usa ↺ per azzerare e riarmare':
@@ -934,7 +934,7 @@ T: dict[str, str] = {
     '[Scena]':
         '[Scena]',
     '⤵ Auto-GO al termine':
-        '⤵ Auto-GO na końcu',
+        '⤵ Sam po końcu (Auto-GO)',
     '🔁 Loop':
         '🔁 Pętla',
     '⏹ MANUALE':
@@ -988,9 +988,9 @@ T: dict[str, str] = {
     '▶ Riprendi Riproduzione':
         '▶ Wznów odtwarzanie',
     'Monitor Uscita Layer Live (L3 Sopra → L1 Sfondo)':
-        'Podgląd warstw Live (L3 wierzch → L1 tło)',
+        'Podgląd warstw projektora (L3 wierzch → L1 tło)',
     'Live Output Status (Monitor Uscita Schermo Esterno)':
-        'Stan wyjścia Live (podgląd ekranu zewnętrznego)',
+        'Stan projektora (podgląd ekranu zewnętrznego)',
     'Salta indietro di 10s su {} (utile nelle prove per ripetere la battuta)':
         'Cofnij o 10 s na {} (przydatne na próbach, by powtórzyć kwestię)',
     'Sposta indietro di 10 secondi la testina del {}.':
@@ -1004,13 +1004,13 @@ T: dict[str, str] = {
     '∞ LOOP':
         '∞ PĘTLA',
     'Dissolvenza in uscita e arresto del contenuto su {}.\nLa durata è quella del Fade Out della cue (minimo 0.2 s).\nPROTEZIONE LIVE: tieni premuto 0.6 secondi per confermare, così un clic involontario non taglia nulla.':
-        'Wygaś i zatrzymaj treść na {}.\nCzas to Fade Out danego cue (minimum 0,2 s).\nOCHRONA LIVE: przytrzymaj 0,6 sekundy, aby potwierdzić — przypadkowe kliknięcie niczego nie utnie.',
+        'Wygaś i zatrzymaj treść na {}.\nCzas to wygaszanie danego cue (minimum 0,2 s).\nOCHRONA: przytrzymaj 0,6 sekundy, aby potwierdzić — przypadkowe kliknięcie niczego nie utnie.',
     'Dissolve in uscita e ferma il contenuto sul {} usando il Fade Out della cue. Richiede 0.6 secondi di pressione.':
-        'Wygasza i zatrzymuje treść na {} według Fade Out cue. Wymaga przytrzymania 0,6 s.',
+        'Wygasza i zatrzymuje treść na {} według czasu wygaszania cue. Wymaga przytrzymania 0,6 s.',
     'Fade Out':
         'Wygaś',
     'Dissolvenza in uscita e arresto del contenuto su {}.\nLa durata è quella del Fade Out della cue (minimo 0.2 s).':
-        'Wygaś i zatrzymaj treść na {}.\nCzas to Fade Out danego cue (minimum 0,2 s).',
+        'Wygaś i zatrzymaj treść na {}.\nCzas to wygaszanie danego cue (minimum 0,2 s).',
     'Salta indietro di 10s su Layer {} (prove)':
         'Cofnij o 10 s na warstwie {} (próby)',
     'Metti in Pausa Layer {} (prove)':
@@ -1098,7 +1098,7 @@ T: dict[str, str] = {
     'Ascolto Attivo':
         'Odsłuch aktywny',
     '{} arrestato e rimosso dal Live':
-        '{} zatrzymano i usunięto z Live',
+        '{}: zatrzymano i wyczyszczono',
     "Compressione dinamica e normalizzazione EBU R128 per '{}' in corso...":
         "Trwa kompresja dynamiki i normalizacja EBU R128 dla '{}'...",
     "File originale ripristinato per '{}'":
@@ -1136,7 +1136,7 @@ T: dict[str, str] = {
     '&View':
         '&Widok',
     '🎭 Modalità &LIVE (Show Mode)':
-        '🎭 Tryb &LIVE (przedstawienie)',
+        '🎭 &Przedstawienie',
     '🎨 &Tema Interfaccia':
         '🎨 &Motyw interfejsu',
     '🔔 &Segnali Acustici Operatore (Earcons)':
@@ -1162,15 +1162,15 @@ T: dict[str, str] = {
     '⚙ Dispositivi · Uscite':
         '⚙ Urządzenia · wyjścia',
     'Configura Master Audio Sala, Cuffia Regia (PFL), Schermo Live e Profilo Hardware (Eco/Pro).':
-        'Ustaw główne audio sali, słuchawki operatora (PFL), ekran Live i profil sprzętu (Eko/Pro).',
+        'Ustaw główne audio sali, słuchawki operatora (PFL), ekran projektora i profil sprzętu (Eko/Pro).',
     'Dispositivi e Uscite Hardware':
         'Urządzenia i wyjścia sprzętowe',
     'Apre il pannello di configurazione delle uscite audio sala, monitor cuffia, schermo video live e profili prestazionali.':
-        'Otwiera panel ustawień wyjść audio sali, odsłuchu w słuchawkach, ekranu wideo Live i profili wydajności.',
+        'Otwiera panel ustawień wyjść audio sali, odsłuchu w słuchawkach, ekranu projektora i profili wydajności.',
     '🔒 Layout: Bloccato':
         '🔒 Układ: zablokowany',
     'Blocca o sblocca le larghezze dei 3 pannelli principali (Scaletta, Anteprima, Ispettore).\nDi default è bloccato per evitare spostamenti accidentali; clicca per ridimensionare a piacere.':
-        'Blokuje lub odblokowuje szerokości 3 głównych paneli (lista cue, podgląd, inspektor).\nDomyślnie zablokowane, by uniknąć przypadkowych zmian; kliknij, aby zmieniać rozmiar.',
+        'Blokuje lub odblokowuje szerokości 3 głównych paneli (lista cue, podgląd, ustawienia cue).\nDomyślnie zablokowane, by uniknąć przypadkowych zmian; kliknij, aby zmieniać rozmiar.',
     'Blocca Larghezza Pannelli':
         'Zablokuj szerokość paneli',
     'Attiva o disattiva il blocco delle larghezze dei pannelli di regia per prevenire spostamenti accidentali.':
@@ -1288,7 +1288,7 @@ T: dict[str, str] = {
     "LIVE → {} '{}' (Layer {}) | Standby: {} '{}'":
         "GRA → {} '{}' (warstwa {}) | Następny: {} '{}'",
     "LIVE → {} '{}' (Layer {}) — Fine scaletta (premi GO per rilanciare)":
-        "LIVE → {} '{}' (warstwa {}) — koniec listy (naciśnij GO, aby zacząć od nowa)",
+        "GRA → {} '{}' (warstwa {}) — koniec listy (naciśnij GO, aby zacząć od nowa)",
     '↶ Annulla (Ctrl+Z) — Stato precedente ripristinato ({} nel registro)':
         '↶ Cofnij (Ctrl+Z) — przywrócono poprzedni stan ({} w historii)',
     '↷ Ripeti — Modifica ripristinata ({} ripetibili)':
@@ -1328,9 +1328,9 @@ T: dict[str, str] = {
     'Immagine non disponibile':
         'Obraz niedostępny',
     '📐 CALIBRAZIONE SUPERFICI LIVE · Premi F7 per Chiudere':
-        '📐 KALIBRACJA POWIERZCHNI LIVE · naciśnij F7, aby zamknąć',
+        '📐 KALIBRACJA POWIERZCHNI · naciśnij F7, aby zamknąć',
     'BlindCue – Live Output [Monitor Simulato]':
-        'BlindCue – wyjście Live [monitor symulowany]',
+        'BlindCue – projektor [monitor symulowany]',
     'GIUNZIONE 50% (DUAL)':
         'ŁĄCZENIE 50% (PODWÓJNE)',
     ' · ⭕ Ellisse':
@@ -1368,7 +1368,7 @@ T: dict[str, str] = {
     '🔗 MIRROR LIVE: OFF':
         '🔗 Pokaż też na projektorze: WYŁ.',
     "Modalità Progettazione: se ATTIVO, le modifiche a Crop, Scala e Posizione vengono proiettate in tempo reale sullo schermo LIVE per calibrare il videoproiettore/schermo.\nIn Spettacolo dal vivo: lasciare DISATTIVATO per isolare completamente l'anteprima.":
-        'Tryb projektowania: gdy WŁĄCZONY, zmiany przycięcia, skali i pozycji są od razu wyświetlane na ekranie LIVE, aby skalibrować projektor/ekran.\nPodczas przedstawienia: zostaw WYŁĄCZONY, aby podgląd był całkowicie odizolowany.',
+        'Tryb projektowania: gdy WŁĄCZONY, zmiany przycięcia, skali i pozycji są od razu wyświetlane na projektorze, aby skalibrować projektor/ekran.\nPodczas przedstawienia: zostaw WYŁĄCZONY, aby podgląd był całkowicie odizolowany.',
     '🔴 MIRROR: ON':
         '🔴 Pokaż też na projektorze: WŁ.',
     '🔒 MUTE: ON':
@@ -1376,7 +1376,7 @@ T: dict[str, str] = {
     '🔊 CUFFIA: ON':
         '🔊 SŁUCHAWKI: WŁ.',
     "\n<b>Indirizzo OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>\n• <b style='color:#4ade80;'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>\n• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>\n• <b style='color:#f87171;'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>\n• <b style='color:#fbbf24;'>/pause</b> oppure <b>/resume</b> &nbsp;→&nbsp; Mette in pausa o riprende l'emissione<br>\n• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>\n• <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>\n• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti\n        ":
-        "\n<b>Adres OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>\n• <b style='color:#4ade80;'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla cue w standby<br>\n• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>\n• <b style='color:#f87171;'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; wygaszenie Live (powrót do warstwy 0)<br>\n• <b style='color:#fbbf24;'>/pause</b> lub <b>/resume</b> &nbsp;→&nbsp; pauza lub wznowienie<br>\n• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>\n• <b style='color:#38bdf8;'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>\n• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń\n        ",
+        "\n<b>Adres OSC:</b> <span style='color:#38bdf8;'>udp://0.0.0.0:53000</span><br>\n• <b style='color:#4ade80;'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla następnego cue<br>\n• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>\n• <b style='color:#f87171;'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; czarny ekran (powrót do warstwy 0)<br>\n• <b style='color:#fbbf24;'>/pause</b> lub <b>/resume</b> &nbsp;→&nbsp; pauza lub wznowienie<br>\n• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>\n• <b style='color:#38bdf8;'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>\n• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń\n        ",
     '📡 Controllo Remoto LAN (Web & OSC) — BlindCUE':
         '📡 Zdalne sterowanie LAN (web i OSC) — BlindCUE',
     '📡 CONTROLLO REMOTO IN RETE LOCALE (LAN REGIA)':
@@ -1386,7 +1386,7 @@ T: dict[str, str] = {
     '🔴 SERVIZI REMOTI: DISATTIVATI (Avvia)':
         '🔴 USŁUGI ZDALNE: WYŁ. (uruchom)',
     '📱 Telecomando Operatore (Master LIVE)':
-        '📱 Pilot operatora (sterowanie LIVE)',
+        '📱 Pilot operatora (prowadzenie przedstawienia)',
     '👁️ Monitor Regista (Sola Lettura)':
         '👁️ Monitor reżysera (tylko podgląd)',
     '🎛️ Automazione OSC && Porte':
@@ -1414,9 +1414,9 @@ T: dict[str, str] = {
     'Chiudi':
         'Zamknij',
     'Inquadra con Smartphone\nper aprire il Telecomando LIVE':
-        'Zeskanuj smartfonem,\naby otworzyć pilota LIVE',
+        'Zeskanuj smartfonem,\naby otworzyć pilota',
     '📱 TELECOMANDO MASTER LIVE (OPERATORE)':
-        '📱 PILOT LIVE (OPERATOR)',
+        '📱 PILOT OPERATORA',
     "Ideale per il tecnico sul palco o in sala durante le prove e il montaggio. Offre il controllo completo sull'emissione dei media.":
         'Idealny dla technika na scenie lub na sali podczas prób i montażu. Daje pełną kontrolę nad emisją mediów.',
     'Indirizzo Web:':
@@ -1468,9 +1468,9 @@ T: dict[str, str] = {
     '✅ <b>Scaletta completa:</b> navigazione rapida e lancio diretto [ ▶ GO ] per singola Cue':
         '✅ <b>Pełna lista cue:</b> szybkie przewijanie i bezpośrednie [ ▶ GO ] dla każdego cue',
     '👁️ <b>Panoramica 3 Layer Live:</b> stato simultaneo di Layer 1 (Fondo), Layer 2 (Medio) e Layer 3 (Overlay)':
-        '👁️ <b>Przegląd 3 warstw Live:</b> stan warstwy 1 (tło), 2 (środek) i 3 (nakładka) jednocześnie',
+        '👁️ <b>Przegląd 3 warstw:</b> stan warstwy 1 (tło), 2 (środek) i 3 (nakładka) jednocześnie',
     '👁️ <b>Prossimo Lancio in Standby:</b> Q in attesa, destinazione layer, fade e tempi di transizione':
-        '👁️ <b>Następny w standby:</b> oczekujące Q, docelowa warstwa, przejście i czasy',
+        '👁️ <b>Następny cue:</b> oczekujące Q, docelowa warstwa, przejście i czasy',
     '👁️ <b>Scaletta Dinamica Completa:</b> stato live, tipi media, tempi ed avanzamento':
         '👁️ <b>Pełna lista cue na żywo:</b> stan, typy mediów, czasy i postęp',
     "🔒 <b style='color:#f87171;'>Zero comandi e zero click:</b> nessun pulsante interattivo, nessun rischio di errore accidentale":
@@ -1650,7 +1650,7 @@ T: dict[str, str] = {
     'Magenta — Evento Speciale':
         'Purpurowy — wydarzenie specjalne',
     'Curva Fade IN / OUT':
-        'Krzywa Fade IN / OUT',
+        'Krzywa pojawiania i wygaszania',
     "Forma d'Onda e Automazioni (Timeline)":
         'Przebieg i automatyzacja (oś czasu)',
     '↦ IN Testina':
@@ -1678,7 +1678,7 @@ T: dict[str, str] = {
     'Finestra temporale visiva per immagini a durata infinita':
         'Okno czasu dla obrazów wyświetlanych bez końca',
     'Forma della rampa Fade IN / OUT (Logaritmica consigliata per audio)':
-        'Kształt narastania Fade IN / OUT (dla audio zalecana logarytmiczna)',
+        'Kształt pojawiania i wygaszania (dla dźwięku zalecana logarytmiczna)',
     '⟲ Reset Punti':
         '⟲ Wyzeruj punkty',
     'Elimina tutti i punti sulla linea Volume/Opacità':
@@ -1718,7 +1718,7 @@ T: dict[str, str] = {
     'Layer comune: L{}':
         'Wspólna warstwa: L{}',
     'Fade: {}':
-        'Fade: {}',
+        'Krzywa: {}',
     'Logaritmica':
         'Logarytmiczna',
     '🖥️ <b>CPU:</b> {} Core ({}) | 💾 <b>RAM:</b> {} GB (Disp: {} GB) | 🎮 <b>GPU:</b> {}':
@@ -1795,7 +1795,7 @@ T: dict[str, str] = {
     'Colore Scena: {}':
         'Kolor sceny: {}',
     'Posizione: #{}':
-        'Pozycja: #{}',
+        'Numer: #{}',
     'Q (Copione): {}':
         'Q (scenariusz): {}',
     'Nome: {}':
@@ -1898,8 +1898,8 @@ T: dict[str, str] = {
         'Kolor tekstu:',
     'Posizione sullo schermo:':
         'Położenie na ekranie:',
-    'Suggerimento: la didascalia va sul Layer 3 (sopra video e foto). Fade In/Out, posizione e crossfade si impostano nell\'Inspector come per una foto.':
-        'Wskazówka: napis trafia na warstwę 3 (nad filmem i zdjęciami). Fade In/Out, położenie i przenikanie ustawisz w Inspektorze tak jak dla zdjęcia.',
+    "Suggerimento: la didascalia va sul Layer 3 (sopra video e foto). Fade In/Out, posizione e crossfade si impostano nell'Inspector come per una foto.":
+        'Wskazówka: napis trafia na warstwę 3 (nad filmem i zdjęciami). Pojawianie, wygaszanie, położenie i przenikanie ustawisz w ustawieniach cue tak jak dla zdjęcia.',
     'Anteprima (proiettore):':
         'Podgląd (projektor):',
     'Colore del testo':
@@ -1916,8 +1916,8 @@ T: dict[str, str] = {
         'Cue tekstowe',
     'Il cue selezionato non è un cue di testo. Aggiungine uno con il pulsante "+ Testo".':
         'Zaznaczony cue nie jest cue tekstowym. Napis dodasz przyciskiem „+ Tekst”.',
-    'Crossfade: l\'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.':
-        'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw Fade In na 0.',
+    "Crossfade: l'immagine mostrata ora sul layer di questo cue sfuma nel nuovo cue nel tempo indicato (0 = stacco netto). Se lo usi, imposta il Fade In a 0.":
+        'Przenikanie: obraz widoczny teraz na warstwie tego cue płynnie przechodzi w ten cue w podanym czasie (0 = ostre cięcie). Przy przenikaniu ustaw pojawianie na 0.',
     # ── speakers remembered per computer (feature PR) ──
     'Predefinito di sistema, segue il sistema (ora: {})':
         'Domyślne wyjście systemowe (teraz: {})',
@@ -1928,8 +1928,8 @@ T: dict[str, str] = {
     'Uscita audio scelta di nuovo collegata: {}':
         'Wybrane głośniki znów podłączone: {}',
     # ── strings from 3157c0a (PANIC on ESC twice, VA-API, OSC, bundle masks) ──
-    '<b>Indirizzo OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>• <b style=\'color:#f87171;\'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pausa, ripresa o toggle<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l\'IP per inviare comandi protetti':
-        '<b>Adres OSC:</b> <span style=\'color:#38bdf8;\'>{}</span><br>• <b style=\'color:#4ade80;\'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla cue w standby<br>• <b style=\'color:#f87171;\'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>• <b style=\'color:#f87171;\'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; wygaszenie Live (powrót do warstwy 0)<br>• <b style=\'color:#fbbf24;\'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; pauza, wznowienie lub przełączenie<br>• <b style=\'color:#38bdf8;\'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>• <b style=\'color:#38bdf8;\'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>• <b style=\'color:#a855f7;\'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń',
+    "<b>Indirizzo OSC:</b> <span style='color:#38bdf8;'>{}</span><br>• <b style='color:#4ade80;'>/go</b> oppure <b>/cue/go</b> &nbsp;→&nbsp; Esegue GO sulla cue in Standby<br>• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; Arresto immediato 0ms (Tutti i livelli)<br>• <b style='color:#f87171;'>/stop</b> oppure <b>/blackout</b> &nbsp;→&nbsp; Blackout live (Ritorno a Layer 0)<br>• <b style='color:#fbbf24;'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; Pausa, ripresa o toggle<br>• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; Sposta la selezione della scaletta<br>• <b style='color:#38bdf8;'>/cue/&lt;numero&gt;/go</b> &nbsp;→&nbsp; Esegue subito la cue indicata (es. <i>/cue/3/go</i>)<br>• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; Autentica l'IP per inviare comandi protetti":
+        "<b>Adres OSC:</b> <span style='color:#38bdf8;'>{}</span><br>• <b style='color:#4ade80;'>/go</b> lub <b>/cue/go</b> &nbsp;→&nbsp; GO dla następnego cue<br>• <b style='color:#f87171;'>/panic</b> &nbsp;→&nbsp; natychmiastowy stop 0 ms (wszystkie warstwy)<br>• <b style='color:#f87171;'>/stop</b> lub <b>/blackout</b> &nbsp;→&nbsp; czarny ekran (powrót do warstwy 0)<br>• <b style='color:#fbbf24;'>/pause</b> / <b>/resume</b> / <b>/pause_toggle</b> &nbsp;→&nbsp; pauza, wznowienie lub przełączenie<br>• <b style='color:#38bdf8;'>/next</b> / <b>/prev</b> &nbsp;→&nbsp; przesuwa zaznaczenie na liście<br>• <b style='color:#38bdf8;'>/cue/&lt;numer&gt;/go</b> &nbsp;→&nbsp; od razu uruchamia wskazany cue (np. <i>/cue/3/go</i>)<br>• <b style='color:#a855f7;'>/auth &lt;pin&gt;</b> &nbsp;→&nbsp; uwierzytelnia IP do wysyłania chronionych poleceń",
     'Attiva (VA-API / Hardware Decode)':
         'Aktywna (VA-API / dekodowanie sprzętowe)',
     'EMERGENZA (0ms): Taglia immediatamente Audio, Video e Immagini su tutti i layer. Mostra Nero assoluto se il Tappo è quello di calibrazione (o Tappo personalizzato se impostato).\nDa tastiera: premi ESC due volte entro 0,6s (protezione anti-tocco accidentale).':
@@ -1963,7 +1963,7 @@ T: dict[str, str] = {
     '⚠ Tastiera non sul pannello regia: SPAZIO ed ESC non arrivano a BlindCue':
         '⚠ Klawiatura nie jest na panelu reżysera: SPACJA i ESC nie trafiają do BlindCue',
     '{} pronta — premi GO per avviarla (il doppio clic in LIVE non avvia)':
-        '{} gotowy — naciśnij GO, aby go uruchomić (podwójne kliknięcie w trybie LIVE nie uruchamia)',
+        '{} gotowy — naciśnij GO, aby go uruchomić (podwójne kliknięcie w przedstawieniu nie uruchamia)',
     '⛔ Esclusiva: blocca il GO finché è in onda':
         '⛔ Wyłączny: blokuje GO, dopóki trwa',
     "Mentre questa cue è in onda il GO manuale viene rifiutato (anche da remoto), così un GO dato per errore non la copre. Ctrl+Spazio forza comunque il GO.\nAttenzione: un'immagine senza durata resta in onda finché non viene fermata.":
@@ -2033,7 +2033,7 @@ T: dict[str, str] = {
     'Curva:':
         'Krzywa:',
     'Voci:':
-        'Pozycje:',
+        'Punkty:',
     'Tipo di azione':
         'Rodzaj akcji',
     'Su cosa agisce':
@@ -2043,7 +2043,7 @@ T: dict[str, str] = {
     'Testo della nota':
         'Tekst notatki',
     'Voci della checklist, una per riga':
-        'Pozycje listy kontrolnej, jedna w wierszu',
+        'Punkty listy kontrolnej, jeden w wierszu',
     'Tutto ciò che è in onda':
         'Wszystko, co gra',
     'Un layer':
@@ -2067,7 +2067,7 @@ T: dict[str, str] = {
     "Es. Aspetta l'ingresso di Anna, poi GO":
         'Np. Czekaj na wejście Ani, potem GO',
     'Una voce per riga':
-        'Jedna pozycja w wierszu',
+        'Jeden punkt w wierszu',
     'Ambra':
         'Bursztynowy',
     'Rosso — attenzione':
@@ -2081,11 +2081,11 @@ T: dict[str, str] = {
     'Grigio chiaro':
         'Jasnoszary',
     'Abbassa audio e immagine delle cue scelte nel tempo indicato, poi le ferma. Il loro Post-Delay e Auto-GO non partono.':
-        'Ścisza dźwięk i wygasza obraz wybranych cue w podanym czasie, potem je zatrzymuje. Ich Post-Delay i Auto-GO nie ruszają.',
+        'Ścisza dźwięk i wygasza obraz wybranych cue w podanym czasie, potem je zatrzymuje. Ich czekanie po końcu i Auto-GO nie ruszają.',
     'Ferma subito le cue scelte, anche quelle in attesa del Pre-Delay.':
-        'Od razu zatrzymuje wybrane cue, także te czekające na koniec Pre-Delay.',
+        'Od razu zatrzymuje wybrane cue, także te, które czekają na start (opóźnienie startu).',
     'La cue in loop finisce il giro in corso e poi prosegue: passa alla sezione successiva o termina normalmente (con Post-Delay e Auto-GO).':
-        'Zapętlony cue kończy bieżące okrążenie i idzie dalej: przechodzi do następnej sekcji albo kończy się normalnie (z Post-Delay i Auto-GO).',
+        'Zapętlony cue kończy bieżące okrążenie i idzie dalej: przechodzi do następnej sekcji albo kończy się normalnie (z czekaniem po końcu i Auto-GO).',
     'Cambia il volume di ciò che suona, senza fermarlo. Assoluto: come se il Volume della cue fosse quello indicato. Relativo: più o meno dB rispetto ad ora.':
         'Zmienia głośność tego, co gra, bez zatrzymywania. Bezwzględnie: tak, jakby Głośność cue miała podaną wartość. Względnie: o tyle dB głośniej lub ciszej niż teraz.',
     'Rende più o meno trasparente tutto il layer (immagini e video). La cue successiva sullo stesso layer riparte piena.':
@@ -2093,7 +2093,7 @@ T: dict[str, str] = {
     'Mostra il testo in cima alla finestra di regia (non sul proiettore). Non blocca il GO; sparisce al GO successivo o con ✕.':
         'Pokazuje tekst u góry okna reżysera (nie na projektorze). Nie blokuje GO; znika przy następnym GO albo po kliknięciu ✕.',
     'Lista da spuntare prima dello spettacolo: compare con il GO e anche entrando in LIVE finché non è tutta spuntata. Le spunte non vengono salvate.':
-        'Lista do odhaczenia przed spektaklem: pojawia się po GO, a także przy wejściu w tryb LIVE, dopóki nie jest cała odhaczona. Zaznaczenia nie są zapisywane.',
+        'Lista do odhaczenia przed spektaklem: pojawia się po GO, a także przy wejściu do przedstawienia, dopóki nie jest cała odhaczona. Zaznaczenia nie są zapisywane.',
     'nessuna cue scelta':
         'nie wybrano cue',
     'tutto in onda':
@@ -2153,7 +2153,7 @@ T: dict[str, str] = {
     "La cue selezionata non è l'inizio della scaletta.\nDa quale cue deve partire il GO?":
         'Zaznaczony cue nie jest początkiem listy.\nOd którego cue ma ruszyć GO?',
     'La selezione è cambiata da quando hai lasciato LIVE.\nDa quale cue deve partire il GO?':
-        'Zaznaczenie zmieniło się od wyjścia z LIVE.\nOd którego cue ma ruszyć GO?',
+        'Zaznaczenie zmieniło się od wyjścia z przedstawienia.\nOd którego cue ma ruszyć GO?',
     'File non supportati, ignorati: {}':
         'Pominięto nieobsługiwane pliki: {}',
     'Unsupported File':
@@ -4366,4 +4366,178 @@ T: dict[str, str] = {
         'Zapas dźwięku miksera w milisekundach',
     '(vale dal prossimo avvio del programma)':
         '(od następnego uruchomienia programu)',
+    'BlindCue – Live Output':
+        'BlindCue – projektor',
+    'Audio Preview: {}':
+        'Dźwięk podglądu: {}',
+    'Conto alla rovescia {}:{}: {}':
+        'Odliczanie {}:{}: {}',
+    'Avviso Pre-Viz: {}':
+        'Podgląd – uwaga: {}',
+    'Live Player init failed: {}':
+        'Nie udało się uruchomić odtwarzacza: {}',
+    'Load failed: {}':
+        'Nie udało się wczytać pliku: {}',
+    'Test Player init failed: {}':
+        'Nie udało się uruchomić odtwarzacza podglądu: {}',
+    'Test load failed: {}':
+        'Podgląd nie wczytał pliku: {}',
+    'Media file not found: {}':
+        'Nie znaleziono pliku: {}',
+    'Project file not found: {}':
+        'Nie znaleziono pliku przedstawienia: {}',
+    'Validation Error':
+        'Nie można dodać cue',
+    'Layer 0 (Tappo video)':
+        'Zaślepka L0 (wideo)',
+    'PRE -{}s':
+        'START za {}s',
+    'POST -{}s':
+        'CZEKA {}s',
+    'LIVE L{}':
+        'GRA L{}',
+    'LIVE: [{}] {}{}  ({})':
+        'GRA: [{}] {}{}  ({})',
+    'Pre +{}s':
+        'Opóźnienie +{}s',
+    'Post +{}s':
+        'Czekanie +{}s',
+    '⏳ Pre +{}s':
+        '⏳ Opóźnienie +{}s',
+    '⏳ PRE':
+        '⏳ OPÓŹN.',
+    '⏱ POST':
+        '⏱ CZEKA',
+    'Fade IN: {}s':
+        'Pojawianie: {}s',
+    'Fade OUT: {}s':
+        'Wygaszanie: {}s',
+    'Curva Fade impostata: {}':
+        'Krzywa wygaszania: {}',
+    'Sezione {}: {}':
+        'Sekcja {}: {}',
+    'Modalità Gruppo impostata a: {}':
+        'Sposób grania sceny: {}',
+    'Errore ottimizzazione dinamica: {}':
+        'Błąd optymalizacji dynamiki: {}',
+    "Analisi Loudness non riuscita per '{}': {}":
+        'Analiza głośności „{}” nie powiodła się: {}',
+    '{}. {}{}  (non trovato)':
+        '{}. {}{}  (nie znaleziono)',
+    'Salvato con successo: {}':
+        'Zapisano: {}',
+    '… e altri {}':
+        '… i {} innych',
+    'Selezione: {} {}':
+        'Zaznaczono: {} {}',
+    "Proiettore '{}' non disponibile per l'uscita {}":
+        'Projektor „{}” jest niedostępny dla wyjścia {}',
+    'Pausa tutto':
+        'Wstrzymaj wszystko',
+    'Blackout':
+        'Czarny ekran',
+    'Pre-Delay':
+        'Opóźnienie startu',
+    'Post-Delay':
+        'Czekanie po końcu',
+    'Fade In':
+        'Pojawianie',
+    'Focus':
+        'Przejście między polami',
+    'Stop':
+        'Zatrzymaj',
+    'Pos {}:':
+        'Poz. {}:',
+    'Regolazione {}':
+        'Suwak: {}',
+    'Ripristina {}':
+        'Przywróć: {}',
+    'Clip: {}':
+        'Klip: {}',
+    '[ACT] {}  ➔  +{}s':
+        '[AKC] {}  ➔  +{}s',
+    '[{}] {}  ➔  L{} (+{}s)':
+        '[{}] {}  ➔  L{} (+{}s)',
+    '📱 Client Web connessi: {}':
+        '📱 Połączone telefony: {}',
+    'Superficie {}':
+        'Powierzchnia {}',
+    '🖥 {}×{} px (Span)':
+        '🖥 {}×{} px (rozciągnięte)',
+    'SEAM 50%':
+        'STYK 50%',
+    '{}: {}×{} px (Feather {}px)':
+        '{}: {}×{} px (zmiękczenie {}px)',
+    'Azzera punti {}':
+        'Wyczyść punkty: {}',
+    '16:9 Live':
+        '16:9 jak na projektorze',
+    '{}: {}×{} px':
+        '{}: {}×{} px',
+    '⚠ {}':
+        '⚠ {}',
+    '⚠️ {}':
+        '⚠️ {}',
+    'S-Curve':
+        'Krzywa S',
+    'netto':
+        'ostra krawędź',
+    'scaletta':
+        'lista-cue',
+    'VIDEO':
+        'WIDEO',
+    'IMAGE':
+        'OBRAZ',
+    'GROUP':
+        'SCENA',
+    'ACTION':
+        'AKCJA',
+    'VID':
+        'WID',
+    'IMG':
+        'OBR',
+    'GRP':
+        'SCN',
+    'ACT':
+        'AKC',
+    'FOTO':
+        'FOTO',
+    'C1 · TL':
+        'C1 · LG',
+    'C2 · TR':
+        'C2 · PG',
+    'C3 · BR':
+        'C3 · PD',
+    'C4 · BL':
+        'C4 · LD',
+    'TL':
+        'LG',
+    'TR':
+        'PG',
+    'BR':
+        'PD',
+    'BL':
+        'LD',
+    'C{} ({}): {} px, {} px  ({}%, {}%)':
+        'C{} ({}): {} px, {} px  ({}%, {}%)',
+    'Simultaneo':
+        'Wszystko naraz',
+    'Sequenziale':
+        'Po kolei',
+    'Passo-Passo':
+        'Krok po kroku',
+    'Random':
+        'Losowo',
+    'Loop Scena':
+        'Zapętl scenę',
+    '[SCENA]':
+        '[SCENA]',
+    "Esegui cue in Standby: {} '{}'":
+        "Uruchom następny cue: {} '{}'",
+    'Cue':
+        'Cue',
+    'out_point ({}) must be > in_point ({})':
+        'Koniec ({}) musi być po początku ({})',
+    'PRE-VIZ':
+        'PODGLĄD',
 }

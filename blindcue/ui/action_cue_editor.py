@@ -11,6 +11,7 @@ from collections.abc import Callable
 
 from engine.action_cues import describe_action
 from engine.envelope import FADE_CURVE_LABELS
+from i18n import tr
 from models.cue import (
     ACTION_CALL,
     ACTION_CHECKLIST,
@@ -463,7 +464,7 @@ class ActionCueEditor(QWidget):
         for row, cue in enumerate(cues):
             if cue.media_type == MediaType.ACTION or cue.cue_id == self._cue_id:
                 continue
-            item = QListWidgetItem(f"{format_cue_ref(row, cue)}  {cue.name}  [{cue.media_type.value}]")
+            item = QListWidgetItem(f"{format_cue_ref(row, cue)}  {cue.name}  [{tr(cue.media_type.value)}]")
             item.setData(Qt.ItemDataRole.UserRole, cue.cue_id)
             item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
             item.setCheckState(Qt.CheckState.Checked if cue.cue_id in chosen else Qt.CheckState.Unchecked)
@@ -483,7 +484,7 @@ class ActionCueEditor(QWidget):
         for row, cue in enumerate(cues):
             if cue.cue_id == self._cue_id:
                 continue
-            self.combo_goal.addItem(f"{format_cue_ref(row, cue)}  {cue.name}  [{cue.media_type.value}]", cue.cue_id)
+            self.combo_goal.addItem(f"{format_cue_ref(row, cue)}  {cue.name}  [{tr(cue.media_type.value)}]", cue.cue_id)
         if chosen is not None and self.combo_goal.findData(chosen) < 0:
             self.combo_goal.addItem("? cue eliminata dalla scaletta", chosen)
         self._select(self.combo_goal, chosen)

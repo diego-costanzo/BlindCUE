@@ -88,9 +88,10 @@ _LINK_ICONS = {
 
 def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
     """Return a compact, single-line Pre-Delay / Duration / Post-Delay / Link string."""
+    # Every piece is translated here: the joined line matches no dictionary entry.
     parts: list[str] = []
     if cue.pre_delay > 0:
-        parts.append(f"Pre +{cue.pre_delay:.1f}s")
+        parts.append(tr("Pre +{}s").format(f"{cue.pre_delay:.1f}"))
 
     if cue.media_type == MediaType.GROUP:
         mode_tag = {
@@ -100,7 +101,7 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
             "RANDOM": "Random",
             "LOOP": "Loop Scena",
         }.get(getattr(cue, "group_mode", "STEP"), getattr(cue, "group_mode", "STEP"))
-        parts.append(f"📁 {mode_tag}")
+        parts.append(f"📁 {tr(mode_tag)}")
     elif cue.media_type == MediaType.IMAGE:
         if cue.hold_time <= 0:
             dur_str = "∞"
@@ -124,7 +125,7 @@ def format_cue_timing_summary(cue: Cue, known_duration_sec: float = 0.0) -> str:
         parts.append(dur_str)
 
     if cue.post_delay > 0:
-        parts.append(f"Post +{cue.post_delay:.1f}s")
+        parts.append(tr("Post +{}s").format(f"{cue.post_delay:.1f}"))
 
     link_ico = _LINK_ICONS.get(cue.follow_mode, "⏹")
     return " · ".join(parts) + f"  {link_ico}"
@@ -2218,7 +2219,7 @@ class LiveShowPanel(QWidget):
 
                 q_badge = f"[{sb_cue.q_label.strip()}] " if (sb_cue.q_label and sb_cue.q_label.strip()) else ""
                 if sb_cue.media_type == MediaType.GROUP:
-                    layer_badge = "[SCENA]"
+                    layer_badge = tr("[SCENA]")
                 elif sb_cue.media_type == MediaType.ACTION:
                     layer_badge = ""  # no layer; the [ACT] type tag follows
                 else:
@@ -2231,11 +2232,11 @@ class LiveShowPanel(QWidget):
                     MediaType.GROUP: "GRP",
                     MediaType.ACTION: "ACT",
                 }
-                type_tag = type_map.get(sb_cue.media_type, sb_cue.media_type.value[:3])
+                type_tag = tr(type_map.get(sb_cue.media_type, sb_cue.media_type.value[:3]))
 
                 extra_tags: list[str] = []
                 if sb_cue.pre_delay > 0:
-                    extra_tags.append(f"⏳ Pre +{sb_cue.pre_delay:.1f}s")
+                    extra_tags.append(tr("⏳ Pre +{}s").format(f"{sb_cue.pre_delay:.1f}"))
                 # Each piece is translated on its own: glued into one string
                 # they no longer matched the dictionary (Italian on a Polish screen).
                 if sb_cue.follow_mode == FollowMode.AUTO_FOLLOW.value:
