@@ -3864,4 +3864,34 @@ T: dict[str, str] = {
         'Dodano program: {}',
     "'{}' è cambiato: forma d'onda e durata aggiornate":
         '„{}” się zmienił: przebieg i długość odświeżone',
+    'Spettacolo di prova':
+        'Pokaz ćwiczebny',
+    '🎓 Spettacolo di prova':
+        '🎓 Pokaz ćwiczebny',
+    'Impossibile preparare lo spettacolo di prova: {}':
+        'Nie da się przygotować pokazu ćwiczebnego: {}',
+    'Spettacolo di prova pronto: entra nella Prova (Maiusc+F5) e premi Spazio':
+        'Pokaz ćwiczebny gotowy: wejdź w Próbę (Shift+F5) i naciskaj Spację',
+    'Benvenuto':
+        'Witaj',
+    'Questo è lo spettacolo di prova. Premi la barra spaziatrice (GO) per passare alla cue successiva. Le note come questa le vedi solo tu, mai il pubblico.':
+        'To jest pokaz ćwiczebny. Naciśnij spację (GO), żeby przejść do następnej pozycji. Notatki takie jak ta widzisz tylko Ty, nigdy widownia.',
+    "Musica d'apertura":
+        'Muzyka na otwarcie',
+    'Sfondo: il bosco':
+        'Tło: las',
+    'Atto I – Nel bosco':
+        'Akt I – W lesie',
+    'Campanello (tasto D)':
+        'Dzwonek (klawisz D)',
+    'Il sipario si apre':
+        'Kurtyna się rozsuwa',
+    'Scena: il castello':
+        'Scena: zamek',
+    'Sfondo: il castello':
+        'Tło: zamek',
+    'Atto II – Il castello':
+        'Akt II – Zamek',
+    'Temporale':
+        'Burza',
 }

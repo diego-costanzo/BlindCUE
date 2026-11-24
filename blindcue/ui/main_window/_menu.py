@@ -36,6 +36,7 @@ class _MenuMixin:
         file_menu.addSeparator()
         file_menu.addAction(QAction("📁 Nuovo spettacolo da una cartella…", self,
                                     triggered=self._new_show_from_folder))  # 5.9
+        file_menu.addAction(QAction("🎓 Spettacolo di prova", self, triggered=self._open_practice_show))  # 5.17
         # Rarely used items in submenus (evaluation 2026-11-24, #13): the menu fits on one screen.
         import_menu = file_menu.addMenu("📥 Importa")
         import_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
@@ -238,6 +239,7 @@ class _MenuMixin:
             QAction("📖 Manuale utente", self, shortcut=QKeySequence(Qt.Key.Key_F1),
                     triggered=lambda: show_help(self))
         )
+        help_menu.addAction(QAction("🎓 Spettacolo di prova", self, triggered=self._open_practice_show))  # 5.17
         help_menu.addSeparator()
         help_menu.addAction(
             QAction("&Info Hardware & Accelerazione…", self, triggered=self._show_hw_info)

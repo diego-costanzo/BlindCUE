@@ -65,6 +65,7 @@ from ui.main_window._history import _HistoryMixin
 from ui.main_window._edit_cue import _EditCueMixin
 from ui.main_window._settings_transfer import _SettingsTransferMixin
 from ui.main_window._external_tools import _ExternalToolsMixin
+from ui.main_window._practice_show import _PracticeShowMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -118,6 +119,7 @@ class MainWindow(
     _EditCueMixin,
     _SettingsTransferMixin,
     _ExternalToolsMixin,
+    _PracticeShowMixin,
     _SlideshowMixin,
     QMainWindow,
 ):

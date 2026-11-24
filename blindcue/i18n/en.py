@@ -3642,4 +3642,34 @@ T: dict[str, str] = {
         'Program added: {}',
     "'{}' è cambiato: forma d'onda e durata aggiornate":
         "'{}' changed: waveform and length read again",
+    'Spettacolo di prova':
+        'Practice show',
+    '🎓 Spettacolo di prova':
+        '🎓 Practice show',
+    'Impossibile preparare lo spettacolo di prova: {}':
+        'Cannot prepare the practice show: {}',
+    'Spettacolo di prova pronto: entra nella Prova (Maiusc+F5) e premi Spazio':
+        'Practice show ready: enter the Rehearsal (Shift+F5) and press Space',
+    'Benvenuto':
+        'Welcome',
+    'Questo è lo spettacolo di prova. Premi la barra spaziatrice (GO) per passare alla cue successiva. Le note come questa le vedi solo tu, mai il pubblico.':
+        'This is the practice show. Press the space bar (GO) to move to the next cue. Notes like this one are only for you, never for the audience.',
+    "Musica d'apertura":
+        'Opening music',
+    'Sfondo: il bosco':
+        'Backdrop: the forest',
+    'Atto I – Nel bosco':
+        'Act I – In the forest',
+    'Campanello (tasto D)':
+        'Bell (key D)',
+    'Il sipario si apre':
+        'The curtain opens',
+    'Scena: il castello':
+        'Scene: the castle',
+    'Sfondo: il castello':
+        'Backdrop: the castle',
+    'Atto II – Il castello':
+        'Act II – The castle',
+    'Temporale':
+        'Storm',
 }
