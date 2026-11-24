@@ -7,7 +7,8 @@ the show file), so a show moves to another computer unchanged. When an
 output is not set there, or its device is unplugged, a fallback rule
 decides: stage -> the system default, hall -> like the stage, foldback ->
 muted (a private track never reaches the audience). Every output has a trim
-(-30..0 dB; Qt volume cannot go above 1.0).
+(-30..+12 dB; Qt volume cannot go above 1.0, so the part above 0 dB is
+played only by the own mixer of 3.2).
 """
 
 from __future__ import annotations
@@ -24,6 +25,9 @@ FALLBACKS = ("default", "stage", "mute")
 ALLOWED_FALLBACKS = {"stage": ("default",), "hall": FALLBACKS, "foldback": FALLBACKS}
 DEFAULT_FALLBACK = {"stage": "default", "hall": "stage", "foldback": "mute"}
 TRIM_MIN_DB = -30.0
+# 3.2: a trim above 0 dB is played by the own mixer (engine.audio_mixer_*): sound cues on such an
+# output go through it; Qt Multimedia (video sound, mixer off) stays at 0 dB.
+TRIM_MAX_DB = 12.0
 # Italian source strings (translated by the i18n layer like every other label).
 LABELS = {"stage": "Palco", "hall": "Sala", "foldback": "Spie (ascolto palco)", "mute": "Muto",
           "default": "uscita predefinita"}
@@ -49,11 +53,16 @@ def clamp_trim(db: object) -> float:
         value = float(db)
     except (TypeError, ValueError):
         return 0.0
-    return max(TRIM_MIN_DB, min(0.0, value)) if value == value else 0.0
+    return max(TRIM_MIN_DB, min(TRIM_MAX_DB, value)) if value == value else 0.0
 
 
 def trim_gain(db: object) -> float:
-    """Linear gain of a trim in dB."""
+    """Linear gain of a trim in dB for Qt Multimedia (never above 1.0)."""
+    return 10 ** (min(0.0, clamp_trim(db)) / 20.0)
+
+
+def mixer_trim_gain(db: object) -> float:
+    """Linear gain of a trim in dB for the own mixer (up to TRIM_MAX_DB)."""
     return 10 ** (clamp_trim(db) / 20.0)
 
 

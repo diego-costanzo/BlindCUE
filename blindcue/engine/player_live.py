@@ -88,15 +88,29 @@ class _TailFade(QObject):
         self.deleteLater()
 
 
+def _mixer_service() -> Any | None:
+    """The own mixer (3.2) when the program already uses it; never created from here."""
+    import sys
+
+    module = sys.modules.get("engine.audio_mixer_output")
+    return module.MixerService.existing() if module is not None else None
+
+
 def stop_all_tails() -> None:
     """PANIC / Fade All / Blackout: the sounds still fading after a crossfade stop too."""
     for tail in list(_TAILS):
         tail.stop()
+    mixer = _mixer_service()
+    if mixer is not None:
+        mixer.cut_tails()  # 3.9: reverbs still ringing after their cue stopped
 
 
 def fade_all_tails(seconds: float) -> None:
     for tail in list(_TAILS):
         tail.finish_within(seconds)
+    mixer = _mixer_service()
+    if mixer is not None:
+        mixer.fade_tails(seconds)
 
 
 def pause_all_tails(paused: bool) -> None:
@@ -220,25 +234,46 @@ class LivePlayer(QObject):
         self._play_started_pos_ms: int = 0
         self._media_progressed: bool = False
 
+        # 3.2 / 3.9: the decks are Qt Multimedia ("qt", the default) or own-mixer decks ("mixer")
+        # for a sound cue with pan / more outputs / boost / effects (engine.player_mixer).
+        self._backend: str = "qt"
+        self._want_mix: Any | None = None   # set by use_mixer() for the next load() only
+        self._mix_spec: Any | None = None   # the mixer spec of the loaded cue
+
         self._setup_player()
+
+    def _make_deck(self) -> tuple[Any, Any]:
+        """A new (player, audio output) pair of the current backend."""
+        if self._backend == "mixer":
+            from engine.player_mixer import MixerAudioOutput, MixerMediaPlayer
+
+            player, audio = MixerMediaPlayer(self), MixerAudioOutput(self)
+            player.setAudioOutput(audio)
+            player.set_mix(self._mix_spec)
+            return player, audio
+        player, audio = QMediaPlayer(self), QAudioOutput(self)
+        if self._audio_device is not None and not self._audio_device.isNull():
+            audio.setDevice(self._audio_device)
+        player.setAudioOutput(audio)
+        return player, audio
 
     def _setup_player(self) -> None:
         try:
-            self._player = QMediaPlayer(self)
-            self._audio = QAudioOutput(self)
-            if self._audio_device is not None and not self._audio_device.isNull():
-                self._audio.setDevice(self._audio_device)
-            self._player.setAudioOutput(self._audio)
+            self._player, self._audio = self._make_deck()
 
             if self._video_output is not None:
                 self._player.setVideoOutput(self._video_output)
 
-            self._player.positionChanged.connect(lambda ms: self._on_deck_pos(0, ms))
-            self._player.durationChanged.connect(lambda ms: self._on_deck_dur(0, ms))
-            self._player.mediaStatusChanged.connect(lambda st: self._on_deck_status(0, st))
-            self._player.errorOccurred.connect(lambda err, msg: self._on_deck_error(0, err, msg))
+            # Only the current deck 0 speaks (a deck replaced by the other backend is silent).
+            p = self._player
+            p.positionChanged.connect(lambda ms, p=p: self._on_deck_pos(0, ms) if p is self._player else None)
+            p.durationChanged.connect(lambda ms, p=p: self._on_deck_dur(0, ms) if p is self._player else None)
+            p.mediaStatusChanged.connect(
+                lambda st, p=p: self._on_deck_status(0, st) if p is self._player else None)
+            p.errorOccurred.connect(
+                lambda err, msg, p=p: self._on_deck_error(0, err, msg) if p is self._player else None)
 
-            logger.info("[LIVE] Native Wayland Multimedia player initialised")
+            logger.info("[LIVE] Native Wayland Multimedia player initialised (%s)", self._backend)
         except Exception as exc:
             logger.critical("[LIVE] Failed to initialise QtMultimedia: %s", exc, exc_info=True)
             self.signals.error_occurred.emit(f"Live Player init failed: {exc}")
@@ -246,18 +281,17 @@ class LivePlayer(QObject):
     def _ensure_standby_deck(self) -> None:
         if self._standby_player is not None:
             return
-        self._standby_player = QMediaPlayer(self)
-        self._standby_audio = QAudioOutput(self)
-        if self._audio_device is not None and not self._audio_device.isNull():
-            self._standby_audio.setDevice(self._audio_device)
+        self._standby_player, self._standby_audio = self._make_deck()
         self._standby_audio.setVolume(0.0)
-        self._standby_player.setAudioOutput(self._standby_audio)
         if self._standby_video_output is not None:
             self._standby_player.setVideoOutput(self._standby_video_output)
-        self._standby_player.positionChanged.connect(lambda ms: self._on_deck_pos(1, ms))
-        self._standby_player.durationChanged.connect(lambda ms: self._on_deck_dur(1, ms))
-        self._standby_player.mediaStatusChanged.connect(lambda st: self._on_deck_status(1, st))
-        self._standby_player.errorOccurred.connect(lambda err, msg: self._on_deck_error(1, err, msg))
+        s = self._standby_player
+        s.positionChanged.connect(lambda ms, s=s: self._on_deck_pos(1, ms) if s is self._standby_player else None)
+        s.durationChanged.connect(lambda ms, s=s: self._on_deck_dur(1, ms) if s is self._standby_player else None)
+        s.mediaStatusChanged.connect(
+            lambda st, s=s: self._on_deck_status(1, st) if s is self._standby_player else None)
+        s.errorOccurred.connect(
+            lambda err, msg, s=s: self._on_deck_error(1, err, msg) if s is self._standby_player else None)
         rate = getattr(self, "_rate", 1.0)
         if abs(rate - 1.0) > 1e-6:  # 3.7: the second deck (loops, sections) plays at the cue's tempo too
             self._standby_player.setPlaybackRate(rate)
@@ -313,7 +347,110 @@ class LivePlayer(QObject):
         """Peak level since the last call (0..1), then start again."""
         peak = getattr(self, "_peak", 0.0)
         self._peak = 0.0
+        if self._backend == "mixer":  # 3.2: mixer decks measure what they send to the outputs
+            for player in (self._player, self._standby_player):
+                if player is not None and hasattr(player, "take_peak"):
+                    peak = max(peak, player.take_peak())
         return peak
+
+    # ── Own mixer (3.2 / 3.9) ───────────────────────────────────────────
+    def use_mixer(self, spec: Any | None) -> None:
+        """The next load() plays through the own mixer with *spec* (None: Qt Multimedia).
+
+        One-shot: a load() without it always goes back to Qt Multimedia, so a
+        cue never inherits the mixer of the cue before it.
+        """
+        self._want_mix = spec
+
+    def uses_mixer(self) -> bool:
+        return self._backend == "mixer"
+
+    def update_mixer(self, spec: Any | None) -> None:
+        """Pan / outputs / effects changed while the cue plays (from the next mixer block)."""
+        if self._backend != "mixer" or spec is None:
+            return
+        self._mix_spec = spec
+        for player in (self._player, self._standby_player):
+            if player is not None and hasattr(player, "set_mix"):
+                player.set_mix(spec)
+
+    def _swap_backend(self) -> None:
+        """Called by load(): put decks of the wanted backend in place (the old ones are stopped and freed)."""
+        want, self._want_mix = self._want_mix, None
+        backend = "mixer" if want is not None else "qt"
+        self._mix_spec = want
+        if backend != self._backend:
+            for player, audio in ((self._player, self._audio), (self._standby_player, self._standby_audio)):
+                if player is None:
+                    continue
+                for sig in (player.positionChanged, player.durationChanged, player.mediaStatusChanged,
+                            player.errorOccurred):
+                    try:
+                        sig.disconnect()
+                    except (RuntimeError, TypeError):
+                        pass
+                try:
+                    player.stop()
+                    player.setVideoOutput(None)
+                except RuntimeError:
+                    logger.debug("[LIVE] old deck already gone", exc_info=True)
+                player.deleteLater()
+                if audio is not None:
+                    audio.deleteLater()
+            self._backend = backend
+            self._standby_player = self._standby_audio = None
+            self._standby_target_ms = None
+            self._standby_ready = False
+            self._standby_seek_pending = False
+            self._setup_player()
+            if getattr(self, "_level_taps", None) is not None:
+                self._retap()
+            logger.info("[LIVE] decks now play through %s", "the own mixer" if backend == "mixer" else "Qt Multimedia")
+        elif backend == "mixer":
+            for player in (self._player, self._standby_player):
+                if player is not None and hasattr(player, "set_mix"):
+                    player.set_mix(want)
+        self._recompute_master()
+
+    def _retap(self) -> None:
+        """The VU meter taps again after Qt decks came back (mixer decks report their own peaks)."""
+        for tap in self._level_taps:
+            try:
+                tap.audioBufferReceived.disconnect()
+            except (RuntimeError, TypeError):
+                pass
+        self._level_taps = []
+        if self._backend != "qt":
+            return
+        from PySide6.QtMultimedia import QAudioBufferOutput
+
+        self._ensure_standby_deck()
+        for player in (self._player, self._standby_player):
+            tap = QAudioBufferOutput(self)
+            player.setAudioBufferOutput(tap)
+            tap.audioBufferReceived.connect(self._on_level_buffer, Qt.ConnectionType.QueuedConnection)
+            self._level_taps.append(tap)
+
+    def _recompute_master(self) -> None:
+        # A mixer deck gets each output's trim (or mute) in the mixer, per output row.
+        self._master_gain = self._show_gain * (1.0 if self._backend == "mixer" else self._output_gain)
+
+    def _update_fence(self) -> None:
+        """Mixer decks render ahead: tell the active one where the next stop or jump is."""
+        if self._backend != "mixer":
+            return
+        player, _ = self._deck_pair()
+        setter = getattr(player, "set_fence_ms", None)
+        if setter is None:
+            return
+        fence = None
+        if not self._finished:
+            if self._sequencer.active:
+                if self._sequencer._compute_transition()[0] != "CONTINUE":
+                    fence = int(round(self._sequencer.active_end_sec() * 1000))
+            elif self._end_ms is not None:
+                fence = self._end_ms
+        setter(fence)
 
     def hand_over_tail(self, seconds: float) -> bool:
         """Crossfade of sound (evaluation 2026-11-24): what plays now keeps playing on its own
@@ -600,6 +737,7 @@ class LivePlayer(QObject):
             return None
 
     def _ensure_driver_timer(self) -> None:
+        self._update_fence()
         player, _ = self._deck_pair()
         if (
             self._needs_precision_driver()
@@ -667,12 +805,14 @@ class LivePlayer(QObject):
             self._standby_target_ms = None
             self._apply_envelope_at(target_ms / 1000.0)
             self._pre_cue_next_target()
+            self._update_fence()
             return
 
         # Direct seek fallback (seamless fallback if user clicked arbitrary section fast)
         active_p.setPosition(target_ms)
         self._apply_envelope_at(target_ms / 1000.0)
         self._pre_cue_next_target()
+        self._update_fence()
 
     def _compute_audio_gain(self, pos_sec: float) -> float:
         looping_inf = self._is_looping and self._loop_count <= 0
@@ -700,15 +840,17 @@ class LivePlayer(QObject):
         action cue × this master; it is never stored in a cue.
         """
         self._show_gain = max(0.0, min(1.0, float(gain)))
-        self._master_gain = self._show_gain * self._output_gain
+        self._recompute_master()
         if self.is_playing() and not self._manual_fade_active:
             self._apply_current_level()
 
     def set_output_gain(self, gain: float) -> None:
         """3.1: trim of the logical output this player plays on (0 = the output is muted)."""
         self._output_gain = max(0.0, min(1.0, float(gain)))
-        self._master_gain = self._show_gain * self._output_gain
-        if self._output_gain <= 0.0:
+        self._recompute_master()
+        if self._backend == "mixer":
+            pass  # 3.2: the mixer applies each output's trim / mute per output row
+        elif self._output_gain <= 0.0:
             for audio in (self._audio, self._standby_audio):
                 if audio is not None:
                     audio.setVolume(0.0)  # also under a running fade-out: its tail stays silent
@@ -812,6 +954,7 @@ class LivePlayer(QObject):
             return
         pos_ms = player.position()
         self._apply_envelope_at(pos_ms / 1000.0)
+        self._update_fence()
         self._check_boundaries(pos_ms)
 
     def _on_deck_pos(self, deck_idx: int, pos_ms: int) -> None:
@@ -936,6 +1079,7 @@ class LivePlayer(QObject):
             self._driver_timer.stop()
             self._stop_fade_timer()
             self._reset_level_trim()
+            self._swap_backend()  # 3.2: own mixer for this cue, or Qt Multimedia (the default)
             if self._standby_player is not None:
                 self._standby_player.stop()
                 self._standby_target_ms = None
@@ -1042,6 +1186,7 @@ class LivePlayer(QObject):
                 clock[0] += time.monotonic() - clock[1]
                 clock[1] = None
             self._apply_envelope_at(pos_ms / 1000.0)
+            self._update_fence()  # before play(): a mixer deck starts rendering at once
             if player.playbackState() != QMediaPlayer.PlaybackState.PlayingState:
                 player.play()
                 logger.debug("[LIVE] play()")
@@ -1210,6 +1355,7 @@ class LivePlayer(QObject):
             player.setPosition(ms)
             self._apply_envelope_at(ms / 1000.0)
             self._pre_cue_next_target()
+            self._update_fence()
         except Exception as exc:
             logger.error("[LIVE] seek() failed: %s", exc, exc_info=True)
 
@@ -1327,7 +1473,8 @@ class LivePlayer(QObject):
 
             def _tick() -> None:
                 progress = min(1.0, (time.monotonic() - started) / duration_sec)
-                level = 0.0 if self._output_gain <= 0.0 else max(0.0, start_norm * (1.0 - progress))
+                muted = self._output_gain <= 0.0 and self._backend != "mixer"
+                level = 0.0 if muted else max(0.0, start_norm * (1.0 - progress))
                 self._deck_pair()[1].setVolume(level)
                 if progress >= 1.0:
                     self._stop_fade_timer()

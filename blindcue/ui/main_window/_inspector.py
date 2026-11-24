@@ -49,7 +49,8 @@ class _InspectorMixin:
 
         anchor_row, anchor = self._anchor_row_and_cue()
         if anchor is not None:
-            if field_key in ("in_point", "out_point", "volume", "opacity", "fade_in", "fade_out", "hold_time"):
+            if field_key in ("in_point", "out_point", "volume", "opacity", "fade_in", "fade_out", "hold_time",
+                             "audio_mix"):
                 self._sync_timeline_for_cue(anchor)
                 self.live_automation_updated.emit(anchor)
             if field_key in ("in_point", "out_point"):

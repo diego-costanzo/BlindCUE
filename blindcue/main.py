@@ -98,6 +98,7 @@ from engine.action_cues import (
 )
 from engine.envelope import evaluate_cue_level
 from engine import player_live as _player_live
+from engine import player_mixer as _player_mixer
 from engine.player_live import LivePlayer
 from engine.player_test import TestPlayer
 from engine.show_engine import ShowEngine
@@ -492,6 +493,7 @@ def main() -> int:
     # Keep both projectors on the same surface calibration set
     output_win_b.set_surfaces(output_win.get_surfaces())
     main_win.set_device_manager(device_mgr)
+    _player_mixer.install(device_mgr, lambda: main_win._cues)  # 3.2: own mixer: same map of outputs
 
     # ── LAN Remote Control (Web Server & OSC UDP Automation) ──────────
     # Disabled by default for maximum theatre network safety; activated manually when needed
@@ -569,6 +571,9 @@ def main() -> int:
         if (getattr(cue, "normalize_audio", False) or is_jam) and getattr(cue, "auto_gain_db", 0.0) != 0.0:
             gain_factor = 10.0 ** (cue.auto_gain_db / 20.0)
             effective_vol = max(0.0, min(1.0, cue.volume * gain_factor))
+        if not (hasattr(player, "uses_mixer") and player.uses_mixer()):
+            # 3.2: the level of the cue's own output row; Qt plays it up to 0 dB (the mixer does the rest).
+            effective_vol *= _player_mixer.qt_level(cue)
 
         kwargs = dict(
             base_volume=effective_vol,
@@ -896,6 +901,15 @@ def main() -> int:
                 cue.name, main_win_tr(LABELS[out]), where))
             logger.warning("[AUDIO] '%s': output %s not available, plays via %s", cue.name, out, route.via)
 
+    def _mixer_spec(cue: Cue):
+        """3.2: the own mixer's settings for a sound cue that needs them (None: Qt Multimedia plays it)."""
+        def _notice(why: str, c=cue) -> None:
+            text = ("'{}': mixer disattivato su questo computer: panorama, uscite ed effetti non suonano"
+                    if why == "mixer_off" else "'{}': FFmpeg mancante: panorama, uscite ed effetti non suonano")
+            main_win._status_label.setText(main_win_tr(text).format(c.name))
+
+        return _player_mixer.spec_for_launch(cue, device_mgr, _notice)
+
     def _launch_cue_now(cue: Cue, layer: int, expected_gen: int, start_at: float | None = None,
                         restoring: bool = False) -> None:
         """Start actual Audio/Video/Image playback/display for *cue* on *layer*.
@@ -990,6 +1004,7 @@ def main() -> int:
                         surface_id=cue.surface_id,
                         rotation=cue.rotation,
                     )
+                    lp.use_mixer(None)  # a video always plays on Qt decks
                     lp.load(
                         cue.file_path,
                         start=cue.in_point,
@@ -1016,6 +1031,7 @@ def main() -> int:
                 if lp is not None:
                     # Clear visual elements ONLY on this target layer; other layers stay live!
                     _clear_layer(layer)
+                    lp.use_mixer(_mixer_spec(cue))  # 3.2: pan / outputs / effects, else Qt as before
                     lp.load(
                         cue.file_path,
                         start=cue.in_point,
@@ -1667,6 +1683,7 @@ def main() -> int:
                     _apply_cue_automation(live_players[l_idx], cue, hot=True)
                     if cue.media_type == MediaType.VIDEO:
                         held.arm(cue, live_players[l_idx])  # 4.4: "keep the last frame" changed
+                    live_players[l_idx].update_mixer(_player_mixer.spec_of(cue))  # 3.2: pan, rows, effects
                 elif cue.media_type == MediaType.IMAGE and l_idx not in live_image_envelopes:
                     _set_layer_opacity(l_idx, cue.opacity)
 
@@ -1828,6 +1845,7 @@ def main() -> int:
                 live_positions[l_idx] = 0.0
             for lp in live_players.values():
                 lp.stop()
+            _player_mixer.panic()  # 3.2: the sound the mixer already queued goes too
             active_live_cues.clear()
             fading_layers.clear()
             for cid in list(slot_override):
@@ -2273,6 +2291,10 @@ def main() -> int:
                 lp.shutdown()
             except Exception:
                 logger.debug("[MAIN] LivePlayer shutdown failed", exc_info=True)
+        try:
+            _player_mixer.shutdown()  # 3.2: audio thread and decoders
+        except Exception:
+            logger.debug("[MAIN] mixer shutdown failed", exc_info=True)
         if test_player is not None:
             try:
                 test_player.shutdown()

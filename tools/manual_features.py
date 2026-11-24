@@ -68,6 +68,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "playlist": ("blindcue/engine/playlist_import.py", None),
     "silence_trim": ("blindcue/engine/silence_trim.py", None),
     "tempo": ("blindcue/models/cue.py", "playback_rate: float"),
+    "mixer": ("blindcue/engine/audio_mixer_core.py", None),
     "picture_layout": ("blindcue/ui/main_window/_layout_copy.py", None),
     "slideshow": ("blindcue/ui/main_window/_slideshow.py", None),
     "cue_export": ("blindcue/engine/cue_export.py", None),

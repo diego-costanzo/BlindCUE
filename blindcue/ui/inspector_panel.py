@@ -1079,6 +1079,14 @@ class CueInspectorPanel(QGroupBox):
         rate_row.addWidget(self.spin_rate, 1)
         rate_row.addWidget(self.chk_keep_pitch)
         l1.addLayout(rate_row)
+        # 3.2 / 3.9: pan, more outputs with their levels, EQ, reverb (sound cues; folded when unused).
+        from ui.audio_mix_panel import AudioMixPanel
+
+        self.mix_panel = AudioMixPanel()
+        self.mix_panel.changed.connect(lambda: self._emit_change("audio_mix"))
+        self.combo_audio_output.currentIndexChanged.connect(
+            lambda _i: self.mix_panel.set_main_output(self.combo_audio_output.currentData() or "stage"))
+        l1.addWidget(self.mix_panel)
         lay.addWidget(c1)
 
         # Card 2: Dissolvenze (Fade IN/OUT)
@@ -2444,7 +2452,7 @@ class CueInspectorPanel(QGroupBox):
             self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
             self.btn_mask_edit, self.btn_mask_clear,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset, self.combo_audio_output,
-            self.spin_rate, self.chk_keep_pitch,
+            self.spin_rate, self.chk_keep_pitch, self.mix_panel,
             self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
             self.spin_in, self.spin_out, self.btn_io_reset, self.btn_trim_silence, self.spin_hold_time,
             self.spin_pre_delay, self.spin_post_delay,
@@ -2621,6 +2629,7 @@ class CueInspectorPanel(QGroupBox):
         for w in (self.lbl_audio_output, self.combo_audio_output, self.lbl_rate, self.spin_rate,
                   self.chk_keep_pitch):
             w.setVisible(media_type in (MediaType.AUDIO, MediaType.VIDEO))
+        self.mix_panel.setVisible(media_type == MediaType.AUDIO and not basic)  # 3.2: the mixer plays sound cues
         for w in (self.lbl_markers, self.combo_markers, self.btn_marker_delete):
             w.setVisible(not basic and media_type in (MediaType.AUDIO, MediaType.VIDEO))
         self.lbl_callers.setVisible(bool(self.lbl_callers.text()) and not basic)
@@ -2843,6 +2852,7 @@ class CueInspectorPanel(QGroupBox):
                 self._load_start_rel(cue)
                 self._load_call_only(cue)
                 self._load_audio_output(getattr(cue, "audio_output", "stage"))
+                self.mix_panel.load(getattr(cue, "audio_mix", {}), getattr(cue, "audio_output", "stage"))
                 self._load_rate(cue)
                 self.edit_clock.blockSignals(True)
                 self.edit_clock.setText(getattr(cue, "start_clock", ""))
@@ -2928,6 +2938,7 @@ class CueInspectorPanel(QGroupBox):
             self.load_markers(lead)  # the anchor's marks (the ones ✕ deletes and the waveform shows)
             outs = {getattr(c, "audio_output", "stage") for c in cues}
             self._load_audio_output(outs.pop() if len(outs) == 1 else lead.audio_output)
+            self.mix_panel.load(getattr(lead, "audio_mix", {}), self.combo_audio_output.currentData() or "stage")
             self.edit_clock.blockSignals(True)
             self.edit_clock.setText(lead.start_clock if all(c.start_clock == lead.start_clock for c in cues) else "")
             self.edit_clock.blockSignals(False)
@@ -2989,6 +3000,8 @@ class CueInspectorPanel(QGroupBox):
             cue.audio_output = self.combo_audio_output.currentData() or "stage"
             cue.playback_rate = round(self.spin_rate.value() / 100.0, 2)
             cue.keep_pitch = self.chk_keep_pitch.isChecked()
+        if cue.media_type == MediaType.AUDIO:
+            cue.audio_mix = self.mix_panel.values()  # 3.2 / 3.9
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -3127,6 +3140,9 @@ class CueInspectorPanel(QGroupBox):
                 cue.keep_pitch = self.chk_keep_pitch.isChecked()
             elif field_key == "audio_output":
                 cue.audio_output = self.combo_audio_output.currentData() or "stage"
+            elif field_key == "audio_mix":
+                if cue.media_type == MediaType.AUDIO:
+                    cue.audio_mix = self.mix_panel.values()
             elif field_key == "call_only":
                 cue.call_only = self.chk_call_only.isChecked()
             elif field_key == "start_clock":

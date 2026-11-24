@@ -90,6 +90,7 @@ class DeviceManager(QObject):
         # 3.1: the logical output each live player was last routed to (id(player) -> key)
         self._player_routes: dict[int, str] = {}
         self._output_missing: dict[str, str] = {}  # hall / foldback whose chosen device is unplugged
+        self._mixer: Any | None = None  # 3.2: the own mixer, routed through the same map
 
         self._init_defaults()
         self._wire_hotplug_detectors()
@@ -305,10 +306,26 @@ class DeviceManager(QObject):
                 out.append(self.route_device(route))
         return out
 
+    def register_mixer(self, mixer: Any | None) -> None:
+        """3.2: the own mixer asks here where each logical output plays (and follows every change)."""
+        self._mixer = mixer
+        if mixer is not None:
+            mixer.set_route_provider(self.mixer_route)
+
+    def mixer_route(self, key: str) -> tuple[QAudioDevice | None, float, bool]:
+        """(device, gain with the trim - also above 0 dB -, muted) of logical output *key* for the mixer."""
+        route = self.resolve_output(key)
+        if route.muted:
+            return None, 0.0, True
+        return self.route_device(route), audio_routes.mixer_trim_gain(self.output_trim_db(key)), False
+
     def reroute_players(self) -> None:
         """The map or the devices changed: every live player follows its output again."""
         for p in self._live_players:
             self.route_player(p, self._player_routes.get(id(p), "stage"))
+        mixer = getattr(self, "_mixer", None)
+        if mixer is not None:
+            mixer.refresh_routes()
         earcons = getattr(self, "_earcon_mgr", None)
         if earcons is not None and hasattr(earcons, "set_audience_devices"):
             earcons.set_audience_devices(self.audience_devices())  # operator sounds never there

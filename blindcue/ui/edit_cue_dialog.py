@@ -49,7 +49,7 @@ PREVIEW_W, PREVIEW_H = 384, 216
 # Fields the window may hand back (sections and envelope points only when the waveform changed them).
 FIELDS = ("name", "q_label", "notes", "follow_mode", "group_mode", "in_point", "out_point", "volume", "loop",
           "fade_in", "fade_out", "fade_curve", "crossfade", "volume_points", "sections", "hold_time", "scale",
-          "position_x", "position_y", "text_spec", "crossfade_style", "hold_last_frame")
+          "position_x", "position_y", "text_spec", "crossfade_style", "hold_last_frame", "audio_mix")
 
 
 def _seconds_field(maximum: float, special: str = "") -> SmartDoubleSpinBox:
@@ -374,6 +374,15 @@ class EditCueDialog(QDialog):
         self.cb_loop.toggled.connect(lambda on: self._set("loop", bool(on)))
         level.addWidget(self.cb_loop)
         lay.addLayout(level)
+        if self._kind == MediaType.AUDIO:
+            # 3.2 / 3.9: pan, more outputs, levels above 0 dB, EQ, reverb (folded when unused).
+            from ui.audio_mix_panel import AudioMixPanel
+
+            self.mix_panel = AudioMixPanel()
+            self.mix_panel.set_preview_hint(True)
+            self.mix_panel.load(self._vals["audio_mix"] or {}, getattr(self._cue, "audio_output", "stage"))
+            self.mix_panel.changed.connect(lambda: self._set("audio_mix", self.mix_panel.values()))
+            lay.addWidget(self.mix_panel)
         return box
 
     def _build_picture(self) -> QGroupBox:

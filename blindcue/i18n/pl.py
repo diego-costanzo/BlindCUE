@@ -4266,4 +4266,104 @@ T: dict[str, str] = {
         "Efekt już gra: '{}' (nie startuje od nowa)",
     '➕ Aggiungi':
         '➕ Dodaj',
+    'Mixer: panorama, più uscite, effetti':
+        'Mikser: panorama, więcej wyjść, efekty',
+    'Panorama sinistra / destra, la stessa cue su più uscite con il proprio livello, livelli sopra 0 dB, equalizzatore e riverbero.':
+        'Panorama lewo / prawo, ta sama cue na kilku wyjściach, każde z własnym poziomem, poziomy powyżej 0 dB, korektor i pogłos.',
+    'Mostra le impostazioni del mixer':
+        'Pokaż ustawienia miksera',
+    'Livello uscita:':
+        'Poziom na wyjściu:',
+    'Livello della cue sulla sua uscita (quella scelta sopra); -INF = in silenzio. Sopra 0 dB suona attraverso il mixer interno.':
+        'Poziom cue na jej wyjściu (wybranym wyżej); -INF = cisza. Powyżej 0 dB gra przez wbudowany mikser.',
+    'Livello della cue sulla sua uscita in decibel':
+        'Poziom cue na jej wyjściu w decybelach',
+    'Panorama:':
+        'Panorama:',
+    'Da dove arriva il suono: sinistra, centro, destra.':
+        'Skąd dochodzi dźwięk: z lewej, ze środka, z prawej.',
+    'Panorama: sinistra meno cento, centro zero, destra più cento':
+        'Panorama: lewo minus sto, środek zero, prawo plus sto',
+    'C':
+        'Ś',
+    'L {}':
+        'L {}',
+    'R {}':
+        'P {}',
+    'Panorama al centro':
+        'Panorama na środek',
+    'Altre uscite:':
+        'Inne wyjścia:',
+    '+ Aggiungi uscita':
+        '+ Dodaj wyjście',
+    "La cue suona anche su un'altra uscita (es. Spie per gli attori), con il suo livello.":
+        'Cue gra także na innym wyjściu (np. Odsłuch dla aktorów), z własnym poziomem.',
+    'Cambia tutte le uscite di':
+        'Zmień wszystkie wyjścia o',
+    'Di quanti decibel cambiare tutte le uscite':
+        'O ile decybeli zmienić wszystkie wyjścia',
+    'Sposta il livello di ogni uscita (non quelle a -INF).':
+        'Przesuwa poziom każdego wyjścia (poza tymi na -INF).',
+    'Cambia tutte le uscite':
+        'Zmień wszystkie wyjścia',
+    'Equalizzatore:':
+        'Korektor:',
+    'Bassi':
+        'Niskie',
+    'Medi':
+        'Średnie',
+    'Acuti':
+        'Wysokie',
+    'Equalizzatore {} in decibel':
+        'Korektor {} w decybelach',
+    'Riverbero:':
+        'Pogłos:',
+    'spento':
+        'wył.',
+    'Quanto riverbero aggiungere (0 = nessuno).':
+        'Ile pogłosu dodać (0 = bez pogłosu).',
+    'Riverbero in percento':
+        'Pogłos w procentach',
+    'Stanza piccola':
+        'Mały pokój',
+    'Sala media':
+        'Średnia sala',
+    'Sala grande':
+        'Duża sala',
+    'Grandezza della stanza del riverbero':
+        'Wielkość pomieszczenia pogłosu',
+    'Altra uscita della cue':
+        'Inne wyjście cue',
+    'Livello su questa uscita in decibel':
+        'Poziom na tym wyjściu w decybelach',
+    'Togli questa uscita':
+        'Usuń to wyjście',
+    'Nessuna impostazione del mixer: la cue suona come sempre.':
+        'Bez ustawień miksera: cue gra jak zawsze.',
+    '⚠ Mixer spento su questo computer (Show → Dispositivi → Uscite audio): la cue suona senza queste impostazioni.':
+        '⚠ Mikser jest wyłączony na tym komputerze (Sterowanie → Urządzenia → Wyjścia dźwięku): cue gra bez tych ustawień.',
+    'Questa cue suona attraverso il mixer interno.':
+        'Ta cue gra przez wbudowany mikser.',
+    "L'ascolto di prova (▶) suona senza il mixer.":
+        'Odsłuch próbny (▶) gra bez miksera.',
+    "'{}': mixer disattivato su questo computer: panorama, uscite ed effetti non suonano":
+        "'{}': mikser jest wyłączony na tym komputerze: panorama, wyjścia i efekty nie grają",
+    "'{}': FFmpeg mancante: panorama, uscite ed effetti non suonano":
+        "'{}': brak FFmpeg: panorama, wyjścia i efekty nie grają",
+    'Sopra 0 dB: le cue audio di questa uscita suonano attraverso il mixer interno (il suono dei video e il mixer spento restano a 0 dB).':
+        'Powyżej 0 dB: cue dźwiękowe tego wyjścia grają przez wbudowany mikser (dźwięk filmów i wszystko przy wyłączonym mikserze zostaje na 0 dB).',
+    'Mixer interno':
+        'Wbudowany mikser',
+    'Acceso: panorama, più uscite per cue, livelli sopra 0 dB, equalizzatore, riverbero':
+        'Włączony: panorama, kilka wyjść na cue, poziomy powyżej 0 dB, korektor, pogłos',
+    'Spento: ogni cue suona come prima del mixer (senza queste impostazioni).':
+        'Wyłączony: każda cue gra jak przed mikserem (bez tych ustawień).',
+    'Riserva di suono:':
+        'Zapas dźwięku:',
+    'Più riserva = nessuna interruzione anche se il computer è occupato; meno riserva = un secondo suono del mixer entra prima. Predefinito: {} ms.':
+        'Większy zapas = bez przerw w dźwięku nawet przy zajętym komputerze; mniejszy zapas = drugi dźwięk miksera wchodzi szybciej. Domyślnie: {} ms.',
+    'Riserva di suono del mixer in millisecondi':
+        'Zapas dźwięku miksera w milisekundach',
+    '(vale dal prossimo avvio del programma)':
+        '(od następnego uruchomienia programu)',
 }

@@ -226,6 +226,15 @@ def _audio_output(value: object) -> str:
     return normalize_output(value)
 
 
+def _audio_mix(value: object, audio_output: str, media_type: MediaType) -> dict[str, Any]:
+    """3.2 / 3.9: validated mixer settings of a sound (or video) cue, {} when unused."""
+    if media_type not in (MediaType.AUDIO, MediaType.VIDEO) or not value:
+        return {}
+    from engine.audio_mix import sanitize
+
+    return sanitize(value, audio_output)
+
+
 def _clock_text(value: object) -> str:
     """2.6: a valid "H:MM" / "H:MM:SS" time of day as given, "" for anything else."""
     import re
@@ -553,6 +562,9 @@ class Cue:
     audio_output: str = "stage"  # 3.1: logical output stage / hall / foldback, or "mute" (engine.audio_routes)
     playback_rate: float = 1.0  # 3.7: tempo, 0.5-2.0 (1.0 = as recorded)
     keep_pitch: bool = True     # 3.7: a faster / slower tempo keeps the pitch (when the backend can)
+    # 3.2 / 3.9: own mixer - pan, more outputs, levels above 0 dB, EQ, reverb (engine.audio_mix).
+    # Empty = none of it: the cue plays through Qt Multimedia exactly as before.
+    audio_mix: dict[str, Any] = field(default_factory=dict)
     script_page: str = ""       # 5.1: page of the script the cue is on
     script_line: str = ""       # 5.1: the line (words) it comes on
     # 2.1: starts by itself relative to another cue (by cue_id): N s after its
@@ -610,6 +622,7 @@ class Cue:
             self.file_path = ""
         else:
             self.action_spec = {}
+        self.audio_mix = _audio_mix(self.audio_mix, self.audio_output, self.media_type)
 
     # ── Path Resolution & Security ────────────────────────────────────
     def resolve_media_path(self, project_root: str | Path) -> str:
@@ -770,6 +783,7 @@ class Cue:
             "audio_output": self.audio_output,
             "playback_rate": self.playback_rate,
             "keep_pitch": self.keep_pitch,
+            "audio_mix": _audio_mix(self.audio_mix, self.audio_output, self.media_type),
             "script_page": self.script_page,
             "script_line": self.script_line,
             "start_rel_cue": self.start_rel_cue,
@@ -873,6 +887,7 @@ class Cue:
             audio_output=_audio_output(data.get("audio_output", "stage")),
             playback_rate=_safe_float(data.get("playback_rate", 1.0), 1.0, min_val=0.5, max_val=2.0),
             keep_pitch=bool(data.get("keep_pitch", True)),
+            audio_mix=dict(data["audio_mix"]) if isinstance(data.get("audio_mix"), dict) else {},
             script_page=str(data.get("script_page", "") or "")[:20],
             script_line=str(data.get("script_line", "") or "")[:300],
             start_rel_cue=_safe_int(data.get("start_rel_cue"), 0, min_val=0) or None

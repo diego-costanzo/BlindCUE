@@ -21,10 +21,12 @@ from pathlib import Path
 from PySide6.QtCore import QTimer, QUrl
 from PySide6.QtMultimedia import QAudioOutput, QMediaPlayer
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QDialog,
     QFileDialog,
     QGridLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QMessageBox,
@@ -98,11 +100,13 @@ class AudioOutputsDialog(QDialog):
             fallback.setEnabled(key != "stage")  # the stage always falls back on the default output
             fallback.setAccessibleName(tr("Se manca: {}").format(name))
             trim = SmartDoubleSpinBox()
-            trim.setRange(audio_routes.TRIM_MIN_DB, 0.0)
+            trim.setRange(audio_routes.TRIM_MIN_DB, audio_routes.TRIM_MAX_DB)  # 3.2: above 0 dB via the mixer
             trim.setDecimals(1)
             trim.setSingleStep(1.0)
             trim.setSuffix(" dB")
             trim.setAccessibleName(tr("Regolazione: {}").format(name))
+            trim.setToolTip("Sopra 0 dB: le cue audio di questa uscita suonano attraverso il mixer interno "
+                            "(il suono dei video e il mixer spento restano a 0 dB).")
             test = QPushButton("▶ Prova")
             test.setAccessibleName(tr("Prova: {}").format(name))
             test.clicked.connect(lambda _c=False, k=key: self._test(k))
@@ -120,6 +124,7 @@ class AudioOutputsDialog(QDialog):
         self.lbl_status = QLabel("")
         self.lbl_status.setWordWrap(True)
         lay.addWidget(self.lbl_status)
+        lay.addWidget(self._build_mixer())
         if self.locked:
             note = QLabel("Durante lo spettacolo le uscite non si cambiano e non si provano.")
             note.setStyleSheet("color: #f59e0b;")
@@ -143,6 +148,51 @@ class AudioOutputsDialog(QDialog):
                 w.setEnabled(not self.locked and (w is not fallback or key != "stage"))
         self.btn_test_all.setEnabled(not self.locked)
         self.btn_import.setEnabled(not self.locked)
+
+    def _build_mixer(self) -> QGroupBox:
+        """3.2 / 3.9: the own mixer on this computer - on / off, and how much sound it keeps queued."""
+        from engine.audio_mixer_output import (
+            DEFAULT_LEAD_MS,
+            LEAD_CHOICES,
+            SETTING_ENABLED,
+            SETTING_LEAD,
+            lead_ms,
+            mixer_enabled,
+        )
+        from PySide6.QtCore import QSettings
+
+        box = QGroupBox("Mixer interno")
+        lay = QVBoxLayout(box)
+        self.chk_mixer = QCheckBox("Acceso: panorama, più uscite per cue, livelli sopra 0 dB, equalizzatore, riverbero")
+        self.chk_mixer.setChecked(mixer_enabled())
+        self.chk_mixer.setToolTip("Spento: ogni cue suona come prima del mixer (senza queste impostazioni).")
+        self.chk_mixer.toggled.connect(
+            lambda on: QSettings("BlindCue", "BlindCue").setValue(SETTING_ENABLED, bool(on)))
+        lay.addWidget(self.chk_mixer)
+        row = QHBoxLayout()
+        row.addWidget(QLabel("Riserva di suono:"))
+        self.combo_lead = QComboBox()
+        for ms in LEAD_CHOICES:
+            self.combo_lead.addItem(f"{ms} ms", ms)
+        current = lead_ms()
+        index = self.combo_lead.findData(current)
+        if index < 0:
+            self.combo_lead.addItem(f"{current} ms", current)
+            index = self.combo_lead.count() - 1
+        self.combo_lead.setCurrentIndex(index)
+        self.combo_lead.setToolTip(
+            tr("Più riserva = nessuna interruzione anche se il computer è occupato; meno riserva = un secondo "
+               "suono del mixer entra prima. Predefinito: {} ms.").format(DEFAULT_LEAD_MS))
+        self.combo_lead.setAccessibleName("Riserva di suono del mixer in millisecondi")
+        self.combo_lead.currentIndexChanged.connect(
+            lambda _i: QSettings("BlindCue", "BlindCue").setValue(SETTING_LEAD, int(self.combo_lead.currentData())))
+        row.addWidget(self.combo_lead)
+        row.addWidget(QLabel("(vale dal prossimo avvio del programma)"))
+        row.addStretch(1)
+        lay.addLayout(row)
+        for w in (self.chk_mixer, self.combo_lead):
+            w.setEnabled(not self.locked)
+        return box
 
     def _fill(self) -> None:
         """Show the current map (signals blocked: filling changes nothing)."""

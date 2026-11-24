@@ -4006,4 +4006,104 @@ T: dict[str, str] = {
         "Effect already playing: '{}' (not restarted)",
     '➕ Aggiungi':
         '➕ Add',
+    'Mixer: panorama, più uscite, effetti':
+        'Mixer: pan, more outputs, effects',
+    'Panorama sinistra / destra, la stessa cue su più uscite con il proprio livello, livelli sopra 0 dB, equalizzatore e riverbero.':
+        'Pan left / right, the same cue on several outputs each with its own level, levels above 0 dB, equaliser and reverb.',
+    'Mostra le impostazioni del mixer':
+        'Show the mixer settings',
+    'Livello uscita:':
+        'Output level:',
+    'Livello della cue sulla sua uscita (quella scelta sopra); -INF = in silenzio. Sopra 0 dB suona attraverso il mixer interno.':
+        "The cue's level on its output (the one chosen above); -INF = silent. Above 0 dB it plays through the built-in mixer.",
+    'Livello della cue sulla sua uscita in decibel':
+        "The cue's level on its output in decibels",
+    'Panorama:':
+        'Pan:',
+    'Da dove arriva il suono: sinistra, centro, destra.':
+        'Where the sound comes from: left, centre, right.',
+    'Panorama: sinistra meno cento, centro zero, destra più cento':
+        'Pan: left minus one hundred, centre zero, right plus one hundred',
+    'C':
+        'C',
+    'L {}':
+        'L {}',
+    'R {}':
+        'R {}',
+    'Panorama al centro':
+        'Pan to the centre',
+    'Altre uscite:':
+        'More outputs:',
+    '+ Aggiungi uscita':
+        '+ Add output',
+    "La cue suona anche su un'altra uscita (es. Spie per gli attori), con il suo livello.":
+        'The cue also plays on another output (e.g. Foldback for the performers), with its own level.',
+    'Cambia tutte le uscite di':
+        'Change all outputs by',
+    'Di quanti decibel cambiare tutte le uscite':
+        'How many decibels to change all outputs by',
+    'Sposta il livello di ogni uscita (non quelle a -INF).':
+        'Moves the level of every output (not those at -INF).',
+    'Cambia tutte le uscite':
+        'Change all outputs',
+    'Equalizzatore:':
+        'Equaliser:',
+    'Bassi':
+        'Low',
+    'Medi':
+        'Mid',
+    'Acuti':
+        'High',
+    'Equalizzatore {} in decibel':
+        'Equaliser {} in decibels',
+    'Riverbero:':
+        'Reverb:',
+    'spento':
+        'off',
+    'Quanto riverbero aggiungere (0 = nessuno).':
+        'How much reverb to add (0 = none).',
+    'Riverbero in percento':
+        'Reverb in percent',
+    'Stanza piccola':
+        'Small room',
+    'Sala media':
+        'Medium hall',
+    'Sala grande':
+        'Large hall',
+    'Grandezza della stanza del riverbero':
+        'Size of the reverb room',
+    'Altra uscita della cue':
+        'Another output of the cue',
+    'Livello su questa uscita in decibel':
+        'Level on this output in decibels',
+    'Togli questa uscita':
+        'Remove this output',
+    'Nessuna impostazione del mixer: la cue suona come sempre.':
+        'No mixer settings: the cue plays as always.',
+    '⚠ Mixer spento su questo computer (Show → Dispositivi → Uscite audio): la cue suona senza queste impostazioni.':
+        '⚠ The mixer is off on this computer (Show → Devices → Audio outputs): the cue plays without these settings.',
+    'Questa cue suona attraverso il mixer interno.':
+        'This cue plays through the built-in mixer.',
+    "L'ascolto di prova (▶) suona senza il mixer.":
+        'The test listening (▶) plays without the mixer.',
+    "'{}': mixer disattivato su questo computer: panorama, uscite ed effetti non suonano":
+        "'{}': the mixer is off on this computer: pan, outputs and effects are not played",
+    "'{}': FFmpeg mancante: panorama, uscite ed effetti non suonano":
+        "'{}': FFmpeg missing: pan, outputs and effects are not played",
+    'Sopra 0 dB: le cue audio di questa uscita suonano attraverso il mixer interno (il suono dei video e il mixer spento restano a 0 dB).':
+        'Above 0 dB: the sound cues of this output play through the built-in mixer (the sound of videos, and everything with the mixer off, stays at 0 dB).',
+    'Mixer interno':
+        'Built-in mixer',
+    'Acceso: panorama, più uscite per cue, livelli sopra 0 dB, equalizzatore, riverbero':
+        'On: pan, several outputs per cue, levels above 0 dB, equaliser, reverb',
+    'Spento: ogni cue suona come prima del mixer (senza queste impostazioni).':
+        'Off: every cue plays as before the mixer (without these settings).',
+    'Riserva di suono:':
+        'Sound reserve:',
+    'Più riserva = nessuna interruzione anche se il computer è occupato; meno riserva = un secondo suono del mixer entra prima. Predefinito: {} ms.':
+        'More reserve = no dropouts even when the computer is busy; less reserve = a second mixer sound comes in sooner. Default: {} ms.',
+    'Riserva di suono del mixer in millisecondi':
+        "The mixer's sound reserve in milliseconds",
+    '(vale dal prossimo avvio del programma)':
+        '(from the next start of the program)',
 }
