@@ -396,6 +396,8 @@ class _RemoteMixin:
         paused = bool(paused)
         changed = (getattr(self, "_is_global_paused", False) != paused)
         self._is_global_paused = paused
+        if not silent and changed:
+            self._run_event("PAUSE" if paused else "RESUME")  # 5.19
         self._undo_go_pause(paused)  # Pause All stops the Undo GO countdown
         if not silent and changed and hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_pause()

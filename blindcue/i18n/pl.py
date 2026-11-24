@@ -3988,4 +3988,34 @@ T: dict[str, str] = {
         'Wydrukuj (Ctrl+P) i połóż obok laptopa.',
     'Promemoria aperto nel browser: stampalo con Ctrl+P':
         'Ściągawka otwarta w przeglądarce: wydrukuj ją (Ctrl+P)',
+    'automatico':
+        'automatycznie',
+    'Effetto':
+        'Efekt',
+    'Fine dello spettacolo':
+        'Koniec przedstawienia',
+    'Durata':
+        'Czas trwania',
+    'GO a mano':
+        'GO ręcznie',
+    'Partenze automatiche':
+        'Starty automatyczne',
+    'Effetti':
+        'Efekty',
+    'Pause':
+        'Pauzy',
+    'GO annullati':
+        'Cofnięte GO',
+    'Rapporto dello spettacolo':
+        'Raport z przedstawienia',
+    'In breve':
+        'W skrócie',
+    'Che cosa è successo':
+        'Co się działo',
+    'Cue con GO mai partite':
+        'Pozycje z GO, które nie zagrały',
+    "📋 Rapporto dell'ultimo spettacolo":
+        '📋 Raport z ostatniego przedstawienia',
+    'Nessun rapporto: si scrive alla fine dello spettacolo (non della prova)':
+        'Brak raportu: zapisuje się po zakończeniu przedstawienia (nie próby)',
 }

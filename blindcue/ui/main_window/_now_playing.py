@@ -163,6 +163,7 @@ class _NowPlayingMixin:
         row = next((i for i, c in enumerate(self._cues) if c.cue_id == group_id), -1)
         if row < 0:
             return
+        self._run_event("FADE_SCENE", self._cues[row].name, group_id)  # 5.19
         slots = []
         for i in self._scene_rows(group_id):
             cue = self._cues[i]

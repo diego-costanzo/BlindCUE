@@ -3766,4 +3766,34 @@ T: dict[str, str] = {
         'Print it with Ctrl+P and keep it next to the laptop.',
     'Promemoria aperto nel browser: stampalo con Ctrl+P':
         'Cheat sheet opened in the browser: print it with Ctrl+P',
+    'automatico':
+        'automatic',
+    'Effetto':
+        'Effect',
+    'Fine dello spettacolo':
+        'End of the show',
+    'Durata':
+        'Length',
+    'GO a mano':
+        'GO by hand',
+    'Partenze automatiche':
+        'Automatic starts',
+    'Effetti':
+        'Effects',
+    'Pause':
+        'Pauses',
+    'GO annullati':
+        'GOs undone',
+    'Rapporto dello spettacolo':
+        'Show report',
+    'In breve':
+        'In short',
+    'Che cosa è successo':
+        'What happened',
+    'Cue con GO mai partite':
+        'Cues with a GO that never played',
+    "📋 Rapporto dell'ultimo spettacolo":
+        '📋 Report of the last show',
+    'Nessun rapporto: si scrive alla fine dello spettacolo (non della prova)':
+        'No report yet: it is written when a show ends (not a rehearsal)',
 }

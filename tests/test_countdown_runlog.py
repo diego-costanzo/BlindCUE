@@ -108,7 +108,9 @@ def test_run_log_and_last_time_hint(window):
     files = list((tmp / "runs" / "play").glob("*.csv"))
     assert len(files) == 1
     rows = list(csv.DictReader(open(files[0], encoding="utf-8")))
-    assert [r["name"] for r in rows] == ["a", "b"] and float(rows[1]["seconds"]) > 0
+    gos = [r for r in rows if r["event"] in ("GO", "AUTO")]
+    assert [r["name"] for r in gos] == ["a", "b"] and float(gos[1]["seconds"]) > 0
+    assert rows[-1]["event"] == "END" and files[0].with_suffix(".html").is_file()   # 5.19: the report
     win._cue_list.setCurrentRow(0)
     win._confirm_live_start = lambda: True                                  # "where does it start?": the top
     win.set_live_mode(True)                                                 # the next run
@@ -127,3 +129,22 @@ def test_review_damaged_log_and_rehearsal_not_logged(window):
     win._enter_rehearsal()
     win._on_go()
     assert win._run_log == []                                               # a rehearsal is not a run
+
+
+def test_show_report_has_every_event_and_the_missed_cues(window):
+    """5.19: PANIC, pauses, Fade All and the end go into the run log and the report page."""
+    win, tmp = window
+    win.set_live_mode(True)
+    win._on_go()
+    win.set_global_paused(True)
+    win.set_global_paused(False)
+    win._on_fade_all()
+    win._on_panic()
+    win.set_live_mode(False)
+    csv_file = next((tmp / "runs" / "play").glob("*.csv"))
+    events = [r["event"] for r in csv.DictReader(open(csv_file, encoding="utf-8"))]
+    assert events[0] == "GO" and events[-1] == "END"
+    assert {"PAUSE", "RESUME", "FADE_ALL", "PANIC"} <= set(events)
+    page = csv_file.with_suffix(".html").read_text(encoding="utf-8")
+    assert "class='alarm'" in page and "#3 &#x27;c&#x27;" in page and "#1 &#x27;a&#x27;" not in page  # c never played
+    assert win._read_previous_run() == {9901: 0.0}                                  # hints read only GOs

@@ -90,6 +90,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "practice_show": ("blindcue/engine/practice_show.py", None),
     "start_page": ("blindcue/ui/start_page.py", None),
     "cheat_sheet": ("blindcue/engine/cheat_sheet.py", None),
+    "run_report": ("blindcue/engine/run_report.py", None),
 }
 
 

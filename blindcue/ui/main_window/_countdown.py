@@ -44,8 +44,10 @@ class _CountdownMixin:
         self._cd_timer.timeout.connect(self._cd_tick)
         self._lbl_countdown = QLabel("")
         self._lbl_countdown.setVisible(False)
-        self._run_log: list[tuple[float, int, str, bool]] = []
+        # (seconds from the first GO, cue_id or -1, name or detail, by hand, event) - 5.19 events too
+        self._run_log: list[tuple[float, int, str, bool, str]] = []
         self._run_t0: float | None = None
+        self._run_started: datetime | None = None
         self._prev_run: dict[int, float] = {}
         self._sw_total = 0.0                     # 2.11 stopwatch: seconds before the current run
         self._sw_since: float | None = None      # monotonic start of the current run (None = stopped)
@@ -152,21 +154,39 @@ class _CountdownMixin:
 
         if not (0 <= idx < len(self._cues)) or self._current_mode() != SHOW or getattr(self, "_firing_aside", False):
             return  # only the show's own GOs (not rehearsals, effects, relative starts, calls)
+        now = self._run_clock()
+        cue = self._cues[idx]
+        self._run_log.append((now - self._run_t0, cue.cue_id, cue.name, by_hand, "GO" if by_hand else "AUTO"))
+
+    def _run_clock(self) -> float:
         now = time.monotonic()
         if self._run_t0 is None:
             self._run_t0 = now
+            self._run_started = datetime.now()
             self._prev_run = self._read_previous_run()
-        cue = self._cues[idx]
-        self._run_log.append((now - self._run_t0, cue.cue_id, cue.name, by_hand))
+        return now
+
+    def _run_event(self, event: str, detail: str = "", cue_id: int = -1) -> None:
+        """5.19: PANIC, Fade All, a pause, Undo GO, an effect... of the show (not of a rehearsal)."""
+        from engine.show_mode import SHOW
+
+        if self._current_mode() != SHOW:
+            return
+        now = self._run_clock()
+        self._run_log.append((now - self._run_t0, cue_id, detail, True, event))
 
     def _run_reset(self) -> None:
         self._run_log = []
         self._run_t0 = None
+        self._run_started = None
 
     def _run_save(self) -> Path | None:
         """Write the run (if any) and start a new one."""
         folder = runs_dir(getattr(self, "_current_project_path", None))
+        if self._run_log and self._run_t0 is not None:
+            self._run_log.append((time.monotonic() - self._run_t0, -1, "", True, "END"))
         log, self._run_log, self._run_t0 = self._run_log, [], None
+        started, self._run_started = self._run_started, None
         if folder is None or not log:
             return None
         try:
@@ -175,9 +195,11 @@ class _CountdownMixin:
             rows = {c.cue_id: i for i, c in enumerate(self._cues)}
             with open(target, "w", newline="", encoding="utf-8") as fh:
                 out = csv.writer(fh)
-                out.writerow(["seconds", "time", "cue_id", "number", "name", "by_hand"])
-                for secs, cue_id, name, by_hand in log:
-                    out.writerow([f"{secs:.1f}", _mmss(secs), cue_id, rows.get(cue_id, -1) + 1, name, int(by_hand)])
+                out.writerow(["seconds", "time", "cue_id", "number", "name", "by_hand", "event"])
+                for secs, cue_id, name, by_hand, event in log:
+                    out.writerow([f"{secs:.1f}", _mmss(secs), cue_id, rows.get(cue_id, -1) + 1, name,
+                                  int(by_hand), event])
+            self._write_run_report(target.with_suffix(".html"), log, started or datetime.now())
             return target
         except OSError as exc:
             logger.warning("[RUN LOG] cannot write: %s", exc)
@@ -194,10 +216,53 @@ class _CountdownMixin:
         try:
             with open(files[-1], encoding="utf-8") as fh:
                 for row in csv.DictReader(fh):
-                    seen.setdefault(int(row["cue_id"]), float(row["seconds"]))
+                    if row.get("event", "GO") in ("GO", "AUTO"):  # 5.19 logs also PANIC, pauses...
+                        seen.setdefault(int(row["cue_id"]), float(row["seconds"]))
         except (OSError, ValueError, KeyError, TypeError, csv.Error):
             return {}  # a damaged log: no hints, never a blocked GO
         return seen
+
+    def _write_run_report(self, target: Path, log: list, started: datetime) -> None:
+        """5.19: the report page next to the run's CSV (what played, when, by hand or not, alarms)."""
+        from engine import run_report as rr
+        from engine.show_engine import go_stops
+        from version import APP_NAME, APP_VERSION
+
+        rows = {c.cue_id: i for i, c in enumerate(self._cues)}
+        labels = {rr.GO: tr("GO"), rr.AUTO: tr("automatico"), rr.PANIC: tr("PANIC"),
+                  rr.FADE_ALL: tr("Sfuma tutto"), rr.PAUSE: tr("Pausa tutto"), rr.RESUME: tr("Riprendi"),
+                  rr.BLACKOUT: tr("Blackout"), rr.UNDO_GO: tr("Annulla l'ultimo GO"), rr.EFFECT: tr("Effetto"),
+                  rr.FADE_SCENE: tr("Sfuma la scena"), rr.END: tr("Fine dello spettacolo")}
+        summary = {"start": tr("Inizio"), "end": tr("Fine"), "length": tr("Durata"),
+                   rr.GO: tr("GO a mano"), rr.AUTO: tr("Partenze automatiche"), rr.EFFECT: tr("Effetti"),
+                   rr.PAUSE: tr("Pause"), rr.FADE_ALL: tr("Sfuma tutto"), rr.PANIC: tr("PANIC"),
+                   rr.BLACKOUT: tr("Blackout"), rr.UNDO_GO: tr("GO annullati")}
+        entries = [(secs, event, f"#{rows[cid] + 1}" if cid in rows else "", name)
+                   for secs, cid, name, _hand, event in log]
+        played = {cid for _s, cid, _n, _h, event in log if event in rr.CUE_EVENTS}
+        go_rows = go_stops(self._cues)
+        missed = [f"#{r + 1} '{self._cues[r].name}'" for r in
+                  rr.unplayed(go_rows, played, [c.cue_id for c in self._cues])]
+        title = tr("Rapporto dello spettacolo") + " – " + (self._show_title() if hasattr(self, "_show_title") else "")
+        page = rr.to_html(title, started, entries, labels, summary, missed,
+                          (tr("In breve"), tr("Che cosa è successo"), tr("Cue con GO mai partite")),
+                          f"{started:%Y-%m-%d} · {APP_NAME} {APP_VERSION}")
+        try:
+            target.write_text(page, encoding="utf-8")
+        except OSError as exc:
+            logger.warning("[RUN REPORT] cannot write: %s", exc)
+
+    def _open_last_run_report(self) -> None:
+        """File → Export and print → "Report of the last show"."""
+        from PySide6.QtCore import QUrl
+        from PySide6.QtGui import QDesktopServices
+
+        folder = runs_dir(getattr(self, "_current_project_path", None))
+        reports = sorted(folder.glob("*.html")) if folder is not None and folder.is_dir() else []
+        if not reports:
+            self._status_label.setText(tr("Nessun rapporto: si scrive alla fine dello spettacolo (non della prova)"))
+            return
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(reports[-1])))
 
     def previous_run_hint(self, cue: Cue | None) -> str:
         """"last time at 12:34" for the NEXT bar (empty without an earlier run)."""

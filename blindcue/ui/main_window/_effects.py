@@ -132,6 +132,7 @@ class _EffectsMixin:
         if getattr(cue, "hotkey_mode", "trigger") == "toggle" and self._effect_running(cue):
             self._stop_effect(cue)
             return
+        self._run_event("EFFECT", cue.name, cue.cue_id)  # 5.19
         if remember:
             self._last_effect_id = cue.cue_id
         self._fire_cue_chain(idx, auto=True, keep_pointer=True)

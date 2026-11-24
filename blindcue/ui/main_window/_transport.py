@@ -562,6 +562,7 @@ class _TransportMixin:
 
     @Slot()
     def _on_blackout(self) -> None:
+        self._run_event("BLACKOUT")  # 5.19
         self._undo_go_end()
         if hasattr(self, "_earcon_mgr"):
             self._earcon_mgr.play_stop()
@@ -612,6 +613,7 @@ class _TransportMixin:
     def _on_fade_all(self) -> None:
         """Fade All: every layer fades out together (Shift+Esc), a softer PANIC."""
         seconds = read_fade_all_sec()
+        self._run_event("FADE_ALL", f"{seconds:.1f} s")  # 5.19
         self._held_auto_go.clear()
         self._live_show_panel.set_auto_go_held(self._held_auto_go)
         first_stopped = self._stopped_manual_go_index()
@@ -635,6 +637,7 @@ class _TransportMixin:
     def _on_panic(self) -> None:
         """Immediate 0ms PANIC hard cut across every active player, delay timer, and output layer."""
         first_stopped = self._stopped_manual_go_index()
+        self._run_event("PANIC")  # 5.19
         self._undo_go_end()
         self._rel_reset()  # 2.1: PANIC also cancels the relative starts
         self._clear_gate()

@@ -160,6 +160,7 @@ class _UndoGoMixin:
             self._undo_go_end()
             self._status_label.setText(tr("Nessun GO da annullare"))
             return
+        self._run_event("UNDO_GO")  # 5.19
         steps = self._undo_go_steps()
         if not can_undo(steps):
             self._status_label.setText(tr("Questo GO non si annulla (azione)"))

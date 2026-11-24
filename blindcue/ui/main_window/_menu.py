@@ -50,6 +50,8 @@ class _MenuMixin:
                                       triggered=lambda: self._print_list("operator")))
         export_menu.addAction(QAction("🖨 Stampa la scaletta per il suggeritore…", self,
                                       triggered=lambda: self._print_list("prompter")))
+        export_menu.addAction(QAction("📋 Rapporto dell'ultimo spettacolo", self,
+                                      triggered=self._open_last_run_report))  # 5.19
         rescue_menu = file_menu.addMenu("🛟 Copie e file mancanti")
         rescue_menu.addAction(QAction("🕘 Ripristina una copia di sicurezza…", self,
                                       triggered=self._restore_backup))  # 5.11
