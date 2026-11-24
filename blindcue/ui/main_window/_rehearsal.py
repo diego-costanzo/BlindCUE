@@ -18,7 +18,7 @@ from ui.rehearsal_drawer import FIELDS
 
 _FIELD_WORDS = {
     "name": "nome", "notes": "note", "volume": "livello", "fade_in": "entrata", "fade_out": "sfumatura",
-    "in_point": "inizio", "out_point": "fine", "follow_mode": "poi",
+    "in_point": "inizio", "out_point": "fine", "follow_mode": "poi", "markers": "segni",
 }
 
 
@@ -27,6 +27,8 @@ def _shown(field: str, value: object) -> str:
         return f"{round(float(value) * 100)} %"
     if field in ("fade_in", "fade_out", "in_point"):
         return f"{float(value):.1f} s"
+    if field == "markers":
+        return f"{len(value)} ◆"
     if field == "out_point":
         return tr("fine") if not value else f"{float(value):.1f} s"
     return str(value)

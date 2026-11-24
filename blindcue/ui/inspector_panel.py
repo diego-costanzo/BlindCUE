@@ -191,6 +191,7 @@ class CueInspectorPanel(QGroupBox):
     """Tabbed Cue Properties Inspector organized into Cue & Timing, Visual Transform/Crop, and Audio/Loop."""
 
     value_changed = Signal()
+    marker_delete_requested = Signal(int)  # 2.7: delete this marker of the cue
     batch_field_edited = Signal(str)
     layer_selected = Signal(int)
     output_target_selected = Signal(str)
@@ -715,7 +716,7 @@ class CueInspectorPanel(QGroupBox):
         rel_row.addWidget(self.lbl_rel)
         self.combo_rel_when = QComboBox()
         for value, label in (("", "con il GO"), ("start", "dopo l'avvio di"), ("end", "dopo la fine di"),
-                             ("before_end", "prima della fine di")):
+                             ("before_end", "prima della fine di"), ("marker", "al segno di")):
             self.combo_rel_when.addItem(label, value)
         self.combo_rel_when.setAccessibleName("Partenza della cue")
         self.combo_rel_when.setToolTip(
@@ -728,6 +729,10 @@ class CueInspectorPanel(QGroupBox):
         self.combo_rel_cue.setAccessibleName("Cue di riferimento")
         self.combo_rel_cue.currentIndexChanged.connect(lambda _i: self._on_rel_changed())
         rel_row.addWidget(self.combo_rel_cue, stretch=1)
+        self.combo_rel_marker = QComboBox()  # 2.7: the marker of the reference cue
+        self.combo_rel_marker.setAccessibleName("Segno della cue di riferimento")
+        self.combo_rel_marker.currentIndexChanged.connect(lambda _i: self._on_rel_changed())
+        rel_row.addWidget(self.combo_rel_marker)
         self.spin_rel_offset = SmartDoubleSpinBox()
         self.spin_rel_offset.setRange(0.0, 600.0)
         self.spin_rel_offset.setDecimals(1)
@@ -737,12 +742,42 @@ class CueInspectorPanel(QGroupBox):
         self.spin_rel_offset.valueChanged.connect(lambda _v: self._on_rel_changed())
         rel_row.addWidget(self.spin_rel_offset)
         l3.addLayout(rel_row)
+        clock_row = QHBoxLayout()
+        self.lbl_clock = self._make_field_label("Alle ore:")
+        clock_row.addWidget(self.lbl_clock)
+        self.edit_clock = QLineEdit()
+        self.edit_clock.setPlaceholderText("19:55")
+        self.edit_clock.setFixedWidth(80)
+        self.edit_clock.setValidator(QRegularExpressionValidator(
+            QRegularExpression(r"^$|^([01]?\d|2[0-3]):[0-5]\d(:[0-5]\d)?$"), self.edit_clock))
+        self.edit_clock.setToolTip("2.6: la cue parte da sola a quest'ora durante lo spettacolo (il GO la salta). "
+                                   "Più di un minuto in ritardo: saltata. Vuoto = con il GO.")
+        self.edit_clock.setAccessibleName("Ora di partenza della cue")
+        self.edit_clock.editingFinished.connect(lambda: self._emit_change("start_clock"))
+        clock_row.addWidget(self.edit_clock)
+        clock_row.addStretch(1)
+        l3.addLayout(clock_row)
         self.lbl_rel_hint = QLabel("")
         self.lbl_rel_hint.setWordWrap(True)
         self.lbl_rel_hint.setStyleSheet("color: #fbbf24;")
         self.lbl_rel_hint.setVisible(False)
         l3.addWidget(self.lbl_rel_hint)
         self._rel_choices: list[tuple[int, str]] = []
+        # 2.7: the markers of this cue (added on the waveform or with Ctrl+K)
+        mk_row = QHBoxLayout()
+        self.lbl_markers = self._make_field_label("Segni:")
+        mk_row.addWidget(self.lbl_markers)
+        self.combo_markers = QComboBox()
+        self.combo_markers.setAccessibleName("Segni della cue")
+        mk_row.addWidget(self.combo_markers, stretch=1)
+        self.btn_marker_delete = QPushButton("✕")
+        self.btn_marker_delete.setFixedWidth(28)
+        self.btn_marker_delete.setToolTip("Elimina il segno scelto (non se una cue parte da lì)")
+        self.btn_marker_delete.clicked.connect(
+            lambda: self.combo_markers.currentData() is not None
+            and self.marker_delete_requested.emit(int(self.combo_markers.currentData())))
+        mk_row.addWidget(self.btn_marker_delete)
+        l3.addLayout(mk_row)
         self.relative_cycle_check = None  # set by the window: (cue_id, ref_id) -> True for a loop
         self._sync_rel_enabled()
         lay.addWidget(c3)
@@ -1764,6 +1799,29 @@ class CueInspectorPanel(QGroupBox):
         on = bool(self.combo_rel_when.currentData())
         self.combo_rel_cue.setEnabled(on)
         self.spin_rel_offset.setEnabled(on)
+        self.combo_rel_marker.setVisible(self.combo_rel_when.currentData() == "marker")
+        if self.combo_rel_marker.isVisible():
+            self._fill_rel_markers(self.combo_rel_marker.currentData())
+
+    def _fill_rel_markers(self, chosen: int | None) -> None:
+        """The markers of the reference cue chosen in the row."""
+        ref_id = self.combo_rel_cue.currentData()
+        ref = next((c for c in (self.action_editor._catalog() or []) if c.cue_id == ref_id), None)
+        self.combo_rel_marker.blockSignals(True)
+        self.combo_rel_marker.clear()
+        for m in getattr(ref, "markers", []) if ref is not None else []:
+            self.combo_rel_marker.addItem(f"{m['name']} ({m['sec']:.1f} s)", m["id"])
+        self.combo_rel_marker.setCurrentIndex(max(0, self.combo_rel_marker.findData(chosen)))
+        self.combo_rel_marker.blockSignals(False)
+
+    def load_markers(self, cue) -> None:
+        """2.7: this cue's own markers (to see and delete)."""
+        self.combo_markers.clear()
+        for m in getattr(cue, "markers", []) if cue is not None else []:
+            self.combo_markers.addItem(f"{m['name']}  {m['sec']:.2f} s", m["id"])
+        has = self.combo_markers.count() > 0
+        self.combo_markers.setEnabled(has)
+        self.btn_marker_delete.setEnabled(has)
 
     def _on_rel_changed(self) -> None:
         self._sync_rel_enabled()
@@ -1807,6 +1865,8 @@ class CueInspectorPanel(QGroupBox):
             w.blockSignals(False)
         self.lbl_rel_hint.setVisible(False)
         self._sync_rel_enabled()
+        self._fill_rel_markers(getattr(cue, "start_rel_marker", None))
+        self.load_markers(cue)
 
     def _apply_start_rel(self, cue) -> None:
         from i18n import tr
@@ -1822,12 +1882,41 @@ class CueInspectorPanel(QGroupBox):
                                          "a vicenda all'infinito)."))
             self.lbl_rel_hint.setVisible(True)
             return
+        elif when == "marker" and self.combo_rel_marker.currentData() is None:
+            self.lbl_rel_hint.setText(tr("Quella cue non ha segni: mettine uno sulla sua forma d'onda (◆ Segno)."))
+            self.lbl_rel_hint.setVisible(True)
+            return
         else:
             cue.start_rel_cue = int(ref)
             cue.start_rel_when = when
+            cue.start_rel_marker = self.combo_rel_marker.currentData() if when == "marker" else None
         cue.start_rel_offset = round(self.spin_rel_offset.value(), 2)
 
+    def _clock_value(self, cue) -> str:
+        """2.6: the time in the field, or the cue's own while the field holds a half-typed one ("19:5")."""
+        from engine.clock_plan import normalize_clock
+
+        if not self.edit_clock.hasAcceptableInput():
+            return getattr(cue, "start_clock", "")
+        return normalize_clock(self.edit_clock.text())
+
+    def _one_way_to_start(self, cue, reload: bool = True) -> None:
+        """A cue starts at a time of day OR relative to another cue, never both: the last one set wins."""
+        if not getattr(cue, "start_clock", "") or getattr(cue, "start_rel_cue", None) is None:
+            return
+        if getattr(self, "_last_field", "") == "start_rel":
+            cue.start_clock = ""
+            if reload:
+                self.edit_clock.blockSignals(True)
+                self.edit_clock.clear()
+                self.edit_clock.blockSignals(False)
+        else:
+            cue.start_rel_cue = None
+            if reload:
+                self._load_start_rel(cue)
+
     def _emit_change(self, field_key: str) -> None:
+        self._last_field = field_key
         if field_key in ("crop_l", "crop_r", "crop_t", "crop_b"):
             self._refresh_cached_norm_from_spins()
         if not self._updating:
@@ -2404,8 +2493,12 @@ class CueInspectorPanel(QGroupBox):
             w.setVisible(not basic and not is_image)
         for w in (self.chk_adlib, self.lbl_hotkey, self.edit_hotkey, self.combo_hotkey_mode):
             w.setVisible(not basic and not is_image)
-        for w in (self.lbl_rel, self.combo_rel_when, self.combo_rel_cue, self.spin_rel_offset, self.chk_call_only):
+        for w in (self.lbl_rel, self.combo_rel_when, self.combo_rel_cue, self.spin_rel_offset, self.chk_call_only,
+                  self.lbl_clock, self.edit_clock):
             w.setVisible(not basic and media_type != MediaType.GROUP)
+        self.combo_rel_marker.setVisible(not basic and self.combo_rel_when.currentData() == "marker")
+        for w in (self.lbl_markers, self.combo_markers, self.btn_marker_delete):
+            w.setVisible(not basic and media_type in (MediaType.AUDIO, MediaType.VIDEO))
         self.lbl_callers.setVisible(bool(self.lbl_callers.text()) and not basic)
         if self.tab_widget.currentIndex() >= 0 and not self.tab_widget.isTabVisible(self.tab_widget.currentIndex()):
             self.tab_widget.setCurrentIndex(0)
@@ -2448,6 +2541,8 @@ class CueInspectorPanel(QGroupBox):
                 parts.append(tr("parte da sola rispetto a un'altra cue"))
             if getattr(cue, "call_only", False):
                 parts.append(tr("solo su chiamata"))
+            if getattr(cue, "start_clock", ""):
+                parts.append(tr("parte alle {}").format(cue.start_clock))
             if cue.loop:
                 parts.append(tr("suona in loop") if cue.loop_count <= 0 else tr("si ripete {}×").format(cue.loop_count))
             if cue.sections:
@@ -2612,6 +2707,9 @@ class CueInspectorPanel(QGroupBox):
                     w.blockSignals(False)
                 self._load_start_rel(cue)
                 self._load_call_only(cue)
+                self.edit_clock.blockSignals(True)
+                self.edit_clock.setText(getattr(cue, "start_clock", ""))
+                self.edit_clock.blockSignals(False)
                 self._populate_media_fields(cue)
                 self.set_also(cue)
                 if cue.media_type == MediaType.ACTION:
@@ -2690,6 +2788,10 @@ class CueInspectorPanel(QGroupBox):
             self.chk_exclusive.setChecked(all(getattr(c, "exclusive", False) for c in cues))
             self.chk_confirm.setChecked(all(getattr(c, "confirm_start", False) for c in cues))
             self._populate_media_fields(lead)
+            self.load_markers(lead)  # the anchor's marks (the ones ✕ deletes and the waveform shows)
+            self.edit_clock.blockSignals(True)
+            self.edit_clock.setText(lead.start_clock if all(c.start_clock == lead.start_clock for c in cues) else "")
+            self.edit_clock.blockSignals(False)
             if mtype == MediaType.ACTION:
                 self.action_editor.load(lead.action_spec, lead.cue_id)
         finally:
@@ -2717,6 +2819,10 @@ class CueInspectorPanel(QGroupBox):
             cue.notes = self.edit_cue_notes.text().strip()
             cue.pre_delay = self.spin_pre_delay.value()
             cue.post_delay = self.spin_post_delay.value()
+            self._apply_start_rel(cue)  # an action can start relative to a cue, at a time, or only by a call
+            cue.call_only = self.chk_call_only.isChecked()
+            cue.start_clock = self._clock_value(cue)
+            self._one_way_to_start(cue)
             if self.action_editor.cue_id() == cue.cue_id:
                 new_spec = self.action_editor.spec()
                 self._rename_default_action(cue, new_spec["kind"])
@@ -2736,6 +2842,8 @@ class CueInspectorPanel(QGroupBox):
         cue.hotkey_mode = self.combo_hotkey_mode.currentData() or "trigger"
         self._apply_start_rel(cue)
         cue.call_only = self.chk_call_only.isChecked()
+        cue.start_clock = self._clock_value(cue)
+        self._one_way_to_start(cue)
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -2860,8 +2968,12 @@ class CueInspectorPanel(QGroupBox):
                 cue.hotkey_mode = self.combo_hotkey_mode.currentData() or "trigger"
             elif field_key == "start_rel":
                 self._apply_start_rel(cue)
+                self._one_way_to_start(cue, reload=False)
             elif field_key == "call_only":
                 cue.call_only = self.chk_call_only.isChecked()
+            elif field_key == "start_clock":
+                cue.start_clock = self._clock_value(cue)
+                self._one_way_to_start(cue, reload=False)
             elif field_key == "pos_x":
                 cue.position_x = round(self.spin_pos_x.value(), 3)
             elif field_key == "pos_y":

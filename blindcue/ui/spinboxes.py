@@ -41,12 +41,28 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
             clean = clean[:-len(suffix)]
         return clean.strip()
 
+    def _is_time(self) -> bool:
+        """A seconds field (suffix " s"): it also takes 1:23.5, 1m23s, 2m (2.9)."""
+        return self.suffix().strip() == "s"
+
     def validate(self, input_text: str, pos: int):  # noqa: N802
         """Accept both '.' and ',' while typing; reject out-of-range values."""
         clean_text = input_text.replace(",", ".")
         special = self.specialValueText()
         if special and (input_text == special or clean_text == special):
             return (QValidator.State.Acceptable, input_text, pos)
+
+        if self._is_time():
+            from ui.time_text import could_become_time, parse_seconds
+
+            body = input_text.removesuffix(self.suffix())
+            seconds = parse_seconds(body)
+            if seconds is not None:
+                ok = self.minimum() <= seconds <= self.maximum()
+                return (QValidator.State.Acceptable if ok else QValidator.State.Intermediate, input_text, pos)
+            if could_become_time(body):
+                return (QValidator.State.Intermediate, input_text, pos)
+            return (QValidator.State.Invalid, input_text, pos)
 
         val_str = self._strip_affixes(input_text)
         if not val_str or val_str in ("-", "+", "."):
@@ -64,6 +80,12 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
         special = self.specialValueText()
         if special and text == special:
             return self.minimum()
+        if self._is_time():
+            from ui.time_text import parse_seconds
+
+            body = text.removesuffix(self.suffix())
+            seconds = parse_seconds(body)
+            return self.minimum() if seconds is None else max(self.minimum(), min(self.maximum(), seconds))
         try:
             return float(self._strip_affixes(text))
         except ValueError:

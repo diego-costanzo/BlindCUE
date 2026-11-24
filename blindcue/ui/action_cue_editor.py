@@ -20,12 +20,16 @@ from models.cue import (
     ACTION_LEVEL,
     ACTION_NOTE,
     ACTION_OPACITY,
+    ACTION_PAUSE,
     ACTION_RELEASE,
+    ACTION_RESUME,
     ACTION_SEEK,
     ACTION_STOP,
+    ACTION_STOPWATCH,
     ACTION_TARGET_ALL,
     ACTION_TARGET_CUES,
     ACTION_TARGET_LAYER,
+    ACTION_WAIT,
     Cue,
     MediaType,
     action_names_one_cue,
@@ -63,6 +67,10 @@ _KIND_LABELS = (
     (ACTION_CALL, "📞 Chiama una cue"),
     (ACTION_SEEK, "⏩ Sposta la riproduzione"),
     (ACTION_COUNTDOWN, "⏳ Conto alla rovescia"),
+    (ACTION_WAIT, "⌛ Attendi, poi la successiva"),
+    (ACTION_PAUSE, "⏸ Pausa"),
+    (ACTION_RESUME, "▶ Riprendi"),
+    (ACTION_STOPWATCH, "⏱ Cronometro"),
 )
 _KIND_HELP = {
     ACTION_FADE: "Abbassa audio e immagine delle cue scelte nel tempo indicato, poi le ferma. "
@@ -86,6 +94,12 @@ _KIND_HELP = {
                       "finestra grande per le quinte (menu Show). Il testo è il titolo; 0 minuti lo ferma.",
     ACTION_SEEK: "Sposta la riproduzione delle cue scelte che stanno suonando: a una posizione del file, "
                  "avanti o indietro di N secondi, oppure a N secondi dalla fine.",
+    ACTION_WAIT: "Un'attesa visibile nella scaletta: dopo i secondi indicati parte la cue successiva, "
+                 "senza GO. Pausa generale la trattiene, PANIC la annulla.",
+    ACTION_PAUSE: "Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano.",
+    ACTION_RESUME: "Fa ripartire le cue scelte messe in pausa, da dove si erano fermate.",
+    ACTION_STOPWATCH: "Cronometro sulla barra di stato (per esempio la durata di un atto): avvia, ferma "
+                      "(si riprende da lì) o azzera. PANIC non lo tocca.",
 }
 _TARGET_LABELS = (
     (ACTION_TARGET_ALL, "Tutto ciò che è in onda"),
@@ -221,6 +235,14 @@ class ActionCueEditor(QWidget):
         self.lbl_countdown = _label("Durata:")
         form.addRow(self.lbl_countdown, self.spin_countdown)
 
+        self.combo_sw = QComboBox()
+        self.combo_sw.addItem("Avvia", "start")
+        self.combo_sw.addItem("Ferma", "stop")
+        self.combo_sw.addItem("Azzera", "reset")
+        self.combo_sw.setAccessibleName("Cronometro")
+        self.lbl_sw = _label("Cronometro:")
+        form.addRow(self.lbl_sw, self.combo_sw)
+
         self.combo_mode = QComboBox()
         self.combo_mode.addItem("Assoluto (%)", "absolute")
         self.combo_mode.addItem("Relativo (dB)", "relative")
@@ -308,7 +330,7 @@ class ActionCueEditor(QWidget):
 
         for combo in (self.combo_kind, self.combo_target, self.combo_layer, self.combo_output,
                       self.combo_mode, self.combo_curve, self.combo_goal, self.combo_goto_play,
-                      self.combo_seek_mode):
+                      self.combo_seek_mode, self.combo_sw):
             combo.currentIndexChanged.connect(self._on_edit)
         for spin in (self.spin_level, self.spin_db, self.spin_duration, self.spin_goto_max, self.spin_seek,
                      self.spin_countdown):
@@ -354,6 +376,7 @@ class ActionCueEditor(QWidget):
             self._select(self.combo_seek_mode, spec["seek_mode"])
             self.spin_seek.setValue(float(spec["seek_sec"]))
             self.spin_countdown.setValue(float(spec["countdown_sec"]) / 60.0)
+            self._select(self.combo_sw, spec["sw_mode"])
             self._refresh_visibility()
         finally:
             self._loading = False
@@ -387,6 +410,7 @@ class ActionCueEditor(QWidget):
             "seek_mode": self.combo_seek_mode.currentData(),
             "seek_sec": self.spin_seek.value(),
             "countdown_sec": round(self.spin_countdown.value() * 60.0, 1),
+            "sw_mode": self.combo_sw.currentData(),
         })
 
     # ── Internals ─────────────────────────────────────────────────────
@@ -450,7 +474,8 @@ class ActionCueEditor(QWidget):
         target = self.combo_target.currentData()
         mode = self.combo_mode.currentData()
         has_target = action_needs_target(kind)
-        timed = kind in (ACTION_FADE, ACTION_LEVEL, ACTION_OPACITY)
+        timed = kind in (ACTION_FADE, ACTION_LEVEL, ACTION_OPACITY, ACTION_WAIT)
+        no_text = kind in (ACTION_WAIT, ACTION_STOPWATCH)
         rows = (
             (self.lbl_target, self.combo_target, has_target),
             (self.lbl_layer, self.row_layer, has_target and target == ACTION_TARGET_LAYER),
@@ -461,10 +486,11 @@ class ActionCueEditor(QWidget):
             (self.lbl_db, self.spin_db, kind == ACTION_LEVEL and mode == "relative"),
             (self.lbl_duration, self.spin_duration, timed),
             (self.lbl_curve, self.combo_curve, kind in (ACTION_LEVEL, ACTION_OPACITY)),
-            (self.lbl_text, self.edit_text, not has_target and not action_names_one_cue(kind)),
+            (self.lbl_text, self.edit_text, not has_target and not action_names_one_cue(kind) and not no_text),
             (self.lbl_items, self.edit_items, kind == ACTION_CHECKLIST),
             (self.lbl_colour, self.row_colour,
-             not has_target and not action_names_one_cue(kind) and kind != ACTION_COUNTDOWN),
+             not has_target and not action_names_one_cue(kind) and kind != ACTION_COUNTDOWN and not no_text),
+            (self.lbl_sw, self.combo_sw, kind == ACTION_STOPWATCH),
             (self.lbl_goal, self.combo_goal, action_names_one_cue(kind)),
             (self.lbl_goto_play, self.combo_goto_play, kind == ACTION_GOTO),
             (self.lbl_goto_max, self.spin_goto_max, kind == ACTION_GOTO),

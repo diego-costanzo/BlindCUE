@@ -841,6 +841,9 @@ class _RemoteMixin:
         finally:
             self._cue_list.blockSignals(False)
             self._updating_cue_list = False
+        search = getattr(self, "_search_edit", None)
+        if search is not None and not search.isHidden() and search.text().strip():
+            self._search_apply(search.text())  # 2.8: the list stays filtered while the search is open
         self._sync_live_view()
 
     def _selected_rows(self) -> list[int]:

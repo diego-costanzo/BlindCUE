@@ -174,9 +174,15 @@ ACTION_GOTO = "goto"          # 2.2: jump - start the chosen cue, or only make i
 ACTION_CALL = "call"          # 2.2: start the chosen cue without moving the GO pointer
 ACTION_SEEK = "seek"          # 2.2: move a playing cue to a position / by N s / N s before its end
 ACTION_COUNTDOWN = "countdown"  # 2.5: start a countdown (e.g. the interval); 0 s stops it
+ACTION_WAIT = "wait"          # 2.11: wait ``duration`` s, then the next cue starts (a delay you can see)
+ACTION_PAUSE = "pause"        # 2.11: pause the targets (sound and video)
+ACTION_RESUME = "resume"      # 2.11: resume the paused targets
+ACTION_STOPWATCH = "stopwatch"  # 2.11: stopwatch start / stop / reset (sw_mode)
 ACTION_KINDS = (
     ACTION_STOP, ACTION_FADE, ACTION_RELEASE, ACTION_LEVEL, ACTION_OPACITY,
-    ACTION_NOTE, ACTION_CHECKLIST, ACTION_GOTO, ACTION_CALL, ACTION_SEEK, ACTION_COUNTDOWN)
+    ACTION_NOTE, ACTION_CHECKLIST, ACTION_GOTO, ACTION_CALL, ACTION_SEEK, ACTION_COUNTDOWN,
+    ACTION_WAIT, ACTION_PAUSE, ACTION_RESUME, ACTION_STOPWATCH)
+STOPWATCH_MODES = ("start", "stop", "reset")
 ACTION_TARGET_ALL = "all"      # everything that is playing (or waiting in Pre-Delay)
 ACTION_TARGET_LAYER = "layer"  # whatever plays on one layer of one output
 ACTION_TARGET_CUES = "cues"    # chosen cues (a group means all its children)
@@ -186,12 +192,43 @@ ACTION_MAX_CHECKLIST_ITEMS = 30
 _DEFAULT_NOTE_COLOR = "#f59e0b"
 
 
-RELATIVE_WHEN = ("start", "end", "before_end")
+RELATIVE_WHEN = ("start", "end", "before_end", "marker")
+MAX_MARKERS = 200
+
+
+def sanitize_markers(value: object) -> list[dict]:
+    """2.7: [{"id": int, "name": str, "sec": float}] sorted by time; damaged entries dropped."""
+    out: list[dict] = []
+    seen: set[int] = set()
+    for item in value if isinstance(value, list) else []:
+        if not isinstance(item, dict):
+            continue
+        mid = _safe_int(item.get("id"), 0, min_val=0)
+        if mid <= 0 or mid in seen:
+            continue
+        seen.add(mid)
+        out.append({"id": mid, "name": str(item.get("name", "") or "")[:30],
+                    "sec": round(_safe_float(item.get("sec", 0.0), 0.0, min_val=0.0, max_val=86400.0), 3)})
+        if len(out) >= MAX_MARKERS:
+            break
+    return sorted(out, key=lambda m: m["sec"])
+
+
+def _clock_text(value: object) -> str:
+    """2.6: a valid "H:MM" / "H:MM:SS" time of day as given, "" for anything else."""
+    import re
+
+    text = str(value or "").strip()
+    match = re.match(r"^(\d{1,2}):(\d{2})(?::(\d{2}))?$", text)
+    if not match or int(match.group(1)) > 23 or int(match.group(2)) > 59 or int(match.group(3) or 0) > 59:
+        return ""
+    return text
 
 
 def action_needs_target(kind: str) -> bool:
     """Notes and checklists act on nobody; a jump or a call names one cue (cue_ids[0])."""
-    return kind not in (ACTION_NOTE, ACTION_CHECKLIST, ACTION_GOTO, ACTION_CALL, ACTION_COUNTDOWN)
+    return kind not in (ACTION_NOTE, ACTION_CHECKLIST, ACTION_GOTO, ACTION_CALL, ACTION_COUNTDOWN,
+                        ACTION_WAIT, ACTION_STOPWATCH)
 
 
 def action_names_one_cue(kind: str) -> bool:
@@ -204,7 +241,8 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
 
     Schema (every key is always present after sanitising)::
 
-        kind      stop | fade | release | level | opacity | note | checklist
+        kind      stop | fade | release | level | opacity | note | checklist |
+                  goto | call | seek | countdown | wait | pause | resume | stopwatch
         target    all | layer | cues
         layer     1-3 (target "layer")
         output    "A" | "B" (target "layer")
@@ -246,6 +284,7 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
     mode = str(raw.get("mode", "absolute") or "absolute")
     curve = str(raw.get("curve", "linear") or "linear")
     seek_mode = str(raw.get("seek_mode", "relative") or "relative")
+    sw_mode = str(raw.get("sw_mode", "start") or "start")
     return {
         "kind": kind,
         "target": target,
@@ -267,6 +306,7 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
         "seek_mode": seek_mode if seek_mode in ("absolute", "relative", "before_end") else "relative",
         "seek_sec": round(_safe_float(raw.get("seek_sec", 10.0), 10.0, min_val=-86400.0, max_val=86400.0), 3),
         "countdown_sec": round(_safe_float(raw.get("countdown_sec", 900.0), 900.0, min_val=0.0, max_val=14400.0), 1),
+        "sw_mode": sw_mode if sw_mode in STOPWATCH_MODES else "start",
     }
 
 
@@ -495,11 +535,14 @@ class Cue:
     hotkey_mode: str = "trigger"  # trigger | toggle | note (plays while the key is held)
     call_only: bool = False      # 2.2: started only by a "call" action, never by GO
     enabled: bool = True         # 2.3: off in this version of the show - never plays
+    start_clock: str = ""        # 2.6: starts by itself at this time of day ("19:55" / "19:55:30")
     # 2.1: starts by itself relative to another cue (by cue_id): N s after its
     # start, after its end, or N s before its end. Outside the GO order.
     start_rel_cue: int | None = None
     start_rel_when: str = "start"  # start | end | before_end
     start_rel_offset: float = 0.0
+    start_rel_marker: int | None = None  # 2.7: with start_rel_when "marker": the marker id in the reference
+    markers: list[dict] = field(default_factory=list)  # 2.7: named points in the file (sec), see sanitize_markers
     color: str = ""  # Optional '#RRGGBB' group/divider colour in Scaletta & Live
     parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
@@ -697,9 +740,12 @@ class Cue:
             "hotkey_mode": self.hotkey_mode,
             "call_only": self.call_only,
             "enabled": self.enabled,
+            "start_clock": self.start_clock,
             "start_rel_cue": self.start_rel_cue,
             "start_rel_when": self.start_rel_when,
             "start_rel_offset": self.start_rel_offset,
+            "start_rel_marker": self.start_rel_marker,
+            "markers": [dict(m) for m in self.markers],
             "color": _sanitize_hex_color(self.color),
             "parent_id": self.parent_id,
             "group_mode": self.group_mode,
@@ -789,11 +835,14 @@ class Cue:
             if str(data.get("hotkey_mode", "trigger")) in ("trigger", "toggle", "note") else "trigger",
             call_only=bool(data.get("call_only", False)),
             enabled=bool(data.get("enabled", True)),
+            start_clock=_clock_text(data.get("start_clock", "")),
             start_rel_cue=_safe_int(data.get("start_rel_cue"), 0, min_val=0) or None
             if data.get("start_rel_cue") not in (None, "", 0) else None,
             start_rel_when=str(data.get("start_rel_when", "start"))
             if str(data.get("start_rel_when", "start")) in RELATIVE_WHEN else "start",
             start_rel_offset=min(600.0, max(0.0, float(data.get("start_rel_offset", 0.0) or 0.0))),
+            start_rel_marker=_safe_int(data.get("start_rel_marker"), 0, min_val=0) or None,
+            markers=sanitize_markers(data.get("markers")),
             follow_mode=(
                 data.get("follow_mode", FollowMode.MANUAL.value)
                 if data.get("follow_mode", FollowMode.MANUAL.value) in _VALID_FOLLOW_MODES

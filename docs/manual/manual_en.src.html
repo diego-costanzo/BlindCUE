@@ -160,6 +160,9 @@ cue it is fired with GO; it can have a Pre-Delay and Auto-GO and belong to a gro
 <!--IF:jump_actions--><tr><td><b>↪ Jump to a cue</b></td><td>starts the chosen cue (GO then goes on from it) or – <b>Only as the next GO</b> – just makes it the next one. <b>At most N×</b> limits the repeats: e.g. a scene played twice, then GO goes on. The count starts again when the show runs from the top.</td></tr>
 <tr><td><b>📞 Call a cue</b></td><td>starts the chosen cue without moving GO (like an effect). A cue with <b>📞 Call only</b> ticked (3 · Timing card) is outside the GO order; the Inspector shows where it is called from.</td></tr>
 <tr><td><b>⏩ Move the playback</b></td><td>moves a playing sound or film: <b>to a position</b> in the file, <b>by N s</b> forward or back, or <b>to N s before the end</b> (e.g. skipping a verse in a rehearsal).</td></tr><!--/IF:jump_actions-->
+<!--IF:new_actions--><tr><td><b>⌛ Wait, then the next one</b></td><td>a wait you can see in the list: after the given seconds the next cue starts by itself (instead of a hidden Pre-Delay). Pause All holds it, PANIC cancels it.</td></tr>
+<tr><td><b>⏸ Pause</b> / <b>▶ Resume</b></td><td>pauses the chosen sounds and films that are playing, or lets them play on from where they stopped; the others go on. Cues waiting for a mark or the end of a paused cue wait with it.</td></tr>
+<tr><td><b>⏱ Stopwatch</b></td><td>a stopwatch on the status bar (for example how long an act takes): <b>Start</b>, <b>Stop</b> (the next start goes on counting) or <b>Reset</b>. PANIC leaves it alone.</td></tr><!--/IF:new_actions-->
 </table>
 <p><b>What it acts on</b> (<b>Acts on</b> field): <b>Everything playing</b>, <b>One layer</b> (L1–L3)
 or <b>Chosen cues</b> (tick them in the list; a group = all its cues). When none of the targets
@@ -210,6 +213,17 @@ it <b>⊘</b>. When something points at it (the Auto-GO before it, a jump, an ac
 line warns you. <b>Show → 🎭 Versions of the show</b>: <b>Save as a new version…</b> (e.g. "short", "second
 cast") and switching between versions; <b>Full show</b> has every cue on. The versions are saved with the show,
 and the current one is on the status bar ("Version: short · 12 cues off").</li><!--/IF:versions-->
+<!--IF:clock_plan--><li><b>At</b> (<b>3 · Timing</b> card): the cue starts by itself at that time during the
+<b>Show</b> (e.g. pre-show music at 5:50 pm, the bell before the end of the interval). GO skips it; more than a
+minute late it is skipped (it never starts later by surprise). The status bar shows the clock and the next such
+cue; <b>Show → ⏸ Hold the time plan</b> stops the plan and <b>🕐 Time plan in the rehearsal too</b> runs it in
+rehearsals. The show list marks it <b>🕐 17:50</b>.</li><!--/IF:clock_plan-->
+<!--IF:markers--><li><b>Marks</b>: <b>◆ Mark</b> above the waveform puts a mark at the playhead, and
+<kbd>Ctrl+K</kbd> where the selected cue is playing right now (e.g. tapping the chorus in a rehearsal). The marks
+are listed in the <b>3 · Timing</b> card. Another cue can start <b>on the mark</b> (Start → on the mark of, e.g. a
+caption exactly on a word of a song), also after a seek. A mark that something starts from cannot be
+deleted.</li><!--/IF:markers-->
+<!--IF:time_text--><li><b>Typing a time</b>: every field in seconds (IN/OUT, fade in, fade out, crossfade, delays, relative start) takes <b>83.5</b>, <b>83,5</b>, <b>1:23.5</b>, <b>1:02:03</b>, <b>2.1.7</b> (dots for colons – handy on the numeric keypad), <b>1m23s</b>, <b>2m</b> or <b>45s</b> – after Enter the field shows seconds.</li><!--/IF:time_text-->
 </ul>
 
 <!-- ================================================================== -->
@@ -530,6 +544,8 @@ the files.</p><!--/IF:assistant-->
 <!--IFNOT:mode_tabs--><tr><td><kbd>F5</kbd></td><td>LIVE mode / back to the project</td></tr><!--/IFNOT:mode_tabs--><!--IF:mode_tabs--><tr><td><kbd>F5</kbd> / <kbd>Ctrl+L</kbd></td><td>enter the show (enter only)</td></tr><tr><td><kbd>Ctrl+Shift+F5</kbd></td><td>end the show (asks)</td></tr><tr><td><kbd>Ctrl+P</kbd></td><td>pause / resume all</td></tr><!--/IF:mode_tabs-->
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC<!--IFNOT:esc_everywhere--> (in LIVE mode)<!--/IFNOT:esc_everywhere-->: twice within 0.6 s</td></tr>
 <!--IF:fade_all--><tr><td><kbd>Shift+Esc</kbd></td><td>fade all (1 s)</td></tr><!--/IF:fade_all-->
+<!--IF:search--><tr><td><kbd>Ctrl+F</kbd></td><td>find a cue: in Preparation it filters the list (name, Q, notes, file; Enter – first match, Esc – close), in the Rehearsal and the Show it only sets the next GO</td></tr><!--/IF:search-->
+<!--IF:markers--><tr><td><kbd>Ctrl+K</kbd></td><td>a mark where the selected cue is playing (Rehearsal) or at the playhead</td></tr><!--/IF:markers-->
 <!--IF:exclusive--><tr><td><kbd>Ctrl+Space</kbd></td><td>forced GO – also while an exclusive cue plays</td></tr><!--/IF:exclusive-->
 <!--IF:effects--><tr><td><kbd>A</kbd>–<kbd>Z</kbd>, <kbd>0</kbd>–<kbd>9</kbd></td><td>effects on demand (in the rehearsal and the show, the key set in the cue)</td></tr><tr><td><kbd>Ctrl+R</kbd></td><td>repeat the last effect</td></tr><!--/IF:effects-->
 <tr><td><kbd>Ctrl+B</kbd></td><td>master blackout (cover)</td></tr>

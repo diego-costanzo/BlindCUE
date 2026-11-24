@@ -259,6 +259,7 @@ class _CueTableMixin:
             self._played_ids.clear()  # a run from the top: nothing played yet
             self._goto_counts.clear()  # 2.2: jumps count again
             self._run_reset()  # 2.5: a new run of the show
+            self._clock_reset()  # 2.6: today's time plan starts afresh
         if not enabled:
             saved = self._run_save()  # 2.5: the run log of the show that just ended
             if saved is not None:

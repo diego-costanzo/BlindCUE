@@ -170,6 +170,9 @@ odpalasz go GO; może mieć Pre-Delay, Auto-GO i należeć do grupy.</p>
 <tr><td><b>↪ Skok do pozycji</b></td><td>uruchamia wybrany cue (dalej GO idzie od niego) albo – <b>Tylko jako następne GO</b> – jedynie ustawia go jako następny. <b>Najwyżej N×</b> ogranicza powtórzenia: np. scena grana dwa razy, potem GO idzie dalej. Licznik zeruje się, gdy przedstawienie zaczyna się od początku.</td></tr>
 <tr><td><b>📞 Wywołaj pozycję</b></td><td>uruchamia wybrany cue bez przesuwania GO (jak efekt). Cue z zaznaczonym <b>📞 Tylko na wywołanie</b> (karta 3 · Czasy) jest poza kolejnością GO; w Inspektorze widać, skąd jest wywoływany.</td></tr>
 <tr><td><b>⏩ Przewiń odtwarzanie</b></td><td>przesuwa grający dźwięk lub film: <b>do miejsca</b> w pliku, <b>o N s</b> do przodu lub do tyłu, albo <b>na N s przed końcem</b> (np. pominięcie zwrotki na próbie).</td></tr>
+<tr><td><b>⌛ Czekaj, potem następna</b></td><td>oczekiwanie widoczne na liście: po podanych sekundach sama startuje następna pozycja (zamiast ukrytego Pre-Delay). Pauza wszystkiego je wstrzymuje, PANIC kasuje.</td></tr>
+<tr><td><b>⏸ Pauza</b> / <b>▶ Wznów</b></td><td>wstrzymuje wybrane grające dźwięki i filmy albo pozwala im grać dalej od miejsca, w którym stanęły; pozostałe grają bez zmian. Pozycje startujące na znaczniku lub przed końcem wstrzymanej czekają razem z nią.</td></tr>
+<tr><td><b>⏱ Stoper</b></td><td>stoper na pasku stanu (np. czas trwania aktu): <b>Start</b>, <b>Stop</b> (następny start liczy dalej) albo <b>Zeruj</b>. PANIC go nie rusza.</td></tr>
 </table>
 <p><b>Na co działa</b> (pole <b>Na co</b>): <b>Wszystko, co gra</b>, <b>Jedna warstwa</b> (L1–L3)
 albo <b>Wybrane cue</b> (zaznacz je na liście; grupa = wszystkie jej cue). Gdy żaden z celów
@@ -219,6 +222,17 @@ znaczek <b>⊘</b>. Gdy coś na niego wskazuje (Auto-GO poprzedniego, skok, akcj
 ostrzega. <b>Przedstawienie → 🎭 Wersje przedstawienia</b>: <b>Zapisz jako nową wersję…</b> (np. „skrócona”,
 „druga obsada”) i przełączanie między wersjami; <b>Pełne przedstawienie</b> to wszystko włączone. Wersje zapisują
 się z przedstawieniem, a bieżąca jest na pasku stanu („Wersja: skrócona · wyłączonych: 12”).</li>
+<li><b>O godzinie</b> (karta <b>3 · Czasy</b>): pozycja startuje sama o podanej godzinie w czasie
+<b>Przedstawienia</b> (np. muzyka przed spektaklem o 17:50, dzwonek przed końcem przerwy). GO ją pomija; ponad
+minutę spóźniona – zostaje pominięta (nigdy nie startuje niespodziewanie później). Pasek stanu pokazuje zegar i
+najbliższą taką pozycję; <b>Przedstawienie → ⏸ Wstrzymaj plan godzinowy</b> zatrzymuje plan, a <b>🕐 Plan godzinowy
+także w Próbie</b> włącza go na próbach. Na liście przedstawienia znaczek <b>🕐 17:50</b>.</li>
+<li><b>Znaczniki</b>: <b>◆ Znacznik</b> nad przebiegiem stawia znacznik na głowicy, a
+<kbd>Ctrl+K</kbd> – w miejscu, w którym wybrana pozycja właśnie gra (np. wystukując na próbie moment refrenu).
+Lista znaczników jest w karcie <b>3 · Czasy</b>. Inna pozycja może startować <b>na znaczniku</b> (Start → na znaczniku,
+np. napis dokładnie na słowie piosenki), także po przewinięciu. Znacznika, od którego coś startuje, nie da się
+usunąć.</li>
+<li><b>Wpisywanie czasu</b>: każde pole w sekundach (IN/OUT, wejście, wyjście, przenikanie, opóźnienia, start względny) przyjmuje <b>83.5</b>, <b>83,5</b>, <b>1:23.5</b>, <b>1:02:03</b>, <b>2.1.7</b> (kropki zamiast dwukropków – wygodne na klawiaturze numerycznej), <b>1m23s</b>, <b>2m</b> albo <b>45s</b> – po zatwierdzeniu pole pokaże sekundy.</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -534,6 +548,8 @@ wskażesz. Do dostawcy AI trafiają nazwy cue, uwagi i nazwy plików – nie ich
 <tr><td><kbd>F5</kbd> / <kbd>Ctrl+L</kbd></td><td>wejście w przedstawienie (tylko wejście)</td></tr><tr><td><kbd>Ctrl+Shift+F5</kbd></td><td>zakończ przedstawienie (z pytaniem)</td></tr><tr><td><kbd>Ctrl+P</kbd></td><td>pauza / wznów wszystko</td></tr>
 <tr><td><kbd>Esc</kbd> ×2</td><td>PANIC: dwa razy w ciągu 0,6 s</td></tr>
 <tr><td><kbd>Shift+Esc</kbd></td><td>wygaś wszystko (1 s)</td></tr>
+<tr><td><kbd>Ctrl+F</kbd></td><td>szukaj pozycji: w Przygotowaniu filtr listy (nazwa, Q, uwagi, plik; Enter – pierwszy wynik, Esc – zamknij), w Próbie i Przedstawieniu tylko ustawia następne GO</td></tr>
+<tr><td><kbd>Ctrl+K</kbd></td><td>znacznik w miejscu, w którym gra wybrana pozycja (Próba) albo na głowicy</td></tr>
 <tr><td><kbd>Ctrl+Spacja</kbd></td><td>GO wymuszone – także gdy trwa cue wyłączny</td></tr>
 <tr><td><kbd>A</kbd>–<kbd>Z</kbd>, <kbd>0</kbd>–<kbd>9</kbd></td><td>efekty na żądanie (w Próbie i przedstawieniu, klawisz ustawiony w cue)</td></tr><tr><td><kbd>Ctrl+R</kbd></td><td>powtórz ostatni efekt</td></tr>
 <tr><td><kbd>Ctrl+B</kbd></td><td>wygaszenie główne (zaślepka)</td></tr>

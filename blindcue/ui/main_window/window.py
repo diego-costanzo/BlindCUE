@@ -50,6 +50,9 @@ from ui.main_window._relative import _RelativeMixin
 from ui.main_window._versions import _VersionsMixin
 from ui.main_window._rehearse_from import _RehearseFromMixin
 from ui.main_window._countdown import _CountdownMixin
+from ui.main_window._clock_plan import _ClockPlanMixin
+from ui.main_window._markers import _MarkersMixin
+from ui.main_window._search import _SearchMixin
 
 
 class MainWindow(
@@ -87,6 +90,9 @@ class MainWindow(
     _VersionsMixin,
     _RehearseFromMixin,
     _CountdownMixin,
+    _ClockPlanMixin,
+    _MarkersMixin,
+    _SearchMixin,
     QMainWindow,
 ):
     """Director / Control Panel."""
@@ -221,6 +227,9 @@ class MainWindow(
         self._relative_setup()  # cues starting relative to another cue (stage 2, 2.1)
         self._versions_setup()  # cues on/off and versions of the show (stage 2, 2.3)
         self._countdown_setup()  # countdown and run log (stage 2, 2.5)
+        self._clock_setup()  # cues at a time of day (stage 2, 2.6)
+        self._markers_setup()  # markers in a file, start on a marker (stage 2, 2.7)
+        self._search_setup()  # Ctrl+F (stage 2, 2.8)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()

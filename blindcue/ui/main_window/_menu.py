@@ -118,6 +118,16 @@ class _MenuMixin:
         show_menu.addAction(QAction("🖥 Conto alla rovescia grande (quinte)", self,
                                     triggered=lambda: self._show_countdown_window()))
         show_menu.addAction(QAction("⏹ Ferma il conto alla rovescia", self, triggered=lambda: self.stop_countdown()))
+        # 2.6: the time plan (cues at a time of day)
+        self._act_clock_hold = QAction("⏸ Sospendi il piano orario", self, checkable=True)
+        self._act_clock_hold.toggled.connect(lambda on: self._toggle_clock_hold(on))
+        show_menu.addAction(self._act_clock_hold)
+        self._act_clock_rehearsal = QAction("🕐 Piano orario anche nella prova", self, checkable=True)
+        self._act_clock_rehearsal.setChecked(
+            QSettings("BlindCue", "BlindCue").value("live/clock_in_rehearsal", False, type=bool))
+        self._act_clock_rehearsal.toggled.connect(
+            lambda on: QSettings("BlindCue", "BlindCue").setValue("live/clock_in_rehearsal", bool(on)))
+        show_menu.addAction(self._act_clock_rehearsal)
         show_menu.addSeparator()
         # Stage 1M, M2: an AI assistant (MCP) may change the open show - off by default.
         self._act_assistant = QAction("🤖 L'assistente AI può modificare lo spettacolo", self, checkable=True)

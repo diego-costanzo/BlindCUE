@@ -210,6 +210,8 @@ class LiveCueTable(QTableWidget):
 
 def relative_mark(cue: Cue, rows_by_id: dict[int, int]) -> str:
     """2.1: "⏱ #3+2s" (after the start), "⏱ #3 ▸+2s" (after the end), "⏱ #3 −2s" (before the end)."""
+    if getattr(cue, "start_clock", ""):
+        return f"🕐 {cue.start_clock}"  # 2.6: starts at a time of day
     ref = getattr(cue, "start_rel_cue", None)
     if ref is None:
         return ""
@@ -218,6 +220,8 @@ def relative_mark(cue: Cue, rows_by_id: dict[int, int]) -> str:
         return "⏱ ?"
     offset = f"{cue.start_rel_offset:g}s"
     when = getattr(cue, "start_rel_when", "start")
+    if when == "marker":
+        return f"⏱ #{row + 1} ◆{cue.start_rel_marker}+{offset}"
     if when == "end":
         return f"⏱ #{row + 1} ▸+{offset}"
     if when == "before_end":
@@ -625,7 +629,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
             right_x = rect.right()
             effect_key = str(index.data(ROLE_EFFECT_KEY) or "")
-            if effect_key.startswith("⏱"):
+            if effect_key.startswith(("⏱", "🕐")):
                 # 2.1: starts by itself relative to another cue: which one and when.
                 fm_txt, fm_bg, fm_border, fm_fg = effect_key, QColor("#042f2e"), QColor("#14b8a6"), QColor("#99f6e4")
                 fm_w = max(40, painter.fontMetrics().horizontalAdvance(effect_key) + 14)

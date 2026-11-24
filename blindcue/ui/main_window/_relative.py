@@ -26,6 +26,8 @@ class _RelativeMixin:
         self._rel_extra: dict[int, float] = {}          # cue_id -> extra wait for main.py
         self._rel_until_known: dict[int, list[int]] = {}  # ref -> "before end" cues, length unknown yet
         self._rel_before_end: dict[int, int] = {}       # "before end" cue waiting -> its reference
+        self._rel_marker: dict[int, int] = {}           # 2.7: "on a marker" cue waiting -> its reference
+        self._rel_held: set[int] = set()                 # waiting cues held while their reference is paused
         self._rel_fired: deque[float] = deque(maxlen=_MAX_PER_SECOND)
         self._goto_counts: dict[int, int] = {}            # 2.2: jump action -> times it jumped this run
 
@@ -55,15 +57,39 @@ class _RelativeMixin:
         self._rel_extra.clear()
         self._rel_until_known.clear()
         self._rel_before_end.clear()
+        self._rel_marker.clear()
+        self._rel_held.clear()
 
     def _rel_dependents(self, ref_id: int, whens: tuple[str, ...]) -> list[tuple[int, Cue]]:
         return [(i, c) for i, c in enumerate(self._cues)
                 if getattr(c, "start_rel_cue", None) == ref_id and getattr(c, "start_rel_when", "start") in whens
-                and getattr(c, "enabled", True)]
+                and getattr(c, "enabled", True) and not getattr(c, "start_clock", "")]  # a time of day wins
 
     # ── events from main.py ──
-    def cue_launched(self, cue: Cue, remaining: float | None) -> None:
-        """*cue* really started; it plays *remaining* more seconds (None: unknown or forever)."""
+    def _marker_wait(self, ref: Cue, dep: Cue, pos: float | None, remaining: float | None = None) -> float | None:
+        """Seconds from *pos* until *dep*'s marker in *ref* (+ its offset).
+
+        None when the marker is passed, missing, after the end (*remaining* s from *pos*), or *ref* has
+        sections (repeated / skipped parts: file time is not the time it plays).
+        """
+        marker = next((m for m in getattr(ref, "markers", []) if m["id"] == dep.start_rel_marker), None)
+        if marker is None or pos is None or marker["sec"] < pos - 0.05 or getattr(ref, "sections", None):
+            return None
+        if remaining is not None and marker["sec"] - pos > remaining + 0.05:
+            return None  # behind the OUT point: never reached
+        return max(0.0, marker["sec"] - pos) + float(getattr(dep, "start_rel_offset", 0.0))
+
+    def cue_launched(self, cue: Cue, remaining: float | None, start_pos: float | None = None) -> None:
+        """*cue* really started at *start_pos* s of its file; it plays *remaining* more seconds."""
+        markers = self._rel_dependents(cue.cue_id, ("marker",))
+        if markers and getattr(cue, "sections", None):
+            self._status_label.setText(tr("'{}' ha sezioni: le cue che partono sui suoi segni non partono")
+                                       .format(cue.name))
+        for idx, dep in markers:
+            wait = self._marker_wait(cue, dep, start_pos, remaining)
+            if wait is not None:
+                self._rel_marker[dep.cue_id] = cue.cue_id
+                self._rel_fire(idx, dep, wait)
         for idx, dep in self._rel_dependents(cue.cue_id, ("start", "before_end")):
             offset = float(getattr(dep, "start_rel_offset", 0.0))
             if dep.start_rel_when == "start":
@@ -114,12 +140,14 @@ class _RelativeMixin:
     def _rel_stopped_by_hand(self, cue_ids: list[int]) -> None:
         """Cues stopped by the operator: what waited to start before their end does not start."""
         gone = set(cue_ids)
-        for dep_id, ref in list(self._rel_before_end.items()):
-            if ref in gone:
-                self._rel_before_end.pop(dep_id, None)
-                dep = next((c for c in self._cues if c.cue_id == dep_id), None)
-                if dep is not None:
-                    self._rel_cancel_waiting(dep)
+        for waiting in (self._rel_before_end, self._rel_marker):
+            for dep_id, ref in list(waiting.items()):
+                if ref in gone:
+                    waiting.pop(dep_id, None)
+                    self._rel_held.discard(dep_id)
+                    dep = next((c for c in self._cues if c.cue_id == dep_id), None)
+                    if dep is not None:
+                        self._rel_cancel_waiting(dep)
         for ref in gone:
             self._rel_until_known.pop(ref, None)
 
@@ -130,16 +158,33 @@ class _RelativeMixin:
             if getattr(dep, "start_rel_cue", None) in gone:
                 self._rel_cancel_waiting(dep)
                 self._rel_before_end.pop(dep.cue_id, None)
+                self._rel_marker.pop(dep.cue_id, None)
+                self._rel_held.discard(dep.cue_id)
         for ref in gone:
             self._rel_until_known.pop(ref, None)
 
-    def cue_retimed(self, cue: Cue, remaining: float | None) -> None:
-        """A playing *cue* was moved (seek): its "before the end" cues are timed again."""
+    def cue_retimed(self, cue: Cue, remaining: float | None, pos: float | None = None) -> None:
+        """A playing *cue* was moved (seek): its "before the end" and marker cues are timed again."""
+        for dep_id, ref in list(self._rel_marker.items()):
+            if ref != cue.cue_id:
+                continue
+            idx = next((i for i, c in enumerate(self._cues) if c.cue_id == dep_id), -1)
+            held = dep_id in self._rel_held
+            self._rel_held.discard(dep_id)
+            if idx < 0 or not (held or self._rel_cancel_waiting(self._cues[idx])):
+                continue
+            self._rel_marker.pop(dep_id, None)
+            wait = self._marker_wait(cue, self._cues[idx], pos, remaining)
+            if wait is not None:  # moved past the marker: it does not start
+                self._rel_marker[dep_id] = cue.cue_id
+                self._rel_fire(idx, self._cues[idx], wait)
         for dep_id, ref in list(self._rel_before_end.items()):
             if ref != cue.cue_id:
                 continue
             idx = next((i for i, c in enumerate(self._cues) if c.cue_id == dep_id), -1)
-            if idx < 0 or not self._rel_cancel_waiting(self._cues[idx]):
+            held = dep_id in self._rel_held
+            self._rel_held.discard(dep_id)
+            if idx < 0 or not (held or self._rel_cancel_waiting(self._cues[idx])):
                 continue  # already started: nothing to move
             dep = self._cues[idx]
             self._rel_before_end.pop(dep_id, None)
@@ -148,6 +193,22 @@ class _RelativeMixin:
             else:
                 self._rel_before_end[dep_id] = cue.cue_id
                 self._rel_fire(idx, dep, max(0.0, remaining - float(dep.start_rel_offset)))
+
+    def cue_paused(self, cue: Cue) -> None:
+        """*cue* was paused (its card, a pause action): what waits for its marker or its end is held."""
+        for waiting in (self._rel_marker, self._rel_before_end):
+            for dep_id, ref in list(waiting.items()):
+                dep = next((c for c in self._cues if c.cue_id == dep_id), None)
+                if ref == cue.cue_id and dep is not None and self._rel_cancel_waiting(dep):
+                    self._rel_held.add(dep_id)
+
+    def cue_resumed(self, cue: Cue, remaining: float | None, pos: float | None) -> None:
+        """*cue* plays on from *pos*: the held cues are timed again from there."""
+        self.cue_retimed(cue, remaining, pos)
+
+    def rel_reference_gone(self, cue_ids: list[int]) -> None:
+        """main.py: these cues were pushed off their layer by another cue (no marker, no end comes)."""
+        self._rel_stopped_by_hand(cue_ids)
 
     # ── starting ──
     def _loop_guard(self, name: str) -> bool:

@@ -23,12 +23,16 @@ from models.cue import (
     ACTION_LEVEL,
     ACTION_NOTE,
     ACTION_OPACITY,
+    ACTION_PAUSE,
     ACTION_RELEASE,
+    ACTION_RESUME,
     ACTION_SEEK,
     ACTION_STOP,
+    ACTION_STOPWATCH,
     ACTION_TARGET_ALL,
     ACTION_TARGET_CUES,
     ACTION_TARGET_LAYER,
+    ACTION_WAIT,
     Cue,
     MediaType,
     resolve_output_target,
@@ -47,6 +51,8 @@ _KIND_MEDIA: dict[str, tuple[MediaType, ...]] = {
     ACTION_LEVEL: (MediaType.VIDEO, MediaType.AUDIO),
     ACTION_OPACITY: (MediaType.VIDEO, MediaType.IMAGE),
     ACTION_SEEK: (MediaType.VIDEO, MediaType.AUDIO),  # 2.2: what plays can be moved
+    ACTION_PAUSE: (MediaType.VIDEO, MediaType.AUDIO),  # 2.11
+    ACTION_RESUME: (MediaType.VIDEO, MediaType.AUDIO),  # 2.11
 }
 
 
@@ -169,7 +175,7 @@ def level_trim_after(spec: Mapping[str, object], current_trim: float, cue_volume
 def action_duration(spec: Mapping[str, object]) -> float:
     """Seconds the action keeps working after it fired (0 for instant actions)."""
     spec = sanitize_action_spec(dict(spec))
-    if spec["kind"] in (ACTION_FADE, ACTION_LEVEL, ACTION_OPACITY):
+    if spec["kind"] in (ACTION_FADE, ACTION_LEVEL, ACTION_OPACITY, ACTION_WAIT):
         return float(spec["duration"])
     return 0.0
 
@@ -211,6 +217,10 @@ def describe_action(spec: Mapping[str, object], cues: Iterable[Cue] = ()) -> str
         return f"Nota: {first[0]}" if first else "Nota (vuota)"
     if kind == ACTION_CHECKLIST:
         return f"Checklist: {len(spec['items'])} voci"
+    if kind == ACTION_WAIT:
+        return f"Attendi {_format_seconds(float(spec['duration']))} s, poi la successiva"
+    if kind == ACTION_STOPWATCH:
+        return {"start": "Cronometro: avvia", "stop": "Cronometro: ferma"}.get(spec["sw_mode"], "Cronometro: azzera")
     target = describe_target(spec, cues)
     secs = _format_seconds(float(spec["duration"]))
     if kind == ACTION_STOP:
@@ -221,6 +231,10 @@ def describe_action(spec: Mapping[str, object], cues: Iterable[Cue] = ()) -> str
         return f"Dissolvi in {secs} s: {target}"
     if kind == ACTION_RELEASE:
         return f"Rilascia loop: {target}"
+    if kind == ACTION_PAUSE:
+        return f"Pausa: {target}"
+    if kind == ACTION_RESUME:
+        return f"Riprendi: {target}"
     if kind == ACTION_LEVEL:
         if spec["mode"] == "relative":
             return f"Livello {float(spec['db']):+.1f} dB in {secs} s: {target}"
@@ -263,6 +277,10 @@ def default_action_name(kind: str) -> str:
         ACTION_CALL: "Chiama una cue",
         ACTION_SEEK: "Sposta la riproduzione",
         ACTION_COUNTDOWN: "Conto alla rovescia",
+        ACTION_WAIT: "Attendi",
+        ACTION_PAUSE: "Pausa",
+        ACTION_RESUME: "Riprendi",
+        ACTION_STOPWATCH: "Cronometro",
     }.get(kind, "Azione")
 
 
@@ -275,6 +293,8 @@ def default_action_spec(kind: str) -> dict[str, object]:
         spec.update(target=ACTION_TARGET_LAYER, layer=1, level=0.3, duration=2.0, curve="linear")
     elif kind == ACTION_FADE:
         spec.update(duration=3.0, curve="linear")
+    elif kind == ACTION_WAIT:
+        spec.update(duration=5.0)
     elif kind == ACTION_NOTE:
         spec.update(text="")
     elif kind == ACTION_CHECKLIST:

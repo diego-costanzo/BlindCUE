@@ -79,6 +79,8 @@ class _WaveformMixin:
         """Keep waveform/opacity canvas, fade pallini, section bands, and controls synced."""
         if cue is None:
             return
+        if hasattr(self, "_waveform_panel"):  # 2.7: this cue's marks, also after Undo / a programmatic select
+            self._waveform_panel.set_markers([(m["sec"], m["name"]) for m in getattr(cue, "markers", [])])
         is_image = (cue.media_type == MediaType.IMAGE)
         dur = (cue.hold_time if cue.hold_time > 0 else cue.image_timeline_sec) if is_image else self._active_test_duration
         if is_image:

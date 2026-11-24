@@ -2800,4 +2800,112 @@ T: dict[str, str] = {
         'stop',
     'Tempo rimanente':
         'Time left',
+    'Piano orario sospeso':
+        'Time plan on hold',
+    'Piano orario attivo':
+        'Time plan running',
+    '(sospeso)':
+        '(on hold)',
+    "'{}' saltata: più di un minuto di ritardo sull'orario {}":
+        "'{}' skipped: more than a minute after {}",
+    'Alle {}: {}':
+        'At {}: {}',
+    '⏸ Sospendi il piano orario':
+        '⏸ Hold the time plan',
+    '🕐 Piano orario anche nella prova':
+        '🕐 Time plan in the rehearsal too',
+    'Alle ore:':
+        'At:',
+    "2.6: la cue parte da sola a quest'ora durante lo spettacolo (il GO la salta). Più di un minuto in ritardo: saltata. Vuoto = con il GO.":
+        'The cue starts by itself at this time during the show (GO skips it). More than a minute late: skipped. Empty = with GO.',
+    'Ora di partenza della cue':
+        'Start time of the cue',
+    'parte alle {}':
+        'starts at {}',
+    'al segno di':
+        'on the mark of',
+    'Segno della cue di riferimento':
+        'Mark of the reference cue',
+    'Segni:':
+        'Marks:',
+    'Segni della cue':
+        'Marks of the cue',
+    'Elimina il segno scelto (non se una cue parte da lì)':
+        'Delete the chosen mark (not when a cue starts from it)',
+    "Quella cue non ha segni: mettine uno sulla sua forma d'onda (◆ Segno).":
+        'That cue has no marks: put one on its waveform (◆ Mark).',
+    '◆ Segno':
+        '◆ Mark',
+    'Mette un segno sulla testina (Ctrl+K: anche sulla cue in onda, per esempio battendo a tempo in prova). Una cue può partire «al segno».':
+        "Puts a mark at the playhead (Ctrl+K: also on the cue playing, e.g. tapping in time in a rehearsal). A cue can start 'on the mark'.",
+    'Segno: scegli una cue audio o video':
+        'Mark: choose an audio or video cue',
+    'Segno: nessuna posizione (fai partire la cue o sposta la testina)':
+        'Mark: no position (start the cue or move the playhead)',
+    'Segno ◆{} a {} s':
+        'Mark ◆{} at {} s',
+    'Il segno ◆{} è usato da {}: non si può eliminare':
+        'Mark ◆{} is used by {}: it cannot be deleted',
+    'Cerca: nome, Q, note, file…  (Invio: primo risultato, Esc: chiudi)':
+        'Find: name, Q, notes, file…  (Enter: first match, Esc: close)',
+    'Cerca nella scaletta':
+        'Find in the list',
+    'Cerca una cue':
+        'Find a cue',
+    'Nome, Q, note o file:':
+        'Name, Q, notes or file:',
+    'Trovate {} cue su {}':
+        'Found {} of {} cues',
+    "Nessuna cue trovata: '{}'":
+        "No cue found: '{}'",
+    "'{}' ha sezioni: le cue che partono sui suoi segni non partono":
+        "'{}' has sections: cues starting on its marks will not start",
+    'segni':
+        'marks',
+    '⌛ Attendi, poi la successiva':
+        '⌛ Wait, then the next one',
+    '⏸ Pausa':
+        '⏸ Pause',
+    '▶ Riprendi':
+        '▶ Resume',
+    '⏱ Cronometro':
+        '⏱ Stopwatch',
+    "Un'attesa visibile nella scaletta: dopo i secondi indicati parte la cue successiva, senza GO. Pausa generale la trattiene, PANIC la annulla.":
+        'A wait you can see in the list: after the given seconds the next cue starts, without GO. Pause All holds it, PANIC cancels it.',
+    'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano.':
+        'Pauses the chosen cues that are playing (sound and video); the others go on.',
+    'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate.':
+        'Lets the chosen paused cues play on from where they stopped.',
+    'Cronometro sulla barra di stato (per esempio la durata di un atto): avvia, ferma (si riprende da lì) o azzera. PANIC non lo tocca.':
+        'A stopwatch on the status bar (for example how long an act takes): start, stop (it goes on from there) or reset. PANIC leaves it alone.',
+    'Avvia':
+        'Start',
+    'Ferma':
+        'Stop',
+    'Azzera':
+        'Reset',
+    'Cronometro:':
+        'Stopwatch:',
+    'Cronometro':
+        'Stopwatch',
+    'Attendi {} s, poi la successiva':
+        'Wait {} s, then the next one',
+    'Cronometro: avvia':
+        'Stopwatch: start',
+    'Cronometro: ferma':
+        'Stopwatch: stop',
+    'Cronometro: azzera':
+        'Stopwatch: reset',
+    'Pausa: {}':
+        'Pause: {}',
+    'Riprendi: {}':
+        'Resume: {}',
+    'Attendi':
+        'Wait',
+    'Pausa':
+        'Pause',
+    'Riprendi':
+        'Resume',
+    'Partenza relativa persa (cue di riferimento eliminata): {} ora parte con il GO':
+        'Relative start lost (its reference cue was deleted): {} now starts with GO',
 }

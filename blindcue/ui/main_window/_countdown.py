@@ -47,6 +47,44 @@ class _CountdownMixin:
         self._run_log: list[tuple[float, int, str, bool]] = []
         self._run_t0: float | None = None
         self._prev_run: dict[int, float] = {}
+        self._sw_total = 0.0                     # 2.11 stopwatch: seconds before the current run
+        self._sw_since: float | None = None      # monotonic start of the current run (None = stopped)
+        self._sw_timer = QTimer(self)
+        self._sw_timer.setInterval(500)
+        self._sw_timer.timeout.connect(self._sw_tick)
+        self._lbl_stopwatch = QLabel("")
+        self._lbl_stopwatch.setVisible(False)
+
+    # ── stopwatch (2.11) ──
+    def stopwatch(self, mode: str) -> None:
+        """An action cue: "start", "stop" (it goes on from there next time) or "reset" (zero, keeps running)."""
+        now = time.monotonic()
+        if mode == "start" and self._sw_since is None:
+            self._sw_since = now
+        elif mode == "stop" and self._sw_since is not None:
+            self._sw_total += now - self._sw_since
+            self._sw_since = None
+        elif mode == "reset":
+            self._sw_total = 0.0
+            if self._sw_since is not None:
+                self._sw_since = now
+        bar = self.statusBar()
+        if self._lbl_stopwatch.parent() is not bar:
+            bar.addPermanentWidget(self._lbl_stopwatch)
+        self._lbl_stopwatch.setVisible(True)
+        if self._sw_since is None:
+            self._sw_timer.stop()
+        else:
+            self._sw_timer.start()
+        self._sw_tick()
+
+    def stopwatch_seconds(self) -> float:
+        return self._sw_total + (0.0 if self._sw_since is None else time.monotonic() - self._sw_since)
+
+    def _sw_tick(self) -> None:
+        running = self._sw_since is not None
+        self._lbl_stopwatch.setText(f"⏱ {_mmss(int(self.stopwatch_seconds()))}" + ("" if running else " ⏸"))
+        self._lbl_stopwatch.setStyleSheet(f"color: {'#7dd3fc' if running else '#94a3b8'}; padding: 0 8px;")
 
     # ── countdown ──
     def start_countdown(self, seconds: float, title: str = "") -> None:

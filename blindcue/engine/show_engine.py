@@ -59,7 +59,8 @@ def demote_live_on_layer(
 def outside_go_order(cue: Cue) -> bool:
     """Effects on demand, relative starts, call-only and disabled cues: GO skips them."""
     return (bool(getattr(cue, "adlib", False)) or getattr(cue, "start_rel_cue", None) is not None
-            or bool(getattr(cue, "call_only", False)) or not getattr(cue, "enabled", True))
+            or bool(getattr(cue, "call_only", False)) or not getattr(cue, "enabled", True)
+            or bool(getattr(cue, "start_clock", "")))
 
 
 def is_enabled(cue: Cue) -> bool:

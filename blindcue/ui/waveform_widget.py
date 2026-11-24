@@ -119,6 +119,7 @@ class WaveformWidget(QWidget):
 
         self._playhead: float | None = None
         self._playhead_sec: float | None = None
+        self._markers: list[tuple[float, str]] = []  # 2.7: (seconds, label)
 
         self._fade_in_sec: float = 0.0
         self._fade_out_sec: float = 0.0
@@ -256,6 +257,25 @@ class WaveformWidget(QWidget):
         self._clamp_view()
         self.view_changed.emit(self._zoom, self._view_start_sec, self._view_span_sec())
         self.update()
+
+    def set_markers(self, items: list[tuple[float, str]]) -> None:
+        """2.7: named points of the file, drawn as amber dashed lines."""
+        self._markers = list(items)
+        self.update()
+
+    def _paint_markers(self, painter: QPainter, w: int, h: int) -> None:
+        if not self._markers or self._duration_sec <= 0:
+            return
+        pen = QPen(QColor("#f59e0b"), 1, Qt.PenStyle.DashLine)
+        painter.setFont(QFont("sans-serif", 8, QFont.Weight.Bold))
+        for sec, label in self._markers:
+            x = self._sec_to_x(sec)
+            if x < 0 or x > w:
+                continue
+            painter.setPen(pen)
+            painter.drawLine(int(x), 0, int(x), h)
+            painter.setPen(QColor("#fbbf24"))
+            painter.drawText(int(x) + 3, h - 4, label)
 
     def set_playhead(self, norm_pos: float | None) -> None:
         """Move the playhead to a normalised position (``None`` hides it)."""
@@ -809,6 +829,7 @@ class WaveformWidget(QWidget):
         # 8. IN & OUT vertical markers (Audio/Video)
         if not is_image:
             self._paint_in_out_markers(painter, w, h, in_x, out_x)
+            self._paint_markers(painter, w, h)  # 2.7
 
         # 9. Playhead cursor ("Testina di lettura") — always drawn above markers
         ph_sec = self.playhead_seconds()
@@ -1161,11 +1182,16 @@ class WaveformWidget(QWidget):
 class WaveformPanel(QGroupBox):
     """Unified Timeline panel: Playhead, Snap IN/OUT, Volume/Opacity Envelopes, and Sections A/B/C."""
 
+    def set_markers(self, items: list[tuple[float, str]]) -> None:
+        """2.7: the selected cue's markers on the waveform."""
+        self.waveform.set_markers(items)
+
     in_changed = Signal(float)
     out_changed = Signal(float)
     seek_requested = Signal(float)
     snap_in_requested = Signal()
     snap_out_requested = Signal()
+    marker_add_requested = Signal()  # 2.7: a marker at the playhead
     reset_in_out_requested = Signal()
 
     fade_in_changed = Signal(float)
@@ -1249,6 +1275,17 @@ class WaveformPanel(QGroupBox):
 
         strip_top.addWidget(self.btn_snap_in)
         strip_top.addWidget(self.btn_snap_out)
+        self.btn_marker = QPushButton("◆ Segno")
+        self.btn_marker.setFixedHeight(22)
+        self.btn_marker.setEnabled(False)
+        self.btn_marker.setToolTip("Mette un segno sulla testina (Ctrl+K: anche sulla cue in onda, per esempio "
+                                   "battendo a tempo in prova). Una cue può partire «al segno».")
+        self.btn_marker.setStyleSheet(
+            "QPushButton { background-color: #2b1d05; color: #fbbf24; border: 1px solid #f59e0b; "
+            "border-radius: 3px; font-size: 10px; font-weight: bold; padding: 1px 7px; } "
+            "QPushButton:disabled { background-color: #161d26; color: #4b5563; border-color: #24303f; }")
+        self.btn_marker.clicked.connect(self.marker_add_requested)
+        strip_top.addWidget(self.btn_marker)
         strip_top.addWidget(self.lbl_playhead)
         strip_top.addWidget(self.btn_reset_io)
         strip_top.addStretch(1)
@@ -1569,6 +1606,7 @@ class WaveformPanel(QGroupBox):
 
         self.btn_snap_in.setEnabled(bool(snap_enabled and has_valid))
         self.btn_snap_out.setEnabled(bool(snap_enabled and has_valid))
+        self.btn_marker.setEnabled(bool(snap_enabled and has_valid))
         self.btn_reset_io.setEnabled(bool(reset_enabled))
 
         if has_valid and sec is not None:

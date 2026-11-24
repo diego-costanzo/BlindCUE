@@ -58,7 +58,7 @@ DURATION_BUDGET_SEC = 20.0
 RECENT_AUTOSAVE_SEC = 15 * 60
 _ACTION_KEYS = {"target", "layer", "output", "cue_ids", "duration", "mode", "level", "db", "curve",
                 "text", "note_color", "items", "goto_play", "goto_max", "seek_mode", "seek_sec",
-                "countdown_sec"}
+                "countdown_sec", "sw_mode"}
 
 
 class ToolError(Exception):
@@ -258,6 +258,8 @@ EDITABLE: dict[str, tuple[str, Any]] = {
     "exclusive": ("While it plays, a GO by hand is refused (a key scene).", _bool),
     "call_only": ("Started only by a 'call' action (or a jump); GO skips it.", _bool),
     "enabled": ("false = off in this version of the show: the cue never plays.", _bool),
+    "start_clock": ("Starts by itself at this time of day during the show ('19:55' or '19:55:30'; '' = with GO). "
+                    "More than a minute late: skipped.", lambda v: _clock(v)),
     "confirm_start": ("Starts only after the director's OK (Enter or the OK button).", _bool),
     "adlib": ("Effect on demand: outside the GO order, started by its key or tile.", _bool),
     "hotkey": ("Effect key: one letter or digit.", lambda v: _hotkey(v)),
@@ -268,9 +270,13 @@ EDITABLE: dict[str, tuple[str, Any]] = {
                       lambda v: _choice(v, "output_target", ("A", "B"))),
     "start_rel_cue": ("Start by itself relative to this cue_id (null = with GO). Such a cue is outside the "
                       "GO order.", lambda v: None if v in (None, "", 0) else int(_float(v, "start_rel_cue", 1, 10**9))),
-    "start_rel_when": ("With start_rel_cue: start (N s after it starts), end (N s after it ends) or "
-                       "before_end (N s before it ends).",
-                       lambda v: _choice(v, "start_rel_when", ("start", "end", "before_end"))),
+    "start_rel_when": ("With start_rel_cue: start (N s after it starts), end (N s after it ends), "
+                       "before_end (N s before it ends) or marker (N s after a marker of it, start_rel_marker).",
+                       lambda v: _choice(v, "start_rel_when", ("start", "end", "before_end", "marker"))),
+    "start_rel_marker": ("With start_rel_when marker: the marker id in the reference cue.",
+                         lambda v: None if v in (None, "", 0) else int(_float(v, "start_rel_marker", 1, 10**6))),
+    "markers": ("Named points of a sound/video file: [{\"name\": \"chorus\", \"sec\": 30.5}, ...] "
+                "(ids are given in order).", lambda v: _markers(v)),
     "start_rel_offset": ("Seconds for start_rel_when.", lambda v: _float(v, "start_rel_offset")),
     "group_mode": ("Groups: STEP (one GO per item), SEQUENCE (one GO plays all in a row), SIMULTANEOUS "
                    "(all together), RANDOM, LOOP.", lambda v: _choice(v, "group_mode", _GROUP_MODES)),
@@ -284,6 +290,49 @@ def _text(value: Any, name: str, limit: int, required: bool = False) -> str:
     if len(text) > limit:
         raise ToolError(f"{name} is longer than {limit} characters.")
     return text
+
+
+def _markers(value: Any) -> list[dict]:
+    """Checked marker entries; an entry without id gets one in ``_keep_marker_ids`` (ids must stay stable)."""
+    if not isinstance(value, list) or len(value) > 200:
+        raise ToolError("markers must be a list (at most 200) of {name, sec}.")
+    raw = []
+    for i, item in enumerate(value, 1):
+        if not isinstance(item, dict) or "sec" not in item:
+            raise ToolError("each marker needs sec (seconds in the file) and may have a name.")
+        mid = 0 if item.get("id") in (None, "", 0) else int(_float(item["id"], "id", 1, 10**6))
+        raw.append({"id": mid, "name": _text(item.get("name", f"◆{i}"), "name", 30),
+                    "sec": _float(item["sec"], "sec", 0.0, 86400.0)})
+    return raw
+
+
+def _keep_marker_ids(old: list[dict], new: list[dict]) -> list[dict]:
+    """A marker given without id keeps the id of the old marker at the same time, else gets a new one."""
+    from models.cue import sanitize_markers
+
+    taken = {m["id"] for m in new if m["id"]}
+    if len(taken) != len([m for m in new if m["id"]]):
+        raise ToolError("Two markers have the same id.")
+    next_id = max(taken | {m["id"] for m in old} | {0}) + 1
+    out = []
+    for m in new:
+        if not m["id"]:
+            same = next((o["id"] for o in old if abs(o["sec"] - m["sec"]) < 0.01 and o["id"] not in taken), None)
+            if same is None:
+                same, next_id = next_id, next_id + 1
+            taken.add(same)
+            m = {**m, "id": same}
+        out.append(m)
+    return sanitize_markers(out)
+
+
+def _clock(value: Any) -> str:
+    from engine.clock_plan import normalize_clock
+
+    text = str(value or "").strip()
+    if text and not normalize_clock(text):
+        raise ToolError("start_clock must look like '19:55' or '19:55:30' (or '' for none).")
+    return normalize_clock(text) if text else ""
 
 
 def _hotkey(value: Any) -> str:
@@ -353,6 +402,8 @@ def _strict_action(kind: str, raw: Any, base: dict[str, Any], new: bool) -> dict
         _float(raw["seek_sec"], "seek_sec", -86400.0, 86400.0)
     if "countdown_sec" in raw:
         _float(raw["countdown_sec"], "countdown_sec", 0.0, 14400.0)
+    if "sw_mode" in raw:
+        _choice(raw["sw_mode"], "sw_mode", ("start", "stop", "reset"))
     if "items" in raw:
         items = raw["items"]
         if not isinstance(items, list) or len(items) > 30 or \
@@ -598,10 +649,22 @@ class ShowSession:
         return self._describe(position, cue)
 
     def _apply(self, cue: Cue, fields: dict[str, Any] | None) -> None:
+        old_markers = list(getattr(cue, "markers", []))
         for key, value in (fields or {}).items():
             if key not in EDITABLE:
                 raise ToolError(f"'{key}' cannot be set here. Settable: {', '.join(sorted(EDITABLE))}.")
             setattr(cue, key, EDITABLE[key][1](value))
+        if "markers" in (fields or {}):
+            cue.markers = _keep_marker_ids(old_markers, cue.markers)
+            kept = {m["id"] for m in cue.markers}
+            for i, other in enumerate(self.cues):
+                if (other is not cue and other.start_rel_cue == cue.cue_id and other.start_rel_when == "marker"
+                        and other.start_rel_marker not in kept):
+                    raise ToolError(f"Marker {other.start_rel_marker} is used by #{i + 1} '{other.name}' "
+                                    "(it starts there): keep that marker and its id.")
+        if cue.start_clock and cue.start_rel_cue is not None:
+            raise ToolError("A cue starts at a time of day (start_clock) or relative to another cue "
+                            "(start_rel_cue), not both.")
         if cue.out_point is not None and cue.out_point <= cue.in_point:
             raise ToolError("out_point must be after in_point.")
         if cue.media_type in (MediaType.GROUP, MediaType.ACTION) and cue.adlib:
@@ -612,6 +675,10 @@ class ShowSession:
                 raise ToolError(f"start_rel_cue {ref} is not another video, sound or picture cue of this show.")
             if relative_cycle(self.cues, cue.cue_id, ref):
                 raise ToolError("That cue already starts from this one: they would start each other forever.")
+            if cue.start_rel_when == "marker":
+                target = next(c for c in self.cues if c.cue_id == ref)
+                if not any(m["id"] == cue.start_rel_marker for m in target.markers):
+                    raise ToolError("start_rel_marker is not a marker of that cue (see its markers).")
 
     def add_media_cue(self, path: str, after_cue_id: int | None = None,
                       fields: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -848,7 +915,8 @@ def cue_schema() -> dict[str, Any]:
     return {
         "types": {"VIDEO": "video file", "AUDIO": "audio file (layer 2 by default)",
                   "IMAGE": "picture or caption (captions on layer 3)", "GROUP": "a scene that holds cues",
-                  "ACTION": "no file: stop / fade / release / level / opacity of other cues, or a note / "
+                  "ACTION": "no file: stop / fade / release / level / opacity / pause / resume / seek of "
+                            "other cues, jump / call, a wait, a countdown, a stopwatch, or a note / "
                             "checklist for the operator"},
         "fields": {name: desc for name, (desc, _conv) in EDITABLE.items()},
         "action_kinds": list(ACTION_KINDS),
@@ -861,6 +929,10 @@ def cue_schema() -> dict[str, Any]:
                            "goto_max N = at most N times per run (0 = always)",
             "call": "cue_ids [one cue]: starts it without moving GO (mark that cue call_only)",
             "seek": "target + seek_mode absolute | relative | before_end, seek_sec seconds",
+            "countdown": "countdown_sec seconds (0 stops it), text = its title",
+            "wait": "duration seconds, then the next cue starts by itself (a delay visible in the list)",
+            "pause / resume": "target: pause the sound / video of the targets, or let them play on",
+            "stopwatch": "sw_mode start | stop | reset (a stopwatch on the status bar)",
         },
         "media_extensions": sorted(VIDEO_EXT | AUDIO_EXT | IMAGE_EXT),
     }

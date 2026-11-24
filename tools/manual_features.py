@@ -59,6 +59,11 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "versions": ("blindcue/ui/main_window/_versions.py", None),
     "rehearse_from": ("blindcue/engine/rehearse_from.py", None),
     "countdown": ("blindcue/ui/main_window/_countdown.py", None),
+    "clock_plan": ("blindcue/engine/clock_plan.py", None),
+    "markers": ("blindcue/ui/main_window/_markers.py", None),
+    "search": ("blindcue/ui/main_window/_search.py", None),
+    "time_text": ("blindcue/ui/time_text.py", None),
+    "new_actions": ("blindcue/models/cue.py", "ACTION_STOPWATCH ="),
 }
 
 

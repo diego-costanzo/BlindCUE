@@ -262,8 +262,11 @@ class _TransportMixin:
     def _note_fired(self, cue: Cue) -> None:
         """A cue was started (GO, Auto-GO, chain, group): ✓ in the list, and in which order."""
         self._played_ids.add(cue.cue_id)
-        if self._gate_waiting() >= 0 and self._gate_waiting() != cue.cue_id:
-            self._clear_gate()  # another cue started: the waiting OK lapses (1.9)
+        if (self._gate_waiting() >= 0 and self._gate_waiting() != cue.cue_id
+                and not getattr(self, "_firing_aside", False)):
+            self._clear_gate()  # another cue started by GO: the waiting OK lapses (1.9)
+        if getattr(cue, "start_clock", ""):
+            self._clock_handled.add(cue.cue_id)  # 2.6: started by hand, the clock does not start it again
         self._undo_go_collect(cue)
         if cue.cue_id in self._held_auto_go:
             self._held_auto_go.discard(cue.cue_id)  # a new run of this cue hands over again

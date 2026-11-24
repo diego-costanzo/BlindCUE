@@ -319,3 +319,23 @@ def test_review_actions_groups_and_moves(place):
     assert [r.get("group_id") for r in session.list_cues() if r["cue_id"] in (a, b, c)] == [group] * 3
     (media / "intro.mp4").unlink()
     session.update_cue(a, {"notes": "file comes later"})                       # a missing file is no block
+
+
+def test_review_marker_ids_stay_and_one_way_to_start(place):
+    session, shows, media, _tmp = place
+    session.new_show(str(shows / "marks"))
+    song = session.add_media_cue(str(media / "music.mp3"), fields={"markers": [{"name": "chorus", "sec": 30}]})
+    mark = session.get_cue(song["cue_id"])["markers"][0]["id"]
+    title = session.add_media_cue(str(media / "poster.jpg"), fields={
+        "start_rel_cue": song["cue_id"], "start_rel_when": "marker", "start_rel_marker": mark})
+    # a new marker in front, given without ids: "chorus" keeps its id (same time)
+    session.update_cue(song["cue_id"], {"markers": [{"name": "intro", "sec": 5}, {"name": "chorus", "sec": 30}]})
+    marks = {m["name"]: m["id"] for m in session.get_cue(song["cue_id"])["markers"]}
+    assert marks["chorus"] == mark and marks["intro"] != mark
+    with pytest.raises(ToolError, match="used by"):
+        session.update_cue(song["cue_id"], {"markers": [{"name": "intro", "sec": 5}]})
+    assert len(session.get_cue(song["cue_id"])["markers"]) == 2          # refused: nothing changed
+    with pytest.raises(ToolError):
+        session.update_cue(song["cue_id"], {"markers": [{"id": "abc", "sec": 5}]})
+    with pytest.raises(ToolError, match="not both"):
+        session.update_cue(title["cue_id"], {"start_clock": "19:55"})

@@ -3022,4 +3022,112 @@ T: dict[str, str] = {
         'stop',
     'Tempo rimanente':
         'Pozostały czas',
+    'Piano orario sospeso':
+        'Plan godzinowy wstrzymany',
+    'Piano orario attivo':
+        'Plan godzinowy aktywny',
+    '(sospeso)':
+        '(wstrzymany)',
+    "'{}' saltata: più di un minuto di ritardo sull'orario {}":
+        '„{}” pominięta: ponad minutę po godzinie {}',
+    'Alle {}: {}':
+        'O {}: {}',
+    '⏸ Sospendi il piano orario':
+        '⏸ Wstrzymaj plan godzinowy',
+    '🕐 Piano orario anche nella prova':
+        '🕐 Plan godzinowy także w Próbie',
+    'Alle ore:':
+        'O godzinie:',
+    "2.6: la cue parte da sola a quest'ora durante lo spettacolo (il GO la salta). Più di un minuto in ritardo: saltata. Vuoto = con il GO.":
+        'Pozycja startuje sama o tej godzinie w czasie przedstawienia (GO ją pomija). Ponad minutę spóźniona: pominięta. Puste = z GO.',
+    'Ora di partenza della cue':
+        'Godzina startu pozycji',
+    'parte alle {}':
+        'startuje o {}',
+    'al segno di':
+        'na znaczniku',
+    'Segno della cue di riferimento':
+        'Znacznik pozycji odniesienia',
+    'Segni:':
+        'Znaczniki:',
+    'Segni della cue':
+        'Znaczniki pozycji',
+    'Elimina il segno scelto (non se una cue parte da lì)':
+        'Usuń wybrany znacznik (nie, gdy jakaś pozycja od niego startuje)',
+    "Quella cue non ha segni: mettine uno sulla sua forma d'onda (◆ Segno).":
+        'Ta pozycja nie ma znaczników: dodaj go na jej przebiegu (◆ Znacznik).',
+    '◆ Segno':
+        '◆ Znacznik',
+    'Mette un segno sulla testina (Ctrl+K: anche sulla cue in onda, per esempio battendo a tempo in prova). Una cue può partire «al segno».':
+        'Stawia znacznik na głowicy (Ctrl+K: także na grającej pozycji, np. wystukując rytm na próbie). Inna pozycja może startować „na znaczniku”.',
+    'Segno: scegli una cue audio o video':
+        'Znacznik: wybierz pozycję audio lub wideo',
+    'Segno: nessuna posizione (fai partire la cue o sposta la testina)':
+        'Znacznik: brak pozycji (uruchom pozycję albo przesuń głowicę)',
+    'Segno ◆{} a {} s':
+        'Znacznik ◆{} w {} s',
+    'Il segno ◆{} è usato da {}: non si può eliminare':
+        'Znacznik ◆{} jest używany przez {}: nie można go usunąć',
+    'Cerca: nome, Q, note, file…  (Invio: primo risultato, Esc: chiudi)':
+        'Szukaj: nazwa, Q, uwagi, plik…  (Enter: pierwszy wynik, Esc: zamknij)',
+    'Cerca nella scaletta':
+        'Szukaj na liście',
+    'Cerca una cue':
+        'Szukaj pozycji',
+    'Nome, Q, note o file:':
+        'Nazwa, Q, uwagi albo plik:',
+    'Trovate {} cue su {}':
+        'Znaleziono {} z {} pozycji',
+    "Nessuna cue trovata: '{}'":
+        'Nie znaleziono: „{}”',
+    "'{}' ha sezioni: le cue che partono sui suoi segni non partono":
+        "'{}' ma sekcje: pozycje startujące na jego znacznikach nie wystartują",
+    'segni':
+        'znaczniki',
+    '⌛ Attendi, poi la successiva':
+        '⌛ Czekaj, potem następna',
+    '⏸ Pausa':
+        '⏸ Pauza',
+    '▶ Riprendi':
+        '▶ Wznów',
+    '⏱ Cronometro':
+        '⏱ Stoper',
+    "Un'attesa visibile nella scaletta: dopo i secondi indicati parte la cue successiva, senza GO. Pausa generale la trattiene, PANIC la annulla.":
+        'Oczekiwanie widoczne na liście: po podanych sekundach startuje następna pozycja, bez GO. Pauza wszystkiego je wstrzymuje, PANIC kasuje.',
+    'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano.':
+        'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej.',
+    'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate.':
+        'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły.',
+    'Cronometro sulla barra di stato (per esempio la durata di un atto): avvia, ferma (si riprende da lì) o azzera. PANIC non lo tocca.':
+        'Stoper na pasku stanu (np. czas trwania aktu): start, stop (wznawia od tego miejsca) albo zerowanie. PANIC go nie rusza.',
+    'Avvia':
+        'Start',
+    'Ferma':
+        'Stop',
+    'Azzera':
+        'Zeruj',
+    'Cronometro:':
+        'Stoper:',
+    'Cronometro':
+        'Stoper',
+    'Attendi {} s, poi la successiva':
+        'Czekaj {} s, potem następna',
+    'Cronometro: avvia':
+        'Stoper: start',
+    'Cronometro: ferma':
+        'Stoper: stop',
+    'Cronometro: azzera':
+        'Stoper: zeruj',
+    'Pausa: {}':
+        'Pauza: {}',
+    'Riprendi: {}':
+        'Wznów: {}',
+    'Attendi':
+        'Czekaj',
+    'Pausa':
+        'Pauza',
+    'Riprendi':
+        'Wznów',
+    'Partenza relativa persa (cue di riferimento eliminata): {} ora parte con il GO':
+        'Start względny utracony (pozycja odniesienia usunięta): {} startuje teraz z GO',
 }

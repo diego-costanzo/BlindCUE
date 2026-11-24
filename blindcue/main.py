@@ -113,10 +113,14 @@ from models.cue import (
     ACTION_LEVEL,
     ACTION_NOTE,
     ACTION_OPACITY,
+    ACTION_PAUSE,
     ACTION_RELEASE,
+    ACTION_RESUME,
     ACTION_SEEK,
     ACTION_STOP,
+    ACTION_STOPWATCH,
     ACTION_TARGET_ALL,
+    ACTION_WAIT,
     Cue,
     CueStatus,
     FollowMode,
@@ -838,6 +842,7 @@ def main() -> int:
         if before is not None and layer not in fading_layers and before.cue_id != cue.cue_id:
             cut_pos = live_positions.get(layer) if before.media_type in (MediaType.AUDIO, MediaType.VIDEO) else None
             main_win.note_replaced(cue, before, cut_pos)
+            main_win.rel_reference_gone([before.cue_id])  # its marker / "before the end" cues never come
         # A cue silenced on this layer while this one waited in Pre-Delay is
         # replaced now: this cue's own end must count again.
         fading_layers.discard(layer)
@@ -860,7 +865,8 @@ def main() -> int:
             if start_at is None and not restoring:  # Undo GO bringing it back starts nothing relative to it
                 # After this launch has finished: what starts relative to it never disturbs it.
                 rest = _remaining_from(cue, known_dur, live_positions[layer])
-                QTimer.singleShot(0, lambda c=cue, r=rest: main_win.cue_launched(c, r))
+                pos0 = live_positions[layer]
+                QTimer.singleShot(0, lambda c=cue, r=rest, p=pos0: main_win.cue_launched(c, r, p))
 
             if known_dur > 0 and cue.media_type in (MediaType.VIDEO, MediaType.AUDIO):
                 s_sec, e_sec, inf_flag = _live_effective_bounds(cue, known_dur)
@@ -1099,7 +1105,7 @@ def main() -> int:
         pos = max(start, pos if end is None else min(pos, end - 0.05))
         lp.seek(pos)
         live_positions[l_idx] = pos
-        main_win.cue_retimed(on_air, _remaining_from(on_air, dur, pos))  # its "before the end" cues
+        main_win.cue_retimed(on_air, _remaining_from(on_air, dur, pos), pos)  # its "before the end" / marker cues
         logger.info("[ACTION] seek '%s' (L%d) to %.2fs", on_air.name, l_idx, pos)
         return True
 
@@ -1172,11 +1178,19 @@ def main() -> int:
             elif kind == ACTION_COUNTDOWN:
                 layers = []
                 main_win.start_countdown(float(spec.get("countdown_sec", 0.0)), str(spec.get("text", "")).strip())
+            elif kind in (ACTION_PAUSE, ACTION_RESUME):  # 2.11
+                layers = [l_idx for l_idx in layers if _pause_layer(l_idx, kind == ACTION_PAUSE)]
+            elif kind == ACTION_STOPWATCH:
+                layers = []
+                main_win.stopwatch(str(spec.get("sw_mode", "start")))
+            elif kind == ACTION_WAIT:
+                layers = []  # the wait itself is the Auto-GO below
             logger.info("[ACTION] '%s' (%s) on layers %s", cue.name, kind, layers)
         except Exception as exc:
             logger.error("[ACTION] '%s' failed: %s", cue.name, exc, exc_info=True)
         main_win.action_cue_done(cue, layers)
-        if _follows_on_its_own(cue):
+        if _follows_on_its_own(cue) or (kind == ACTION_WAIT and not ShowEngine.outside_go_order(cue)):
+            # A wait (2.11) always goes on to the next cue: that is what it is for.
             # Wait for the action's own fade/ramp plus the Post-Delay; a short
             # floor keeps a looping group of instant actions from spinning.
             wait = max(0.1, action_duration(spec) + max(0.0, float(cue.post_delay)))
@@ -1718,20 +1732,33 @@ def main() -> int:
     main_win.master_gain_changed.connect(_on_master_gain)
     main_win.pause_all_set.connect(_set_global_paused)
 
-    def _on_layer_play_pause_requested(layer: int) -> None:
-        """Toggle rehearsal pause/resume for active Audio/Video live layer."""
+    def _pause_layer(layer: int, pause: bool) -> bool:
+        """Pause or resume the sound / video on *layer* (its card, a pause action); False: nothing changed."""
         live_cue = active_live_cues.get(layer)
         lp = live_players.get(layer)
         if live_cue is None or lp is None or live_cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
-            return
-        if lp.is_playing():
+            return False
+        if pause != lp.is_playing():
+            return False  # already paused / already playing
+        if pause:
             lp.pause()
             main_win.set_live_layer_paused(layer, True)
-            logger.info("[MAIN] Live Layer %d paused (rehearsal toggle)", layer)
+            main_win.cue_paused(live_cue)  # what waits for its marker / end waits with it
+            logger.info("[MAIN] Live Layer %d paused", layer)
         else:
+            paused_layers_by_global.discard(layer)
             lp.play()
             main_win.set_live_layer_paused(layer, False)
-            logger.info("[MAIN] Live Layer %d resumed (rehearsal toggle)", layer)
+            pos = live_positions.get(layer, max(0.0, live_cue.in_point))
+            main_win.cue_resumed(live_cue, _remaining_from(live_cue, live_durations.get(layer, 0.0), pos), pos)
+            logger.info("[MAIN] Live Layer %d resumed", layer)
+        return True
+
+    def _on_layer_play_pause_requested(layer: int) -> None:
+        """Toggle rehearsal pause/resume for active Audio/Video live layer."""
+        lp = live_players.get(layer)
+        if lp is not None:
+            _pause_layer(layer, lp.is_playing())
 
     main_win.layer_play_pause_requested.connect(_on_layer_play_pause_requested)
 
@@ -1749,6 +1776,7 @@ def main() -> int:
         target = max(start_sec, min(eff_end, position_sec))
         lp.seek(target)
         live_positions[layer] = target
+        main_win.cue_retimed(live_cue, _remaining_from(live_cue, dur, target), target)  # marker / end waits
         main_win.update_live_layer_progress(
             layer,
             target,
