@@ -1302,6 +1302,12 @@ class LiveShowPanel(QWidget):
         self.btn_pause_all.clicked.connect(self.pause_all_toggled)
         self._apply_pause_btn_style(paused=False)
         tr_layout.addWidget(self.btn_pause_all)
+        # A click with the mouse must not leave the keyboard on these buttons: Enter presses the
+        # focused button (W55), so after a click on Pause All an Enter resumed everything and
+        # after PANIC it fired PANIC again (accessibility review 2026-11-24). Tab still reaches them.
+        for btn in (self.btn_back_project, self.btn_stopwatch, self.btn_stopwatch_reset, self.btn_fade_all,
+                    self.btn_panic, self.btn_break_loop, self.btn_layer_lock, self.btn_pause_all):
+            btn.setFocusPolicy(Qt.FocusPolicy.TabFocus)
 
         self.btn_go = ElidedButton("▶   GO  —  PROSSIMA CUE")
         self._go_warn = False

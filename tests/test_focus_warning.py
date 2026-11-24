@@ -122,3 +122,14 @@ def test_banner_never_moves_the_page(window, monkeypatch):
     assert _banner(window)
     assert (panel.live_table.geometry(), panel.btn_go.geometry()) == before
     assert panel.lbl_focus_warning.geometry().top() >= panel.top_bar.geometry().bottom()
+
+
+def test_a_mouse_click_never_leaves_the_keyboard_on_a_show_button(window):
+    """Accessibility review 2026-11-24: Enter presses the focused button, so PANIC, Fade All, Pause All
+    and the other show buttons take the focus only from Tab, never from a mouse click."""
+    from PySide6.QtCore import Qt
+
+    panel = window._live_show_panel
+    for btn in (panel.btn_panic, panel.btn_fade_all, panel.btn_pause_all, panel.btn_stopwatch,
+                panel.btn_stopwatch_reset, panel.btn_back_project, panel.btn_break_loop, panel.btn_layer_lock):
+        assert btn.focusPolicy() == Qt.FocusPolicy.TabFocus, btn.text()
