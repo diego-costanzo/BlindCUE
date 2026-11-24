@@ -3082,4 +3082,44 @@ T: dict[str, str] = {
         "Photos to music: '{}' has a loop or sections",
     'Foto con musica: troppe immagini (almeno 1 s ciascuna)':
         'Photos to music: too many pictures (at least 1 s each)',
+    'Copione:':
+        'Script:',
+    'pag.':
+        'p.',
+    'Pagina del copione':
+        'Page of the script',
+    'Battuta su cui parte…':
+        'The line it comes on…',
+    'Battuta su cui parte la cue':
+        'The line the cue comes on',
+    '📄 Esporta la scaletta (CSV)…':
+        '📄 Export the cue list (CSV)…',
+    '🖨 Stampa la scaletta per la regia…':
+        '🖨 Print the cue list for the operator…',
+    '🖨 Stampa la scaletta per il suggeritore…':
+        '🖨 Print the cue list for the prompter…',
+    'Tipo':
+        'Type',
+    'Layer':
+        'Layer',
+    'Pagina':
+        'Page',
+    'Battuta':
+        'Line',
+    'File':
+        'File',
+    'Esporta la scaletta':
+        'Export the cue list',
+    'Scaletta esportata: {}':
+        'Cue list exported: {}',
+    'regia':
+        'operator',
+    'suggeritore':
+        'prompter',
+    'Spettacolo':
+        'Show',
+    'Stampa con Ctrl+P (orizzontale per molte colonne).':
+        'Print with Ctrl+P (landscape for many columns).',
+    'Scaletta aperta nel browser: stampa con Ctrl+P':
+        'Cue list opened in the browser: print with Ctrl+P',
 }

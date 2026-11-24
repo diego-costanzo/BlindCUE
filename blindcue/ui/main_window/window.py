@@ -51,6 +51,7 @@ from ui.main_window._versions import _VersionsMixin
 from ui.main_window._rehearse_from import _RehearseFromMixin
 from ui.main_window._countdown import _CountdownMixin
 from ui.main_window._clock_plan import _ClockPlanMixin
+from ui.main_window._export import _ExportMixin
 from ui.main_window._layout_copy import _LayoutCopyMixin
 from ui.main_window._markers import _MarkersMixin
 from ui.main_window._search import _SearchMixin
@@ -93,6 +94,7 @@ class MainWindow(
     _RehearseFromMixin,
     _CountdownMixin,
     _ClockPlanMixin,
+    _ExportMixin,
     _LayoutCopyMixin,
     _MarkersMixin,
     _SearchMixin,

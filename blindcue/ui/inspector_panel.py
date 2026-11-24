@@ -447,6 +447,20 @@ class CueInspectorPanel(QGroupBox):
         self.edit_cue_notes.setAccessibleName("Note di Regia")
         self.edit_cue_notes.setAccessibleDescription("Note tecniche o didascalie per l'operatore di regia.")
         grid1.addWidget(self.edit_cue_notes, 2, 1)
+        grid1.addWidget(self._make_field_label("Copione:"), 3, 0)
+        script_row = QHBoxLayout()
+        self.edit_script_page = QLineEdit()
+        self.edit_script_page.setMaxLength(20)
+        self.edit_script_page.setFixedWidth(52)
+        self.edit_script_page.setPlaceholderText("pag.")
+        self.edit_script_page.setAccessibleName("Pagina del copione")
+        self.edit_script_line = QLineEdit()
+        self.edit_script_line.setMaxLength(300)
+        self.edit_script_line.setPlaceholderText("Battuta su cui parte…")
+        self.edit_script_line.setAccessibleName("Battuta su cui parte la cue")
+        script_row.addWidget(self.edit_script_page)
+        script_row.addWidget(self.edit_script_line, 1)
+        grid1.addLayout(script_row, 3, 1)
         grid1.setColumnStretch(1, 1)
         l1.addLayout(grid1)
 
@@ -1763,6 +1777,8 @@ class CueInspectorPanel(QGroupBox):
             (self.edit_cue_q.textEdited, "q_label"),
             (self.edit_cue_name.textEdited, "name"),
             (self.edit_cue_notes.textEdited, "notes"),
+            (self.edit_script_page.textEdited, "script_page"),
+            (self.edit_script_line.textEdited, "script_line"),
             (self.edit_group_q.textEdited, "group_q"),
             (self.edit_group_name.textEdited, "group_name"),
             (self.edit_group_notes.textEdited, "group_notes"),
@@ -2749,6 +2765,8 @@ class CueInspectorPanel(QGroupBox):
                 self.edit_cue_q.setText(cue.q_label)
                 self.edit_cue_name.setText(cue.name)
                 self.edit_cue_notes.setText(cue.notes)
+                self.edit_script_page.setText(getattr(cue, "script_page", ""))
+                self.edit_script_line.setText(getattr(cue, "script_line", ""))
                 self.set_layer_checked(cue.layer)
                 self.set_output_target_checked(getattr(cue, "output_target", "A"))
                 self.set_color_silent(getattr(cue, "color", ""))
@@ -2898,6 +2916,8 @@ class CueInspectorPanel(QGroupBox):
         if new_name:
             cue.name = new_name
         cue.notes = self.edit_cue_notes.text().strip()
+        cue.script_page = self.edit_script_page.text().strip()
+        cue.script_line = self.edit_script_line.text().strip()
         cue.exclusive = self.chk_exclusive.isChecked()
         cue.confirm_start = self.chk_confirm.isChecked()
         cue.fade_others = round(self.spin_fade_others.value(), 2)
@@ -3037,6 +3057,10 @@ class CueInspectorPanel(QGroupBox):
             elif field_key == "start_rel":
                 self._apply_start_rel(cue)
                 self._one_way_to_start(cue, reload=False)
+            elif field_key == "script_page":
+                cue.script_page = self.edit_script_page.text().strip()
+            elif field_key == "script_line":
+                cue.script_line = self.edit_script_line.text().strip()
             elif field_key == "playback_rate":
                 cue.playback_rate = round(self.spin_rate.value() / 100.0, 2)
             elif field_key == "keep_pitch":

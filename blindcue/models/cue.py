@@ -548,6 +548,8 @@ class Cue:
     audio_output: str = "stage"  # 3.1: logical output stage / hall / foldback, or "mute" (engine.audio_routes)
     playback_rate: float = 1.0  # 3.7: tempo, 0.5-2.0 (1.0 = as recorded)
     keep_pitch: bool = True     # 3.7: a faster / slower tempo keeps the pitch (when the backend can)
+    script_page: str = ""       # 5.1: page of the script the cue is on
+    script_line: str = ""       # 5.1: the line (words) it comes on
     # 2.1: starts by itself relative to another cue (by cue_id): N s after its
     # start, after its end, or N s before its end. Outside the GO order.
     start_rel_cue: int | None = None
@@ -757,6 +759,8 @@ class Cue:
             "audio_output": self.audio_output,
             "playback_rate": self.playback_rate,
             "keep_pitch": self.keep_pitch,
+            "script_page": self.script_page,
+            "script_line": self.script_line,
             "start_rel_cue": self.start_rel_cue,
             "start_rel_when": self.start_rel_when,
             "start_rel_offset": self.start_rel_offset,
@@ -856,6 +860,8 @@ class Cue:
             audio_output=_audio_output(data.get("audio_output", "stage")),
             playback_rate=_safe_float(data.get("playback_rate", 1.0), 1.0, min_val=0.5, max_val=2.0),
             keep_pitch=bool(data.get("keep_pitch", True)),
+            script_page=str(data.get("script_page", "") or "")[:20],
+            script_line=str(data.get("script_line", "") or "")[:300],
             start_rel_cue=_safe_int(data.get("start_rel_cue"), 0, min_val=0) or None
             if data.get("start_rel_cue") not in (None, "", 0) else None,
             start_rel_when=str(data.get("start_rel_when", "start"))

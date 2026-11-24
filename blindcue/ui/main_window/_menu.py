@@ -35,6 +35,11 @@ class _MenuMixin:
         )
         file_menu.addSeparator()
         file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
+        file_menu.addAction(QAction("📄 Esporta la scaletta (CSV)…", self, triggered=self._export_list_csv))  # 5.1
+        file_menu.addAction(QAction("🖨 Stampa la scaletta per la regia…", self,
+                                    triggered=lambda: self._print_list("operator")))
+        file_menu.addAction(QAction("🖨 Stampa la scaletta per il suggeritore…", self,
+                                    triggered=lambda: self._print_list("prompter")))
         file_menu.addSeparator()
         file_menu.addAction(
             QAction("&Quit", self, shortcut=QKeySequence.StandardKey.Quit, triggered=self._on_quit)

@@ -3304,4 +3304,44 @@ T: dict[str, str] = {
         "Zdjęcia do muzyki: '{}' ma pętlę albo sekcje",
     'Foto con musica: troppe immagini (almeno 1 s ciascuna)':
         'Zdjęcia do muzyki: za dużo zdjęć (co najmniej 1 s na zdjęcie)',
+    'Copione:':
+        'Scenariusz:',
+    'pag.':
+        'str.',
+    'Pagina del copione':
+        'Strona scenariusza',
+    'Battuta su cui parte…':
+        'Kwestia, na której wchodzi…',
+    'Battuta su cui parte la cue':
+        'Kwestia, na której wchodzi pozycja',
+    '📄 Esporta la scaletta (CSV)…':
+        '📄 Eksportuj listę (CSV)…',
+    '🖨 Stampa la scaletta per la regia…':
+        '🖨 Drukuj listę dla operatora…',
+    '🖨 Stampa la scaletta per il suggeritore…':
+        '🖨 Drukuj listę dla suflera…',
+    'Tipo':
+        'Typ',
+    'Layer':
+        'Warstwa',
+    'Pagina':
+        'Strona',
+    'Battuta':
+        'Kwestia',
+    'File':
+        'Plik',
+    'Esporta la scaletta':
+        'Eksport listy',
+    'Scaletta esportata: {}':
+        'Lista wyeksportowana: {}',
+    'regia':
+        'operator',
+    'suggeritore':
+        'sufler',
+    'Spettacolo':
+        'Przedstawienie',
+    'Stampa con Ctrl+P (orizzontale per molte colonne).':
+        'Drukuj Ctrl+P (poziomo, gdy kolumn jest dużo).',
+    'Scaletta aperta nel browser: stampa con Ctrl+P':
+        'Lista otwarta w przeglądarce: drukuj Ctrl+P',
 }

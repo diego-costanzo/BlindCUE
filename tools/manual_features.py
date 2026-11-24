@@ -70,6 +70,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "tempo": ("blindcue/models/cue.py", "playback_rate: float"),
     "picture_layout": ("blindcue/ui/main_window/_layout_copy.py", None),
     "slideshow": ("blindcue/ui/main_window/_slideshow.py", None),
+    "cue_export": ("blindcue/engine/cue_export.py", None),
 }
 
 
