@@ -31,6 +31,7 @@ from PySide6.QtCore import QObject, QSettings, Signal
 from PySide6.QtGui import QGuiApplication, QScreen
 from PySide6.QtMultimedia import QAudioDevice, QMediaDevices
 
+from engine import audio_routes
 from models.cue import normalize_output_target
 from models.output_config import OutputMode, normalize_output_mode
 from engine.hardware_profile import (
@@ -86,6 +87,9 @@ class DeviceManager(QObject):
         # Roles whose remembered speakers are not connected right now
         # (role -> remembered name); the Windows default plays meanwhile.
         self._audio_missing: dict[str, str] = {}
+        # 3.1: the logical output each live player was last routed to (id(player) -> key)
+        self._player_routes: dict[int, str] = {}
+        self._output_missing: dict[str, str] = {}  # hall / foldback whose chosen device is unplugged
 
         self._init_defaults()
         self._wire_hotplug_detectors()
@@ -144,12 +148,9 @@ class DeviceManager(QObject):
     # ── Consumers Registration ────────────────────────────────────────
 
     def register_live_players(self, players: Sequence[Any]) -> None:
-        """Register live players (Layer 1..3) to receive master audio device updates."""
+        """Register the live players; each plays on the stage output until a cue routes it."""
         self._live_players = list(players)
-        if self._master_device is not None:
-            for p in self._live_players:
-                if hasattr(p, "set_audio_device"):
-                    p.set_audio_device(self._master_device)
+        self.reroute_players()
 
     def register_test_player(self, player: Any | None) -> None:
         """Register test player to receive monitor/PFL audio device updates."""
@@ -224,9 +225,7 @@ class DeviceManager(QObject):
         if device is None or device.isNull():
             device = QMediaDevices.defaultAudioOutput()
         self._master_device = device
-        for p in self._live_players:
-            if hasattr(p, "set_audio_device"):
-                p.set_audio_device(device)
+        self.reroute_players()  # 3.1: players on the stage (or falling back to it) follow
         earcons = getattr(self, "_earcon_mgr", None)
         if earcons is not None and hasattr(earcons, "set_master_device"):
             earcons.set_master_device(device)  # earcons never on the audience speakers
@@ -246,6 +245,131 @@ class DeviceManager(QObject):
         desc = self._device_label(device)
         logger.info("[DEVICE-MGR] Monitor (PFL) audio device updated to '%s'", desc)
         self.monitor_device_changed.emit(desc)
+
+    # ── Logical outputs (3.1): stage / hall / foldback ─────────────────
+
+    def output_choices(self) -> dict[str, tuple[str, str] | None]:
+        return {key: self.saved_audio_choice(role) for key, role in audio_routes.ROLE.items()}
+
+    @staticmethod
+    def output_fallback(key: str) -> str:
+        role = audio_routes.ROLE[key]
+        return audio_routes.normalize_fallback(key, QSettings("BlindCue", "BlindCue").value(f"audio/{role}_fallback", ""))
+
+    @staticmethod
+    def output_trim_db(key: str) -> float:
+        role = audio_routes.ROLE.get(key)
+        if role is None:
+            return 0.0
+        return audio_routes.clamp_trim(QSettings("BlindCue", "BlindCue").value(f"audio/{role}_trim_db", 0.0))
+
+    def resolve_output(self, key: str) -> audio_routes.Route:
+        devices = self.get_available_audio_devices()
+        fallbacks = {k: self.output_fallback(k) for k in audio_routes.OUTPUTS}
+        return audio_routes.resolve(key, self.output_choices(), fallbacks,
+                                    lambda choice: self.find_audio_device(choice, devices))
+
+    def route_device(self, route: audio_routes.Route) -> QAudioDevice | None:
+        """The device a (not muted) route plays on.
+
+        A stage that follows the system default stays on the master device, which moves only when it
+        disappears - not every time Windows picks another default (a projector plugged in).
+        """
+        if route.device is not None:
+            return route.device
+        if route.via == "stage" and self._master_device is not None and not self._master_device.isNull():
+            return self._master_device
+        return QMediaDevices.defaultAudioOutput()
+
+    def route_player(self, player: Any, key: str) -> audio_routes.Route:
+        """Put *player* on the device of logical output *key* (with its trim, or muted).
+
+        The gain goes first; a muted output keeps its device (a private track must not be moved
+        onto the audience speakers, not even for the tail of a fade).
+        """
+        key = audio_routes.normalize_output(key)
+        route = self.resolve_output(key)
+        if hasattr(player, "set_output_gain"):
+            player.set_output_gain(0.0 if route.muted else audio_routes.trim_gain(self.output_trim_db(key)))
+        if not route.muted and hasattr(player, "set_audio_device"):
+            player.set_audio_device(self.route_device(route))
+        self._player_routes[id(player)] = key
+        return route
+
+    def audience_devices(self) -> list[QAudioDevice]:
+        """Devices the audience hears: the stage and the hall as they play now."""
+        out = []
+        for key in ("stage", "hall"):
+            route = self.resolve_output(key)
+            if not route.muted:
+                out.append(self.route_device(route))
+        return out
+
+    def reroute_players(self) -> None:
+        """The map or the devices changed: every live player follows its output again."""
+        for p in self._live_players:
+            self.route_player(p, self._player_routes.get(id(p), "stage"))
+        earcons = getattr(self, "_earcon_mgr", None)
+        if earcons is not None and hasattr(earcons, "set_audience_devices"):
+            earcons.set_audience_devices(self.audience_devices())  # operator sounds never there
+        missing = {key: self.resolve_output(key).missing for key in ("hall", "foldback")}
+        missing = {k: v for k, v in missing.items() if v}
+        if missing != self._output_missing:
+            self._output_missing = missing
+            self.audio_notice.emit(self.audio_notice_text())
+
+    def set_output_choice(self, key: str, choice: tuple[str, str]) -> None:
+        """Put back a remembered (id, name) of an output whose device is not connected now."""
+        role = audio_routes.ROLE[key]
+        settings = QSettings("BlindCue", "BlindCue")
+        settings.setValue(f"audio/{role}_id", choice[0])
+        settings.setValue(f"audio/{role}_name", choice[1])
+        if key == "stage":
+            self.set_master_audio_device(self._resolve_audio("master"))
+            self.audio_notice.emit(self.audio_notice_text())
+        else:
+            self.reroute_players()
+
+    def set_output_device(self, key: str, device: QAudioDevice | None) -> None:
+        """Operator choice for a logical output on this computer (None = not set / system default)."""
+        if key == "stage":
+            self.choose_master_audio(device)
+            return
+        self._store_audio_choice(audio_routes.ROLE[key], device)
+        self.reroute_players()
+
+    def set_output_rule(self, key: str, fallback: str | None = None, trim_db: float | None = None) -> None:
+        settings = QSettings("BlindCue", "BlindCue")
+        role = audio_routes.ROLE[key]
+        if fallback is not None:
+            settings.setValue(f"audio/{role}_fallback", audio_routes.normalize_fallback(key, fallback))
+        if trim_db is not None:
+            settings.setValue(f"audio/{role}_trim_db", audio_routes.clamp_trim(trim_db))
+        self.reroute_players()
+
+    def export_outputs(self) -> dict:
+        choices = self.output_choices()
+        return audio_routes.export_map({
+            key: {"id": (choices[key] or ("", ""))[0], "name": (choices[key] or ("", ""))[1],
+                  "fallback": self.output_fallback(key), "trim_db": self.output_trim_db(key)}
+            for key in audio_routes.OUTPUTS})
+
+    def import_outputs(self, data: object) -> None:
+        """Take over an exported map (ValueError when *data* is not one)."""
+        outputs = audio_routes.import_map(data)  # only the outputs in the file change
+        settings = QSettings("BlindCue", "BlindCue")
+        for key, item in outputs.items():
+            role = audio_routes.ROLE[key]
+            if item["id"] or item["name"]:
+                settings.setValue(f"audio/{role}_id", item["id"])
+                settings.setValue(f"audio/{role}_name", item["name"])
+            else:
+                settings.remove(f"audio/{role}_id")
+                settings.remove(f"audio/{role}_name")
+            settings.setValue(f"audio/{role}_fallback", item["fallback"])
+            settings.setValue(f"audio/{role}_trim_db", item["trim_db"])
+        self.set_master_audio_device(self._resolve_audio("master"))  # earcons and listeners hear of it
+        self.audio_notice.emit(self.audio_notice_text())
 
     # ── Remembered speakers (per computer) ────────────────────────────
 
@@ -311,11 +435,18 @@ class DeviceManager(QObject):
 
     def audio_notice_text(self) -> str:
         """Status-bar text about remembered speakers that are not connected."""
-        if not self._audio_missing:
-            return ""
-        names = ", ".join(sorted(set(self._audio_missing.values())))
-        return (f"Uscita audio scelta non collegata ({names}): "
-                f"suona l'uscita predefinita ({self._device_label(QMediaDevices.defaultAudioOutput())})")
+        from i18n import tr
+
+        parts = []
+        if self._audio_missing:
+            names = ", ".join(sorted(set(self._audio_missing.values())))
+            parts.append(tr("Uscita audio scelta non collegata ({}): suona l'uscita predefinita ({})").format(
+                names, self._device_label(QMediaDevices.defaultAudioOutput())))
+        for key, name in sorted(getattr(self, "_output_missing", {}).items()):  # 3.1: hall / foldback
+            route = self.resolve_output(key)
+            where = tr("muto") if route.muted else self._device_label(self.route_device(route))
+            parts.append(tr("{} non collegato ({}): suona su {}").format(tr(audio_routes.LABELS[key]), name, where))
+        return " · ".join(parts)
 
     def choose_master_audio(self, device: QAudioDevice | None) -> None:
         """Operator choice for the audience speakers; None = follow Windows."""
@@ -364,6 +495,7 @@ class DeviceManager(QObject):
                                role.capitalize())
                 setter(QMediaDevices.defaultAudioOutput())
 
+        self.reroute_players()  # 3.1: hall / foldback devices that came or went
         if self._audio_missing != missing_before:
             back = [name for role, name in missing_before.items() if role not in self._audio_missing]
             text = self.audio_notice_text()

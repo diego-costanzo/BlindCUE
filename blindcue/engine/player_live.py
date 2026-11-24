@@ -101,7 +101,9 @@ class LivePlayer(QObject):
         self._level_trim: float = 1.0
         self._level_timer: QTimer | None = None
         self._level_ramp_clock: list = [0.0, None]  # [ramp start, paused at] - see ramp_level
-        self._master_gain: float = 1.0  # master volume of the show (set_master_gain)
+        self._master_gain: float = 1.0  # master volume of the show (set_master_gain) x output trim
+        self._show_gain: float = 1.0    # master volume of the show alone
+        self._output_gain: float = 1.0  # 3.1: trim of the logical output (0 = muted)
         # Section boundary latch: after a jump/continuation we must not react to
         # the stale position report of the section we just left, otherwise the
         # sequencer advances twice and silently eats one loop or one cut.
@@ -252,6 +254,10 @@ class LivePlayer(QObject):
 
     def set_audio_device(self, device: QAudioDevice | None) -> None:
         """Assign live output audio device (e.g. Master Sala / PA system)."""
+        same = (device is not None and self._audio_device is not None and not device.isNull()
+                and bytes(device.id()) == bytes(self._audio_device.id()))
+        if same:
+            return  # 3.1 routes on every start / map change: nothing to do
         self._audio_device = device
         if self._audio is not None and device is not None and not device.isNull():
             self._audio.setDevice(device)
@@ -483,8 +489,20 @@ class LivePlayer(QObject):
         The gain stack is envelope (cue fades, points) × level change from an
         action cue × this master; it is never stored in a cue.
         """
-        self._master_gain = max(0.0, min(1.0, float(gain)))
+        self._show_gain = max(0.0, min(1.0, float(gain)))
+        self._master_gain = self._show_gain * self._output_gain
         if self.is_playing() and not self._manual_fade_active:
+            self._apply_current_level()
+
+    def set_output_gain(self, gain: float) -> None:
+        """3.1: trim of the logical output this player plays on (0 = the output is muted)."""
+        self._output_gain = max(0.0, min(1.0, float(gain)))
+        self._master_gain = self._show_gain * self._output_gain
+        if self._output_gain <= 0.0:
+            for audio in (self._audio, self._standby_audio):
+                if audio is not None:
+                    audio.setVolume(0.0)  # also under a running fade-out: its tail stays silent
+        elif self.is_playing() and not self._manual_fade_active:
             self._apply_current_level()
 
     def _apply_envelope_at(self, pos_sec: float) -> None:
@@ -1085,7 +1103,8 @@ class LivePlayer(QObject):
 
             def _tick() -> None:
                 progress = min(1.0, (time.monotonic() - started) / duration_sec)
-                self._deck_pair()[1].setVolume(max(0.0, start_norm * (1.0 - progress)))
+                level = 0.0 if self._output_gain <= 0.0 else max(0.0, start_norm * (1.0 - progress))
+                self._deck_pair()[1].setVolume(level)
                 if progress >= 1.0:
                     self._stop_fade_timer()
                     self._deck_pair()[1].setVolume(0.0)

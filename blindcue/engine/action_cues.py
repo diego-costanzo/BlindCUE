@@ -177,6 +177,8 @@ def action_duration(spec: Mapping[str, object]) -> float:
     spec = sanitize_action_spec(dict(spec))
     if spec["kind"] in (ACTION_FADE, ACTION_LEVEL, ACTION_OPACITY, ACTION_WAIT):
         return float(spec["duration"])
+    if spec["kind"] in (ACTION_PAUSE, ACTION_RESUME):
+        return float(spec["sleep_sec"])
     return 0.0
 
 
@@ -231,10 +233,11 @@ def describe_action(spec: Mapping[str, object], cues: Iterable[Cue] = ()) -> str
         return f"Dissolvi in {secs} s: {target}"
     if kind == ACTION_RELEASE:
         return f"Rilascia loop: {target}"
+    sleep = float(spec["sleep_sec"])
     if kind == ACTION_PAUSE:
-        return f"Pausa: {target}"
+        return f"Addormenta in {_format_seconds(sleep)} s: {target}" if sleep > 0 else f"Pausa: {target}"
     if kind == ACTION_RESUME:
-        return f"Riprendi: {target}"
+        return f"Risveglia in {_format_seconds(sleep)} s: {target}" if sleep > 0 else f"Riprendi: {target}"
     if kind == ACTION_LEVEL:
         if spec["mode"] == "relative":
             return f"Livello {float(spec['db']):+.1f} dB in {secs} s: {target}"

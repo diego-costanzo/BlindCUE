@@ -56,6 +56,11 @@ def test_model_rules():
         assert target_layers({"kind": kind, "target": "cues", "cue_ids": [music.cue_id]},
                              [music, video, picture], live) == [2]
     assert describe_action({"kind": "pause", "target": "cues", "cue_ids": [music.cue_id]}, [music]).startswith("Pausa")
+    sleep = {"kind": "pause", "target": "all", "sleep_sec": 4}           # 3.3: music goes to sleep
+    assert describe_action(sleep).startswith("Addormenta in 4.0 s") and action_duration(sleep) == 4.0
+    old = {"kind": "pause", "target": "all", "duration": 3.0}            # saved by 2.11: still an instant pause
+    assert describe_action(old).startswith("Pausa") and action_duration(old) == 0.0
+    assert sanitize_action_spec({"kind": "resume"})["sleep_sec"] == 0.0
     for kind in ("wait", "pause", "resume", "stopwatch"):
         cue = Cue.from_dict({"cue_id": 1, "name": "a", "media_type": "ACTION", "file_path": "",
                              "action_spec": {"kind": kind}})
@@ -111,4 +116,5 @@ def test_editor_shows_the_right_fields(qt_app):
     editor.load({"kind": "stopwatch", "sw_mode": "reset"})
     assert editor.spec()["sw_mode"] == "reset" and editor.combo_sw.isVisibleTo(editor)
     editor.load({"kind": "pause", "target": "all"})
-    assert editor.combo_target.isVisibleTo(editor) and not editor.spin_duration.isVisibleTo(editor)
+    assert editor.combo_target.isVisibleTo(editor) and editor.spin_sleep.isVisibleTo(editor)  # sleep fade
+    assert not editor.spin_duration.isVisibleTo(editor)

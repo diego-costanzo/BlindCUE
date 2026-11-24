@@ -275,6 +275,35 @@ class _InspectorMixin:
             )
 
     @Slot()
+    def _on_trim_silence(self) -> None:
+        """3.4: IN/OUT of the selected sound / video where its sound really starts and ends."""
+        from engine.show_mode import EDIT_CUE
+        from engine.silence_trim import THRESHOLD_DB, sound_bounds
+        from i18n import tr
+
+        cue = self._selected_cue()
+        if cue is None or cue.media_type not in (MediaType.AUDIO, MediaType.VIDEO) or len(self._selected_rows()) != 1:
+            return
+        if not self._change_allowed(EDIT_CUE):
+            return
+        peaks = self._waveform_cache.get(os.path.abspath(cue.file_path or ""))
+        bounds = sound_bounds(peaks if isinstance(peaks, np.ndarray) else None, self._active_test_duration)
+        if bounds is None:
+            self._status_label.setText(tr("Taglia il silenzio: forma d'onda non ancora pronta o file muto"))
+            return
+        start, end = bounds
+        if self._undo.is_debounce_active():
+            self._commit_undo_point()
+        cue.in_point, cue.out_point = start, end
+        self._inspector.set_in_silent(start)
+        self._inspector.set_out_silent(end or 0.0)
+        self._update_waveform_markers(cue)
+        self.preview_in_out_changed.emit(start, end, True)
+        self._commit_undo_point()
+        self._mark_modified(True)
+        self._status_label.setText(tr("Silenzio tagliato (sotto {} dB): IN {} s, OUT {}").format(
+            int(THRESHOLD_DB), f"{start:.2f}", f"{end:.2f} s" if end is not None else tr("Fine File")))
+
     def _on_reset_in_out(self) -> None:
         """Reset IN to 0.00s and OUT to Fine (None) across selected same-type timed cues."""
         sel_cues = self._selected_cues()

@@ -196,6 +196,7 @@ class CueInspectorPanel(QGroupBox):
     layer_selected = Signal(int)
     output_target_selected = Signal(str)
     in_out_reset_requested = Signal()
+    silence_trim_requested = Signal()  # 3.4: IN/OUT where the sound really starts and ends
     color_selected = Signal(str)
     follow_mode_selected = Signal(str)
     group_mode_selected = Signal(str)
@@ -1028,6 +1029,21 @@ class CueInspectorPanel(QGroupBox):
             "Volume:", 0, 100, 100, "100%", "Ripristina volume al 100%"
         )
         l1.addLayout(vol_row)
+        from engine.audio_routes import CUE_OUTPUTS, LABELS
+
+        out_row = QHBoxLayout()
+        self.lbl_audio_output = QLabel("Uscita:")
+        self.combo_audio_output = QComboBox()
+        for key in CUE_OUTPUTS:
+            self.combo_audio_output.addItem(LABELS[key], key)
+        self.combo_audio_output.setToolTip(
+            "Dove suona questa cue. Quale altoparlante è Palco, Sala o Spie su questo computer si sceglie in "
+            "Dispositivi → Uscite audio. Muto: un video senza il suo audio.")
+        self.combo_audio_output.setAccessibleName("Uscita audio della cue")
+        self.combo_audio_output.currentIndexChanged.connect(lambda _i: self._emit_change("audio_output"))
+        out_row.addWidget(self.lbl_audio_output)
+        out_row.addWidget(self.combo_audio_output, 1)
+        l1.addLayout(out_row)
         lay.addWidget(c1)
 
         # Card 2: Dissolvenze (Fade IN/OUT)
@@ -1100,6 +1116,13 @@ class CueInspectorPanel(QGroupBox):
         io_row.addWidget(self.spin_out, 1)
         self.btn_io_reset = self._make_reset_icon_btn("Ripristina IN a 0.00s e OUT a Fine")
         io_row.addWidget(self.btn_io_reset)
+        self.btn_trim_silence = QPushButton("✂")
+        self.btn_trim_silence.setFixedWidth(28)
+        self.btn_trim_silence.setToolTip("Taglia il silenzio all'inizio e alla fine: IN e OUT dove il suono "
+                                         "comincia e finisce davvero (sotto -40 dB rispetto al picco).")
+        self.btn_trim_silence.setAccessibleName("Taglia il silenzio all'inizio e alla fine")
+        self.btn_trim_silence.clicked.connect(self.silence_trim_requested.emit)
+        io_row.addWidget(self.btn_trim_silence)
         l3.addLayout(io_row)
         lay.addWidget(c3)
 
@@ -1892,6 +1915,11 @@ class CueInspectorPanel(QGroupBox):
             cue.start_rel_marker = self.combo_rel_marker.currentData() if when == "marker" else None
         cue.start_rel_offset = round(self.spin_rel_offset.value(), 2)
 
+    def _load_audio_output(self, key: str) -> None:
+        self.combo_audio_output.blockSignals(True)
+        self.combo_audio_output.setCurrentIndex(max(0, self.combo_audio_output.findData(key)))
+        self.combo_audio_output.blockSignals(False)
+
     def _clock_value(self, cue) -> str:
         """2.6: the time in the field, or the cue's own while the field holds a half-typed one ("19:5")."""
         from engine.clock_plan import normalize_clock
@@ -2329,9 +2357,9 @@ class CueInspectorPanel(QGroupBox):
             self.btn_crop_reset, self.spin_fade_in, self.spin_fade_out, self.spin_crossfade,
             self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
             self.btn_mask_edit, self.btn_mask_clear,
-            self.combo_aspect, self.slider_volume, self.btn_volume_reset,
+            self.combo_aspect, self.slider_volume, self.btn_volume_reset, self.combo_audio_output,
             self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
-            self.spin_in, self.spin_out, self.btn_io_reset, self.spin_hold_time,
+            self.spin_in, self.spin_out, self.btn_io_reset, self.btn_trim_silence, self.spin_hold_time,
             self.spin_pre_delay, self.spin_post_delay,
             self.card_loudness, self.btn_scan_loudness, self.chk_normalize_cue,
             self.btn_optimize_dynamics, self.btn_restore_original,
@@ -2393,7 +2421,7 @@ class CueInspectorPanel(QGroupBox):
         )
         time_controls = (
             self.slider_volume, self.btn_volume_reset,
-            self.loop_card, self.chk_loop, self.spin_in, self.spin_out, self.btn_io_reset,
+            self.loop_card, self.chk_loop, self.spin_in, self.spin_out, self.btn_io_reset, self.btn_trim_silence,
             self.card_loudness, self.btn_scan_loudness, self.chk_normalize_cue, self.btn_optimize_dynamics,
         )
 
@@ -2497,6 +2525,8 @@ class CueInspectorPanel(QGroupBox):
                   self.lbl_clock, self.edit_clock):
             w.setVisible(not basic and media_type != MediaType.GROUP)
         self.combo_rel_marker.setVisible(not basic and self.combo_rel_when.currentData() == "marker")
+        for w in (self.lbl_audio_output, self.combo_audio_output):
+            w.setVisible(media_type in (MediaType.AUDIO, MediaType.VIDEO))
         for w in (self.lbl_markers, self.combo_markers, self.btn_marker_delete):
             w.setVisible(not basic and media_type in (MediaType.AUDIO, MediaType.VIDEO))
         self.lbl_callers.setVisible(bool(self.lbl_callers.text()) and not basic)
@@ -2707,6 +2737,7 @@ class CueInspectorPanel(QGroupBox):
                     w.blockSignals(False)
                 self._load_start_rel(cue)
                 self._load_call_only(cue)
+                self._load_audio_output(getattr(cue, "audio_output", "stage"))
                 self.edit_clock.blockSignals(True)
                 self.edit_clock.setText(getattr(cue, "start_clock", ""))
                 self.edit_clock.blockSignals(False)
@@ -2789,6 +2820,8 @@ class CueInspectorPanel(QGroupBox):
             self.chk_confirm.setChecked(all(getattr(c, "confirm_start", False) for c in cues))
             self._populate_media_fields(lead)
             self.load_markers(lead)  # the anchor's marks (the ones ✕ deletes and the waveform shows)
+            outs = {getattr(c, "audio_output", "stage") for c in cues}
+            self._load_audio_output(outs.pop() if len(outs) == 1 else lead.audio_output)
             self.edit_clock.blockSignals(True)
             self.edit_clock.setText(lead.start_clock if all(c.start_clock == lead.start_clock for c in cues) else "")
             self.edit_clock.blockSignals(False)
@@ -2844,6 +2877,8 @@ class CueInspectorPanel(QGroupBox):
         cue.call_only = self.chk_call_only.isChecked()
         cue.start_clock = self._clock_value(cue)
         self._one_way_to_start(cue)
+        if cue.media_type in (MediaType.AUDIO, MediaType.VIDEO):
+            cue.audio_output = self.combo_audio_output.currentData() or "stage"
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -2969,6 +3004,8 @@ class CueInspectorPanel(QGroupBox):
             elif field_key == "start_rel":
                 self._apply_start_rel(cue)
                 self._one_way_to_start(cue, reload=False)
+            elif field_key == "audio_output":
+                cue.audio_output = self.combo_audio_output.currentData() or "stage"
             elif field_key == "call_only":
                 cue.call_only = self.chk_call_only.isChecked()
             elif field_key == "start_clock":

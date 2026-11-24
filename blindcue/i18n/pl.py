@@ -3130,4 +3130,140 @@ T: dict[str, str] = {
         'Wznów',
     'Partenza relativa persa (cue di riferimento eliminata): {} ora parte con il GO':
         'Start względny utracony (pozycja odniesienia usunięta): {} startuje teraz z GO',
+    'Palco':
+        'Scena',
+    'Sala':
+        'Sala',
+    'Spie (ascolto palco)':
+        'Odsłuch (dla aktorów)',
+    'Muto':
+        'Wycisz',
+    'uscita predefinita':
+        'wyjście domyślne',
+    "'{}': {} non disponibile, suona su: {}":
+        "'{}': {} niedostępne, gra na: {}",
+    'Uscita:':
+        'Wyjście:',
+    'Dove suona questa cue. Quale altoparlante è Palco, Sala o Spie su questo computer si sceglie in Dispositivi → Uscite audio. Muto: un video senza il suo audio.':
+        'Gdzie gra ta pozycja. Który głośnik jest Sceną, Salą albo Odsłuchem na tym komputerze, wybiera się w Przedstawienie → Wyjścia dźwięku. Wycisz: film bez dźwięku.',
+    'Uscita audio della cue':
+        'Wyjście dźwięku pozycji',
+    'Uscite audio di questo computer':
+        'Wyjścia dźwięku tego komputera',
+    "Ogni cue suona su un'uscita: Palco, Sala o Spie (ascolto per gli attori). Qui si sceglie quale altoparlante è ognuna su questo computer; lo spettacolo non cambia su un altro computer.":
+        'Każda pozycja gra na jednym wyjściu: Scena, Sala albo Odsłuch (dla aktorów). Tu wybierasz, który głośnik jest którym wyjściem na tym komputerze; przedstawienie na innym komputerze się nie zmienia.',
+    'Uscita':
+        'Wyjście',
+    'Se manca':
+        'Gdy brak',
+    'Regolazione':
+        'Korekta',
+    '▶ Prova':
+        '▶ Test',
+    'Dispositivo: {}':
+        'Urządzenie: {}',
+    'Se manca: {}':
+        'Gdy brak: {}',
+    'Regolazione: {}':
+        'Korekta: {}',
+    'Prova: {}':
+        'Test: {}',
+    'Predefinito di sistema':
+        'Domyślne systemowe',
+    '— non impostata —':
+        '— nieustawione —',
+    'muto':
+        'wyciszone',
+    'muto (nessun suono)':
+        'wyciszone (bez dźwięku)',
+    'Durante lo spettacolo le uscite non si cambiano e non si provano.':
+        'W czasie przedstawienia wyjść nie zmienia się ani nie testuje.',
+    '▶ Prova tutte in ordine':
+        '▶ Testuj wszystkie po kolei',
+    'Esporta…':
+        'Eksportuj…',
+    'Importa…':
+        'Importuj…',
+    'Esporta le uscite audio':
+        'Eksport wyjść dźwięku',
+    'Importa le uscite audio':
+        'Import wyjść dźwięku',
+    'Esportato: {}':
+        'Wyeksportowano: {}',
+    'Non è una mappa di uscite audio: {}':
+        'To nie jest mapa wyjść dźwięku: {}',
+    'Uscita predefinita':
+        'Wyjście domyślne',
+    'Come il Palco':
+        'Jak Scena',
+    '🔊 Uscite audio (Palco / Sala / Spie)…':
+        '🔊 Wyjścia dźwięku (Scena / Sala / Odsłuch)…',
+    'Uscite audio: {}':
+        'Wyjścia dźwięku: {}',
+    'Uscite audio non impostate o scollegate: {}':
+        'Wyjścia dźwięku nieustawione albo odłączone: {}',
+    'Uscite audio…':
+        'Wyjścia dźwięku…',
+    'Dispositivo':
+        'Urządzenie',
+    'Playlist ({} brani)':
+        'Playlista (utwory: {})',
+    'Playlist':
+        'Playlista',
+    "{} file audio: farne una playlist (una riga che li suona uno dopo l'altro)?":
+        'Pliki audio ({}): zrobić z nich playlistę (jeden wiersz, który gra je po kolei)?',
+    'Una playlist':
+        'Jedna playlista',
+    'Cue separate':
+        'Osobne pozycje',
+    'Playlist non leggibile: {}':
+        'Nie można odczytać playlisty: {}',
+    "Playlist '{}': {} brani":
+        "Playlista '{}' – utwory: {}",
+    'non trovati o in streaming: {}':
+        'nieznalezione albo strumienie: {}',
+    'Importa playlist':
+        'Import playlisty',
+    '🎵 Importa playlist (.m3u)…':
+        '🎵 Importuj playlistę (.m3u)…',
+    '{} non collegato ({}): suona su {}':
+        '{} niepodłączone ({}): gra na: {}',
+    'lo stesso dispositivo del pubblico':
+        'to samo urządzenie co dla widowni',
+    'Le spie usano lo stesso dispositivo del pubblico: la traccia privata si sente in sala.':
+        'Odsłuch używa tego samego urządzenia co widownia: prywatna ścieżka będzie słyszalna na sali.',
+    'Qualcosa suona: la prova non parte.':
+        'Coś gra: test nie wystartuje.',
+    'Sostituire le uscite audio di questo computer con quelle del file?':
+        'Zastąpić wyjścia dźwięku tego komputera tymi z pliku?',
+    'uscite audio':
+        'wyjścia dźwięku',
+    'Addormenta in {} s: {}':
+        'Uśpij w {} s: {}',
+    'Risveglia in {} s: {}':
+        'Obudź w {} s: {}',
+    'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. Con una durata la musica si addormenta: sfuma e poi si ferma.':
+        'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej. Z czasem trwania muzyka się usypia: cichnie, potem staje.',
+    'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una durata la musica si risveglia: entra piano fino al livello di prima.':
+        'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły. Z czasem trwania muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
+    "Taglia il silenzio all'inizio e alla fine: IN e OUT dove il suono comincia e finisce davvero (sotto -40 dB rispetto al picco).":
+        'Utnij ciszę na początku i końcu: IN i OUT tam, gdzie dźwięk naprawdę się zaczyna i kończy (poniżej -40 dB względem szczytu).',
+    "Taglia il silenzio all'inizio e alla fine":
+        'Utnij ciszę na początku i końcu',
+    "Taglia il silenzio: forma d'onda non ancora pronta o file muto":
+        'Utnij ciszę: przebieg jeszcze niegotowy albo plik bez dźwięku',
+    'Silenzio tagliato (sotto {} dB): IN {} s, OUT {}':
+        'Cisza ucięta (poniżej {} dB): IN {} s, OUT {}',
+    'Una playlist non può stare dentro una scena: aggiunte cue separate':
+        'Playlista nie może być wewnątrz sceny: dodano osobne pozycje',
+    'Dissolvenza:':
+        'Przejście:',
+    'subito':
+        'od razu',
+    '0 = subito; più secondi = la musica si addormenta / si risveglia piano':
+        '0 = od razu; więcej sekund = muzyka usypia się / budzi powoli',
+    'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. Con una dissolvenza la musica si addormenta: sfuma e poi si ferma.':
+        'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej. Z przejściem muzyka się usypia: cichnie, potem staje.',
+    'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una dissolvenza la musica si risveglia: entra piano fino al livello di prima.':
+        'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły. Z przejściem muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
 }

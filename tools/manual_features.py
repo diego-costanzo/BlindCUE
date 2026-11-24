@@ -64,6 +64,9 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "search": ("blindcue/ui/main_window/_search.py", None),
     "time_text": ("blindcue/ui/time_text.py", None),
     "new_actions": ("blindcue/models/cue.py", "ACTION_STOPWATCH ="),
+    "audio_outputs": ("blindcue/engine/audio_routes.py", None),
+    "playlist": ("blindcue/engine/playlist_import.py", None),
+    "silence_trim": ("blindcue/engine/silence_trim.py", None),
 }
 
 

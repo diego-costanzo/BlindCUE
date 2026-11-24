@@ -214,6 +214,13 @@ def sanitize_markers(value: object) -> list[dict]:
     return sorted(out, key=lambda m: m["sec"])
 
 
+def _audio_output(value: object) -> str:
+    """3.1: a valid logical output of a cue ("stage" for anything unknown)."""
+    from engine.audio_routes import normalize_output
+
+    return normalize_output(value)
+
+
 def _clock_text(value: object) -> str:
     """2.6: a valid "H:MM" / "H:MM:SS" time of day as given, "" for anything else."""
     import re
@@ -307,6 +314,8 @@ def sanitize_action_spec(value: object) -> dict[str, Any]:
         "seek_sec": round(_safe_float(raw.get("seek_sec", 10.0), 10.0, min_val=-86400.0, max_val=86400.0), 3),
         "countdown_sec": round(_safe_float(raw.get("countdown_sec", 900.0), 900.0, min_val=0.0, max_val=14400.0), 1),
         "sw_mode": sw_mode if sw_mode in STOPWATCH_MODES else "start",
+        # 3.3: pause / resume with sleep_sec > 0 = put the music to sleep / wake it (0 = at once)
+        "sleep_sec": round(_safe_float(raw.get("sleep_sec", 0.0), 0.0, min_val=0.0, max_val=ACTION_MAX_SECONDS), 3),
     }
 
 
@@ -536,6 +545,7 @@ class Cue:
     call_only: bool = False      # 2.2: started only by a "call" action, never by GO
     enabled: bool = True         # 2.3: off in this version of the show - never plays
     start_clock: str = ""        # 2.6: starts by itself at this time of day ("19:55" / "19:55:30")
+    audio_output: str = "stage"  # 3.1: logical output stage / hall / foldback, or "mute" (engine.audio_routes)
     # 2.1: starts by itself relative to another cue (by cue_id): N s after its
     # start, after its end, or N s before its end. Outside the GO order.
     start_rel_cue: int | None = None
@@ -547,6 +557,7 @@ class Cue:
     parent_id: int | None = None  # None = root cue; int = belongs to parent Group cue
     group_mode: str = GroupMode.STEP.value  # SIMULTANEOUS, SEQUENCE, STEP, RANDOM, LOOP
     collapsed: bool = False  # UI collapse state for GROUP cues
+    playlist: bool = False   # 3.3: a GROUP made as a playlist: stops after its last track, GO goes on after it
     fade_curve: str = "log"  # "log" (perceptual), "scurve" (cosine), "linear"
     volume_points: list[list[float]] = field(default_factory=list)   # [[time_sec, level 0..1], ...]
     opacity_points: list[list[float]] = field(default_factory=list)  # [[time_sec, opacity 0..1], ...]
@@ -741,6 +752,7 @@ class Cue:
             "call_only": self.call_only,
             "enabled": self.enabled,
             "start_clock": self.start_clock,
+            "audio_output": self.audio_output,
             "start_rel_cue": self.start_rel_cue,
             "start_rel_when": self.start_rel_when,
             "start_rel_offset": self.start_rel_offset,
@@ -750,6 +762,7 @@ class Cue:
             "parent_id": self.parent_id,
             "group_mode": self.group_mode,
             "collapsed": self.collapsed,
+            "playlist": self.playlist,
             "fade_curve": self.fade_curve,
             "volume_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.volume_points],
             "opacity_points": [[round(float(t), 4), round(float(v), 4)] for t, v in self.opacity_points],
@@ -836,6 +849,7 @@ class Cue:
             call_only=bool(data.get("call_only", False)),
             enabled=bool(data.get("enabled", True)),
             start_clock=_clock_text(data.get("start_clock", "")),
+            audio_output=_audio_output(data.get("audio_output", "stage")),
             start_rel_cue=_safe_int(data.get("start_rel_cue"), 0, min_val=0) or None
             if data.get("start_rel_cue") not in (None, "", 0) else None,
             start_rel_when=str(data.get("start_rel_when", "start"))
@@ -856,6 +870,7 @@ class Cue:
                 else GroupMode.STEP.value
             ),
             collapsed=bool(data.get("collapsed", False)),
+            playlist=bool(data.get("playlist", False)),
             fade_curve=(
                 data.get("fade_curve", "log")
                 if data.get("fade_curve", "log") in _VALID_FADE_CURVES

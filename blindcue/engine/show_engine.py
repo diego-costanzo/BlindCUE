@@ -310,6 +310,9 @@ class ShowEngine:
                 if pos < 0 or pos >= len(kids) - 1:
                     return -1
                 mode = GroupMode.SEQUENCE.value
+            if pos >= 0 and mode == GroupMode.SEQUENCE.value and getattr(parent, "playlist", False) \
+                    and pos >= len(kids) - 1:
+                return -1  # 3.3: a playlist stops after its last track (the next scene waits for GO)
             if pos >= 0 and mode == GroupMode.SEQUENCE.value and pos < len(kids) - 1:
                 target = kids[pos + 1]
                 return next((i for i, c in enumerate(cues) if c is target), -1)

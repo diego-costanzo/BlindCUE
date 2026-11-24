@@ -585,6 +585,19 @@ class _CueTableMixin:
         dlg.exec()
         self._update_hardware_status_bar()
 
+    def open_audio_outputs_dialog(self) -> None:
+        """3.1: which speakers are the stage, the hall and the foldback on this computer."""
+        if self._device_mgr is None:
+            return
+        from engine.show_mode import SHOW
+        from ui.audio_outputs_dialog import AudioOutputsDialog
+
+        dlg = AudioOutputsDialog(
+            self._device_mgr, locked=self._current_mode() == SHOW, parent=self,
+            busy=lambda: any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags))
+        dlg.exec()
+        dlg.deleteLater()
+
     @Slot(str)
     def _on_audio_notice(self, text: str) -> None:
         """Tell the operator when the speakers chosen on this computer are

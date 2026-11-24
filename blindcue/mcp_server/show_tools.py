@@ -58,7 +58,7 @@ DURATION_BUDGET_SEC = 20.0
 RECENT_AUTOSAVE_SEC = 15 * 60
 _ACTION_KEYS = {"target", "layer", "output", "cue_ids", "duration", "mode", "level", "db", "curve",
                 "text", "note_color", "items", "goto_play", "goto_max", "seek_mode", "seek_sec",
-                "countdown_sec", "sw_mode"}
+                "countdown_sec", "sw_mode", "sleep_sec"}
 
 
 class ToolError(Exception):
@@ -260,6 +260,8 @@ EDITABLE: dict[str, tuple[str, Any]] = {
     "enabled": ("false = off in this version of the show: the cue never plays.", _bool),
     "start_clock": ("Starts by itself at this time of day during the show ('19:55' or '19:55:30'; '' = with GO). "
                     "More than a minute late: skipped.", lambda v: _clock(v)),
+    "audio_output": ("Where a sound or video plays: stage | hall | foldback (monitors for the performers) | mute. Which speakers each is, is set on each computer.",
+                     lambda v: _choice(v, "audio_output", ("stage", "hall", "foldback", "mute"))),
     "confirm_start": ("Starts only after the director's OK (Enter or the OK button).", _bool),
     "adlib": ("Effect on demand: outside the GO order, started by its key or tile.", _bool),
     "hotkey": ("Effect key: one letter or digit.", lambda v: _hotkey(v)),
@@ -402,6 +404,8 @@ def _strict_action(kind: str, raw: Any, base: dict[str, Any], new: bool) -> dict
         _float(raw["seek_sec"], "seek_sec", -86400.0, 86400.0)
     if "countdown_sec" in raw:
         _float(raw["countdown_sec"], "countdown_sec", 0.0, 14400.0)
+    if "sleep_sec" in raw:
+        _float(raw["sleep_sec"], "sleep_sec", 0.0, 600.0)
     if "sw_mode" in raw:
         _choice(raw["sw_mode"], "sw_mode", ("start", "stop", "reset"))
     if "items" in raw:
@@ -931,7 +935,8 @@ def cue_schema() -> dict[str, Any]:
             "seek": "target + seek_mode absolute | relative | before_end, seek_sec seconds",
             "countdown": "countdown_sec seconds (0 stops it), text = its title",
             "wait": "duration seconds, then the next cue starts by itself (a delay visible in the list)",
-            "pause / resume": "target: pause the sound / video of the targets, or let them play on",
+            "pause / resume": "target: pause the sound / video of the targets, or let them play on; "
+                              "sleep_sec > 0 = sleep (fade out, then pause) / wake (fade in)",
             "stopwatch": "sw_mode start | stop | reset (a stopwatch on the status bar)",
         },
         "media_extensions": sorted(VIDEO_EXT | AUDIO_EXT | IMAGE_EXT),

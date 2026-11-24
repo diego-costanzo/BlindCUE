@@ -729,7 +729,7 @@ class CueSequenceTable(QTableWidget):
             return
         row = self.rowAt(event.position().toPoint().y())
         event.acceptProposedAction()
-        self.files_dropped.emit(paths, row)
+        self.files_dropped.emit(paths, row)  # the playlist question (3.3) does not block: no hold-up here
 
     def _on_current_cell_changed(self, curr_row: int, _curr_col: int,
                                  prev_row: int, _prev_col: int) -> None:

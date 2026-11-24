@@ -34,6 +34,8 @@ class _MenuMixin:
             QAction("Save Show &As…", self, shortcut=QKeySequence("Ctrl+Shift+S"), triggered=self._on_save_as_show)
         )
         file_menu.addSeparator()
+        file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
+        file_menu.addSeparator()
         file_menu.addAction(
             QAction("&Quit", self, shortcut=QKeySequence.StandardKey.Quit, triggered=self._on_quit)
         )
@@ -106,6 +108,9 @@ class _MenuMixin:
         show_menu.addAction(self._act_jam_mode)
         show_menu.addAction(
             QAction("⚙️ &Dispositivi & Hardware (Audio / Video / Profilo)…", self, triggered=self.open_device_settings_dialog)
+        )
+        show_menu.addAction(  # 3.1
+            QAction("🔊 Uscite audio (Palco / Sala / Spie)…", self, triggered=self.open_audio_outputs_dialog)
         )
         show_menu.addAction(
             QAction("📡 &Controllo Remoto LAN (Web & OSC)…", self, shortcut=QKeySequence(Qt.Key.Key_F8), triggered=self.open_remote_control_dialog)
@@ -384,6 +389,7 @@ class _MenuMixin:
         self._inspector.color_selected.connect(self._set_cue_color)
         self._inspector.follow_mode_selected.connect(self._set_follow_mode)
         self._inspector.in_out_reset_requested.connect(self._on_reset_in_out)
+        self._inspector.silence_trim_requested.connect(self._on_trim_silence)
         self._inspector.group_mode_selected.connect(self._set_group_mode)
         self._inspector.group_collapse_toggled.connect(self._toggle_group_collapse_from_inspector)
         self._inspector.ungroup_requested.connect(self._ungroup_selected)

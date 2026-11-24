@@ -23,6 +23,7 @@ INFO = "info"
 SCREEN = "screen"
 VOLUME = "volume"
 SPEAKERS = "speakers"
+AUDIO_OUTS = "audio_outputs"  # 3.1: hall / foldback used by the show
 MEDIA = "media"
 POWER = "power"
 CHECKLIST = "checklist"
@@ -64,6 +65,8 @@ class Facts:
     show_name: str = ""
     earcons_on: bool = False            # operator sounds switched on
     headphones: bool = False            # a monitor output other than the audience speakers
+    # 3.1: (output label, where it plays now, plays on its own device, cues using it) for hall / foldback
+    outputs: tuple[tuple[str, str, bool, int], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -97,6 +100,10 @@ def checks(f: Facts) -> list[Check]:
     else:
         rows.append(Check(SPEAKERS, SKIPPED, {"name": f.speakers, "pinned": f.speakers_pinned,
                                               "playing": f.playing}))
+
+    if f.outputs:
+        ok = all(own for _label, _where, own, _n in f.outputs)
+        rows.append(Check(AUDIO_OUTS, OK if ok else PROBLEM, {"rows": list(f.outputs)}))
 
     if f.missing:
         rows.append(Check(MEDIA, PROBLEM, {"count": len(f.missing), "cues": list(f.missing)}))

@@ -96,8 +96,10 @@ _KIND_HELP = {
                  "avanti o indietro di N secondi, oppure a N secondi dalla fine.",
     ACTION_WAIT: "Un'attesa visibile nella scaletta: dopo i secondi indicati parte la cue successiva, "
                  "senza GO. Pausa generale la trattiene, PANIC la annulla.",
-    ACTION_PAUSE: "Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano.",
-    ACTION_RESUME: "Fa ripartire le cue scelte messe in pausa, da dove si erano fermate.",
+    ACTION_PAUSE: "Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. "
+                  "Con una dissolvenza la musica si addormenta: sfuma e poi si ferma.",
+    ACTION_RESUME: "Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. "
+                   "Con una dissolvenza la musica si risveglia: entra piano fino al livello di prima.",
     ACTION_STOPWATCH: "Cronometro sulla barra di stato (per esempio la durata di un atto): avvia, ferma "
                       "(si riprende da lì) o azzera. PANIC non lo tocca.",
 }
@@ -243,6 +245,16 @@ class ActionCueEditor(QWidget):
         self.lbl_sw = _label("Cronometro:")
         form.addRow(self.lbl_sw, self.combo_sw)
 
+        self.spin_sleep = SmartDoubleSpinBox()
+        self.spin_sleep.setRange(0.0, 60.0)
+        self.spin_sleep.setDecimals(1)
+        self.spin_sleep.setSingleStep(0.5)
+        self.spin_sleep.setSuffix(" s")
+        self.spin_sleep.setSpecialValueText("subito")
+        self.spin_sleep.setToolTip("0 = subito; più secondi = la musica si addormenta / si risveglia piano")
+        self.lbl_sleep = _label("Dissolvenza:")
+        form.addRow(self.lbl_sleep, self.spin_sleep)
+
         self.combo_mode = QComboBox()
         self.combo_mode.addItem("Assoluto (%)", "absolute")
         self.combo_mode.addItem("Relativo (dB)", "relative")
@@ -333,7 +345,7 @@ class ActionCueEditor(QWidget):
                       self.combo_seek_mode, self.combo_sw):
             combo.currentIndexChanged.connect(self._on_edit)
         for spin in (self.spin_level, self.spin_db, self.spin_duration, self.spin_goto_max, self.spin_seek,
-                     self.spin_countdown):
+                     self.spin_countdown, self.spin_sleep):
             spin.valueChanged.connect(self._on_edit)
         self.edit_text.textChanged.connect(self._on_edit)
         self.edit_items.textChanged.connect(self._on_edit)
@@ -377,6 +389,7 @@ class ActionCueEditor(QWidget):
             self.spin_seek.setValue(float(spec["seek_sec"]))
             self.spin_countdown.setValue(float(spec["countdown_sec"]) / 60.0)
             self._select(self.combo_sw, spec["sw_mode"])
+            self.spin_sleep.setValue(float(spec["sleep_sec"]))
             self._refresh_visibility()
         finally:
             self._loading = False
@@ -411,6 +424,7 @@ class ActionCueEditor(QWidget):
             "seek_sec": self.spin_seek.value(),
             "countdown_sec": round(self.spin_countdown.value() * 60.0, 1),
             "sw_mode": self.combo_sw.currentData(),
+            "sleep_sec": self.spin_sleep.value(),
         })
 
     # ── Internals ─────────────────────────────────────────────────────
@@ -491,6 +505,7 @@ class ActionCueEditor(QWidget):
             (self.lbl_colour, self.row_colour,
              not has_target and not action_names_one_cue(kind) and kind != ACTION_COUNTDOWN and not no_text),
             (self.lbl_sw, self.combo_sw, kind == ACTION_STOPWATCH),
+            (self.lbl_sleep, self.spin_sleep, kind in (ACTION_PAUSE, ACTION_RESUME)),
             (self.lbl_goal, self.combo_goal, action_names_one_cue(kind)),
             (self.lbl_goto_play, self.combo_goto_play, kind == ACTION_GOTO),
             (self.lbl_goto_max, self.spin_goto_max, kind == ACTION_GOTO),

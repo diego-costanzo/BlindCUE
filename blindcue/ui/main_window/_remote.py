@@ -509,6 +509,10 @@ class _RemoteMixin:
         if cue.follow_mode == FollowMode.AUTO_FOLLOW.value:
             return True
         mode = ShowEngine.group_mode_of(self._cues, cue)
+        parent = ShowEngine.group_parent(self._cues, cue)
+        if mode == GroupMode.SEQUENCE.value and getattr(parent, "playlist", False):
+            kids = ShowEngine.children_of(self._cues, cue.parent_id)
+            return not (kids and kids[-1] is cue)  # 3.3: a playlist stops after its last track
         if mode == GroupMode.LOOP.value and cue.parent_id in self._released_groups:
             kids = ShowEngine.children_of(self._cues, cue.parent_id)
             return not (kids and kids[-1] is cue)

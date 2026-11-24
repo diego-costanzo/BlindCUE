@@ -16,6 +16,7 @@ import wave
 from pathlib import Path
 
 from engine.readiness import (
+    AUDIO_OUTS,
     CHECKLIST,
     DEFAULT_CHECKLIST,
     EARCONS,
@@ -146,6 +147,7 @@ class _ReadinessMixin:
             show += " · " + tr("modifiche non salvate")
         playing = any(c.status == CueStatus.LIVE for c in self._cues) or bool(self._live_phase_tags)
         return Facts(
+            outputs=self._readiness_outputs(dm),
             screen_name=name, screen_external=external, screen_count=count,
             master_level=self._master_level, master_muted=self._master_muted,
             speakers=speakers, speakers_pinned=pinned, speakers_missing=missing_dev,
@@ -155,8 +157,36 @@ class _ReadinessMixin:
             earcons_on=bool(earcons is not None and earcons.enabled), headphones=headphones,
         )
 
+    def _readiness_outputs(self, dm) -> tuple[tuple[str, str, bool, int], ...]:
+        """3.1: where the hall and the foldback used by this show play now."""
+        from engine.audio_routes import LABELS
+
+        if dm is None or not hasattr(dm, "resolve_output"):
+            return ()
+        rows = []
+        audience = {bytes(d.id()) for d in dm.audience_devices()}
+        for key in ("hall", "foldback"):
+            n = sum(1 for c in self._cues if getattr(c, "audio_output", "stage") == key
+                    and c.media_type in (MediaType.AUDIO, MediaType.VIDEO))
+            if not n:
+                continue
+            route = dm.resolve_output(key)
+            where = (tr("muto") if route.muted else route.device.description() if route.device is not None
+                     else tr("uscita predefinita"))
+            own = route.via == key
+            if key == "foldback" and own and bytes(dm.route_device(route).id()) in audience:
+                own, where = False, where + " – " + tr("lo stesso dispositivo del pubblico")
+            rows.append((tr(LABELS[key]), where, own, n))
+        return tuple(rows)
+
     def _readiness_view(self, check: Check) -> RowView:
         v = check.values
+        if check.key == AUDIO_OUTS:
+            parts = " · ".join(f"{label} ({n}) → {where}" for label, where, _own, n in v["rows"])
+            if check.state == OK:
+                return RowView(AUDIO_OUTS, OK, tr("Uscite audio: {}").format(parts))
+            return RowView(AUDIO_OUTS, PROBLEM, tr("Uscite audio non impostate o scollegate: {}").format(parts),
+                           [(tr("Uscite audio…"), "outputs")])
         if check.key == SCREEN:
             if check.state == OK:
                 return RowView(SCREEN, OK, tr("Immagine: {}").format(v["name"]))
@@ -321,7 +351,7 @@ class _ReadinessMixin:
 
     def _readiness_short(self, key: str) -> str:
         return tr({SCREEN: "proiettore", VOLUME: "volume", SPEAKERS: "audio", MEDIA: "file",
-                   POWER: "alimentatore", CHECKLIST: "checklist"}.get(key, key))
+                   POWER: "alimentatore", CHECKLIST: "checklist", AUDIO_OUTS: "uscite audio"}.get(key, key))
 
     def _update_readiness_warning(self, count: int | None = None) -> None:
         """"⚠ N" in the show while entered with problems (gone once they are fixed)."""
@@ -399,6 +429,9 @@ class _ReadinessMixin:
             self._readiness_refresh()
         elif action == "devices":
             self.open_device_settings_dialog()
+            self._readiness_refresh()
+        elif action == "outputs":
+            self.open_audio_outputs_dialog()
             self._readiness_refresh()
         elif action == "screens":
             self._show_screen_numbers()

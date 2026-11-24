@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from i18n import tr
+
 from ui.main_window._common import *  # noqa: F403,F401,F405
 from ui.main_window._common import (  # noqa: F401
     _AutosaveWorker,
@@ -140,8 +142,16 @@ class _CueManipMixin:
         """
         if not self._change_allowed(EDIT_LIST):
             return
+        from engine.playlist_import import PLAYLIST_EXT
+
+        lists = [p for p in paths if Path(p).suffix.lower() in PLAYLIST_EXT]
         media = [p for p in paths if self._detect_media_type(p) is not None]
-        skipped = [os.path.basename(p) for p in paths if p not in media]
+        skipped = [os.path.basename(p) for p in paths if p not in media and p not in lists]
+        sounds = [p for p in media if self._detect_media_type(p) == MediaType.AUDIO]
+        # 3.3: several sounds and nothing else -> offered as one playlist row once they are in
+        # (not inside a scene: a playlist is a row of the show of its own).
+        in_scene = 0 <= row < len(self._cues) and self._cues[row].parent_id is not None
+        offer = len(sounds) >= 2 and len(sounds) == len(media) and not lists and not skipped and not in_scene
         if 0 <= row < len(self._cues):
             self._cue_list.setCurrentRow(row)
         else:
@@ -150,14 +160,118 @@ class _CueManipMixin:
         # One drop = one undo step, however many files it brings.
         self._undo_batch = True
         try:
-            for path in media:
-                self._add_cue_from_file(path)
+            added = self._add_files_collect(media)
+            for playlist in lists:
+                self._import_playlist_file(playlist)
         finally:
             self._undo_batch = False
-        if media:
+        if media or lists:
             self._commit_undo_point()
+            self._auto_save()  # the playlist row too, not only the files
         if skipped:
             self._status_label.setText(f"File non supportati, ignorati: {', '.join(skipped)}")
+        if offer and len(added) >= 2:
+            self._offer_playlist(added)
+
+    # ── 3.3: playlists ──
+    def _ask_playlist(self, count: int, answer) -> None:
+        """Ask without blocking (the drop is over, the show goes on): *answer(True)* for one playlist."""
+        old = getattr(self, "_playlist_question", None)
+        if old is not None:
+            old.close()
+        box = QMessageBox(QMessageBox.Icon.Question, tr("Playlist"),
+                          tr("{} file audio: farne una playlist (una riga che li suona uno dopo l'altro)?").format(count),
+                          parent=self)
+        one = box.addButton(tr("Una playlist"), QMessageBox.ButtonRole.AcceptRole)
+        box.addButton(tr("Cue separate"), QMessageBox.ButtonRole.RejectRole)
+        box.setDefaultButton(one)
+        box.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
+        box.buttonClicked.connect(lambda button: answer(button is one))
+        self._playlist_question = box
+        box.open()
+
+    def _offer_playlist(self, added: list[Cue]) -> None:
+        """The sounds just dropped (already in the list) may become one playlist row (its own undo step)."""
+        ids = [c.cue_id for c in added]
+
+        def answer(make: bool) -> None:
+            self._playlist_question = None
+            if not make:
+                return
+            rows = [i for i, c in enumerate(self._cues) if c.cue_id in ids]
+            still = (len(rows) == len(ids) and rows == list(range(rows[0], rows[0] + len(rows)))
+                     and all(self._cues[r].parent_id is None for r in rows))
+            if not still or not self._change_allowed(EDIT_LIST):
+                return  # the list changed meanwhile: they stay separate cues
+            if self._undo.is_debounce_active():
+                self._commit_undo_point()
+            self._make_playlist([self._cues[r] for r in rows], tr("Playlist ({} brani)").format(len(rows)))
+            self._commit_undo_point()
+            self._auto_save()
+
+        self._ask_playlist(len(added), answer)
+
+    def _add_files_collect(self, files: list[str]) -> list[Cue]:
+        """Add *files* after the selection (in order) and return the new cues."""
+        before = {c.cue_id for c in self._cues}
+        for path in files:
+            self._add_cue_from_file(path)
+        return [c for c in self._cues if c.cue_id not in before]
+
+    def _make_playlist(self, cues: list[Cue], name: str) -> Cue | None:
+        """Wrap the new (contiguous) *cues* in a playlist group: one row that plays them one after another,
+        stops after the last one and leaves GO on the next cue of the show. Never inside a scene."""
+        if cues[0].parent_id is not None:
+            self._status_label.setText(tr("Una playlist non può stare dentro una scena: aggiunte cue separate"))
+            return None
+        first = next(i for i, c in enumerate(self._cues) if c is cues[0])
+        group = Cue(name=name, file_path="", media_type=MediaType.GROUP, group_mode=GroupMode.SEQUENCE.value,
+                    color="#0ea5e9", layer=2, collapsed=True, status=CueStatus.LOADED)
+        group.playlist = True
+        for cue in cues:
+            cue.parent_id = group.cue_id
+        self._cues.insert(first, group)
+        self._refresh_cue_list(keep_selection=False)
+        self._cue_list.setCurrentRow(first)
+        self._mark_modified(True)
+        logger.info("[PLAYLIST] '%s' with %d tracks", name, len(cues))
+        return group
+
+    def _import_playlist_file(self, path: str) -> Cue | None:
+        """An .m3u / .m3u8: its files become one playlist row (missing files and streams are listed)."""
+        from engine.playlist_import import read_m3u
+
+        try:
+            files, skipped = read_m3u(path)
+        except OSError as exc:
+            self._status_label.setText(tr("Playlist non leggibile: {}").format(exc))
+            return None
+        playable = [f for f in files if self._detect_media_type(f) is not None]
+        skipped = skipped + [f for f in files if f not in playable]  # e.g. a nested .m3u, a .txt
+        files = playable
+        group = None
+        if files:
+            group = self._make_playlist(self._add_files_collect(files), Path(path).stem)
+        text = tr("Playlist '{}': {} brani").format(Path(path).stem, len(files))
+        if skipped:
+            text += " · " + tr("non trovati o in streaming: {}").format(len(skipped))
+        self._status_label.setText(text)
+        return group
+
+    def _on_import_playlist(self) -> None:
+        """File menu: import an .m3u / .m3u8 playlist."""
+        if not self._change_allowed(EDIT_LIST):
+            return
+        path, _ = QFileDialog.getOpenFileName(self, tr("Importa playlist"), "", "Playlist (*.m3u *.m3u8)")
+        if not path:
+            return
+        self._undo_batch = True
+        try:
+            self._import_playlist_file(path)
+        finally:
+            self._undo_batch = False
+        self._commit_undo_point()
+        self._auto_save()
 
     def _move_selected_cue(self, delta: int) -> None:
         sel_rows = self._selected_rows()

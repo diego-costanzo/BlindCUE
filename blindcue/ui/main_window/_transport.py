@@ -505,7 +505,14 @@ class _TransportMixin:
             self._fire_group_child(first_child, depth)
             logger.info("[GO-GROUP-SEQ] Fired child 0 #%d '%s'", first_child.cue_id, first_child.name)
             self._refresh_cue_list(keep_selection=False)
-            if len(children) > 1:
+            if getattr(group_cue, "playlist", False):
+                # 3.3: the tracks follow by themselves; the next GO is the next cue of the show.
+                from engine.show_engine import block_end
+
+                after = block_end(self._cues, self._cues.index(group_cue)) + 1
+                if after < len(self._cues):
+                    self._cue_list.setCurrentRow(after)
+            elif len(children) > 1:
                 self._cue_list.setCurrentRow(self._cues.index(children[1]))
             else:
                 next_idx = self._cues.index(first_child) + 1

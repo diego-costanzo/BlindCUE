@@ -106,6 +106,7 @@ wszystkich zmian na liście i w inspektorze.</li>
 <li>Przeciągnij pliki z menedżera plików do pola <b>Szybkie dodawanie</b> (prawy dolny róg) albo
 wprost na listę cue: trafią za wiersz, na który je upuścisz (pod ostatnim wierszem – na koniec), w tej
 samej kolejności.</li>
+<li><b>Playlista</b> (np. muzyka przed spektaklem i w przerwie): upuść na listę kilka plików audio naraz i odpowiedz <b>Jedna playlista</b> – powstaje jeden zwinięty wiersz (scena w trybie <b>⤵ Po kolei</b>), który po jednym GO gra utwory po kolei. <b>Plik → 🎵 Importuj playlistę (.m3u)…</b> albo upuszczenie pliku <b>.m3u</b> robi to samo z listą z innego odtwarzacza (brakujące pliki i strumienie internetowe są pominięte, pasek stanu mówi ile). Tryb sceny można zmienić na <b>🔁 Zapętl scenę</b> albo <b>🎲 Losowo</b>.</li>
 <li>Nowy cue trafia zaraz za zaznaczony (bez zaznaczenia – na koniec listy). Gdy zaznaczony
 cue jest połączony z następnym (<b>Razem</b>, <b>Auto-GO</b>) albo jest grupą, nowy trafia za koniec
 tego łańcucha lub grupy – pasek stanu mówi gdzie. Przesuniesz go przyciskami <b>W górę / W dół</b>
@@ -171,7 +172,7 @@ odpalasz go GO; może mieć Pre-Delay, Auto-GO i należeć do grupy.</p>
 <tr><td><b>📞 Wywołaj pozycję</b></td><td>uruchamia wybrany cue bez przesuwania GO (jak efekt). Cue z zaznaczonym <b>📞 Tylko na wywołanie</b> (karta 3 · Czasy) jest poza kolejnością GO; w Inspektorze widać, skąd jest wywoływany.</td></tr>
 <tr><td><b>⏩ Przewiń odtwarzanie</b></td><td>przesuwa grający dźwięk lub film: <b>do miejsca</b> w pliku, <b>o N s</b> do przodu lub do tyłu, albo <b>na N s przed końcem</b> (np. pominięcie zwrotki na próbie).</td></tr>
 <tr><td><b>⌛ Czekaj, potem następna</b></td><td>oczekiwanie widoczne na liście: po podanych sekundach sama startuje następna pozycja (zamiast ukrytego Pre-Delay). Pauza wszystkiego je wstrzymuje, PANIC kasuje.</td></tr>
-<tr><td><b>⏸ Pauza</b> / <b>▶ Wznów</b></td><td>wstrzymuje wybrane grające dźwięki i filmy albo pozwala im grać dalej od miejsca, w którym stanęły; pozostałe grają bez zmian. Pozycje startujące na znaczniku lub przed końcem wstrzymanej czekają razem z nią.</td></tr>
+<tr><td><b>⏸ Pauza</b> / <b>▶ Wznów</b></td><td>wstrzymuje wybrane grające dźwięki i filmy albo pozwala im grać dalej od miejsca, w którym stanęły; pozostałe grają bez zmian. Pozycje startujące na znaczniku lub przed końcem wstrzymanej czekają razem z nią. Z <b>przejściem</b> (pole <b>Przejście</b>) muzyka się <b>usypia</b> (cichnie, potem staje – np. na przerwę) i <b>budzi</b> (wchodzi powoli do poprzedniego poziomu).</td></tr>
 <tr><td><b>⏱ Stoper</b></td><td>stoper na pasku stanu (np. czas trwania aktu): <b>Start</b>, <b>Stop</b> (następny start liczy dalej) albo <b>Zeruj</b>. PANIC go nie rusza.</td></tr>
 </table>
 <p><b>Na co działa</b> (pole <b>Na co</b>): <b>Wszystko, co gra</b>, <b>Jedna warstwa</b> (L1–L3)
@@ -293,7 +294,7 @@ widać od razu na projektorze. Używaj przy ustawianiu obrazu na próbie;
 <li><b>Przycięcie IN / OUT</b> – od którego momentu do którego grać utwór.
 Najwygodniej: w panelu Przebieg kliknij w miejsce na fali, potem
 <b>IN na głowicy</b> (<kbd>I</kbd>) lub <b>OUT na głowicy</b> (<kbd>O</kbd>).
-<b>Reset IN/OUT</b> przywraca cały plik. Tak samo przycinasz film.</li>
+<b>Reset IN/OUT</b> przywraca cały plik. Tak samo przycinasz film. Przycisk <b>✂</b> obok IN/OUT ustawia je tam, gdzie dźwięk naprawdę się zaczyna i kończy (ucina ciszę na początku i końcu, np. w plikach z internetu; <kbd>Ctrl+Z</kbd> cofa).</li>
 <li><b>Zapętl cue</b> – zaznacz i wybierz liczbę powtórzeń albo „bez końca”
 (np. muzyka w tle podczas przerwy).</li>
 <li><b>Przy starcie wycisza inne</b> (karta <b>3 · Czasy</b>, poza widokiem podstawowym) – gdy ta pozycja startuje, inne grające dźwięki i filmy wyciszają się przez podaną liczbę sekund. Zmiana muzyki jedną pozycją: stara muzyka na tej samej warstwie łagodnie cichnie, zamiast zostać ucięta (nowa gra w tym czasie na wolnym odtwarzaczu). 0 = nie.</li>
@@ -367,6 +368,7 @@ niezależne wyjścia A i B.</li>
 Gdy ich zabraknie – np. po odłączeniu projektora z głośnikami – gra domyślne wyjście systemowe,
 a na pasku stanu pojawia się komunikat; po ponownym podłączeniu program sam do nich wraca.
 Pozycja <b>„Domyślne wyjście systemowe”</b> znaczy: nic nie zapamiętuj, graj tam, gdzie wskazuje system.</li>
+<li><b>Wyjścia dźwięku</b> (<b>Przedstawienie → 🔊 Wyjścia dźwięku</b>): każda pozycja dźwiękowa i film gra na wyjściu <b>Scena</b>, <b>Sala</b> albo <b>Odsłuch</b> (dla aktorów) – wybór w inspektorze, karta 1, <b>Wyjście</b>; <b>Wycisz</b> to film bez dźwięku. W oknie wyjść wybierasz, który głośnik jest którym wyjściem na <b>tym</b> komputerze, co ma grać, <b>gdy go brak</b> (Scena → wyjście domyślne, Sala → jak Scena, Odsłuch → cisza: prywatna ścieżka nigdy nie trafia do widowni), <b>korektę</b> w dB, <b>▶ Test</b> każdego wyjścia i <b>Testuj wszystkie po kolei</b>. Mapę można wyeksportować i zaimportować na innym komputerze. W czasie przedstawienia okno tylko pokazuje mapę. Gdy pozycja gra na zapasowym wyjściu, mówi o tym pasek stanu.</li>
 <li>Gdy zostaje <b>tylko projektor</b> (<kbd>Win+P</kbd> → <b>Tylko drugi ekran</b> albo zamknięta klapa
 laptopa), program pokazuje na nim panel reżysera i podgląd wyjścia w oknie.</li>
 <li><b>Widok → Pokaż linie pomocnicze na projektorze</b> (<kbd>Shift+F7</kbd>) –

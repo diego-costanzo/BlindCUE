@@ -2908,4 +2908,140 @@ T: dict[str, str] = {
         'Resume',
     'Partenza relativa persa (cue di riferimento eliminata): {} ora parte con il GO':
         'Relative start lost (its reference cue was deleted): {} now starts with GO',
+    'Palco':
+        'Stage',
+    'Sala':
+        'Hall',
+    'Spie (ascolto palco)':
+        'Foldback (stage monitors)',
+    'Muto':
+        'Mute',
+    'uscita predefinita':
+        'default output',
+    "'{}': {} non disponibile, suona su: {}":
+        "'{}': {} not available, plays on: {}",
+    'Uscita:':
+        'Output:',
+    'Dove suona questa cue. Quale altoparlante è Palco, Sala o Spie su questo computer si sceglie in Dispositivi → Uscite audio. Muto: un video senza il suo audio.':
+        'Where this cue plays. Which speakers are the Stage, the Hall or the Foldback on this computer is chosen in Show → Audio outputs. Mute: a video without its sound.',
+    'Uscita audio della cue':
+        'Audio output of the cue',
+    'Uscite audio di questo computer':
+        'Audio outputs of this computer',
+    "Ogni cue suona su un'uscita: Palco, Sala o Spie (ascolto per gli attori). Qui si sceglie quale altoparlante è ognuna su questo computer; lo spettacolo non cambia su un altro computer.":
+        'Every cue plays on one output: Stage, Hall or Foldback (for the performers). Here you choose which speakers each one is on this computer; the show does not change on another computer.',
+    'Uscita':
+        'Output',
+    'Se manca':
+        'If missing',
+    'Regolazione':
+        'Trim',
+    '▶ Prova':
+        '▶ Test',
+    'Dispositivo: {}':
+        'Device: {}',
+    'Se manca: {}':
+        'If missing: {}',
+    'Regolazione: {}':
+        'Trim: {}',
+    'Prova: {}':
+        'Test: {}',
+    'Predefinito di sistema':
+        'System default',
+    '— non impostata —':
+        '— not set —',
+    'muto':
+        'muted',
+    'muto (nessun suono)':
+        'muted (no sound)',
+    'Durante lo spettacolo le uscite non si cambiano e non si provano.':
+        'During the show the outputs are not changed or tested.',
+    '▶ Prova tutte in ordine':
+        '▶ Test them all in turn',
+    'Esporta…':
+        'Export…',
+    'Importa…':
+        'Import…',
+    'Esporta le uscite audio':
+        'Export the audio outputs',
+    'Importa le uscite audio':
+        'Import the audio outputs',
+    'Esportato: {}':
+        'Exported: {}',
+    'Non è una mappa di uscite audio: {}':
+        'This is not an audio output map: {}',
+    'Uscita predefinita':
+        'Default output',
+    'Come il Palco':
+        'Like the Stage',
+    '🔊 Uscite audio (Palco / Sala / Spie)…':
+        '🔊 Audio outputs (Stage / Hall / Foldback)…',
+    'Uscite audio: {}':
+        'Audio outputs: {}',
+    'Uscite audio non impostate o scollegate: {}':
+        'Audio outputs not set or unplugged: {}',
+    'Uscite audio…':
+        'Audio outputs…',
+    'Dispositivo':
+        'Device',
+    'Playlist ({} brani)':
+        'Playlist ({} tracks)',
+    'Playlist':
+        'Playlist',
+    "{} file audio: farne una playlist (una riga che li suona uno dopo l'altro)?":
+        '{} audio files: make them a playlist (one row that plays them one after another)?',
+    'Una playlist':
+        'One playlist',
+    'Cue separate':
+        'Separate cues',
+    'Playlist non leggibile: {}':
+        'Cannot read the playlist: {}',
+    "Playlist '{}': {} brani":
+        "Playlist '{}': {} tracks",
+    'non trovati o in streaming: {}':
+        'not found or streams: {}',
+    'Importa playlist':
+        'Import a playlist',
+    '🎵 Importa playlist (.m3u)…':
+        '🎵 Import a playlist (.m3u)…',
+    '{} non collegato ({}): suona su {}':
+        '{} not connected ({}): plays on {}',
+    'lo stesso dispositivo del pubblico':
+        'the same device as the audience',
+    'Le spie usano lo stesso dispositivo del pubblico: la traccia privata si sente in sala.':
+        "The foldback uses the audience's device: the private track will be heard in the hall.",
+    'Qualcosa suona: la prova non parte.':
+        'Something is playing: no test.',
+    'Sostituire le uscite audio di questo computer con quelle del file?':
+        'Replace the audio outputs of this computer with the ones in the file?',
+    'uscite audio':
+        'audio outputs',
+    'Addormenta in {} s: {}':
+        'Put to sleep in {} s: {}',
+    'Risveglia in {} s: {}':
+        'Wake up in {} s: {}',
+    'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. Con una durata la musica si addormenta: sfuma e poi si ferma.':
+        'Pauses the chosen cues that are playing (sound and video); the others go on. With a duration the music goes to sleep: it fades out, then stops.',
+    'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una durata la musica si risveglia: entra piano fino al livello di prima.':
+        'Lets the chosen paused cues play on from where they stopped. With a duration the music wakes up: it fades in to the level it had.',
+    "Taglia il silenzio all'inizio e alla fine: IN e OUT dove il suono comincia e finisce davvero (sotto -40 dB rispetto al picco).":
+        'Cut the silence at the start and the end: IN and OUT where the sound really starts and ends (below -40 dB from the peak).',
+    "Taglia il silenzio all'inizio e alla fine":
+        'Cut the silence at the start and the end',
+    "Taglia il silenzio: forma d'onda non ancora pronta o file muto":
+        'Cut the silence: the waveform is not ready yet or the file is silent',
+    'Silenzio tagliato (sotto {} dB): IN {} s, OUT {}':
+        'Silence cut (below {} dB): IN {} s, OUT {}',
+    'Una playlist non può stare dentro una scena: aggiunte cue separate':
+        'A playlist cannot be inside a scene: separate cues added',
+    'Dissolvenza:':
+        'Fade:',
+    'subito':
+        'at once',
+    '0 = subito; più secondi = la musica si addormenta / si risveglia piano':
+        '0 = at once; more seconds = the music goes to sleep / wakes up slowly',
+    'Mette in pausa le cue scelte che stanno suonando (audio e video); le altre continuano. Con una dissolvenza la musica si addormenta: sfuma e poi si ferma.':
+        'Pauses the chosen cues that are playing (sound and video); the others go on. With a fade the music goes to sleep: it fades out, then stops.',
+    'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una dissolvenza la musica si risveglia: entra piano fino al livello di prima.':
+        'Lets the chosen paused cues play on from where they stopped. With a fade the music wakes up: it fades in to the level it had.',
 }

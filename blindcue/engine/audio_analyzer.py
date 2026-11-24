@@ -311,21 +311,12 @@ class WaveformAnalyzer(QRunnable):
                 peaks = np.zeros(self.target_width, dtype=np.float32)
                 peaks[:n] = samples_abs
             else:
-                step = n // self.target_width
-                if step >= 1 and step * self.target_width == n:
-                    peaks = samples_abs.reshape(self.target_width, step).max(axis=1).astype(np.float32)
-                elif step >= 2:
-                    trim = step * self.target_width
-                    peaks = samples_abs[:trim].reshape(self.target_width, step).max(axis=1).astype(np.float32)
-                    rem_max = samples_abs[trim:].max()
-                    if rem_max > peaks[-1]:
-                        peaks[-1] = rem_max
-                else:
-                    splits = np.array_split(samples_abs, self.target_width)
-                    peaks = np.array(
-                        [chunk.max() if len(chunk) > 0 else 0.0 for chunk in splits],
-                        dtype=np.float32,
-                    )
+                # Equal slices of the whole file: bin i covers [i, i+1) / width of its
+                # length. (Fixed-size slices with the remainder piled into the last bin
+                # put every point a few % too late on the waveform and in "cut the
+                # silence".)
+                edges = np.linspace(0, n, self.target_width + 1).astype(np.int64)
+                peaks = np.maximum.reduceat(samples_abs, edges[:-1]).astype(np.float32)
 
             # Normalise to 0.0-1.0
             peak_max = peaks.max()

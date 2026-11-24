@@ -825,6 +825,22 @@ def main() -> int:
         passes = max(1, int(cue.loop_count)) if cue.loop else 1
         return max(0.0, (end - max(start, pos_sec)) + (passes - 1) * (end - start))
 
+    def _route_audio(cue: Cue, lp, quiet: bool = False) -> None:
+        """3.1: the layer's player plays on the cue's logical output; say so when it falls back.
+
+        Called after ``load()`` (which stops what played there): the cue being replaced never gets
+        the new cue's device or gain.
+        """
+        from engine.audio_routes import LABELS, normalize_output
+
+        out = normalize_output(getattr(cue, "audio_output", "stage"))
+        route = device_mgr.route_player(lp, out)
+        if out in ("hall", "foldback") and route.via != out and not quiet:
+            where = main_win_tr(LABELS.get(route.via, route.via))
+            main_win._status_label.setText(main_win_tr("'{}': {} non disponibile, suona su: {}").format(
+                cue.name, main_win_tr(LABELS[out]), where))
+            logger.warning("[AUDIO] '%s': output %s not available, plays via %s", cue.name, out, route.via)
+
     def _launch_cue_now(cue: Cue, layer: int, expected_gen: int, start_at: float | None = None,
                         restoring: bool = False) -> None:
         """Start actual Audio/Video/Image playback/display for *cue* on *layer*.
@@ -903,6 +919,8 @@ def main() -> int:
                         end=cue.out_point,
                         resume_at=start_at,
                     )
+                    _route_audio(cue, lp)
+                    _sleep_on_launch(layer, cue, lp)
                     lp.set_aspect_ratio(cue.aspect_ratio)
                     lp.set_scale(cue.scale)
                     lp.set_crop(cue.crop)
@@ -924,6 +942,8 @@ def main() -> int:
                         end=cue.out_point,
                         resume_at=start_at,
                     )
+                    _route_audio(cue, lp)
+                    _sleep_on_launch(layer, cue, lp)
                     _apply_cue_automation(lp, cue, hot=False)
                     lp.set_loop(cue.loop, cue.loop_count)
                     lp.play()
@@ -1160,6 +1180,10 @@ def main() -> int:
             elif kind == ACTION_LEVEL:
                 for l_idx in layers:
                     lp = live_players[l_idx]
+                    st = _sleep_state(l_idx)
+                    if st is not None:  # 3.3: asleep: the change is the level it wakes up to
+                        st["trim"] = level_trim_after(spec, st["trim"], active_live_cues[l_idx].volume)
+                        continue
                     trim = level_trim_after(spec, lp.level_trim(), active_live_cues[l_idx].volume)
                     lp.ramp_level(trim, seconds, curve)
                     main_win.note_level_ramp(l_idx, trim, seconds, cue)  # shown on that card
@@ -1179,7 +1203,8 @@ def main() -> int:
                 layers = []
                 main_win.start_countdown(float(spec.get("countdown_sec", 0.0)), str(spec.get("text", "")).strip())
             elif kind in (ACTION_PAUSE, ACTION_RESUME):  # 2.11
-                layers = [l_idx for l_idx in layers if _pause_layer(l_idx, kind == ACTION_PAUSE)]
+                sleep = float(spec.get("sleep_sec", 0.0))
+                layers = [l_idx for l_idx in layers if _pause_layer(l_idx, kind == ACTION_PAUSE, sleep)]
             elif kind == ACTION_STOPWATCH:
                 layers = []
                 main_win.stopwatch(str(spec.get("sw_mode", "start")))
@@ -1540,6 +1565,7 @@ def main() -> int:
         for l_idx, active_c in list(active_live_cues.items()):
             if active_c.cue_id == cue.cue_id:
                 if cue.media_type in (MediaType.VIDEO, MediaType.AUDIO) and l_idx in live_players:
+                    _route_audio(cue, live_players[l_idx], quiet=True)  # 3.1: its output changed
                     _apply_cue_automation(live_players[l_idx], cue, hot=True)
                 elif cue.media_type == MediaType.IMAGE and l_idx not in live_image_envelopes:
                     _set_layer_opacity(l_idx, cue.opacity)
@@ -1732,26 +1758,98 @@ def main() -> int:
     main_win.master_gain_changed.connect(_on_master_gain)
     main_win.pause_all_set.connect(_set_global_paused)
 
-    def _pause_layer(layer: int, pause: bool) -> bool:
-        """Pause or resume the sound / video on *layer* (its card, a pause action); False: nothing changed."""
+    # 3.3: music put to sleep: layer -> {"token", "cue_id", "parent_id", "trim" (level to wake up to),
+    # "falling" (still fading out)}. Valid only for the cue that plays on that layer now.
+    sleeping: dict[int, dict] = {}
+    sleep_token = [0]
+
+    def _sleep_state(layer: int) -> dict | None:
+        st = sleeping.get(layer)
+        cue = active_live_cues.get(layer)
+        if st is None or cue is None or st["cue_id"] != cue.cue_id:
+            sleeping.pop(layer, None)  # another cue plays there now: that sleep is over
+            return None
+        return st
+
+    def _sleep_on_launch(layer: int, cue: Cue, lp) -> None:
+        """A cue starts on *layer*: the sleep there ends - except for the next track of a playlist that
+        was falling asleep, which starts silent and falls asleep with it."""
+        st = sleeping.pop(layer, None)
+        if st is not None and st["falling"] and cue.parent_id is not None and cue.parent_id == st["parent_id"]:
+            st["cue_id"] = cue.cue_id
+            sleeping[layer] = st
+            lp.ramp_level(0.0, 0.0)
+
+    def _asleep(layer: int, token: int) -> None:
+        """The fade-out of a sleep is over: pause (also when Pause All came in between)."""
+        st = _sleep_state(layer)
+        lp = live_players.get(layer)
+        if st is None or st["token"] != token or not st["falling"] or lp is None:
+            return
+        if lp.is_playing() and lp.level_trim() > 0.02:
+            QTimer.singleShot(300, lambda: _asleep(layer, token))  # the fade was held (Pause All): wait for it
+            return
+        st["falling"] = False
+        paused_layers_by_global.discard(layer)  # Resume All must not wake it
+        if lp.is_playing():
+            lp.pause()
+        main_win.set_live_layer_paused(layer, True)
+        main_win.cue_paused(active_live_cues[layer])
+        logger.info("[MAIN] Live Layer %d asleep", layer)
+
+    def _pause_layer(layer: int, pause: bool, fade: float = 0.0) -> bool:
+        """Pause or resume the sound / video on *layer* (its card, a pause action); False: nothing changed.
+
+        3.3: with *fade* the music goes to sleep (fades out, then pauses) or wakes up (plays on from
+        where it slept, fading in to the level it had).
+        """
         live_cue = active_live_cues.get(layer)
         lp = live_players.get(layer)
         if live_cue is None or lp is None or live_cue.media_type not in (MediaType.VIDEO, MediaType.AUDIO):
             return False
-        if pause != lp.is_playing():
-            return False  # already paused / already playing
+        st = _sleep_state(layer)
         if pause:
+            if st is not None and st["falling"] and fade <= 0.02:
+                st["falling"] = False  # paused at once while falling asleep: asleep now, same level to wake to
+            elif st is not None or not lp.is_playing():
+                return False  # already asleep / paused
+            elif fade > 0.02:
+                sleep_token[0] += 1
+                token = sleep_token[0]
+                sleeping[layer] = {"token": token, "cue_id": live_cue.cue_id, "parent_id": live_cue.parent_id,
+                                   "trim": lp.level_trim(), "falling": True}
+                lp.ramp_level(0.0, fade)
+                QTimer.singleShot(int(fade * 1000) + 30, lambda: _asleep(layer, token))
+                logger.info("[MAIN] Live Layer %d goes to sleep in %.1fs", layer, fade)
+                return True
             lp.pause()
             main_win.set_live_layer_paused(layer, True)
             main_win.cue_paused(live_cue)  # what waits for its marker / end waits with it
             logger.info("[MAIN] Live Layer %d paused", layer)
-        else:
-            paused_layers_by_global.discard(layer)
-            lp.play()
-            main_win.set_live_layer_paused(layer, False)
-            pos = live_positions.get(layer, max(0.0, live_cue.in_point))
-            main_win.cue_resumed(live_cue, _remaining_from(live_cue, live_durations.get(layer, 0.0), pos), pos)
-            logger.info("[MAIN] Live Layer %d resumed", layer)
+            return True
+        level = None
+        if st is not None:
+            sleeping.pop(layer, None)
+            level = st["trim"]
+            if st["falling"] and lp.is_playing():
+                lp.ramp_level(level, max(0.0, fade))  # woken while falling asleep: back up from where it is
+                logger.info("[MAIN] Live Layer %d woken while falling asleep", layer)
+                return True
+        elif lp.is_playing():
+            return False  # already playing
+        paused_layers_by_global.discard(layer)
+        if fade > 0.02:
+            level = lp.level_trim() if level is None else level
+            lp.ramp_level(0.0, 0.0)
+        lp.play()
+        if fade > 0.02:
+            lp.ramp_level(level, fade)  # wakes up to the level it had
+        elif level is not None:
+            lp.ramp_level(level, 0.0)
+        main_win.set_live_layer_paused(layer, False)
+        pos = live_positions.get(layer, max(0.0, live_cue.in_point))
+        main_win.cue_resumed(live_cue, _remaining_from(live_cue, live_durations.get(layer, 0.0), pos), pos)
+        logger.info("[MAIN] Live Layer %d resumed", layer)
         return True
 
     def _on_layer_play_pause_requested(layer: int) -> None:

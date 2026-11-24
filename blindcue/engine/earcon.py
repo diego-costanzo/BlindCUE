@@ -96,6 +96,10 @@ class EarconManager:
         """The audience speakers: earcons never play there (W42)."""
         self._master_device = device
 
+    def set_audience_devices(self, devices: list) -> None:
+        """3.1: every device the audience hears (stage and hall): earcons never play there."""
+        self._audience_ids = {bytes(d.id()) for d in devices if d is not None and not d.isNull()}
+
     def on_audience_speakers(self) -> bool:
         """True when the headphones are the audience speakers: then the earcons keep quiet."""
         from PySide6.QtMultimedia import QMediaDevices
@@ -104,7 +108,8 @@ class EarconManager:
             dev = dev if dev is not None and not dev.isNull() else QMediaDevices.defaultAudioOutput()
             return bytes(dev.id())
 
-        return _id(self._audio_device) == _id(self._master_device)
+        mine = _id(self._audio_device)
+        return mine == _id(self._master_device) or mine in getattr(self, "_audience_ids", set())
 
     def _can_play(self, name: str) -> bool:
         return self._enabled and name in self._sounds and not self.on_audience_speakers()
