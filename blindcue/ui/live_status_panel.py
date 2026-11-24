@@ -217,7 +217,7 @@ class _LiveLayerBar(QWidget):
         if self._is_paused:
             act_pp = menu.addAction("▶ Riprendi Riproduzione")
         else:
-            act_pp = menu.addAction("⏸ Metti in Pausa (Prove)")
+            act_pp = menu.addAction("❚❚ Metti in Pausa (Prove)")
         act_pp.triggered.connect(lambda: self.play_pause_requested.emit(self._layer_idx))
 
         menu.exec(event.globalPos())
@@ -524,7 +524,7 @@ class _LiveLayerBar(QWidget):
         # Centered cue title elided safely between timers
         mtag = self._media_type.value if self._media_type else "LIVE"
         q_part = f"{self._q_label} • " if self._q_label else ""
-        pause_prefix = "⏸ " if self._is_paused else ""
+        pause_prefix = "❚❚ " if self._is_paused else ""
         raw_title = f"{pause_prefix}[{mtag}] {q_part}{self._title}"
         center_left = m_pad + left_w + (4 if left_str else 0)
         center_right = w - m_pad - right_w - (4 if right_str else 0)

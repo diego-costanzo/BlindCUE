@@ -127,7 +127,7 @@ class PreviewControlPanel(QGroupBox):
             QPushButton:pressed { background-color: #142918; }
         """)
 
-        self.btn_pause = QPushButton("⏸  Pausa")
+        self.btn_pause = QPushButton("❚❚  Pausa")
         self.btn_pause.setToolTip("Metti in pausa l'anteprima")
         self.btn_pause.setStyleSheet(btn_style_base + """
             QPushButton:hover {

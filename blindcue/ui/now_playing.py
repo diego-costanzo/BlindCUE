@@ -152,7 +152,7 @@ class _Card(QFrame):
             outer.addLayout(line2)
             line3 = QHBoxLayout()
             line3.setSpacing(6)
-            self.btn_pause = self._button("⏸", "Pausa / riprendi questa cue")
+            self.btn_pause = self._button("❚❚", "Pausa / riprendi questa cue")
             self.btn_pause.clicked.connect(lambda: panel.pause_requested.emit(self.slot))
             line3.addWidget(self.btn_pause)
             line3.addWidget(self.btn_fade)
@@ -279,7 +279,7 @@ class _Card(QFrame):
         self.bar.setVisible(st.fraction >= 0)
         if st.fraction >= 0:
             self.bar.setValue(int(st.fraction * 1000))
-        self.btn_pause.setText("▶" if st.paused else "⏸")
+        self.btn_pause.setText("▶" if st.paused else "❚❚")
         self.btn_pause.setVisible(not st.waiting)
         self.slider.setVisible(not st.waiting)
         self.lbl_trim.setVisible(not st.waiting)

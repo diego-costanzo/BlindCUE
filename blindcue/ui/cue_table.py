@@ -56,7 +56,7 @@ ROLE_LIVE_TIME = Qt.ItemDataRole.UserRole + 29       # short text ("-0:45"), "" 
 ROLE_LIVE_FRACTION = Qt.ItemDataRole.UserRole + 30   # 0..1 played, -1 when unknown/idle
 ROLE_LIVE_WARN = Qt.ItemDataRole.UserRole + 31       # ends in a few seconds, next GO is manual
 ROLE_PLAYED = Qt.ItemDataRole.UserRole + 32          # started in this run of the show (✓, dimmed)
-ROLE_PAUSED = Qt.ItemDataRole.UserRole + 33          # on air but held by a pause (⏸, not ●)
+ROLE_PAUSED = Qt.ItemDataRole.UserRole + 33          # on air but held by a pause (❚❚, not ●)
 ROLE_EFFECT_KEY = Qt.ItemDataRole.UserRole + 34      # effect on demand: "⌨ B" ("⌨" without a key), else ""
 
 

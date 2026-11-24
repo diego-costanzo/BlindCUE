@@ -68,7 +68,7 @@ _KIND_LABELS = (
     (ACTION_SEEK, "⏩ Sposta la riproduzione"),
     (ACTION_COUNTDOWN, "⏳ Conto alla rovescia"),
     (ACTION_WAIT, "⌛ Attendi, poi la successiva"),
-    (ACTION_PAUSE, "⏸ Pausa"),
+    (ACTION_PAUSE, "❚❚ Pausa"),
     (ACTION_RESUME, "▶ Riprendi"),
     (ACTION_STOPWATCH, "⏱ Cronometro"),
 )

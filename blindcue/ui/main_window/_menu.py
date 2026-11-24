@@ -96,7 +96,7 @@ class _MenuMixin:
         )
         # Pause All had no key at all (mouse only); W3 of the accessibility review.
         show_menu.addAction(
-            QAction("⏸ &Pausa / riprendi tutto", self, shortcut=QKeySequence("Ctrl+P"),
+            QAction("❚❚ &Pausa / riprendi tutto", self, shortcut=QKeySequence("Ctrl+P"),
                     triggered=lambda: self.pause_all_toggled.emit())
         )
         # Undo the last GO (1.18): no key on purpose (Ctrl+Z and Backspace edit).
@@ -144,7 +144,7 @@ class _MenuMixin:
                                     triggered=lambda: self._show_countdown_window()))
         show_menu.addAction(QAction("⏹ Ferma il conto alla rovescia", self, triggered=lambda: self.stop_countdown()))
         # 2.6: the time plan (cues at a time of day)
-        self._act_clock_hold = QAction("⏸ Sospendi il piano orario", self, checkable=True)
+        self._act_clock_hold = QAction("❚❚ Sospendi il piano orario", self, checkable=True)
         self._act_clock_hold.toggled.connect(lambda on: self._toggle_clock_hold(on))
         show_menu.addAction(self._act_clock_hold)
         self._act_clock_rehearsal = QAction("🕐 Piano orario anche nella prova", self, checkable=True)

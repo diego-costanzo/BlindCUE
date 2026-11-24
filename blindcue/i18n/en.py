@@ -361,8 +361,6 @@ T: dict[str, str] = {
         'Trim IN:',
     'Opacità:':
         'Opacity:',
-    '⏸  Pausa':
-        '⏸  Pause',
     "<h3>Architettura Hardware & Prestazioni BlindCue</h3><p><b>Profilo Attivo:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Processore (CPU):</b> {}<br/>• Core / Thread rilevati: <b>{} core</b></p><p><b>Memoria RAM di Sistema:</b><br/>• Totale: <b>{} GB</b> ({} MB)<br/>• Disponibile: <b>{} GB</b> ({} MB)</p><p><b>Scheda Video (GPU):</b> {}<br/>• Accelerazione Hardware: <b>{}</b><br/>• Schermi Rilevati: <b>{}</b><br/>• Piattaforma: <b>{} ({})</b></p><hr/><h4>Ottimizzazioni per la Massima Stabilità Live:</h4><ul><li><b>GPU Offloading:</b> Compositing Layer 0..3 su GPU tramite Wayland EGL/OpenGL. Zero carico di ridisegno pixel sulla CPU.</li><li><b>Decodifica Video Hardware:</b> QtMultimedia e FFmpeg interrogano automaticamente VA-API / NVDEC per frame zero-copy.</li><li><b>Protezione GC Live:</b> In modalità LIVE il Garbage Collector di Python viene posticipato per prevenire micro-lag durante le Cue.</li><li><b>Isolamento Threading:</b> Worker asincroni limitati per garantire latenza istantanea su UI e Audio.</li></ul><p style='color: #00e676;'><b>Risultato:</b> Stabilità assoluta garantita sia su portatili da 4GB di RAM che su workstation multi-core.</p>":
         "<h3>BlindCue Hardware Architecture & Performance</h3><p><b>Active Profile:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Processor (CPU):</b> {}<br/>• Cores / Threads detected: <b>{} cores</b></p><p><b>System RAM:</b><br/>• Total: <b>{} GB</b> ({} MB)<br/>• Available: <b>{} GB</b> ({} MB)</p><p><b>Graphics Card (GPU):</b> {}<br/>• Hardware Acceleration: <b>{}</b><br/>• Screens Detected: <b>{}</b><br/>• Platform: <b>{} ({})</b></p><hr/><h4>Optimisations for Maximum Live Stability:</h4><ul><li><b>GPU Offloading:</b> Layer 0..3 compositing on the GPU via Wayland EGL/OpenGL. Zero pixel redraw load on the CPU.</li><li><b>Hardware Video Decoding:</b> QtMultimedia and FFmpeg automatically query VA-API / NVDEC for zero-copy frames.</li><li><b>Live GC Protection:</b> In LIVE mode Python's Garbage Collector is postponed to prevent micro-lag during cues.</li><li><b>Threading Isolation:</b> Limited asynchronous workers to guarantee instant UI and audio latency.</li></ul><p style='color: #00e676;'><b>Result:</b> Rock-solid stability on 4GB RAM laptops and multi-core workstations alike.</p>",
     'Scelta manuale operatore':
@@ -809,8 +807,6 @@ T: dict[str, str] = {
         'Layer Safety Lock',
     'Protezione controlli layer Live. Tieni premuto 1,2 secondi per sbloccare, tocca per ribloccare.':
         'Live layer control protection. Hold 1.2 seconds to unlock, tap to lock again.',
-    '⏸  PAUSA TUTTO':
-        '⏸  PAUSE ALL',
     'Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) per ripartire poi dallo stesso istante':
         'Freezes all LIVE layers (Audio, Video, Pre-Delay, Post-Delay and timed Images) to restart later from the same instant',
     'Pausa o Riprendi Tutto':
@@ -841,8 +837,6 @@ T: dict[str, str] = {
         '[{} sect.]',
     'Cronometro Spettacolo in corso (avvio auto al 1° GO o manuale) — Clicca per PAUSA (non ferma i media)':
         'Show Stopwatch running (auto start at 1st GO or manual) — Click to PAUSE (does not stop the media)',
-    '⏸ SHOW IN PAUSA':
-        '⏸ SHOW PAUSED',
     "Esegui cue in Standby: {} '{}'\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]":
         "Run Standby cue: {} '{}'\nMain keyboard shortcut: [ SPACE BAR ]",
     'Esegui prossima cue\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]':
@@ -901,8 +895,6 @@ T: dict[str, str] = {
         'BlindCue Logo (Default)',
     '▶ Riprendi Riproduzione':
         '▶ Resume Playback',
-    '⏸ Metti in Pausa (Prove)':
-        '⏸ Pause (Rehearsals)',
     'Monitor Uscita Layer Live (L3 Sopra → L1 Sfondo)':
         'Live Layer Output Monitor (L3 Top → L1 Background)',
     'Live Output Status (Monitor Uscita Schermo Esterno)':
@@ -1223,8 +1215,6 @@ T: dict[str, str] = {
         '🔲 INNER SHAPE',
     '🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)':
         '🎵 AUDIO PLAYBACK IN PREVIEW (PRE-VIZ)',
-    '⏸ TRACCIA AUDIO IN STANDBY':
-        '⏸ AUDIO TRACK IN STANDBY',
     'Pre-ascolto attivo in cuffia • Monitor sala mutato':
         'Headphone pre-listen active • House monitor muted',
     "Premi ▶ Play sotto l'anteprima per pre-ascoltare in cuffia":
@@ -1998,8 +1988,6 @@ T: dict[str, str] = {
         'Fade all: everything on air fades out and stops [Shift+Esc]',
     'PANIC: ferma subito tutto (0 ms) [Esc due volte]':
         'PANIC: stops everything at once (0 ms) [Esc twice]',
-    '⏸ &Pausa / riprendi tutto':
-        '⏸ &Pause / resume all',
     'Termina lo spettacolo…':
         'End the show…',
     'Termina lo spettacolo':
@@ -2220,8 +2208,6 @@ T: dict[str, str] = {
         'waits {}',
     'LOOP ∞':
         'LOOP ∞',
-    '⏸ PAUSA':
-        '⏸ PAUSED',
     'tempo: {}':
         'time: {}',
     'finisce – il prossimo GO è tuo':
@@ -2810,8 +2796,6 @@ T: dict[str, str] = {
         "'{}' skipped: more than a minute after {}",
     'Alle {}: {}':
         'At {}: {}',
-    '⏸ Sospendi il piano orario':
-        '⏸ Hold the time plan',
     '🕐 Piano orario anche nella prova':
         '🕐 Time plan in the rehearsal too',
     'Alle ore:':
@@ -2864,8 +2848,6 @@ T: dict[str, str] = {
         'marks',
     '⌛ Attendi, poi la successiva':
         '⌛ Wait, then the next one',
-    '⏸ Pausa':
-        '⏸ Pause',
     '▶ Riprendi':
         '▶ Resume',
     '⏱ Cronometro':
@@ -3416,4 +3398,24 @@ T: dict[str, str] = {
         'One scene',
     'Scena ({} elementi)':
         'Scene ({} items)',
+    '❚❚  Pausa':
+        '❚❚  Pause',
+    '❚❚  PAUSA TUTTO':
+        '❚❚  PAUSE ALL',
+    '❚❚ SHOW IN PAUSA':
+        '❚❚ SHOW PAUSED',
+    '❚❚ Metti in Pausa (Prove)':
+        '❚❚ Pause (Rehearsals)',
+    '❚❚ TRACCIA AUDIO IN STANDBY':
+        '❚❚ AUDIO TRACK IN STANDBY',
+    '❚❚ PAUSA':
+        '❚❚ PAUSED',
+    '❚❚ Sospendi il piano orario':
+        '❚❚ Hold the time plan',
+    '❚❚ Pausa':
+        '❚❚ Pause',
+    "Annulla l'ultimo GO":
+        'Undo the last GO',
+    '❚❚ &Pausa / riprendi tutto':
+        '❚❚ &Pause / resume all',
 }

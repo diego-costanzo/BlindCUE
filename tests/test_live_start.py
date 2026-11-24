@@ -316,10 +316,10 @@ def test_files_dropped_on_the_list(window, tmp_path):
     event = QDropEvent(QPointF(20, y), Qt.DropAction.CopyAction, mime,
                        Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier)
     table.dropEvent(event)
-    assert [c.name for c in window._cues][:5] == ["c0", "c1", "d1.wav", "d2.wav", "c2"]
+    assert [c.name for c in window._cues][:5] == ["c0", "c1", "d1", "d2", "c2"]
 
     window._on_files_dropped_on_list([str(files[0])], -1)   # below the last row: at the end
-    assert window._cues[-1].name == "d1.wav" and len(window._cues) == 8
+    assert window._cues[-1].name == "d1" and len(window._cues) == 8
 
 
 def test_one_drop_is_one_undo_step_and_skips_other_files(window, tmp_path):
@@ -330,7 +330,7 @@ def test_one_drop_is_one_undo_step_and_skips_other_files(window, tmp_path):
         files.append(str(p))
     window._reset_undo_history()
     window._on_files_dropped_on_list(files, 1)
-    assert [c.name for c in window._cues][2:4] == ["u1.wav", "u2.wav"]
+    assert [c.name for c in window._cues][2:4] == ["u1", "u2"]
     assert "notes.txt" in window._status_label.text()            # skipped, no dialog
     window._on_undo()
     assert [c.name for c in window._cues] == ["c0", "c1", "c2", "c3", "c4"]

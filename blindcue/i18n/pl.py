@@ -405,8 +405,6 @@ T: dict[str, str] = {
         'Głośność:',
     'Opacità:':
         'Krycie:',
-    '⏸  Pausa':
-        '⏸  Pauza',
     '{} | 🖥️ CPU: {}C | 💾 RAM: {}GB | 🎮 GPU: {} ({})':
         '{} | 🖥️ CPU: {}C | 💾 RAM: {}GB | 🎮 GPU: {} ({})',
     "<h3>Architettura Hardware & Prestazioni BlindCue</h3><p><b>Profilo Attivo:</b> <b style='color:#00bcd4;'>{}</b> ({})</p><p><b>Processore (CPU):</b> {}<br/>• Core / Thread rilevati: <b>{} core</b></p><p><b>Memoria RAM di Sistema:</b><br/>• Totale: <b>{} GB</b> ({} MB)<br/>• Disponibile: <b>{} GB</b> ({} MB)</p><p><b>Scheda Video (GPU):</b> {}<br/>• Accelerazione Hardware: <b>{}</b><br/>• Schermi Rilevati: <b>{}</b><br/>• Piattaforma: <b>{} ({})</b></p><hr/><h4>Ottimizzazioni per la Massima Stabilità Live:</h4><ul><li><b>GPU Offloading:</b> Compositing Layer 0..3 su GPU tramite Wayland EGL/OpenGL. Zero carico di ridisegno pixel sulla CPU.</li><li><b>Decodifica Video Hardware:</b> QtMultimedia e FFmpeg interrogano automaticamente VA-API / NVDEC per frame zero-copy.</li><li><b>Protezione GC Live:</b> In modalità LIVE il Garbage Collector di Python viene posticipato per prevenire micro-lag durante le Cue.</li><li><b>Isolamento Threading:</b> Worker asincroni limitati per garantire latenza istantanea su UI e Audio.</li></ul><p style='color: #00e676;'><b>Risultato:</b> Stabilità assoluta garantita sia su portatili da 4GB di RAM che su workstation multi-core.</p>":
@@ -893,8 +891,6 @@ T: dict[str, str] = {
         'Blokada bezpieczeństwa warstw',
     'Protezione controlli layer Live. Tieni premuto 1,2 secondi per sbloccare, tocca per ribloccare.':
         'Ochrona sterowania warstwami Live. Przytrzymaj 1,2 s, aby odblokować; dotknij, aby zablokować.',
-    '⏸  PAUSA TUTTO':
-        '⏸  PAUZA WSZYSTKO',
     'Congela tutti i layer LIVE (Audio, Video, Pre-Delay, Post-Delay e Immagini temporizzate) per ripartire poi dallo stesso istante':
         'Zamraża wszystkie warstwy LIVE (audio, wideo, Pre-Delay, Post-Delay i obrazy z czasem), by potem ruszyć od tego samego momentu',
     'Pausa o Riprendi Tutto':
@@ -927,8 +923,6 @@ T: dict[str, str] = {
         '[{} sekc.]',
     'Cronometro Spettacolo in corso (avvio auto al 1° GO o manuale) — Clicca per PAUSA (non ferma i media)':
         'Stoper przedstawienia działa (start przy pierwszym GO lub ręcznie) — kliknij, aby ZATRZYMAĆ (media grają dalej)',
-    '⏸ SHOW IN PAUSA':
-        '⏸ PRZEDSTAWIENIE WSTRZYMANE',
     "Esegui cue in Standby: {} '{}'\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]":
         "Uruchom cue w standby: {} '{}'\nGłówny skrót klawiszowy: [ SPACJA ]",
     'Esegui prossima cue\nScorciatoia principale da tastiera: [ BARRA SPAZIATRICE ]':
@@ -993,8 +987,6 @@ T: dict[str, str] = {
         'Logo BlindCue (domyślne)',
     '▶ Riprendi Riproduzione':
         '▶ Wznów odtwarzanie',
-    '⏸ Metti in Pausa (Prove)':
-        '⏸ Pauza (próby)',
     'Monitor Uscita Layer Live (L3 Sopra → L1 Sfondo)':
         'Podgląd warstw Live (L3 wierzch → L1 tło)',
     'Live Output Status (Monitor Uscita Schermo Esterno)':
@@ -1355,8 +1347,6 @@ T: dict[str, str] = {
         '🔲 KSZTAŁT WEWNĘTRZNY',
     '🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)':
         '🎵 ODTWARZANIE AUDIO W PODGLĄDZIE (PRE-VIZ)',
-    '⏸ TRACCIA AUDIO IN STANDBY':
-        '⏸ ŚCIEŻKA AUDIO W GOTOWOŚCI',
     'Pre-ascolto attivo in cuffia • Monitor sala mutato':
         'Odsłuch w słuchawkach aktywny • nagłośnienie sali wyciszone',
     "Premi ▶ Play sotto l'anteprima per pre-ascoltare in cuffia":
@@ -2220,8 +2210,6 @@ T: dict[str, str] = {
         'Wygaś wszystko: wszystko, co gra, łagodnie wygasa i się zatrzymuje [Shift+Esc]',
     'PANIC: ferma subito tutto (0 ms) [Esc due volte]':
         'PANIC: natychmiast zatrzymuje wszystko (0 ms) [Esc dwa razy]',
-    '⏸ &Pausa / riprendi tutto':
-        '⏸ &Pauza / wznów wszystko',
     'Termina lo spettacolo…':
         'Zakończ przedstawienie…',
     'Termina lo spettacolo':
@@ -2442,8 +2430,6 @@ T: dict[str, str] = {
         'czeka {}',
     'LOOP ∞':
         'PĘTLA ∞',
-    '⏸ PAUSA':
-        '⏸ PAUZA',
     'tempo: {}':
         'czas: {}',
     'finisce – il prossimo GO è tuo':
@@ -3032,8 +3018,6 @@ T: dict[str, str] = {
         '„{}” pominięta: ponad minutę po godzinie {}',
     'Alle {}: {}':
         'O {}: {}',
-    '⏸ Sospendi il piano orario':
-        '⏸ Wstrzymaj plan godzinowy',
     '🕐 Piano orario anche nella prova':
         '🕐 Plan godzinowy także w Próbie',
     'Alle ore:':
@@ -3086,8 +3070,6 @@ T: dict[str, str] = {
         'znaczniki',
     '⌛ Attendi, poi la successiva':
         '⌛ Czekaj, potem następna',
-    '⏸ Pausa':
-        '⏸ Pauza',
     '▶ Riprendi':
         '▶ Wznów',
     '⏱ Cronometro':
@@ -3638,4 +3620,24 @@ T: dict[str, str] = {
         'Jedna scena',
     'Scena ({} elementi)':
         'Scena ({} elementów)',
+    '❚❚  Pausa':
+        '❚❚  Pauza',
+    '❚❚  PAUSA TUTTO':
+        '❚❚  PAUZA WSZYSTKO',
+    '❚❚ SHOW IN PAUSA':
+        '❚❚ PRZEDSTAWIENIE WSTRZYMANE',
+    '❚❚ Metti in Pausa (Prove)':
+        '❚❚ Pauza (próby)',
+    '❚❚ TRACCIA AUDIO IN STANDBY':
+        '❚❚ ŚCIEŻKA AUDIO W GOTOWOŚCI',
+    '❚❚ PAUSA':
+        '❚❚ PAUZA',
+    '❚❚ Sospendi il piano orario':
+        '❚❚ Wstrzymaj plan godzinowy',
+    '❚❚ Pausa':
+        '❚❚ Pauza',
+    "Annulla l'ultimo GO":
+        'Cofnij ostatnie GO',
+    '❚❚ &Pausa / riprendi tutto':
+        '❚❚ &Pauza / wznów wszystko',
 }

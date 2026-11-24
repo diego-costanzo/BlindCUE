@@ -1032,7 +1032,7 @@ class GroupTimelineStudioDialog(QDialog):
             self._play_start_time = time.monotonic()
             self._play_start_head = self.canvas.playhead_sec
             self._timer_play.start()
-            self.btn_play_pause.setText("⏸  Pausa")
+            self.btn_play_pause.setText("❚❚  Pausa")
 
     def _on_play_tick(self) -> None:
         if not self._is_playing:

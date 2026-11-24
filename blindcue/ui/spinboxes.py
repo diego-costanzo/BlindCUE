@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-from PySide6.QtCore import QLocale, QSize
+from PySide6.QtCore import QLocale, QSize, Qt, QTimer
 from PySide6.QtGui import QColor, QPainter, QPen, QValidator
 from PySide6.QtWidgets import QDoubleSpinBox, QSizePolicy, QStyle, QStyleOptionSpinBox, QWidget
 
@@ -24,6 +24,17 @@ class SmartDoubleSpinBox(QDoubleSpinBox):
         le = self.lineEdit()
         if le is not None:
             le.setTextMargins(8, 0, 2, 0)
+
+    def focusInEvent(self, event) -> None:  # noqa: N802 - Qt override
+        """A click or Tab into the field selects all of it: what is typed replaces the value.
+
+        Before, a click put the cursor inside "0.00 s": typing 10 gave 0.10 s and
+        "1:00" over "end of file" was refused (evaluation 2026-11-24).
+        """
+        super().focusInEvent(event)
+        if event.reason() in (Qt.FocusReason.MouseFocusReason, Qt.FocusReason.TabFocusReason,
+                              Qt.FocusReason.BacktabFocusReason, Qt.FocusReason.ShortcutFocusReason):
+            QTimer.singleShot(0, self.selectAll)
 
     def minimumSizeHint(self) -> QSize:  # noqa: N802
         """Keep the box narrow: four numeric fields often share one row."""

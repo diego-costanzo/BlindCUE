@@ -51,6 +51,9 @@ class ElidedButton(QPushButton):
         shown = self._full_text
         if avail > 0:
             shown = self.fontMetrics().elidedText(shown, Qt.TextElideMode.ElideRight, avail)
+        # A cue name is shown as it is: "C&C Music Factory" must not lose its "&"
+        # to a keyboard mnemonic (evaluation 2026-11-24).
+        shown = shown.replace("&", "&&")
         if self.text() != shown:
             super().setText(shown)
 

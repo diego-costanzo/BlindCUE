@@ -539,7 +539,7 @@ class StudioPreviewMonitor(QWidget):
 
             painter.setFont(QFont("sans-serif", 12, QFont.Weight.Bold))
             painter.setPen(QColor("#00e5ff"))
-            title_text = "🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)" if self._audio_is_playing else "⏸ TRACCIA AUDIO IN STANDBY"
+            title_text = "🎵 RIPRODUZIONE AUDIO IN ANTEPRIMA (PRE-VIZ)" if self._audio_is_playing else "❚❚ TRACCIA AUDIO IN STANDBY"
             painter.drawText(
                 QRectF(card_x + 20, card_y + 16, card_w - 40, 26),
                 Qt.AlignmentFlag.AlignCenter,

@@ -611,7 +611,7 @@ _HTML_PAGE = """<!DOCTYPE html>
 
       <div class="sub-grid">
         <button class="btn-sub" id="btnPause" onclick="doAction('pause_toggle')">
-          <span style="font-size: 14px;">⏸</span>
+          <span style="font-size: 14px;">❚❚</span>
           <span id="lblPause">PAUSA</span>
         </button>
         <button class="btn-sub" onclick="doAction('prev')">

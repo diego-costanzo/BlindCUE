@@ -149,6 +149,9 @@ class MainWindow(
                  secondary_output_window: OutputWindow | None = None) -> None:
         """Wire the main window to output A and, when present, to output B."""
         super().__init__(parent)
+        from ui import wheel_guard
+
+        wheel_guard.install()  # the wheel scrolls panels, never changes a value by accident
         self._output = output_window
         # Second independent projector window (output B). It receives the cues
         # whose ``output_target`` is "B"; ``None`` means dual routing is off.

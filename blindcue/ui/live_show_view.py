@@ -805,7 +805,7 @@ class LiveCueRowDelegate(QStyledItemDelegate):
 
             if is_live and bool(index.data(ROLE_PAUSED)):
                 # Paused is a state of its own, in a word and a sign (W35).
-                st_label = "⏸ PAUSA"
+                st_label = "❚❚ PAUSA"
                 if is_mono:
                     st_bg, st_border, st_fg = QColor("#ffffff"), QColor("#ffffff"), QColor("#111111")
                 else:
@@ -1037,7 +1037,12 @@ class LiveShowPanel(QWidget):
             "font-size: 15px; padding: 8px; border-radius: 4px; }"
         )
         self.lbl_focus_warning.setVisible(False)
-        root.addWidget(self.lbl_focus_warning)
+        # An overlay, not a row of the layout: appearing and disappearing it must
+        # never move the buttons below it. In the layout it pushed everything down
+        # while the keyboard was elsewhere, and the first click that brought the
+        # keyboard back hid it again - the page jumped up between press and release
+        # and the click (e.g. "Fade" on a card) was lost (evaluation 2026-11-24).
+        self.lbl_focus_warning.setParent(self)
 
         # ── 2. Center Hero Area: Extended 6-Column Live Scaletta ──────────────
         self.live_table = LiveCueTable()
@@ -1279,7 +1284,7 @@ class LiveShowPanel(QWidget):
         tr_layout.setContentsMargins(10, 6, 10, 6)
         tr_layout.setSpacing(8)
 
-        self.btn_pause_all = QPushButton("⏸  PAUSA TUTTO")
+        self.btn_pause_all = QPushButton("❚❚  PAUSA TUTTO")
         self.btn_pause_all.setCursor(Qt.CursorShape.PointingHandCursor)
         self.btn_pause_all.setFixedHeight(64)
         self.btn_pause_all.setFixedWidth(260)
@@ -1354,8 +1359,22 @@ class LiveShowPanel(QWidget):
             )
 
     def set_focus_warning(self, visible: bool) -> None:
-        """Show or hide the 'keyboard is elsewhere' banner."""
+        """Show or hide the 'keyboard is elsewhere' banner (an overlay below the top bar)."""
+        if visible:
+            self._place_focus_warning()
+            self.lbl_focus_warning.raise_()
         self.lbl_focus_warning.setVisible(bool(visible))
+
+    def _place_focus_warning(self) -> None:
+        top = self.top_bar.geometry().bottom() + 4
+        width = max(200, self.width() - 24)
+        height = self.lbl_focus_warning.heightForWidth(width)
+        self.lbl_focus_warning.setGeometry(12, top, width, height if height > 0 else 40)
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt override
+        super().resizeEvent(event)
+        if self.lbl_focus_warning.isVisible():
+            self._place_focus_warning()
 
     def notify_first_go(self) -> None:
         """Auto-start the show duration stopwatch on the very first GO if still armed."""
@@ -1397,7 +1416,7 @@ class LiveShowPanel(QWidget):
             text = f"⏱  {clock_str}"
             state = "running"
         elif not self._sw_armed:
-            text = f"⏸  {clock_str}"
+            text = f"❚❚  {clock_str}"
             state = "paused"
         else:
             text = f"⏱  {clock_str}"
@@ -1665,7 +1684,7 @@ class LiveShowPanel(QWidget):
                     "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
                     "QPushButton:hover { background-color: #ffffff; }"
                 )
-                self.lbl_show_badge.setText("⏸ SHOW IN PAUSA")
+                self.lbl_show_badge.setText("❚❚ SHOW IN PAUSA")
                 self.lbl_show_badge.setStyleSheet(
                     "QLabel { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #a1a1aa; "
                     "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
@@ -1676,13 +1695,13 @@ class LiveShowPanel(QWidget):
                     "border-radius: 5px; font-weight: bold; font-size: 13px; padding: 0px 10px; } "
                     "QPushButton:hover { background-color: #fbbf24; }"
                 )
-                self.lbl_show_badge.setText("⏸ SHOW IN PAUSA")
+                self.lbl_show_badge.setText("❚❚ SHOW IN PAUSA")
                 self.lbl_show_badge.setStyleSheet(
                     "QLabel { background-color: #78350f; color: #fde68a; border: 1px solid #f59e0b; "
                     "border-radius: 4px; font-weight: bold; font-size: 11px; padding: 0px 12px; }"
                 )
         else:
-            self.btn_pause_all.setText("⏸  PAUSA TUTTO")
+            self.btn_pause_all.setText("❚❚  PAUSA TUTTO")
             if is_mono:
                 self.btn_pause_all.setStyleSheet(
                     "QPushButton { background-color: #22232a; color: #d4d4d8; border: 1.5px solid #525363; "
@@ -1958,7 +1977,7 @@ class LiveShowPanel(QWidget):
             item.setData(Qt.ItemDataRole.AccessibleTextRole, None)
 
     def set_paused_cues(self, ids: set[int]) -> None:
-        """Cues on air that a pause holds: "⏸ PAUSED" instead of "● LIVE" (W35)."""
+        """Cues on air that a pause holds: "❚❚ PAUSED" instead of "● LIVE" (W35)."""
         ids = set(ids)
         if ids == self._paused_ids:
             return

@@ -33,7 +33,9 @@ class _CueManipMixin:
             QMessageBox.warning(self, "Unsupported File", f"Cannot determine media type for:\n{file_path}")
             return
 
-        cue = Cue(name=os.path.basename(file_path), media_type=media_type, file_path=file_path)
+        # The name a teacher reads: "Highway To Hell", not "Highway To Hell.mp3" (evaluation 2026-11-24).
+        cue = Cue(name=Path(file_path).stem or os.path.basename(file_path), media_type=media_type,
+                  file_path=file_path)
         if media_type == MediaType.AUDIO:
             # One player per layer: music on L1 would be cut by the next photo
             # or video (also L1) started with it in "Simultanea" mode.

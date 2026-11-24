@@ -101,3 +101,24 @@ def test_banner_clears_when_focus_returns_and_on_leaving_live(window, monkeypatc
     assert _banner(window)
     window.set_live_mode(False)
     assert not _banner(window)
+
+
+def test_banner_never_moves_the_page(window, monkeypatch):
+    """The banner is an overlay: showing / hiding it keeps every button in place.
+
+    In the layout it pushed the page down while the keyboard was elsewhere; the
+    first click that brought the keyboard back hid it, the page jumped up between
+    press and release and the click (e.g. "Fade" on a now-playing card) was lost.
+    """
+    panel = window._live_show_panel
+    window.set_live_mode(True)
+    _active(monkeypatch, window)
+    window._update_focus_warning()
+    QApplication.processEvents()
+    before = (panel.live_table.geometry(), panel.btn_go.geometry())
+    _active(monkeypatch, None)
+    window._update_focus_warning()
+    QApplication.processEvents()
+    assert _banner(window)
+    assert (panel.live_table.geometry(), panel.btn_go.geometry()) == before
+    assert panel.lbl_focus_warning.geometry().top() >= panel.top_bar.geometry().bottom()

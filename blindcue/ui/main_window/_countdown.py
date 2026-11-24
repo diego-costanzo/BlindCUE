@@ -83,7 +83,7 @@ class _CountdownMixin:
 
     def _sw_tick(self) -> None:
         running = self._sw_since is not None
-        self._lbl_stopwatch.setText(f"⏱ {_mmss(int(self.stopwatch_seconds()))}" + ("" if running else " ⏸"))
+        self._lbl_stopwatch.setText(f"⏱ {_mmss(int(self.stopwatch_seconds()))}" + ("" if running else " ❚❚"))
         self._lbl_stopwatch.setStyleSheet(f"color: {'#7dd3fc' if running else '#94a3b8'}; padding: 0 8px;")
 
     # ── countdown ──
