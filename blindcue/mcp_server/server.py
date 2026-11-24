@@ -278,7 +278,8 @@ def prepare_show(script: str, media_folder: str, show_file: str) -> str:
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="BlindCue show assistant (MCP server, stdio)")
     # "--root A B" (what Claude Desktop passes for several folders) and "--root A --root B".
-    parser.add_argument("--root", action="extend", nargs="+", default=[],
+    # No folder (Claude Desktop with nothing chosen passes "--root" alone): every drive (2026-11-24).
+    parser.add_argument("--root", action="extend", nargs="*", default=[],
                         help="folders the assistant may use")
     args = parser.parse_args(argv)
     roots = list(args.root)

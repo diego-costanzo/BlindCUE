@@ -40,9 +40,10 @@ class AssistantDialog(QDialog):
         intro = QLabel(tr(
             "Un assistente AI (per esempio Claude Desktop) può preparare lo spettacolo per te: crea la "
             "scaletta da una cartella di file, aggiunge didascalie, scene e note per l'operatore. "
-            "Lavora solo nelle cartelle che scegli, non suona niente e non cambia mai uno spettacolo "
-            "in corso. Ai fornitori di AI arrivano i nomi delle cue, le note e i nomi dei file, non il "
-            "contenuto dei file."))
+            "Trova i file su tutti i dischi di questo computer (anche su una chiavetta USB; le cartelle si "
+            "possono limitare in Claude), non suona niente, non cancella i media e non cambia mai uno "
+            "spettacolo in corso. Ai fornitori di AI arrivano i nomi delle cue, le note e i nomi dei file, "
+            "non il contenuto dei file."))
         intro.setWordWrap(True)
         root.addWidget(intro)
 
@@ -114,8 +115,7 @@ class AssistantDialog(QDialog):
     def _copy_config(self) -> None:
         from mcp_server.bundle import client_config
 
-        project = getattr(self._win, "_current_project_path", "") or ""
-        folder = str(Path(project).parent) if project else str(_documents())
-        QApplication.clipboard().setText(client_config([folder]))
-        self.lbl_status.setText(tr("Impostazioni copiate (cartella: {}). Incollale nella configurazione "
-                                   "del client MCP.").format(folder))
+        QApplication.clipboard().setText(client_config([]))   # every drive, also USB (2026-11-24)
+        self.lbl_status.setText(tr("Impostazioni copiate: l'assistente può usare tutti i dischi di questo "
+                                   "computer (anche una chiavetta USB). Incollale nella configurazione del "
+                                   "client MCP."))

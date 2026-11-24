@@ -29,6 +29,8 @@ def test_mcpb_is_a_zip_with_a_complete_manifest(tmp_path):
     assert args[-2:] == ["--root", "${user_config.folders}"]   # several folders: --root A B
     assert manifest["user_config"]["folders"]["type"] == "directory"
     assert manifest["user_config"]["folders"]["multiple"] is True
+    assert manifest["user_config"]["folders"]["required"] is False         # empty: every drive (2026-11-24)
+    assert "default" not in manifest["user_config"]["folders"]
     command = Path(server["mcp_config"]["command"])
     assert command.is_absolute() and command.exists()            # this computer's assistant
 
@@ -41,6 +43,8 @@ def test_without_icon_and_settings_for_other_clients(tmp_path):
     config = json.loads(bundle.client_config([str(tmp_path)]))
     entry = config["mcpServers"]["blindcue"]
     assert entry["args"][-2:] == ["--root", str(tmp_path)]
+    everywhere = json.loads(bundle.client_config([]))["mcpServers"]["blindcue"]["args"]
+    assert "--root" not in everywhere
 
 
 def test_server_accepts_both_root_forms(monkeypatch):
@@ -54,4 +58,6 @@ def test_server_accepts_both_root_forms(monkeypatch):
     monkeypatch.setattr(server, "ensure_qt_gui", lambda: None)
     server.main(["--root", "C:/A", "C:/B", "--root", "C:/C"])
     assert [Path(r).name.lower() for r in server.FILES.policy.roots] == ["a", "b", "c"] and seen["t"] == "stdio"
+    server.main(["--root"])                                  # Claude Desktop with no folder chosen
+    assert server.FILES.policy.everywhere
     server.SESSION = server.FILES = None

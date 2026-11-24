@@ -70,15 +70,43 @@ class ToolError(Exception):
 
 # ── Allowed folders ──────────────────────────────────────────────────────────
 
+EVERYWHERE_WORDS = ("*", "all", "everywhere")
+
+
+def _local_absolute(path: str) -> bool:
+    """A path on a drive of this computer (C:, a USB stick...), not on the network."""
+    if os.name == "nt":
+        drive, _rest = ntpath.splitdrive(path)
+        return len(drive) == 2 and drive[1] == ":"
+    return path.startswith("/")
+
+
+def _system_folders() -> list[str]:
+    if os.name == "nt":
+        names = ("SystemRoot", "windir", "ProgramFiles", "ProgramFiles(x86)", "ProgramW6432", "ProgramData")
+        return [os.path.normcase(os.path.abspath(os.environ[n])) for n in names if os.environ.get(n)]
+    return ["/bin", "/sbin", "/etc", "/usr", "/System", "/Library"]
+
+
 class AccessPolicy:
-    """Folders the user allowed; every path is checked after resolving links."""
+    """Folders the user allowed; every path is checked after resolving links.
+
+    No folder given (or "*"): every drive of this computer, also a USB stick put in later
+    (the media can be anywhere). Network paths only when a
+    network folder is given on purpose, and shows are never written into system folders.
+    """
 
     def __init__(self, roots: list[str | Path]) -> None:
-        self.roots = [Path(os.path.abspath(os.path.expanduser(str(r)))).resolve()
-                      for r in roots if str(r).strip()]
+        # "${user_config.folders}" comes through unexpanded when nothing was chosen in Claude Desktop.
+        clean = [str(r).strip() for r in roots if str(r).strip() and not str(r).strip().startswith("${")]
+        self.everywhere = not clean or any(c.lower() in EVERYWHERE_WORDS for c in clean)
+        self.roots = [] if self.everywhere else [Path(os.path.abspath(os.path.expanduser(c))).resolve()
+                                                 for c in clean]
         self._unc_allowed = any(str(r).startswith(("\\\\", "//")) for r in self.roots)
 
     def describe(self) -> list[str]:
+        if self.everywhere:
+            return ["every drive of this computer (also USB sticks); not network folders"]
         return [str(r) for r in self.roots]
 
     def _textual(self, text: str) -> str:
@@ -91,7 +119,7 @@ class AccessPolicy:
             _drive, rest = ntpath.splitdrive(text)
             if ":" in rest:
                 raise ToolError("':' is not allowed inside a file name.")
-        base = str(self.roots[0]) if self.roots else os.getcwd()
+        base = str(self.roots[0]) if self.roots else str(Path.home())
         return os.path.abspath(os.path.join(base, os.path.expanduser(text)))
 
     def contains(self, raw: str | Path) -> bool:
@@ -100,6 +128,8 @@ class AccessPolicy:
             candidate = os.path.normcase(self._textual(str(raw)))
         except ToolError:
             return False
+        if self.everywhere:
+            return _local_absolute(candidate)
         for root in self.roots:
             base = os.path.normcase(str(root)).rstrip("\\/")
             if candidate == base or candidate.startswith(base + os.sep):
@@ -107,12 +137,17 @@ class AccessPolicy:
         return False
 
     def check(self, raw: str | Path, must_exist: bool = False) -> Path:
-        if not self.roots:
-            raise ToolError("No folder is allowed. Start the server with --root <folder> "
-                            "(the show folder and the media folder).")
         text = str(raw or "").strip()
         if not text:
             raise ToolError("A path is needed.")
+        if self.everywhere:
+            resolved = Path(self._textual(text)).resolve()
+            if not _local_absolute(str(resolved)):
+                raise ToolError(f"'{text}' is not on a drive of this computer (network folders only when "
+                                "given as a folder).")
+            if must_exist and not resolved.exists():
+                raise ToolError(f"'{resolved}' does not exist.")
+            return resolved
         outside = ToolError(f"'{text}' is outside the allowed folders: {', '.join(self.describe())}.")
         if not self.contains(text):
             raise outside
@@ -122,6 +157,15 @@ class AccessPolicy:
         if must_exist and not resolved.exists():
             raise ToolError(f"'{resolved}' does not exist.")
         return resolved
+
+    def check_write(self, raw: str | Path) -> Path:
+        """A place for a show file: allowed, and never inside Windows, Program Files or ProgramData."""
+        target = self.check(raw)
+        where = os.path.normcase(str(target))
+        for system in _system_folders():
+            if where == system or where.startswith(system.rstrip("\\/") + os.sep):
+                raise ToolError(f"'{target}' is in a system folder: shows are never saved there.")
+        return target
 
 
 def _is_link(path: str | Path) -> bool:
@@ -452,7 +496,7 @@ class ShowSession:
         text = str(raw or "").strip()
         if text and not text.lower().endswith(SHOW_SUFFIX):
             text += SHOW_SUFFIX
-        return self.policy.check(text)
+        return self.policy.check_write(text)
 
     def _outside_files(self) -> list[str]:
         """Files the show uses outside the allowed folders (a portable save would copy them in)."""

@@ -54,8 +54,7 @@ def test_paths_stay_inside_the_allowed_folders(place):
     for bad in (tmp / "elsewhere.blindcue", str(shows / ".." / "x.blindcue"), "../x.blindcue"):
         with pytest.raises(ToolError):
             policy.check(bad)
-    with pytest.raises(ToolError):
-        AccessPolicy([]).check(shows)
+    assert AccessPolicy([]).check(shows) == shows.resolve()             # no folder: every drive
     link = media / "link_out"
     try:
         os.symlink(tmp, link, target_is_directory=True)
@@ -339,3 +338,25 @@ def test_review_marker_ids_stay_and_one_way_to_start(place):
         session.update_cue(song["cue_id"], {"markers": [{"id": "abc", "sec": 5}]})
     with pytest.raises(ToolError, match="not both"):
         session.update_cue(title["cue_id"], {"start_clock": "19:55"})
+
+
+def test_no_folder_means_every_drive_but_never_the_network_or_system_folders(tmp_path):
+    """The media can be anywhere, also on a USB stick."""
+    import sys
+
+    for roots in ([], ["${user_config.folders}"], ["*"], ["  "]):
+        policy = AccessPolicy(roots)
+        assert policy.everywhere and "every drive" in policy.describe()[0]
+    policy = AccessPolicy([])
+    assert policy.check(tmp_path / "show.blindcue") == (tmp_path / "show.blindcue").resolve()
+    assert policy.contains(str(tmp_path / "media" / "a.mp3"))
+    if sys.platform == "win32":
+        for network in (r"\\nas\media\a.mp3", "//nas/media/a.mp3"):
+            assert not policy.contains(network)
+            with pytest.raises(ToolError):
+                policy.check(network)
+        with pytest.raises(ToolError):
+            policy.check_write(r"C:\Windows\show.blindcue")             # never into system folders
+        assert policy.check_write(tmp_path / "x.blindcue") == (tmp_path / "x.blindcue").resolve()
+    limited = AccessPolicy([tmp_path / "shows"])
+    assert not limited.everywhere and not limited.contains(str(tmp_path / "elsewhere.mp3"))

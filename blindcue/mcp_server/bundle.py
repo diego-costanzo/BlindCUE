@@ -41,10 +41,10 @@ def manifest(version: str, command: str, first_args: list[str]) -> dict[str, Any
         "description": "Prepare BlindCue theatre shows: cue lists from a folder of media, captions, "
                        "scenes, notes for the operator.",
         "long_description": (
-            "Lets the assistant build and check BlindCue show files (.blindcue) in the folders you "
-            "choose, and - when allowed in BlindCue (Show menu) - change the show open in the "
-            "program while you prepare it. It never plays anything and never changes a show that "
-            "is running."),
+            "Lets the assistant build and check BlindCue show files (.blindcue) anywhere on this "
+            "computer (also on a USB stick) or only in the folders you choose, and - when allowed in "
+            "BlindCue (Show menu) - change the show open in the program while you prepare it. It never "
+            "plays anything, never deletes media and never changes a show that is running."),
         "author": {"name": "BlindCue"},
         "icon": "icon.png",
         "server": {
@@ -59,11 +59,11 @@ def manifest(version: str, command: str, first_args: list[str]) -> dict[str, Any
         "user_config": {
             "folders": {
                 "type": "directory",
-                "title": "Folders for shows and media",
-                "description": "The assistant may read and write show files and read media only here.",
+                "title": "Limit to these folders (optional)",
+                "description": "Leave empty: the assistant may use every drive of this computer, also a USB "
+                               "stick. Choose folders only to keep it inside them.",
                 "multiple": True,
-                "required": True,
-                "default": ["${DOCUMENTS}"],
+                "required": False,
             },
         },
         "compatibility": {"platforms": ["win32"]},
@@ -95,5 +95,6 @@ def build_mcpb(out_file: Path, version: str, icon_png: bytes | None = None) -> P
 def client_config(folders: list[str]) -> str:
     """``mcpServers`` settings for other MCP clients (Claude Code, Cursor, ...)."""
     command, first_args = server_command()
-    config = {"mcpServers": {"blindcue": {"command": command, "args": [*first_args, "--root", *folders]}}}
+    limit = ["--root", *folders] if folders else []           # no folder: every drive (2026-11-24)
+    config = {"mcpServers": {"blindcue": {"command": command, "args": [*first_args, *limit]}}}
     return json.dumps(config, indent=2, ensure_ascii=False)
