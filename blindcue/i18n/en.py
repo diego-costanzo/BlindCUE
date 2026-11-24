@@ -3618,4 +3618,28 @@ T: dict[str, str] = {
         'Running the show',
     "Per aprire '{}' termina prima lo spettacolo":
         "To open '{}', end the show first",
+    '🛠 Il file':
+        '🛠 The file',
+    '📂 Mostra nella cartella':
+        '📂 Show in its folder',
+    '✎ Apri con il programma predefinito':
+        '✎ Open with the default program',
+    '✎ Apri con {}':
+        '✎ Open with {}',
+    '➕ Aggiungi un programma…':
+        '➕ Add a program…',
+    'il programma predefinito':
+        'the default program',
+    "'{}' aperto con {}: quando torni qui le modifiche si vedono subito":
+        "'{}' opened with {}: when you come back here the changes show at once",
+    "Impossibile aprire '{}' con {}":
+        "Cannot open '{}' with {}",
+    'Scegli un programma':
+        'Choose a program',
+    'Programmi':
+        'Programs',
+    'Programma aggiunto: {}':
+        'Program added: {}',
+    "'{}' è cambiato: forma d'onda e durata aggiornate":
+        "'{}' changed: waveform and length read again",
 }

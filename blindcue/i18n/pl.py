@@ -3840,4 +3840,28 @@ T: dict[str, str] = {
         'Prowadzenie przedstawienia',
     "Per aprire '{}' termina prima lo spettacolo":
         'Żeby otworzyć „{}”, najpierw zakończ przedstawienie',
+    '🛠 Il file':
+        '🛠 Plik',
+    '📂 Mostra nella cartella':
+        '📂 Pokaż w folderze',
+    '✎ Apri con il programma predefinito':
+        '✎ Otwórz w domyślnym programie',
+    '✎ Apri con {}':
+        '✎ Otwórz w: {}',
+    '➕ Aggiungi un programma…':
+        '➕ Dodaj program…',
+    'il programma predefinito':
+        'domyślnym programie',
+    "'{}' aperto con {}: quando torni qui le modifiche si vedono subito":
+        'Otwarto „{}” w: {} – po powrocie tutaj zmiany będą widać od razu',
+    "Impossibile aprire '{}' con {}":
+        'Nie da się otworzyć „{}” w: {}',
+    'Scegli un programma':
+        'Wybierz program',
+    'Programmi':
+        'Programy',
+    'Programma aggiunto: {}':
+        'Dodano program: {}',
+    "'{}' è cambiato: forma d'onda e durata aggiornate":
+        '„{}” się zmienił: przebieg i długość odświeżone',
 }

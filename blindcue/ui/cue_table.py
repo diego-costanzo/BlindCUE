@@ -672,6 +672,8 @@ class CueSequenceTable(QTableWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         """Create the cue sequence table with its three columns and selection rules."""
         super().__init__(0, 3, parent)
+        # 5.15: the main window adds "🛠 The file" (other programs) to the row menu: (menu, rows).
+        self.menu_extender = None
         self._last_emitted_row: int = -1
 
         self.setHorizontalHeaderLabels(["#", "Q", "Nome / Media"])
@@ -842,6 +844,8 @@ class CueSequenceTable(QTableWidget):
                 act_text.triggered.connect(self.edit_text_requested)
                 act_file = menu.addAction("📂 Scegli il file…")
                 act_file.triggered.connect(self.file_choose_requested)
+                if self.menu_extender is not None:
+                    self.menu_extender(menu, rows)
             if not is_grp:
                 act_grp = menu.addAction("📁 Raggruppa in Scena (Ctrl+G)")
                 act_grp.triggered.connect(self.group_requested)

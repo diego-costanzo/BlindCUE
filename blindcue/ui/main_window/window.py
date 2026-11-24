@@ -64,6 +64,7 @@ from ui.main_window._relink import _RelinkMixin
 from ui.main_window._history import _HistoryMixin
 from ui.main_window._edit_cue import _EditCueMixin
 from ui.main_window._settings_transfer import _SettingsTransferMixin
+from ui.main_window._external_tools import _ExternalToolsMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -116,6 +117,7 @@ class MainWindow(
     _HistoryMixin,
     _EditCueMixin,
     _SettingsTransferMixin,
+    _ExternalToolsMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
@@ -265,6 +267,7 @@ class MainWindow(
         self._keymap_setup()  # extra keys and a presenter remote (stage 5, 5.7-5.8)
         self._relink_setup()  # choose a cue's file, find missing files (stage 5, 5.10)
         self._edit_cue_setup()  # the "Edit cue" window (evaluation 2026-11-24)
+        self._external_tools_setup()  # the cue's file in other programs (5.15)
         self._apply_layer0("black")  # the default placeholder (evaluation #9); a show sets its own
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()
