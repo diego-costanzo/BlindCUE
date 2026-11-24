@@ -576,6 +576,8 @@ def main() -> int:
             player.hot_update_automation(**kwargs)
         else:
             player.configure_automation(is_video=(cue.media_type == MediaType.VIDEO), **kwargs)
+        if hasattr(player, "set_rate"):  # 3.7: the tempo of this cue (preview and live alike)
+            player.set_rate(getattr(cue, "playback_rate", 1.0), getattr(cue, "keep_pitch", True))
 
     def _eval_image_opacity(cue: Cue, elapsed: float) -> float:
         dur = cue.hold_time if cue.hold_time > 0 else cue.image_timeline_sec
@@ -823,7 +825,8 @@ def main() -> int:
         if infinite:
             return None
         passes = max(1, int(cue.loop_count)) if cue.loop else 1
-        return max(0.0, (end - max(start, pos_sec)) + (passes - 1) * (end - start))
+        file_sec = max(0.0, (end - max(start, pos_sec)) + (passes - 1) * (end - start))
+        return file_sec / max(0.5, float(getattr(cue, "playback_rate", 1.0)))  # 3.7: seconds of real time
 
     def _route_audio(cue: Cue, lp, quiet: bool = False) -> None:
         """3.1: the layer's player plays on the cue's logical output; say so when it falls back.

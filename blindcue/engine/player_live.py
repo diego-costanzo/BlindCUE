@@ -164,6 +164,11 @@ class LivePlayer(QObject):
         self._standby_player.durationChanged.connect(lambda ms: self._on_deck_dur(1, ms))
         self._standby_player.mediaStatusChanged.connect(lambda st: self._on_deck_status(1, st))
         self._standby_player.errorOccurred.connect(lambda err, msg: self._on_deck_error(1, err, msg))
+        rate = getattr(self, "_rate", 1.0)
+        if abs(rate - 1.0) > 1e-6:  # 3.7: the second deck (loops, sections) plays at the cue's tempo too
+            self._standby_player.setPlaybackRate(rate)
+            if hasattr(self._standby_player, "setPitchCompensation"):
+                self._standby_player.setPitchCompensation(getattr(self, "_keep_pitch", True))
 
     # ── Level meter (stage 1 C3, 1.14) ──────────────────────────────────
     def enable_level_tap(self) -> None:
@@ -251,6 +256,22 @@ class LivePlayer(QObject):
     def set_opacity_callback(self, callback: Callable[[float], None] | None) -> None:
         """Register the callback that applies the video opacity envelope (0.0-1.0)."""
         self._opacity_cb = callback
+
+    def set_rate(self, rate: float, keep_pitch: bool = True) -> None:
+        """3.7: tempo of the cue (0.5-2.0) on every deck; the pitch stays when the backend can keep it."""
+        rate = max(0.5, min(2.0, float(rate)))
+        for player in (getattr(self, "_player", None), getattr(self, "_standby_player", None)):
+            if player is None:
+                continue
+            if abs(player.playbackRate() - rate) > 1e-6:
+                player.setPlaybackRate(rate)
+            if hasattr(player, "setPitchCompensation"):
+                try:
+                    player.setPitchCompensation(bool(keep_pitch))
+                except (RuntimeError, TypeError):
+                    pass
+        self._rate = rate
+        self._keep_pitch = bool(keep_pitch)
 
     def set_audio_device(self, device: QAudioDevice | None) -> None:
         """Assign live output audio device (e.g. Master Sala / PA system)."""

@@ -67,6 +67,7 @@ FEATURES: dict[str, tuple[str, str | None]] = {
     "audio_outputs": ("blindcue/engine/audio_routes.py", None),
     "playlist": ("blindcue/engine/playlist_import.py", None),
     "silence_trim": ("blindcue/engine/silence_trim.py", None),
+    "tempo": ("blindcue/models/cue.py", "playback_rate: float"),
 }
 
 

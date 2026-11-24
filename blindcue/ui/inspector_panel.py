@@ -1044,6 +1044,26 @@ class CueInspectorPanel(QGroupBox):
         out_row.addWidget(self.lbl_audio_output)
         out_row.addWidget(self.combo_audio_output, 1)
         l1.addLayout(out_row)
+        rate_row = QHBoxLayout()
+        self.lbl_rate = QLabel("Tempo:")
+        self.spin_rate = SmartDoubleSpinBox()
+        self.spin_rate.setRange(50.0, 200.0)
+        self.spin_rate.setDecimals(0)
+        self.spin_rate.setSingleStep(5.0)
+        self.spin_rate.setSuffix(" %")
+        self.spin_rate.setValue(100.0)
+        self.spin_rate.setToolTip("Velocità di riproduzione: 100 % = come registrato (per adattare la musica "
+                                  "a una coreografia).")
+        self.spin_rate.setAccessibleName("Tempo della cue in percento")
+        self.spin_rate.valueChanged.connect(lambda _v: self._emit_change("playback_rate"))
+        self.chk_keep_pitch = QCheckBox("Mantieni l'intonazione")
+        self.chk_keep_pitch.setChecked(True)
+        self.chk_keep_pitch.setToolTip("Più veloce o più lento senza cambiare l'altezza delle note.")
+        self.chk_keep_pitch.toggled.connect(lambda _c: self._emit_change("keep_pitch"))
+        rate_row.addWidget(self.lbl_rate)
+        rate_row.addWidget(self.spin_rate, 1)
+        rate_row.addWidget(self.chk_keep_pitch)
+        l1.addLayout(rate_row)
         lay.addWidget(c1)
 
         # Card 2: Dissolvenze (Fade IN/OUT)
@@ -1915,6 +1935,14 @@ class CueInspectorPanel(QGroupBox):
             cue.start_rel_marker = self.combo_rel_marker.currentData() if when == "marker" else None
         cue.start_rel_offset = round(self.spin_rel_offset.value(), 2)
 
+    def _load_rate(self, cue) -> None:
+        for w in (self.spin_rate, self.chk_keep_pitch):
+            w.blockSignals(True)
+        self.spin_rate.setValue(round(float(getattr(cue, "playback_rate", 1.0)) * 100.0))
+        self.chk_keep_pitch.setChecked(bool(getattr(cue, "keep_pitch", True)))
+        for w in (self.spin_rate, self.chk_keep_pitch):
+            w.blockSignals(False)
+
     def _load_audio_output(self, key: str) -> None:
         self.combo_audio_output.blockSignals(True)
         self.combo_audio_output.setCurrentIndex(max(0, self.combo_audio_output.findData(key)))
@@ -2358,6 +2386,7 @@ class CueInspectorPanel(QGroupBox):
             self.spin_rotation, self.btn_rot_left, self.btn_rot_zero, self.btn_rot_right,
             self.btn_mask_edit, self.btn_mask_clear,
             self.combo_aspect, self.slider_volume, self.btn_volume_reset, self.combo_audio_output,
+            self.spin_rate, self.chk_keep_pitch,
             self.loop_card, self.chk_loop, self.combo_loop_mode, self.spin_loop_count,
             self.spin_in, self.spin_out, self.btn_io_reset, self.btn_trim_silence, self.spin_hold_time,
             self.spin_pre_delay, self.spin_post_delay,
@@ -2525,7 +2554,8 @@ class CueInspectorPanel(QGroupBox):
                   self.lbl_clock, self.edit_clock):
             w.setVisible(not basic and media_type != MediaType.GROUP)
         self.combo_rel_marker.setVisible(not basic and self.combo_rel_when.currentData() == "marker")
-        for w in (self.lbl_audio_output, self.combo_audio_output):
+        for w in (self.lbl_audio_output, self.combo_audio_output, self.lbl_rate, self.spin_rate,
+                  self.chk_keep_pitch):
             w.setVisible(media_type in (MediaType.AUDIO, MediaType.VIDEO))
         for w in (self.lbl_markers, self.combo_markers, self.btn_marker_delete):
             w.setVisible(not basic and media_type in (MediaType.AUDIO, MediaType.VIDEO))
@@ -2738,6 +2768,7 @@ class CueInspectorPanel(QGroupBox):
                 self._load_start_rel(cue)
                 self._load_call_only(cue)
                 self._load_audio_output(getattr(cue, "audio_output", "stage"))
+                self._load_rate(cue)
                 self.edit_clock.blockSignals(True)
                 self.edit_clock.setText(getattr(cue, "start_clock", ""))
                 self.edit_clock.blockSignals(False)
@@ -2879,6 +2910,8 @@ class CueInspectorPanel(QGroupBox):
         self._one_way_to_start(cue)
         if cue.media_type in (MediaType.AUDIO, MediaType.VIDEO):
             cue.audio_output = self.combo_audio_output.currentData() or "stage"
+            cue.playback_rate = round(self.spin_rate.value() / 100.0, 2)
+            cue.keep_pitch = self.chk_keep_pitch.isChecked()
 
         checked_target = next(
             (t for t, btn in self._output_buttons.items() if btn.isChecked()), "A"
@@ -3004,6 +3037,10 @@ class CueInspectorPanel(QGroupBox):
             elif field_key == "start_rel":
                 self._apply_start_rel(cue)
                 self._one_way_to_start(cue, reload=False)
+            elif field_key == "playback_rate":
+                cue.playback_rate = round(self.spin_rate.value() / 100.0, 2)
+            elif field_key == "keep_pitch":
+                cue.keep_pitch = self.chk_keep_pitch.isChecked()
             elif field_key == "audio_output":
                 cue.audio_output = self.combo_audio_output.currentData() or "stage"
             elif field_key == "call_only":

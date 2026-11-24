@@ -75,9 +75,10 @@ class _RelativeMixin:
         marker = next((m for m in getattr(ref, "markers", []) if m["id"] == dep.start_rel_marker), None)
         if marker is None or pos is None or marker["sec"] < pos - 0.05 or getattr(ref, "sections", None):
             return None
-        if remaining is not None and marker["sec"] - pos > remaining + 0.05:
+        rate = max(0.5, float(getattr(ref, "playback_rate", 1.0)))  # 3.7: file seconds -> real seconds
+        if remaining is not None and (marker["sec"] - pos) / rate > remaining + 0.05:
             return None  # behind the OUT point: never reached
-        return max(0.0, marker["sec"] - pos) + float(getattr(dep, "start_rel_offset", 0.0))
+        return max(0.0, marker["sec"] - pos) / rate + float(getattr(dep, "start_rel_offset", 0.0))
 
     def cue_launched(self, cue: Cue, remaining: float | None, start_pos: float | None = None) -> None:
         """*cue* really started at *start_pos* s of its file; it plays *remaining* more seconds."""

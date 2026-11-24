@@ -546,6 +546,8 @@ class Cue:
     enabled: bool = True         # 2.3: off in this version of the show - never plays
     start_clock: str = ""        # 2.6: starts by itself at this time of day ("19:55" / "19:55:30")
     audio_output: str = "stage"  # 3.1: logical output stage / hall / foldback, or "mute" (engine.audio_routes)
+    playback_rate: float = 1.0  # 3.7: tempo, 0.5-2.0 (1.0 = as recorded)
+    keep_pitch: bool = True     # 3.7: a faster / slower tempo keeps the pitch (when the backend can)
     # 2.1: starts by itself relative to another cue (by cue_id): N s after its
     # start, after its end, or N s before its end. Outside the GO order.
     start_rel_cue: int | None = None
@@ -753,6 +755,8 @@ class Cue:
             "enabled": self.enabled,
             "start_clock": self.start_clock,
             "audio_output": self.audio_output,
+            "playback_rate": self.playback_rate,
+            "keep_pitch": self.keep_pitch,
             "start_rel_cue": self.start_rel_cue,
             "start_rel_when": self.start_rel_when,
             "start_rel_offset": self.start_rel_offset,
@@ -850,6 +854,8 @@ class Cue:
             enabled=bool(data.get("enabled", True)),
             start_clock=_clock_text(data.get("start_clock", "")),
             audio_output=_audio_output(data.get("audio_output", "stage")),
+            playback_rate=_safe_float(data.get("playback_rate", 1.0), 1.0, min_val=0.5, max_val=2.0),
+            keep_pitch=bool(data.get("keep_pitch", True)),
             start_rel_cue=_safe_int(data.get("start_rel_cue"), 0, min_val=0) or None
             if data.get("start_rel_cue") not in (None, "", 0) else None,
             start_rel_when=str(data.get("start_rel_when", "start"))

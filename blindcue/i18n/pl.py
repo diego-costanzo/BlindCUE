@@ -3266,4 +3266,14 @@ T: dict[str, str] = {
         'Wstrzymuje wybrane grające pozycje (dźwięk i wideo); pozostałe grają dalej. Z przejściem muzyka się usypia: cichnie, potem staje.',
     'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una dissolvenza la musica si risveglia: entra piano fino al livello di prima.':
         'Wznawia wybrane wstrzymane pozycje od miejsca, w którym stanęły. Z przejściem muzyka się budzi: wchodzi powoli do poprzedniego poziomu.',
+    'Tempo:':
+        'Tempo:',
+    'Velocità di riproduzione: 100 % = come registrato (per adattare la musica a una coreografia).':
+        'Szybkość odtwarzania: 100 % = jak nagrano (np. dopasowanie muzyki do choreografii).',
+    'Tempo della cue in percento':
+        'Tempo pozycji w procentach',
+    "Mantieni l'intonazione":
+        'Zachowaj wysokość dźwięku',
+    "Più veloce o più lento senza cambiare l'altezza delle note.":
+        'Szybciej albo wolniej bez zmiany wysokości dźwięków.',
 }

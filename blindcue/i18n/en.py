@@ -3044,4 +3044,14 @@ T: dict[str, str] = {
         'Pauses the chosen cues that are playing (sound and video); the others go on. With a fade the music goes to sleep: it fades out, then stops.',
     'Fa ripartire le cue scelte messe in pausa, da dove si erano fermate. Con una dissolvenza la musica si risveglia: entra piano fino al livello di prima.':
         'Lets the chosen paused cues play on from where they stopped. With a fade the music wakes up: it fades in to the level it had.',
+    'Tempo:':
+        'Tempo:',
+    'Velocità di riproduzione: 100 % = come registrato (per adattare la musica a una coreografia).':
+        'Playback speed: 100 % = as recorded (to fit the music to a choreography).',
+    'Tempo della cue in percento':
+        'Tempo of the cue in percent',
+    "Mantieni l'intonazione":
+        'Keep the pitch',
+    "Più veloce o più lento senza cambiare l'altezza delle note.":
+        'Faster or slower without changing the pitch of the notes.',
 }

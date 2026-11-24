@@ -110,6 +110,22 @@ class TestPlayer(QObject):
         """Register the callback that applies the preview opacity envelope."""
         self._opacity_cb = callback
 
+    def set_rate(self, rate: float, keep_pitch: bool = True) -> None:
+        """3.7: tempo of the cue (0.5-2.0) on every deck; the pitch stays when the backend can keep it."""
+        rate = max(0.5, min(2.0, float(rate)))
+        for player in (getattr(self, "_player", None), getattr(self, "_standby_player", None)):
+            if player is None:
+                continue
+            if abs(player.playbackRate() - rate) > 1e-6:
+                player.setPlaybackRate(rate)
+            if hasattr(player, "setPitchCompensation"):
+                try:
+                    player.setPitchCompensation(bool(keep_pitch))
+                except (RuntimeError, TypeError):
+                    pass
+        self._rate = rate
+        self._keep_pitch = bool(keep_pitch)
+
     def set_audio_device(self, device: QAudioDevice | None) -> None:
         """Assign preview / pre-viz audio device (e.g. Headphones / PFL monitor)."""
         self._audio_device = device
