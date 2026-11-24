@@ -63,6 +63,9 @@ def test_window_runs_mapped_keys_only_in_the_show(monkeypatch):
         monkeypatch.setattr(win, "isActiveWindow", lambda: True)
         monkeypatch.setattr(win, "_readiness_visible", lambda: False)
         monkeypatch.setattr(win, "_is_text_input_focused", lambda: False)
+        # A dialog left open by an earlier test in this process would (rightly) keep the keys away.
+        monkeypatch.setattr(QApplication, "activeModalWidget", staticmethod(lambda: None))
+        monkeypatch.setattr(QApplication, "activePopupWidget", staticmethod(lambda: None))
         win._keymap_store({})                       # nothing mapped: the filter is not even installed
         assert not win._key_filter_installed
         win._key_map = dict(km.PRESENTER)
