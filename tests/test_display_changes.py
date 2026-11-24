@@ -160,3 +160,47 @@ def test_director_comes_back_after_a_display_change(qt_app, monkeypatch):
         output.force_close()
         win.close()
         _pump(0.1)
+
+
+def test_director_title_bar_stays_on_a_small_screen():
+    """Laptop at 125 % (2026-11-24): 1536x816 free, the 850 px window put its title bar above the screen."""
+    from PySide6.QtCore import QMargins, QRect
+
+    from ui.main_window._window_setup import director_placement
+
+    frame = QMargins(0, 30, 0, 0)                                  # Windows 11 at 125 %, measured
+    inside, minimum, maximized = director_placement(QRect(0, 0, 1536, 816), frame)
+    assert maximized                                               # too small for 1400x850: maximised
+    assert inside.top() - frame.top() >= 0 and inside.bottom() < 816   # restored: title bar on screen
+    assert minimum.height() + frame.top() <= 816
+
+    inside, _minimum, maximized = director_placement(QRect(0, 0, 1920, 1032), frame)   # 100 %, 1080p
+    assert not maximized and inside.size().width() == 1400 and inside.size().height() == 850
+    assert inside.top() - frame.top() >= 0 and inside.bottom() < 1032
+
+    inside, _minimum, maximized = director_placement(QRect(1920, 0, 1536, 816), QMargins())   # no frame known
+    assert maximized and inside.left() >= 1920 and inside.top() >= 32
+
+
+def test_director_window_frame_fits_its_screen(qt_app):
+    from ui.main_window import MainWindow
+
+    output = OutputWindow()
+    win = MainWindow(output)
+    try:
+        screen = QApplication.primaryScreen()
+        win.bind_to_primary_screen(screen)
+        win.show()
+        _pump(0.2)
+        avail = screen.availableGeometry()
+        normal = win.normalGeometry() if win.isMaximized() else win.geometry()
+        assert normal.top() - 32 >= avail.top() or win.frameGeometry().top() >= avail.top()
+        assert normal.bottom() <= avail.bottom()
+        win._ensure_director_visible()                             # a second call keeps it that way
+        _pump(0.2)
+        assert win.isVisible() and not win.isMinimized()
+    finally:
+        win._force_closing = True
+        output.force_close()
+        win.close()
+        _pump(0.1)

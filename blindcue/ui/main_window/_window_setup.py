@@ -11,6 +11,30 @@ from ui.main_window._common import (  # noqa: F401
     _MEDIA_ICONS,
     _demote_live_on_layer,
 )
+from PySide6.QtCore import QMargins, QRect, QSize
+
+DIRECTOR_SIZE = QSize(1400, 850)
+DIRECTOR_MIN_SIZE = QSize(1240, 740)
+_TITLE_BAR_GUESS = 32        # before Windows reports the frame, or on a platform without one
+
+
+def director_placement(avail: QRect, frame: QMargins) -> tuple[QRect, QSize, bool]:
+    """Where the director window goes on a screen with ``avail`` free: (inside, minimum size, maximised).
+
+    setGeometry() places the inside of the window and the title bar comes on top of it. A laptop at 125 %
+    has 1536x816 free, so 850 px of window put the title bar above the screen: no way to move, minimise or
+    close the window (2026-11-24). The window plus its frame now always fits, and a screen too small for
+    the usual size opens the window maximised.
+    """
+    top = frame.top() if frame.top() > 0 else _TITLE_BAR_GUESS
+    room_w = max(1, avail.width() - frame.left() - frame.right())
+    room_h = max(1, avail.height() - top - frame.bottom())
+    w = min(DIRECTOR_SIZE.width(), room_w)
+    h = min(DIRECTOR_SIZE.height(), room_h)
+    inside = QRect(avail.x() + frame.left() + (room_w - w) // 2, avail.y() + top + (room_h - h) // 2, w, h)
+    minimum = QSize(min(DIRECTOR_MIN_SIZE.width(), room_w), min(DIRECTOR_MIN_SIZE.height(), room_h))
+    maximized = room_w < DIRECTOR_SIZE.width() or room_h < DIRECTOR_SIZE.height()
+    return inside, minimum, maximized
 
 
 class _WindowSetupMixin:
@@ -217,17 +241,21 @@ class _WindowSetupMixin:
             return
         avail = target.availableGeometry()
         if avail.width() > 0 and avail.height() > 0:
-            self.setMinimumSize(min(1240, avail.width()), min(740, avail.height()))
-            w = min(1400, avail.width())
-            h = min(850, avail.height())
-            x = avail.x() + max(0, (avail.width() - w) // 2)
-            y = avail.y() + max(0, (avail.height() - h) // 2)
             self.setScreen(target)
             self.create()
             handle = self.windowHandle()
             if handle is not None:
                 handle.setScreen(target)
-            self.setGeometry(x, y, w, h)
+            # The frame is known once the native window exists.
+            frame = handle.frameMargins() if handle is not None else QMargins()
+            inside, minimum, maximized = director_placement(avail, frame)
+            self.setMinimumSize(minimum)
+            state = self.windowState() & ~Qt.WindowState.WindowMaximized
+            if self.isVisible():
+                self.setWindowState(state)
+            self.setGeometry(inside)
+            # Too small a screen: open maximised (restoring gives the window above, title bar on screen).
+            self.setWindowState(state | Qt.WindowState.WindowMaximized if maximized else state)
 
     def _setup_autosave(self) -> None:
         # Dedicated single-thread pool so autosave disk I/O never blocks the GUI

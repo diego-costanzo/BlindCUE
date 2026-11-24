@@ -50,6 +50,7 @@ def window(qt_app, tmp_path):
                                 "file_path": files[k]})
                  for i, k in enumerate((MediaType.AUDIO, MediaType.IMAGE, MediaType.VIDEO))]
     win._refresh_cue_list(keep_selection=False)
+    win.setWindowState(Qt.WindowState.WindowNoState)   # the 800x600 offscreen screen opens it maximised
     win.resize(1280, 720)
     win.show()
     _pump(0.1)
