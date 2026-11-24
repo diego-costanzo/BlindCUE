@@ -3158,4 +3158,20 @@ T: dict[str, str] = {
         "'{}': file not found",
     "Importate {} cue da '{}'":
         "Imported {} cues from '{}'",
+    'Esclusa':
+        'Off',
+    '⚠ Già usate da altre cue: {} – due cue avrebbero la stessa Q':
+        '⚠ Already used by other cues: {} – two cues would have the same Q',
+    "'{}': legata a una cue non importata (Simult. / Auto-GO) – ora parte con il GO":
+        "'{}': tied to a cue not imported (Simult. / Auto-GO) – it now starts with GO",
+    "'{}': era esclusa in quello spettacolo – qui è inclusa":
+        "'{}': it was switched off in that show – here it is on",
+    "'{}': il suo tasto è già usato da un effetto di questo spettacolo":
+        "'{}': its key is already used by an effect of this show",
+    "'{}': parte a un'ora del giorno":
+        "'{}': it starts at a time of day",
+    "'{}': parte solo da un'azione, che non è stata importata":
+        "'{}': only an action starts it, and that action was not imported",
+    '… e altre {}':
+        '… and {} more',
 }

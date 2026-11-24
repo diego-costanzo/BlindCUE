@@ -22,7 +22,11 @@ from ui.main_window._common import *  # noqa: F403,F401,F405
 def export_headers() -> dict[str, str]:
     return {"number": "#", "q": "Q", "name": tr("Nome"), "type": tr("Tipo"), "layer": tr("Layer"),
             "follow": tr("Poi"), "pre": "Pre", "post": "Post", "page": tr("Pagina"), "line": tr("Battuta"),
-            "notes": tr("Note"), "file": tr("File")}
+            "notes": tr("Note"), "off": tr("Esclusa"), "file": tr("File")}
+
+
+def follow_names() -> dict[str, str]:
+    return {"SIMULTANEOUS": tr("⇉ Simult.")}
 
 
 class _ExportMixin:
@@ -39,7 +43,7 @@ class _ExportMixin:
         if not path:
             return
         try:
-            to_csv(rows(self._cues), path, export_headers())
+            to_csv(rows(self._cues, follow_names()), path, export_headers())
         except OSError as exc:
             QMessageBox.warning(self, tr("Esporta la scaletta"), str(exc))
             return
@@ -49,9 +53,13 @@ class _ExportMixin:
         from engine.cue_export import rows, to_html
 
         title = self._show_title() + " – " + (tr("regia") if variant == "operator" else tr("suggeritore"))
-        page = to_html(rows(self._cues), title, variant, export_headers(),
+        page = to_html(rows(self._cues, follow_names()), title, variant, export_headers(),
                        hint=tr("Stampa con Ctrl+P (orizzontale per molte colonne)."))
         target = Path(tempfile.gettempdir()) / f"blindcue_{variant}.html"
-        target.write_text(page, encoding="utf-8")
+        try:
+            target.write_text(page, encoding="utf-8")
+        except OSError as exc:
+            QMessageBox.warning(self, title, str(exc))
+            return
         QDesktopServices.openUrl(QUrl.fromLocalFile(str(target)))
         self._status_label.setText(tr("Scaletta aperta nel browser: stampa con Ctrl+P"))

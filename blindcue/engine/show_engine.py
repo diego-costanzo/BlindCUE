@@ -122,6 +122,23 @@ def block_end(cues: list[Cue], idx: int) -> int:
     return end
 
 
+def _tied_to_next(cues: list[Cue], row: int, end: int) -> bool:
+    """The row after the block *row*..*end* starts with it or after it without a GO of its own.
+
+    A scene is tied by its last row ("Simultaneous" / Auto-GO work by
+    position) and a Cascata that is not a playlist starts the row after it.
+    """
+    cue = cues[row]
+    if cue.follow_mode != FollowMode.MANUAL.value:
+        return True
+    if cue.media_type != MediaType.GROUP or end == row:
+        return False
+    if getattr(cue, "group_mode", "") == GroupMode.SEQUENCE.value and not getattr(cue, "playlist", False):
+        return True
+    last = cues[end]
+    return last.follow_mode != FollowMode.MANUAL.value and not outside_go_order(last)
+
+
 def insert_position(cues: list[Cue], selected_row: int) -> tuple[int, int | None]:
     """Where a new cue goes when the operator adds one: (index, parent_id).
 
@@ -140,13 +157,115 @@ def insert_position(cues: list[Cue], selected_row: int) -> tuple[int, int | None
     while True:
         end = block_end(cues, i)
         nxt = end + 1
-        tied = cues[i].follow_mode != FollowMode.MANUAL.value
-        if not tied or nxt >= n:
+        if not _tied_to_next(cues, i, end):
             return end + 1, parent
+        while nxt < n and outside_go_order(cues[nxt]):
+            nxt = block_end(cues, nxt) + 1  # a tie skips effects and relative starts too
+        if nxt >= n:
+            return n, parent
         # Ties work by position: a last child tied to the row after its group
         # is tied to that row, so the chain is followed out of the group.
         parent = cues[nxt].parent_id
         i = nxt
+
+
+def _follows_by_itself(cues: list[Cue], cue: Cue) -> bool:
+    """The end of *cue* starts the next one (Auto-GO, or a child of a Cascata / Loop Scena)."""
+    if outside_go_order(cue):
+        return False
+    return cue.follow_mode == FollowMode.AUTO_FOLLOW.value or ShowEngine.group_mode_of(cues, cue) in (
+        GroupMode.SEQUENCE.value, GroupMode.LOOP.value)
+
+
+def _row_of(cues: list[Cue], cue: Cue) -> int:
+    return next((i for i, c in enumerate(cues) if c is cue), -1)
+
+
+def _go_on_group(cues: list[Cue], idx: int, started: set[int], depth: int = 0) -> tuple[int, list[int]]:
+    """What a GO on the scene at *idx* starts: (GO pointer after it, rows whose end may start more)."""
+    group = cues[idx]
+    started.add(idx)
+    kids = [_row_of(cues, k) for k in ShowEngine.children_of(cues, group.cue_id)]
+    if not kids:
+        return idx + 1, []
+    mode = getattr(group, "group_mode", GroupMode.STEP.value)
+
+    def fire(row: int) -> list[int]:
+        if cues[row].media_type == MediaType.GROUP and depth < 3:
+            return _go_on_group(cues, row, started, depth + 1)[1]
+        started.add(row)
+        return [row]
+
+    if mode == GroupMode.SIMULTANEOUS.value:
+        ends = [r for row in kids for r in fire(row)]
+        return kids[-1] + 1, ends
+    if mode == GroupMode.RANDOM.value:
+        started.update(kids)  # one of them plays: the GO covers them all
+        return kids[-1] + 1, []
+    ends = fire(kids[0])
+    if mode == GroupMode.SEQUENCE.value and getattr(group, "playlist", False):
+        return block_end(cues, idx) + 1, ends
+    if len(kids) > 1:
+        return kids[1], ends
+    return kids[0] + 1, ends
+
+
+def _go_on_row(cues: list[Cue], idx: int, started: set[int]) -> tuple[int, int, list[int]]:
+    """A GO on *idx*: (GO pointer after it, last row it fired, rows whose end may start more)."""
+    if cues[idx].media_type == MediaType.GROUP:
+        pointer, ends = _go_on_group(cues, idx, started)
+        return pointer, idx, ends
+    chain = chain_indices(cues, idx)
+    ends: list[int] = []
+    for row in chain:
+        if cues[row].media_type == MediaType.GROUP:
+            ends += _go_on_group(cues, row, started)[1]
+        else:
+            started.add(row)
+            ends.append(row)
+    last = chain[-1]
+    nxt = block_end(cues, last) + 1 if getattr(cues[last], "playlist", False) else last + 1
+    while nxt < len(cues) and outside_go_order(cues[nxt]):
+        nxt += 1
+    return nxt, last, ends
+
+
+def go_stops(cues: list[Cue]) -> list[int]:
+    """Rows the operator starts with GO when the show runs from the top and every cue plays to its end.
+
+    Replays the GO pointer of the program: a "Simultaneous" chain and the
+    cues an Auto-GO, a Cascata or a Loop Scena start come by themselves (a
+    Cascata that is not a playlist starts the row after it too); every child
+    of a "Passo a passo" scene after the first needs its own GO. Rows outside
+    the GO order (effects, relative / timed starts, call only, switched off)
+    are never in it. The printed list for the operator and the Q renumbering
+    use this, so they agree with what GO really does.
+    """
+    n = len(cues)
+    started: set[int] = set()
+    stops: list[int] = []
+    pointer = 0
+    for _ in range(4 * n + 4):
+        while pointer < n and (pointer in started or outside_go_order(cues[pointer])):
+            pointer += 1
+        if pointer >= n:
+            break
+        stops.append(pointer)
+        pointer, _last, ends = _go_on_row(cues, pointer, started)
+        queue = list(ends)
+        while queue:
+            row = queue.pop(0)
+            if not _follows_by_itself(cues, cues[row]):
+                continue
+            target = ShowEngine.auto_follow_target(cues, cues[row])
+            if target < 0 or target in started or outside_go_order(cues[target]):
+                continue
+            held = pointer
+            pointer, last, more = _go_on_row(cues, target, started)
+            if held > last:
+                pointer = held  # an Auto-GO never pulls the GO pointer back
+            queue += more
+    return stops
 
 
 # Where the show can continue from when the operator enters LIVE.

@@ -49,6 +49,9 @@ class RenumberDialog(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.verticalHeader().setVisible(False)
         lay.addWidget(self.table, 1)
+        self.lbl_clash = QLabel()
+        self.lbl_clash.setWordWrap(True)
+        lay.addWidget(self.lbl_clash)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -64,9 +67,16 @@ class RenumberDialog(QDialog):
 
     def _preview(self) -> None:
         rows = self.changes()
+        clash = renumber.clashes(self.cues, rows)
+        where = {c.cue_id: i for i, c in enumerate(self.cues)}
         self.table.setRowCount(len(rows))
-        for i, (row, old, new) in enumerate(rows):
-            for col, text in enumerate((f"#{row + 1} {self.cues[row].name}", old or "—", new)):
+        for i, (cue_id, old, new) in enumerate(rows):
+            row = where.get(cue_id, -1)
+            name = self.cues[row].name if row >= 0 else ""
+            for col, text in enumerate((f"#{row + 1} {name}", old or "—", f"{new} ⚠" if new in clash else new)):
                 item = QTableWidgetItem(text)
                 self.table.setItem(i, col, item)
         self.table.resizeColumnsToContents()
+        self.lbl_clash.setText(
+            tr("⚠ Già usate da altre cue: {} – due cue avrebbero la stessa Q").format(", ".join(sorted(clash)))
+            if clash else "")

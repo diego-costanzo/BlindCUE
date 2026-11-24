@@ -15,7 +15,6 @@ APP_DIR = ROOT / "blindcue"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-import pytest
 from engine.cue_export import rows, to_csv, to_html
 from models.cue import Cue
 from PySide6.QtCore import QCoreApplication
@@ -47,7 +46,7 @@ def test_rows_and_by_hand():
     data = rows(_show())
     assert [r["_by_hand"] for r in data] == [True, False, True, False, False]   # a time of day is not GO
     assert data[0]["page"] == "3" and data[0]["line"] == "…and then the storm" and data[0]["file"] == "c0.mp3"
-    assert data[0]["follow"] == "+" and data[2]["follow"] == "Auto-GO"
+    assert data[0]["follow"] == "⇉ Simult." and data[2]["follow"] == "Auto-GO"
     back = Cue.from_dict(_show()[0].to_dict())
     assert back.script_page == "3" and back.script_line.endswith("storm")
 
@@ -92,3 +91,41 @@ def test_menu_actions(tmp_path, monkeypatch):
         win.deleteLater()
         output.deleteLater()
         _pump()
+
+
+def _scene_show() -> list[Cue]:
+    def cue(i, **extra):
+        data = {"cue_id": 9871 + i, "name": f"k{i}", "media_type": "AUDIO", "file_path": f"/m/k{i}.mp3"}
+        data.update(extra)
+        return Cue.from_dict(data)
+
+    return [cue(0, media_type="GROUP", file_path="", group_mode="STEP"), cue(1, parent_id=9871),
+            cue(2, parent_id=9871), cue(3, parent_id=9871, follow_mode="AUTO_FOLLOW"),
+            cue(4, name="started by the last step"),
+            cue(5, media_type="GROUP", file_path="", group_mode="SEQUENCE"), cue(6, parent_id=9876),
+            cue(7, parent_id=9876), cue(8, name="after the Cascata"), cue(9, name="next GO"),
+            cue(10, name="off", enabled=False)]
+
+
+def test_operator_list_follows_scenes():
+    data = rows(_scene_show())
+    by_hand = [r["name"] for r in data if r["_by_hand"]]
+    # a step scene: one GO per step after the first; the last step's Auto-GO starts k4;
+    # a Cascata that is not a playlist starts the row after it by itself
+    assert by_hand == ["k0", "k2", "k3", "k5", "next GO"]
+    assert data[-1]["off"] and not data[0]["off"]
+
+
+def test_csv_keeps_text_and_decimal_comma(tmp_path):
+    show = _show()
+    show[0].name = "=1+1"
+    show[1].script_line = "-Yes?"
+    show[2].pre_delay = 1.5
+    target = tmp_path / "list.csv"
+    to_csv(rows(show), target, {})
+    with open(target, encoding="utf-8-sig") as fh:
+        table = list(csv.reader(fh, delimiter=";"))
+    head = table[0]
+    assert table[1][head.index("name")] == "'=1+1"          # not a formula
+    assert table[2][head.index("line")] == "'-Yes?"
+    assert table[3][head.index("pre")] == "1,5"            # not the 1st of May

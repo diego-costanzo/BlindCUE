@@ -41,8 +41,9 @@ def _show() -> list[Cue]:
 def test_plan_numbers_go_cues_only():
     cues = _show()
     changes = renumber.plan(cues, start=10, step=10)
-    assert [(r, new) for r, _old, new in changes] == [(0, "Q10"), (1, "Q20"), (4, "Q30")]   # scene = one
-    assert renumber.plan(cues, chosen=[4], start=5, prefix="")[0] == (4, "old4", "5")
+    assert [(i, new) for i, _old, new in changes] == [(9931, "Q10"), (9932, "Q20"), (9935, "Q30")]  # scene = one
+    assert renumber.plan(cues, chosen=[4], start=5, prefix="")[0] == (9935, "old4", "5")
+    assert renumber.clashes(cues, renumber.plan(cues, chosen=[4], prefix="old", start=2)) == {"old2"}
     assert renumber.apply(cues, changes) == 3 and cues[2].q_label == "old2" and cues[3].q_label == "old3"
 
 
@@ -60,8 +61,12 @@ def test_window_renumbers_with_one_undo(monkeypatch):
         win._refresh_cue_list(keep_selection=False)
         win._commit_undo_point()
         monkeypatch.setattr(RenumberDialog, "exec", lambda self: QDialog.DialogCode.Accepted)
+        win._cue_list.setCurrentRow(0)
+        _pump()
         win._renumber_q()
         assert [c.q_label for c in win._cues][:2] == ["Q1", "Q2"]
+        win._apply_inspector_to_cue()          # what the autosave / Ctrl+S / GO do first
+        assert win._cues[0].q_label == "Q1"    # the inspector shows the new Q, it does not write the old one back
         win._on_undo()
         assert win._cues[0].q_label == "old0"
     finally:
@@ -72,3 +77,15 @@ def test_window_renumbers_with_one_undo(monkeypatch):
         win.deleteLater()
         output.deleteLater()
         _pump()
+
+
+def test_step_scene_children_and_ties_follow_go():
+    def cue(i, **extra):
+        data = {"cue_id": 9951 + i, "name": f"s{i}", "media_type": "AUDIO", "file_path": f"/m/{i}.mp3"}
+        data.update(extra)
+        return Cue.from_dict(data)
+
+    cues = [cue(0, media_type="GROUP", file_path="", group_mode="STEP"), cue(1, parent_id=9951),
+            cue(2, parent_id=9951), cue(3, parent_id=9951, follow_mode="SIMULTANEOUS"), cue(4), cue(5)]
+    # the scene, then every step after the first; s4 comes with the last step ("Simultaneous")
+    assert [i for i, _o, _n in renumber.plan(cues)] == [9951, 9953, 9954, 9956]

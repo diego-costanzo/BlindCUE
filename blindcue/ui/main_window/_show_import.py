@@ -19,6 +19,16 @@ def warning_text(kind: str, name: str, count: int) -> str:
         return tr("'{}': partenza relativa a una cue non importata – parte con il GO").format(name)
     if kind == "targets":
         return tr("'{}': {} cue bersaglio non importate").format(name, count)
+    if kind == "tie":
+        return tr("'{}': legata a una cue non importata (Simult. / Auto-GO) – ora parte con il GO").format(name)
+    if kind == "enabled":
+        return tr("'{}': era esclusa in quello spettacolo – qui è inclusa").format(name)
+    if kind == "key":
+        return tr("'{}': il suo tasto è già usato da un effetto di questo spettacolo").format(name)
+    if kind == "clock":
+        return tr("'{}': parte a un'ora del giorno").format(name)
+    if kind == "call":
+        return tr("'{}': parte solo da un'azione, che non è stata importata").format(name)
     return tr("'{}': file non trovato").format(name)
 
 
@@ -42,7 +52,8 @@ class _ShowImportMixin:
         chosen = self._choose_cues_to_import(other)
         if not chosen:
             return
-        new_cues, warnings = take_over(other, chosen)
+        self._apply_inspector_to_cue()
+        new_cues, warnings = take_over(other, chosen, self._cues)
         for cue in new_cues:
             cue.status = CueStatus.OFFLINE if cue.media_type.has_file and not os.path.isfile(cue.file_path) \
                 else CueStatus.LOADED
@@ -61,8 +72,10 @@ class _ShowImportMixin:
         self._auto_save()
         self._status_label.setText(tr("Importate {} cue da '{}'").format(len(new_cues), Path(path).stem))
         if warnings:
-            QMessageBox.information(self, tr("Importa cue da un altro spettacolo"),
-                                    "\n".join(warning_text(*w) for w in warnings[:20]))
+            lines = [warning_text(*w) for w in warnings[:20]]
+            if len(warnings) > 20:
+                lines.append(tr("… e altre {}").format(len(warnings) - 20))
+            QMessageBox.information(self, tr("Importa cue da un altro spettacolo"), "\n".join(lines))
 
     def _choose_cues_to_import(self, other: list[Cue]) -> list[int]:
         dlg = QDialog(self)

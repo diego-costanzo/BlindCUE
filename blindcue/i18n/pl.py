@@ -3380,4 +3380,20 @@ T: dict[str, str] = {
         "'{}': nie znaleziono pliku",
     "Importate {} cue da '{}'":
         "Zaimportowane pozycje: {} z '{}'",
+    'Esclusa':
+        'Wyłączona',
+    '⚠ Già usate da altre cue: {} – due cue avrebbero la stessa Q':
+        '⚠ Już używane przez inne pozycje: {} – dwie pozycje miałyby to samo Q',
+    "'{}': legata a una cue non importata (Simult. / Auto-GO) – ora parte con il GO":
+        "'{}': powiązana z pozycją, której nie importujesz (Razem / Auto-GO) – teraz startuje z GO",
+    "'{}': era esclusa in quello spettacolo – qui è inclusa":
+        "'{}': była wyłączona w tamtym przedstawieniu – tu jest włączona",
+    "'{}': il suo tasto è già usato da un effetto di questo spettacolo":
+        "'{}': jej klawisz ma już efekt w tym przedstawieniu",
+    "'{}': parte a un'ora del giorno":
+        "'{}': startuje o wyznaczonej godzinie",
+    "'{}': parte solo da un'azione, che non è stata importata":
+        "'{}': startuje tylko z akcji, której nie importujesz",
+    '… e altre {}':
+        '… i jeszcze {}',
 }

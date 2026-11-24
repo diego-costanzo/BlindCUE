@@ -15,6 +15,7 @@ class _RenumberMixin:
 
         if not self._change_allowed(EDIT_LIST):
             return
+        self._apply_inspector_to_cue()  # what is typed in the inspector first, so it is not lost
         chosen = self._selected_rows() if len(self._selected_rows()) > 1 else []
         dlg = RenumberDialog(self._cues, chosen, self)
         if dlg.exec() != QDialog.DialogCode.Accepted:
@@ -26,4 +27,7 @@ class _RenumberMixin:
             self._commit_undo_point()
             self._mark_modified(True)
             self._refresh_cue_list(keep_selection=True)
+            # The inspector shows the new Q: otherwise the next save writes the old one back.
+            self._last_selection_sig = None
+            self._sync_selection_state()
         self._status_label.setText(tr("Q rinumerate: {}").format(changed))

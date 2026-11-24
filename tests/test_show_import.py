@@ -14,6 +14,7 @@ APP_DIR = ROOT / "blindcue"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
+from engine.show_engine import insert_position
 from engine.show_import import take_over
 from models.cue import Cue
 from PySide6.QtCore import QCoreApplication
@@ -89,3 +90,44 @@ def test_menu_imports_after_the_selection(tmp_path, monkeypatch):
         win.deleteLater()
         output.deleteLater()
         _pump()
+
+
+def test_ties_to_cues_left_behind_become_go(tmp_path):
+    picture = tmp_path / "x.png"
+    picture.write_bytes(b"png")
+
+    def cue(i, **extra):
+        data = {"cue_id": 7900 + i, "name": f"t{i}", "media_type": "IMAGE", "file_path": str(picture)}
+        data.update(extra)
+        return Cue.from_dict(data)
+
+    other = [cue(0, follow_mode="AUTO_FOLLOW"), cue(1), cue(2, follow_mode="SIMULTANEOUS"), cue(3),
+             cue(4, adlib=True, hotkey="A"), cue(5, start_clock="20:00"), cue(6, call_only=True),
+             cue(7, enabled=False)]
+    here = [Cue.from_dict({"cue_id": 7990, "name": "mine", "media_type": "AUDIO", "file_path": "/a.wav",
+                           "adlib": True, "hotkey": "a"})]
+    new, warnings = take_over(other, [7900, 7902, 7903, 7904, 7905, 7906, 7907], here)
+    t0, t2 = new[:2]
+    assert t0.follow_mode == "MANUAL" and ("tie", "t0", 1) in warnings    # its next cue stayed there
+    assert t2.follow_mode == "SIMULTANEOUS"                                # t3 still comes next
+    kinds = {w[0] for w in warnings}
+    assert {"key", "clock", "call", "enabled"} <= kinds
+    assert new[-1].enabled                                                  # that show's versions stay there
+    _new, warnings = take_over(other, [7900, 7901], here)
+    assert not warnings
+
+
+def test_insert_position_after_tied_scene_and_effects():
+    def cue(i, **extra):
+        data = {"cue_id": 7950 + i, "name": f"p{i}", "media_type": "IMAGE", "file_path": "/x.png"}
+        data.update(extra)
+        return Cue.from_dict(data)
+
+    tied_scene = [cue(0, media_type="GROUP", file_path=""), cue(1, parent_id=7950),
+                  cue(2, parent_id=7950, follow_mode="SIMULTANEOUS"), cue(3), cue(4)]
+    assert insert_position(tied_scene, 0) == (4, None)          # the last step pulls p3: after it
+    cascade = [cue(0, media_type="GROUP", file_path="", group_mode="SEQUENCE"), cue(1, parent_id=7950),
+               cue(2), cue(3)]
+    assert insert_position(cascade, 0) == (3, None)             # a Cascata starts the row after it
+    effect_between = [cue(0, follow_mode="AUTO_FOLLOW"), cue(1, adlib=True), cue(2), cue(3)]
+    assert insert_position(effect_between, 0) == (3, None)      # p0's Auto-GO skips the effect to p2
