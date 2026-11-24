@@ -37,6 +37,8 @@ class _MenuMixin:
         file_menu.addAction(QAction("📁 Nuovo spettacolo da una cartella…", self,
                                     triggered=self._new_show_from_folder))  # 5.9
         file_menu.addAction(QAction("📋 Importa una scaletta (CSV)…", self, triggered=self._import_skeleton))  # 5.9
+        file_menu.addAction(QAction("🔎 Cerca i file mancanti in una cartella…", self,
+                                    triggered=self._find_missing_files))  # 5.10
         file_menu.addAction(QAction("🎵 Importa playlist (.m3u)…", self, triggered=self._on_import_playlist))  # 3.3
         file_menu.addAction(QAction("📥 Importa cue da un altro spettacolo…", self,
                                     triggered=self._import_from_show))  # 5.3

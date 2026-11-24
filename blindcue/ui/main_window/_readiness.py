@@ -274,7 +274,8 @@ class _ReadinessMixin:
                 return RowView(MEDIA, OK, tr("Tutti i file al loro posto ({})").format(v["count"]))
             shown = ", ".join(v["cues"][:4]) + (" …" if len(v["cues"]) > 4 else "")
             return RowView(MEDIA, PROBLEM, tr("File mancanti ({}): {}").format(v["count"], shown),
-                           [(tr("Mostra nella lista"), "show_missing")])
+                           [(tr("Mostra nella lista"), "show_missing"),
+                            (tr("🔎 Cerca in una cartella…"), "find_missing")])  # 5.10
         if check.key == POWER:
             if check.state == OK:
                 return RowView(POWER, OK, tr("Portatile collegato all'alimentatore"))
@@ -488,6 +489,10 @@ class _ReadinessMixin:
                 self._on_readiness_stay()  # files are replaced in Preparation
             if row >= 0 and not self._live_mode:
                 self._cue_list.setCurrentRow(row)
+        elif action == "find_missing":
+            if not self._readiness_review:
+                self._on_readiness_stay()  # files are replaced in Preparation
+            self._find_missing_files()
         elif action == "show_list_problem":
             from engine.list_check import list_problems
 

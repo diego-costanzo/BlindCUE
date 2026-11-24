@@ -3306,4 +3306,30 @@ T: dict[str, str] = {
         '📌 Unpin this show',
     '📌 Fissa questo spettacolo in cima':
         '📌 Pin this show on top',
+    '📂 Scegli il file…':
+        '📂 Choose the file…',
+    '🔎 Cerca i file mancanti in una cartella…':
+        '🔎 Find missing files in a folder…',
+    '🔎 Cerca in una cartella…':
+        '🔎 Look in a folder…',
+    'Cerca i file mancanti in una cartella':
+        'Find missing files in a folder',
+    'Tutti i file sono al loro posto':
+        'All files are in place',
+    'Cue senza file: {} – clic destro → Scegli il file…':
+        'Cues without a file: {} – right click → Choose the file…',
+    'Nessuno dei {} file mancanti è in questa cartella.':
+        'None of the {} missing files is in this folder.',
+    'File ritrovati: {} di {}':
+        'Files found: {} of {}',
+    'Nomi trovati più volte (usato il primo): {}':
+        'Names found more than once (the first one is used): {}',
+    'Scegli una cue video, audio o immagine':
+        'Choose a video, sound or picture cue',
+    "Scegli il file per '{}'":
+        "Choose the file for '{}'",
+    'Formato non supportato: {}':
+        'Format not supported: {}',
+    "'{}' suona ora: {}":
+        "'{}' now plays: {}",
 }

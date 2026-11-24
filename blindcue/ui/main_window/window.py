@@ -60,6 +60,7 @@ from ui.main_window._show_import import _ShowImportMixin
 from ui.main_window._show_info import _ShowInfoMixin
 from ui.main_window._key_map import _KeyMapMixin
 from ui.main_window._quick_start import _QuickStartMixin
+from ui.main_window._relink import _RelinkMixin
 from ui.main_window._slideshow import _SlideshowMixin
 
 
@@ -108,6 +109,7 @@ class MainWindow(
     _ShowInfoMixin,
     _KeyMapMixin,
     _QuickStartMixin,
+    _RelinkMixin,
     _SlideshowMixin,
     QMainWindow,
 ):
@@ -250,6 +252,7 @@ class MainWindow(
         self._slideshow_setup()  # photos to music (stage 4, 4.3)
         self._effects_setup()  # effects on demand, keys and tiles (stage 1 phase D)
         self._keymap_setup()  # extra keys and a presenter remote (stage 5, 5.7-5.8)
+        self._relink_setup()  # choose a cue's file, find missing files (stage 5, 5.10)
         self._assistant_setup()  # AI assistant link, off until allowed (stage 1M, M2)
         self._setup_shortcuts()
         self._update_inspector(None)

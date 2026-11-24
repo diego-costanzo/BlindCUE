@@ -3528,4 +3528,30 @@ T: dict[str, str] = {
         '📌 Odepnij to przedstawienie',
     '📌 Fissa questo spettacolo in cima':
         '📌 Przypnij to przedstawienie na górze',
+    '📂 Scegli il file…':
+        '📂 Wybierz plik…',
+    '🔎 Cerca i file mancanti in una cartella…':
+        '🔎 Szukaj brakujących plików w folderze…',
+    '🔎 Cerca in una cartella…':
+        '🔎 Szukaj w folderze…',
+    'Cerca i file mancanti in una cartella':
+        'Szukanie brakujących plików w folderze',
+    'Tutti i file sono al loro posto':
+        'Wszystkie pliki są na miejscu',
+    'Cue senza file: {} – clic destro → Scegli il file…':
+        'Pozycje bez pliku: {} – prawy przycisk → Wybierz plik…',
+    'Nessuno dei {} file mancanti è in questa cartella.':
+        'Żadnego z brakujących plików ({}) nie ma w tym folderze.',
+    'File ritrovati: {} di {}':
+        'Odnalezione pliki: {} z {}',
+    'Nomi trovati più volte (usato il primo): {}':
+        'Nazwy znalezione kilka razy (użyty pierwszy): {}',
+    'Scegli una cue video, audio o immagine':
+        'Wybierz pozycję z filmem, dźwiękiem albo obrazem',
+    "Scegli il file per '{}'":
+        "Wybierz plik dla '{}'",
+    'Formato non supportato: {}':
+        'Nieobsługiwany format: {}',
+    "'{}' suona ora: {}":
+        "'{}' gra teraz plik: {}",
 }

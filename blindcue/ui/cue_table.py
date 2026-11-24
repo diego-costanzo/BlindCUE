@@ -663,6 +663,7 @@ class CueSequenceTable(QTableWidget):
     layout_copy_requested = Signal()     # 4.4: copy the picture layout of the selected cue
     layout_paste_requested = Signal()    # 4.4: paste it onto the selected pictures / videos
     slideshow_requested = Signal()       # 4.3: the selected pictures to the selected music
+    file_choose_requested = Signal()     # 5.10: pick (another) file for the selected cue
     # Media files dropped on the list: (paths, row they were dropped on, -1 = below the last row)
     files_dropped = Signal(list, int)
 
@@ -833,6 +834,8 @@ class CueSequenceTable(QTableWidget):
             if not is_grp and len(rows) == 1:
                 act_text = menu.addAction("✏ Modifica testo…")
                 act_text.triggered.connect(self.edit_text_requested)
+                act_file = menu.addAction("📂 Scegli il file…")
+                act_file.triggered.connect(self.file_choose_requested)
             if not is_grp:
                 act_grp = menu.addAction("📁 Raggruppa in Scena (Ctrl+G)")
                 act_grp.triggered.connect(self.group_requested)
