@@ -92,3 +92,6 @@ Thumbs.db
 *.sublime-project
 *.sublime-workspace
 
+# PR triage report (generated locally)
+PR_TRIAGE_REPORT.md
+

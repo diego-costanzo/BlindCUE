@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: "it-IT"
+early_access: false
+enable_free_tier: true
+
+reviews:
+  profile: "assertive"
+  request_changes_workflow: true
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: false
+  sequence_diagrams: false
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+  path_instructions:
+    - path: "blindcue/**"
+      instructions: |
+        Analizza ogni modifica nel codice applicativo di BlindCUE verificando obbligatoriamente tutti i seguenti punti (in italiano chiaro e schematico):
+        1. **Elenco funzionalità reali**: elenca in linguaggio semplice e concreto cosa introduce o modifica davvero la PR, distinguendolo da eventuali affermazioni generiche nel titolo/descrizione.
+        2. **Bug, edge case e regressioni live**: verifica rischi per uno spettacolo dal vivo (freeze UI, race condition, memory/fd leak, crash su file media corrotti, regressioni su GO/PANIC/BLACKOUT, gruppi o superfici).
+        3. **Compatibilità multipiattaforma**: verifica il funzionamento su Linux (Wayland nativo), Windows 10/11 e macOS (niente API esclusive di un solo OS senza fallback/guardia, path gestiti in modo portabile).
+        4. **SICUREZZA (BLOCKER)**: segnala immediatamente come **BLOCKER** (richiedendo modifiche bloccanti) qualsiasi chiamata di rete non strettamente legata al controllo remoto locale esplicito (Web/OSC su LAN), qualsiasi forma di telemetria/analytics/phone-home, dipendenza esterna nuova non giustificata o non open-source, codice offuscato/minificato sospetto, esecuzione di comandi shell arbitrari o accessi sospetti al filesystem al di fuori di directory di progetto/configurazione/temp attese.
+        5. **Copertura di test**: segnala se mancano test adeguati in `tests/` per le modifiche introdotte.
+        6. **Allineamento documentazione**: segnala esplicitamente se `README.md`, `docs/MANUAL.md`, `docs/manual/manual_{it,en,pl}.src.html` o `blindcue/help/manual_{it,en,pl}.html` risultano disallineati rispetto alle novità introdotte e vanno aggiornati nella stessa PR.
+
+    - path: "tests/**"
+      instructions: |
+        Verifica che i test siano reali, deterministici e non banali:
+        - Controlla che coprano davvero i comportamenti e i casi limite introdotti dalla PR.
+        - Verifica che girino in modalità headless (`QT_QPA_PLATFORM=offscreen`) senza toccare impostazioni reali dell'utente (usando l'isolamento di `tests/conftest.py`).
+        - Segnala assert mancanti, sleep eccessivi o test fragili dipendenti dall'ambiente locale.
+
+    - path: "docs/**"
+      instructions: |
+        Verifica coerenza e accuratezza della documentazione:
+        - Controlla che le istruzioni in `docs/MANUAL.md`, `docs/ARCHITECTURE.md` e `docs/manual/manual_*.src.html` corrispondano al comportamento reale del codice.
+        - Se vengono modificati i sorgenti `docs/manual/manual_<lang>.src.html`, verifica che i manuali HTML compilati in `blindcue/help/manual_<lang>.html` (generati da `tools/build_manual.py`) siano aggiornati in sincrono.
+
+    - path: "README.md"
+      instructions: |
+        Verifica che eventuali modifiche a `README.md` riflettano fedelmente le funzionalità realmente presenti nel codice, le piattaforme supportate (Linux Wayland, Windows, macOS) e i comandi di test reali.
+
+    - path: "blindcue/help/**"
+      instructions: |
+        I file `blindcue/help/manual_*.html` sono generati da `docs/manual/manual_*.src.html` tramite `tools/build_manual.py`. Verifica che eventuali modifiche ai file HTML siano coerenti con i relativi file `.src.html` sorgente.
+
+    - path: "setup/**,setup.py,uninstall.py,packaging/**,.github/**"
+      instructions: |
+        Verifica con massima attenzione sicurezza e affidabilità multipiattaforma:
+        - Segnala come **BLOCKER** qualsiasi download da URL non verificati/senza checksum, comandi shell non quotati/iniettabili, permessi eccessivi nei workflow GitHub Actions, codice offuscato o accessi sospetti al filesystem.
+        - Verifica compatibilità su Linux, Windows e macOS per gli script di setup/packaging.
+
+chat:
+  auto_reply: true

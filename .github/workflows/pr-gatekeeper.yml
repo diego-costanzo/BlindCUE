@@ -1,0 +1,218 @@
+name: PR Gatekeeper
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  pull-requests: read
+  contents: read
+
+jobs:
+  governance:
+    name: PR Governance & Size Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce max 1 open PR per contributor
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          import sys
+
+          author = os.environ["PR_AUTHOR"]
+          owner = os.environ["REPO_OWNER"]
+          repo = os.environ["GITHUB_REPO"]
+
+          if author == owner:
+              print(f"Repository owner ({author}) exempt from single-PR limit.")
+              sys.exit(0)
+
+          res = subprocess.run(
+              [
+                  "gh", "pr", "list",
+                  "--repo", repo,
+                  "--state", "open",
+                  "--author", author,
+                  "--limit", "100",
+                  "--json", "number,title",
+              ],
+              check=True,
+              capture_output=True,
+              text=True,
+          )
+          open_prs = json.loads(res.stdout)
+          print(f"Open PRs by @{author}: {[p['number'] for p in open_prs]}")
+          if len(open_prs) > 1:
+              prs_str = ", ".join(f"#{p['number']}" for p in open_prs)
+              print(
+                  f"::error::Contributor @{author} has {len(open_prs)} open PRs ({prs_str}). "
+                  "CONTRIBUTING.md allows at most 1 open PR per contributor at a time."
+              )
+              sys.exit(1)
+          PY
+
+      - name: Verify PR description and mandatory checklist
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          body = os.environ.get("PR_BODY") or ""
+          if not body.strip():
+              print("::error::PR description is empty. Fill out .github/PULL_REQUEST_TEMPLATE.md completely.")
+              sys.exit(1)
+
+          body_no_comments = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
+
+          # Check linked issue reference (#123)
+          if not re.search(r"#\d+", body_no_comments):
+              print("::error::PR description must reference a linked Issue (e.g. 'Closes #123').")
+              sys.exit(1)
+
+          # Split Mandatory Checklist from AI Assistance Disclosure so mutually-exclusive AI options work cleanly
+          ai_split = re.split(r"^##\s+AI Assistance Disclosure\b", body_no_comments, maxsplit=1, flags=re.MULTILINE)
+          main_section = ai_split[0]
+          ai_section = ai_split[1] if len(ai_split) > 1 else ""
+
+          unchecked_main = re.findall(r"^\s*[-*]\s*\[\s\]", main_section, flags=re.MULTILINE)
+          checked_main = re.findall(r"^\s*[-*]\s*\[[xX]\]", main_section, flags=re.MULTILINE)
+          if len(checked_main) < 7 or unchecked_main:
+              print(
+                  f"::error::Mandatory checklist incomplete: found {len(checked_main)} checked and "
+                  f"{len(unchecked_main)} unchecked items in the main checklist. All mandatory items must be [x]."
+              )
+              sys.exit(1)
+
+          checked_ai = re.findall(r"^\s*[-*]\s*\[[xX]\]", ai_section, flags=re.MULTILINE)
+          if not checked_ai:
+              print("::error::AI Assistance Disclosure section must have one option checked ([x]).")
+              sys.exit(1)
+
+          # Ensure there is actual descriptive prose beyond headers/checkboxes
+          prose_lines = [
+              line.strip()
+              for line in main_section.splitlines()
+              if line.strip()
+              and not line.strip().startswith("#")
+              and not re.match(r"^[-*]\s*\[[ xX]\]", line.strip())
+              and not re.match(r"^[-*]\s*\*\*[^*]+:\*\*\s*$", line.strip())
+          ]
+          if sum(len(l) for l in prose_lines) < 30:
+              print("::error::PR description lacks sufficient explanation of what changes and why.")
+              sys.exit(1)
+
+          print("PR description and mandatory checklist validated.")
+          PY
+
+      - name: Enforce PR size limit (<= 500 lines, <= 15 files unless approved-large)
+        env:
+          PR_ADDITIONS: ${{ github.event.pull_request.additions }}
+          PR_DELETIONS: ${{ github.event.pull_request.deletions }}
+          PR_CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          PR_LABELS_JSON: ${{ toJson(github.event.pull_request.labels.*.name) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+
+          additions = int(os.environ["PR_ADDITIONS"])
+          deletions = int(os.environ["PR_DELETIONS"])
+          changed_files = int(os.environ["PR_CHANGED_FILES"])
+          labels = set(json.loads(os.environ["PR_LABELS_JSON"]))
+
+          total_lines = additions + deletions
+          print(f"PR size: {total_lines} changed lines (+{additions}/-{deletions}), {changed_files} files, labels={sorted(labels)}")
+
+          if "approved-large" in labels:
+              print("Label 'approved-large' present: size limit waived.")
+              sys.exit(0)
+
+          violations = []
+          if total_lines > 500:
+              violations.append(f"{total_lines} changed lines (max 500)")
+          if changed_files > 15:
+              violations.append(f"{changed_files} changed files (max 15)")
+
+          if violations:
+              print(
+                  "::error::PR exceeds size limits (" + ", ".join(violations) + "). "
+                  "Split into smaller single-purpose PRs or obtain the 'approved-large' label from the maintainer."
+              )
+              sys.exit(1)
+          PY
+
+  quality_and_tests:
+    name: Diff-Scoped Ruff, Bandit & Pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: "pip"
+
+      - name: Install FFmpeg and Qt6 offscreen system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ffmpeg \
+            libdbus-1-3 \
+            libegl1 \
+            libfontconfig1 \
+            libfreetype6 \
+            libgl1 \
+            libpulse0 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-shape0 \
+            libxcb-xinerama0 \
+            libxkbcommon0
+
+      - name: Install Python dependencies and QA tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pytest ruff bandit
+
+      - name: Run Ruff and Bandit on PR-modified Python files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch origin "$BASE_REF" --depth=1 || true
+          mapfile -d '' CHANGED_PY < <(
+            git diff -z --name-only --diff-filter=ACMR "origin/${BASE_REF}...HEAD" -- '*.py'
+          )
+          if [ ${#CHANGED_PY[@]} -eq 0 ]; then
+            echo "No Python files added or modified in this PR. Skipping Ruff and Bandit."
+            exit 0
+          fi
+          printf 'Checking %d Python file(s):\n' "${#CHANGED_PY[@]}"
+          printf ' - %s\n' "${CHANGED_PY[@]}"
+          ruff check "${CHANGED_PY[@]}"
+          bandit -ll "${CHANGED_PY[@]}"
+
+      - name: Run pytest suite (headless Qt offscreen)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          pytest -q tests/
