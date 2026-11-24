@@ -1,6 +1,5 @@
 """Emergency keys and reflex keystrokes never lose a show (stage 1 C2a, step 0).
 
-- Esc / Shift+Esc keep their meaning inside the modal start question;
 - Esc in the crash-recovery question restores, "No" sets the autosave aside;
 - closing the window during a show asks first, "stay" is the default;
 - the Next banner translates each of its pieces.
@@ -21,8 +20,8 @@ if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
 import pytest
-from PySide6.QtCore import QCoreApplication, QEvent, Qt
-from PySide6.QtGui import QCloseEvent, QKeyEvent
+from PySide6.QtCore import QCoreApplication
+from PySide6.QtGui import QCloseEvent
 from PySide6.QtWidgets import QApplication, QMessageBox
 
 
@@ -64,39 +63,6 @@ def window(qt_app):
         win.deleteLater()
         output.deleteLater()
         _pump()
-
-
-def _key(mod=Qt.KeyboardModifier.NoModifier) -> QKeyEvent:
-    return QKeyEvent(QEvent.Type.KeyPress, Qt.Key.Key_Escape, mod)
-
-
-def test_esc_in_the_start_question_counts_towards_panic(window):
-    from ui.main_window._cue_table import _EmergencyKeysInDialog
-
-    box = QMessageBox(window)
-    keys = _EmergencyKeysInDialog(window, box)
-    window._last_esc_press_mono = 0.0
-    assert keys.eventFilter(box, _key()) is False          # the box still closes on Esc
-    assert time.monotonic() - window._last_esc_press_mono < 1.0
-    window._live_phase_tags[9999] = "PRE -1.0s"             # something waits: the 2nd Esc is PANIC
-    panics: list[int] = []
-    window.panic_requested.connect(lambda: panics.append(1))
-    window._on_escape_pressed()
-    assert panics == [1]
-    box.deleteLater()
-
-
-def test_shift_esc_in_the_start_question_fades_all(window):
-    from ui.main_window._cue_table import _EmergencyKeysInDialog
-
-    box = QMessageBox(window)
-    keys = _EmergencyKeysInDialog(window, box)
-    fades: list[float] = []
-    window.fade_all_requested.connect(fades.append)
-    assert keys.eventFilter(box, _key(Qt.KeyboardModifier.ShiftModifier)) is True
-    _pump(0.1)
-    assert len(fades) == 1
-    box.deleteLater()
 
 
 def test_recovery_esc_restores_and_no_keeps_a_copy(window, tmp_path, monkeypatch):

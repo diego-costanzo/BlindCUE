@@ -18,6 +18,7 @@ from PySide6.QtCore import QRect, QStandardPaths, Qt
 from PySide6.QtGui import QColor, QFont, QImage, QPainter
 
 WIDTH, HEIGHT = 1920, 1080
+DEFAULT_FONT = "sans-serif"
 
 DEFAULT_SPEC: dict[str, Any] = {
     "text": "",
@@ -27,7 +28,7 @@ DEFAULT_SPEC: dict[str, Any] = {
     "position": "bottom",  # "top" | "center" | "bottom"
     "box": True,           # semi-transparent dark band behind the text
     "shadow": True,
-    "font": "Segoe UI",
+    "font": DEFAULT_FONT,
 }
 
 _VALIGN = {
@@ -48,7 +49,9 @@ def normalize_spec(spec: dict[str, Any] | None) -> dict[str, Any]:
     out["bold"] = bool(out["bold"])
     out["box"] = bool(out["box"])
     out["shadow"] = bool(out["shadow"])
-    out["font"] = str(out["font"] or "Segoe UI")
+    raw_font = out.get("font")
+    font_name = str(raw_font).strip() if raw_font is not None else ""
+    out["font"] = font_name or DEFAULT_FONT
     return out
 
 
@@ -106,11 +109,10 @@ def _cache_dir() -> Path:
 def render_text_png(spec: dict[str, Any] | None) -> str:
     """Render *spec* to a cached PNG and return its path (re-used if it exists)."""
     s = normalize_spec(spec)
-    digest = hashlib.sha1(json.dumps(s, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:12]
+    digest = hashlib.sha256(json.dumps(s, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:12]
     path = _cache_dir() / f"caption_{digest}.png"
-    if not path.is_file():
-        if not render_text_image(s).save(str(path), "PNG"):
-            raise OSError(f"Cannot write text cue image: {path}")
+    if not path.is_file() and not render_text_image(s).save(str(path), "PNG"):
+        raise OSError(f"Cannot write text cue image: {path}")
     return str(path)
 
 

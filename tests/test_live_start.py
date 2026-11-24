@@ -1,8 +1,8 @@
-"""Entering LIVE asks where the GO starts when it would not continue the show.
+"""Entering LIVE switches directly without a blocking modal dialog.
 
-GO fires the selected row, so a cue fixed in the editor used to open the
-show. The pure choice logic is tested on its own, the question in a headless
-MainWindow with ``QMessageBox.exec`` replaced by a click on a chosen button.
+The pure helper tests (``live_start_choices``, ``insert_position``) remain
+covered alongside headless MainWindow tests verifying that ``set_live_mode(True)``
+never opens a ``QMessageBox`` and preserves the selected cue.
 """
 
 from __future__ import annotations
@@ -175,88 +175,46 @@ def window(qt_app):
 
 
 @pytest.fixture()
-def answer(monkeypatch):
-    """Replace the modal question: click the button whose text starts with ``answer.pick``."""
+def no_modal(monkeypatch):
+    """Fail/record if entering LIVE tries to open any blocking QMessageBox."""
+    calls: list[str] = []
 
-    class _Answer:
-        def __init__(self) -> None:
-            self.pick: str | None = None
-            self.asked: list[list[str]] = []
+    def fail_exec(box: QMessageBox) -> int:
+        calls.append(box.windowTitle())
+        box.reject()
+        return int(QMessageBox.StandardButton.Cancel)
 
-    state = _Answer()
-
-    def fake_exec(box: QMessageBox) -> int:
-        texts = [b.text() for b in box.buttons()]
-        state.asked.append(texts)
-        for b in box.buttons():
-            if state.pick is not None and b.text().startswith(state.pick):
-                b.click()
-                break
-        else:
-            box.button(QMessageBox.StandardButton.Cancel).click()
-        return 0
-
-    monkeypatch.setattr(QMessageBox, "exec", fake_exec)
-    return state
+    monkeypatch.setattr(QMessageBox, "exec", fail_exec)
+    return calls
 
 
-def test_fixed_cue_does_not_open_the_show(window, answer):
+def test_entering_live_from_middle_cue_opens_no_modal(window, no_modal):
     window._cue_list.setCurrentRow(3)
-    answer.pick = "Dall'inizio"
     window.set_live_mode(True)
     assert window.is_live_mode()
-    assert len(answer.asked) == 1
+    assert window._act_live_mode.isChecked()
+    assert no_modal == []
+    assert window._go_target_index() == 3
+
+
+def test_top_of_list_enters_live_without_modal(window, no_modal):
+    window._cue_list.setCurrentRow(0)
+    window.set_live_mode(True)
+    assert window.is_live_mode()
+    assert no_modal == []
     assert window._go_target_index() == 0
 
 
-def test_starting_from_the_selected_cue_keeps_it(window, answer):
-    window._cue_list.setCurrentRow(3)
-    answer.pick = "Dalla cue selezionata"
-    window.set_live_mode(True)
-    assert window.is_live_mode()
-    assert window._go_target_index() == 3
-
-
-def test_cancel_stays_in_design_mode(window, answer):
-    window._cue_list.setCurrentRow(3)
-    answer.pick = None
-    window.set_live_mode(True)
-    assert not window.is_live_mode()
-    assert not window._act_live_mode.isChecked()
-    assert window._go_target_index() == 3
-
-
-def test_top_of_list_asks_nothing(window, answer):
-    window._cue_list.setCurrentRow(0)
-    window.set_live_mode(True)
-    assert window.is_live_mode()
-    assert answer.asked == []
-
-
-def test_round_trip_without_changes_asks_nothing(window, answer):
-    window._cue_list.setCurrentRow(0)
-    window.set_live_mode(True)
-    window._cue_list.setCurrentRow(2)       # the show moved on in LIVE
-    window.set_live_mode(False)
-    window.set_live_mode(True)
-    assert window.is_live_mode()
-    assert answer.asked == []
-    assert window._go_target_index() == 2
-
-
-def test_selection_moved_in_design_offers_resume(window, answer):
+def test_round_trip_and_moved_selection_enter_live_without_modal(window, no_modal):
     window._cue_list.setCurrentRow(0)
     window.set_live_mode(True)
     window._cue_list.setCurrentRow(2)
     window.set_live_mode(False)
-    window._cue_list.setCurrentRow(4)       # a cue fixed in the editor
-    answer.pick = "Riprendi da"
+    window._cue_list.setCurrentRow(4)
     window.set_live_mode(True)
     assert window.is_live_mode()
-    assert answer.asked[0][:3] == ["Riprendi da: #3 'c2'",
-                                   "Dalla cue selezionata: #5 'c4'",
-                                   "Dall'inizio: #1 'c0'"]
-    assert window._go_target_index() == 2
+    assert no_modal == []
+    assert window._go_target_index() == 4
 
 
 def test_new_show_forgets_where_live_was_left(window):
@@ -268,15 +226,17 @@ def test_new_show_forgets_where_live_was_left(window):
     assert window._released_groups == set()
 
 
-def test_resume_follows_the_show_while_the_editor_is_open(window, answer):
+def test_show_advances_in_design_mode_and_reenters_live_without_modal(window, no_modal):
     window._cue_list.setCurrentRow(0)
     window.set_live_mode(True)
     window._cue_list.setCurrentRow(1)
     window.set_live_mode(False)                    # LIVE left at #2
     window._fire_cue_chain(1)                      # the show goes on (e.g. an Auto-GO)
     assert window._go_target_index() == 2
-    window.set_live_mode(True)                     # back at the show's own position: no question
-    assert answer.asked == [] and window._go_target_index() == 2
+    window.set_live_mode(True)                     # immediate LIVE re-entry without modal
+    assert window.is_live_mode()
+    assert no_modal == []
+    assert window._go_target_index() == 2
 
 
 def test_new_cue_goes_after_the_selected_one(window, tmp_path):

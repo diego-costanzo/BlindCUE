@@ -2,41 +2,15 @@
 
 from __future__ import annotations
 
-from ui.main_window._common import *  # noqa: F403,F401,F405
-from ui.main_window._common import (  # noqa: F401
-    _AutosaveWorker,
-    _DEFAULT_TOP_RATIOS,
-    _MEDIA_ICONS,
-    _demote_live_on_layer,
-)
-
-import time
-
 from engine.action_cues import describe_action
 
-
-class _EmergencyKeysInDialog(QObject):
-    """Esc and Shift+Esc keep their emergency meaning inside a modal question.
-
-    A modal dialog takes the keyboard from the window shortcuts, so with a
-    show running PANIC needed three Esc and Shift+Esc did nothing. Here Esc
-    closes the question and counts as the first press of Esc Esc = PANIC,
-    and Shift+Esc closes it and fades everything out.
-    """
-
-    def __init__(self, window, box: QMessageBox) -> None:
-        super().__init__(box)
-        self._window = window
-        self._box = box
-
-    def eventFilter(self, obj, event) -> bool:  # noqa: N802
-        if event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Escape:
-            if event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
-                self._box.reject()
-                QTimer.singleShot(0, self._window._on_fade_all)
-                return True
-            self._window._last_esc_press_mono = time.monotonic()
-        return False
+from ui.main_window._common import *
+from ui.main_window._common import (  # noqa: F401
+    _DEFAULT_TOP_RATIOS,
+    _MEDIA_ICONS,
+    _AutosaveWorker,
+    _demote_live_on_layer,
+)
 
 
 class _CueTableMixin:
@@ -230,12 +204,6 @@ class _CueTableMixin:
         enabled = bool(enabled)
         if self._live_mode == enabled:
             return
-        if enabled and not self._confirm_live_start():
-            if hasattr(self, "_act_live_mode"):
-                self._act_live_mode.blockSignals(True)
-                self._act_live_mode.setChecked(False)
-                self._act_live_mode.blockSignals(False)
-            return
         if enabled and self._go_target_index() == 0 and not self._show_running():
             self._played_ids.clear()  # a run from the top: nothing played yet
         if not enabled and self._cues:
@@ -269,59 +237,6 @@ class _CueTableMixin:
         return any(
             c.status == CueStatus.LIVE and c.media_type != MediaType.GROUP for c in self._cues
         ) or bool(self._live_phase_tags)
-
-    def _confirm_live_start(self) -> bool:
-        """Ask where the GO starts when it would not continue where the show was.
-
-        GO fires the selected cue, so a cue fixed in the editor would otherwise
-        open the show. Returns False when the operator cancels: LIVE stays off.
-        """
-        resume_id = getattr(self, "_live_resume_id", None)
-        resume_row = next(
-            (i for i, c in enumerate(self._cues) if c.cue_id == resume_id), None
-        ) if resume_id is not None else None
-        choices = live_start_choices(
-            len(self._cues), self._go_target_index(), resume_row, self._show_running()
-        )
-        if not choices:
-            return True
-        labels = {
-            START_FROM_TOP: "Dall'inizio: {}",
-            START_RESUME: "Riprendi da: {}",
-            START_SELECTED: "Dalla cue selezionata: {}",
-        }
-        box = QMessageBox(self)
-        box.setIcon(QMessageBox.Icon.Question)
-        box.setWindowTitle("Da dove parte lo spettacolo?")
-        if resume_row is None:
-            box.setText("La cue selezionata non è l'inizio della scaletta.\nDa quale cue deve partire il GO?")
-        else:
-            box.setText("La selezione è cambiata da quando hai lasciato LIVE.\nDa quale cue deve partire il GO?")
-        rows: dict[object, int] = {}
-        for kind, row in choices:
-            cue = self._cues[row]
-            name = cue.name if len(cue.name) <= 60 else cue.name[:59] + "…"
-            btn = box.addButton(
-                labels[kind].format(f"{format_cue_ref(row, cue)} '{name}'"),
-                QMessageBox.ButtonRole.AcceptRole,
-            )
-            btn.setMinimumHeight(36)
-            rows[btn] = row
-            if len(rows) == 1:
-                box.setDefaultButton(btn)
-        box.addButton(QMessageBox.StandardButton.Cancel)
-        keys = _EmergencyKeysInDialog(self, box)
-        box.installEventFilter(keys)
-        for btn in box.buttons():
-            btn.installEventFilter(keys)
-        box.exec()
-        row = rows.get(box.clickedButton())
-        if row is None:
-            logger.info("[LIVE] Entering LIVE cancelled at the start question")
-            return False
-        logger.info("[LIVE] Show starts from row %d (#%d)", row, self._cues[row].cue_id)
-        self._cue_list.setCurrentRow(row)
-        return True
 
     @Slot()
     def toggle_live_mode(self) -> None:

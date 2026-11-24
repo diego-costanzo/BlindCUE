@@ -1,6 +1,8 @@
 """Text cues (captions): rendering, caching and saving in the show."""
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import sys
 from pathlib import Path
@@ -12,19 +14,19 @@ APP_DIR = ROOT / "blindcue"
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
 
-import pytest  # noqa: E402
-from PySide6.QtCore import QStandardPaths  # noqa: E402
-from PySide6.QtGui import QImage  # noqa: E402
-from PySide6.QtWidgets import QApplication  # noqa: E402
-
-from engine.text_render import (  # noqa: E402
+import pytest
+from engine.text_render import (
+    DEFAULT_FONT,
     HEIGHT,
     WIDTH,
     normalize_spec,
     render_text_png,
     text_cue_name,
 )
-from models.cue import Cue, MediaType  # noqa: E402
+from models.cue import Cue, MediaType
+from PySide6.QtCore import QStandardPaths
+from PySide6.QtGui import QImage
+from PySide6.QtWidgets import QApplication
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -74,3 +76,42 @@ def test_text_spec_is_saved_and_a_missing_image_is_recreated(tmp_path):
     back = Cue.from_dict(data)
     assert back.text_spec == spec
     assert Path(back.file_path).is_file()
+
+
+def test_default_font_is_cross_platform_and_legacy_json_font_is_preserved(tmp_path):
+    assert DEFAULT_FONT == "sans-serif"
+    assert normalize_spec({"text": "Ciao"})["font"] == "sans-serif"
+    assert normalize_spec({"text": "Ciao", "font": ""})["font"] == "sans-serif"
+    assert normalize_spec({"text": "Ciao", "font": None})["font"] == "sans-serif"
+
+    # Legacy show saved on Windows with explicit "Segoe UI" must load and render cleanly.
+    legacy_spec = {
+        "text": "Sipario",
+        "size": 90,
+        "color": "#ffffff",
+        "bold": True,
+        "position": "bottom",
+        "box": True,
+        "shadow": True,
+        "font": "Segoe UI",
+    }
+    legacy_data = {
+        "cue_id": 9001,
+        "name": "📝 Sipario",
+        "media_type": MediaType.IMAGE.value,
+        "file_path": str(tmp_path / "old_caption.png"),
+        "text_spec": legacy_spec,
+    }
+    back = Cue.from_dict(legacy_data)
+    assert back.text_spec["font"] == "Segoe UI"
+    assert Path(back.file_path).is_file()
+
+
+def test_cache_filename_uses_sha256():
+    spec = normalize_spec({"text": "Atto II", "size": 72})
+    expected = hashlib.sha256(
+        json.dumps(spec, sort_keys=True, ensure_ascii=False).encode("utf-8")
+    ).hexdigest()[:12]
+    path = Path(render_text_png(spec))
+    assert path.name == f"caption_{expected}.png"
+    assert path.is_file()
