@@ -481,24 +481,12 @@ class _ReadinessMixin:
         self._readiness_refresh()
 
     def _show_screen_numbers(self) -> None:
-        """A big number and the name on every screen for 3 s."""
+        """A big number and the name on every screen (4.5, the same as Devices → Identify)."""
         from PySide6.QtGui import QGuiApplication
 
-        windows = []
-        for i, screen in enumerate(QGuiApplication.screens(), start=1):
-            label = QLabel(f"{i}\n{screen.manufacturer()} {screen.model()}".strip())
-            label.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
-                                 | Qt.WindowType.Tool)
-            label.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setStyleSheet("QLabel { background-color: #0f172a; color: #fbbf24; font-size: 72px; "
-                                "font-weight: bold; border: 4px solid #fbbf24; }")
-            geo = screen.geometry()
-            label.setGeometry(geo.x() + geo.width() // 2 - 200, geo.y() + geo.height() // 2 - 150, 400, 300)
-            label.show()
-            windows.append(label)
-        self._screen_number_windows = windows
-        QTimer.singleShot(3000, lambda: [w.close() for w in windows])
+        from ui.identify_screens import show_screen_numbers
+
+        self._screen_number_windows = show_screen_numbers(QGuiApplication.screens())
 
     # ── Default checklist ─────────────────────────────────────────────
     def _default_checklist_cue(self) -> Cue:
